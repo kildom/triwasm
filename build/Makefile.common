@@ -1,0 +1,35 @@
+
+ifeq (1,$(DEBUG))
+  CXXFLAGS += $(DEBUGFLAGS) -DDEBUG=1
+  STRIP = echo Skipping: strip
+  OUTDIR = debug
+else
+  CXXFLAGS += $(OPTFLAGS)
+  OUTDIR = release
+endif
+
+OBJ := $(patsubst ../../src/%.cc,$(OUTDIR)/obj/%.o,$(wildcard ../../src/*.cc))
+
+all: $(OUTDIR)/$(TARGET)
+
+clean:
+	rm -Rf $(OUTDIR)
+
+cleanobj:
+	rm -Rf $(OUTDIR)/obj
+
+rebuild: clean
+	+make all
+
+$(OUTDIR)/obj/marker.txt:
+	mkdir -p $@
+	echo OK > $@/marker.txt
+
+$(OUTDIR)/$(TARGET): $(OBJ)
+	$(CPP) $(CXXFLAGS) $(CPPFLAGS) $(OBJ) -o $@
+	$(STRIP) $@
+
+$(OUTDIR)/obj/%.o : ../../src/%.cc $(OUTDIR)/obj/marker.txt Makefile ../Makefile.common
+	$(CPP) -MD -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+
+-include $(OUTDIR)/obj/*.d
