@@ -1,0 +1,57 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Release",
+			"type": "shell",
+			"command": "make -j4",
+			"windows": {
+				"options": {
+					"cwd": "${workspaceFolder}/build/windows"
+				}
+			},
+			"group": "build",
+			"problemMatcher": [
+				"$gcc"
+			]
+		},
+		{
+			"label": "Build Debug",
+			"type": "shell",
+			"command": "make -j4 DEBUG=1",
+			"windows": {
+				"options": {
+					"cwd": "${workspaceFolder}/build/windows"
+				}
+			},
+			"linux": {
+				"options": {
+					"cwd": "${workspaceFolder}/build/linux"
+				}
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [
+				"$gcc"
+			]
+		},
+		{
+			"label": "Build WASM",
+			"type": "shell",
+			"command": "make -j4 && make -j4 DEBUG=1",
+			"options": {
+				"cwd": "${workspaceFolder}/build/wasm",
+				"env": {
+					"WASI_SDK_ROOT": "C:\\work\\wasmbzip2\\wasi-sdk",
+					"BINARYEN_ROOT": "C:\\work\\wasmbzip2\\binaryen"
+				}
+			},
+			"group": "build",
+			"problemMatcher": [
+				"$gcc"
+			]
+		}
+	]
+}
