@@ -3,6 +3,10 @@
 
 #include "common.hh"
 
+#define DOLLAR_TYPEDEF(Class) \
+    typedef $<Class> Class##$; \
+    typedef $<Class, true> Class##$$
+
 #define DOLLAR_CLASS(Class) \
     typedef $<class Class> Class##$; \
     typedef $<class Class, true> Class##$$
@@ -11,18 +15,30 @@
     typedef $<struct Struct> Struct##$; \
     typedef $<struct Struct, true> Struct##$$
 
+template<typename T, bool virtualDestructor>
+struct _$_Inner;
+
 template<typename T>
-struct _$_Inner {
+struct _$_Inner<T, false> {
     size_t counter;
     T data;
     template<typename... Args>
     _$_Inner(Args&&... args) : data(std::forward<Args>(args)...) { }
 };
 
+template<typename T>
+struct _$_Inner<T, true> {
+    size_t counter;
+    T data;
+    template<typename... Args>
+    _$_Inner(Args&&... args) : data(std::forward<Args>(args)...) { }
+    virtual ~_$_Inner();
+};
+
 template<typename T, bool nullable = false>
 class $ {
 public:
-    typedef _$_Inner<T> Inner;
+    typedef _$_Inner<T, std::has_virtual_destructor<T>::value> Inner;
     Inner *_ptr;
 
     $() : _ptr(nullptr) { }
@@ -186,6 +202,28 @@ public:
         }
     }
 
+    template<typename T2>
+    $<T2> cast() {
+        typedef _$_Inner<T2, std::has_virtual_destructor<T2>::value> Inner2;
+        T2* p = &_ptr->data;
+        if ((void*)p != (void*)&_ptr->data) {
+            FATAL("Only cast to first parent is allowed");
+        }
+        ssize offset = (u8*)&_ptr->data - (u8*)&_ptr;
+        Inner2* inner = (Inner2*)((u8*)p - offset);
+        if ((void*)&inner->counter != (void*)&_ptr->counter) {
+            FATAL("Some unconventional platform or compiler");
+        }
+        inner->counter++;
+        return $<T2>(inner);
+    }
+
 };
+
+
+typedef $<std::basic_string<u8>> Bytes$; // TODO: move somewhere else
+typedef $<std::basic_string<u8>, true> Bytes$$;
+typedef $<std::string> String$;
+typedef $<std::string, true> String$$;
 
 #endif /* _DOLLAR_HH_ */

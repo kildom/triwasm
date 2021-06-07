@@ -24,6 +24,9 @@ using usize = std::uintptr_t;
 using ssize = std::intptr_t;
 
 
+typedef std::basic_string<u8> Bytes; // TODO: safer non-standard classes
+typedef std::string String;
+
 #define TRACE(...) // TODO: Macro for tracing call stack
 #define FATAL(...) do { printf(__VA_ARGS__); exit(100); } while(0)// TODO: Macro for unrecoverable fatal error
 #define ASSERT(...) do { printf(__VA_ARGS__); exit(101); } while(0)// TODO: Macro for unrecoverable fatal error
