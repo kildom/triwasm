@@ -1,7 +1,9 @@
-const { time } = require('console');
+const { time, timeStamp } = require('console');
 const fs = require('fs');
+const { WasmParser, WasmParsingError } = require('./WasmParser');
 
-file = new Uint8Array(fs.readFileSync('test/libbzip2-dec.wasm'));
+//file = new Uint8Array(fs.readFileSync('test/libbzip2-dec.wasm'));
+file = new Uint8Array(fs.readFileSync('test/test.wasm'));
 
 const sectionNames = [
     'custom',
@@ -62,10 +64,13 @@ class DataStream {
             result += (b & 0x7F) * mul;
             mul *= 128;
         } while (b & 0x80);
-        mul /= 2;
-        let sign = result & mul;
-        throw 'TODO';
-        return result;
+        if (result >= mul/2) {
+            result--;
+            result ^= mul-1;
+            return -result;
+        } else {
+            return result;
+        }
     }
 
     u32() {
@@ -75,9 +80,20 @@ class DataStream {
         return r;
     }
 
+    s64() {
+        return this.sleb128();
+    }
+
     str() {
         let len = this.uleb128();
         let result = this.dec.decode(this.a.subarray(this.p, this.p + len));
+        this.p += len;
+        return result;
+    }
+
+    bytes() {
+        let len = this.uleb128();
+        let result = this.a.slice(this.p, this.p + len);
         this.p += len;
         return result;
     }
@@ -305,14 +321,16 @@ function parseWasmSection(s) {
 
 function parseWasmFile(file) {
     const view = new DataView(file.buffer);
-    const s = new DataStream(file, view, 8);
-    if (view.getUint32(0) != 0x0061736D)
+    const s = new DataStream(file, view, 0);
+    let parser = new WasmParser(s);
+    parser.parse();
+    /*if (view.getUint32(0) != 0x0061736D)
         throw Error('Invalid wasm binary file');
     if (view.getUint32(4, true) != 1)
         throw Error('Unsupported wasm binary file version');
     while (s.remaining > 0) {
         parseWasmSection(s);
-    }
+    }*/
 }
 
 parseWasmFile(file);
