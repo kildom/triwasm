@@ -30,5 +30,6 @@ using ssize = std::intptr_t;
 
 #include "Dollar.hh"
 #include "Range.hh"
+#include "Array.hh"
 
 #endif /* _COMMON_H_ */
