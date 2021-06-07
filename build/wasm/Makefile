@@ -2,7 +2,7 @@
 CPP=$(WASI_SDK_ROOT)/bin/clang++ --sysroot=$(WASI_SDK_ROOT)/share/wasi-sysroot
 STRIP=$(WASI_SDK_ROOT)/bin/llvm-strip
 TARGET=uvmwasm.wasm
-CXXFLAGS=-fno-exceptions -fno-rtti
+CXXFLAGS=-fno-exceptions -fno-rtti -Wall
 OPTFLAGS=-Oz -g0 -flto
 DEBUGFLAGS=-O0 -g
 

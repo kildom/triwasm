@@ -1,6 +1,8 @@
 #ifndef _VECTOR_HH_
 #define _VECTOR_HH_
 
+#include <vector>
+
 #include "common.hh"
 #include "RefCounter.hh"
 
@@ -12,31 +14,45 @@ class Vector : public RefCounter {
 
     struct Self : public RefCounter::Self
     {
-        size_t size;
-        size_t length;
-        T* array;
+        template<typename... Args>
+        Self(Args&&... args) : v(std::forward<Args>(args)...) { }
+        std::vector<T> v;
     };
 
-    void initialize() {
-        self->size = 4;
-        self->length = 0;
-        self->array = new T[4];
-    }
-
-    void initialize(size_t length) {
-        self->size = length > 4 ? length : 4;
-        self->length = length;
-        self->array = new T[self->size];
+    template<typename... Args>
+    void initialize(Args&&... args) {
+        initializeSelf(new Self(std::forward<Args>(args)...));
     }
 
     void finalize() {
-        delete[] self->array;
     }
+
 public:
     T& operator[](size_t index) {
-        if (index > self->length)
+        if (!self || index >= self->v.size())
             FATAL("Index out of bounds");
-        return self->array[index];
+        return self->v[index];
+    }
+
+    T& grow(size_t index) {
+        if (!self || index >= self->v.size())
+            self->v.resize(index + 1);
+        return self->v[index];
+    }
+
+    size_t length() {
+        if (!self)
+            return 0;
+        return self->v.size();
+    }
+
+    void setLength(size_t length)
+    {
+        if (!self) {
+            create(length);
+        } else {
+            self->v.resize(length);
+        }
     }
 
 };

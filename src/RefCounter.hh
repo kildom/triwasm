@@ -1,13 +1,15 @@
 
 #include "common.hh"
 
+class _RefCounterInternalConstr_ {};
+
 #define self ((Self*)ptr)
 #define REF_COUNTER_IMPL(Class, Base)                 \
     public:                                           \
     template<typename... Args>                        \
     static Class create(Args&&... args)               \
     {                                                 \
-        return Class(1, std::forward<Args>(args)...); \
+        return Class(_RefCounterInternalConstr_(), std::forward<Args>(args)...); \
     }                                                 \
     Class() : Base() { }                              \
     Class(const Class& a) : Base(a) { }               \
@@ -49,11 +51,13 @@
     }                                                 \
     private:                                          \
     template<typename... Args>                        \
-    Class(int, Args&&... args) : Base() {             \
-        ptr = new Self;                               \
-        self->counter = 1;                            \
+    Class(_RefCounterInternalConstr_, Args&&... args) : Base() {             \
         initialize(std::forward<Args>(args)...);      \
     }                                                 \
+    void initializeSelf(void* newSelf) { \
+        ptr = self; \
+        self->counter = 1; \
+    }
 
 // TODO: macro for defining method that returns a references directly from self object 
 
@@ -97,41 +101,40 @@ public:
         return !!ptr;
     }
 
-    friend bool operator==(const RefCounter& a, nullptr_t);
-    friend bool operator!=(const RefCounter& a, nullptr_t);
-    friend bool operator==(nullptr_t, const RefCounter& a);
-    friend bool operator!=(nullptr_t, const RefCounter& a);
-    friend bool operator==(const RefCounter& a, const RefCounter& b);
-    friend bool operator!=(const RefCounter& a, const RefCounter& b);
+    void assertNotNull()
+    {
+        if (!ptr)
+            FATAL("Expecting not null pointer");
+    }
+
+    friend bool operator==(const RefCounter& a, nullptr_t)
+    {
+        return a.ptr == nullptr;
+    }
+
+    friend bool operator!=(const RefCounter& a, nullptr_t)
+    {
+        return a.ptr != nullptr;
+    }
+
+    friend bool operator==(nullptr_t, const RefCounter& a)
+    {
+        return a.ptr == nullptr;
+    }
+
+    friend bool operator!=(nullptr_t, const RefCounter& a)
+    {
+        return a.ptr != nullptr;
+    }
+
+    friend bool operator==(const RefCounter& a, const RefCounter& b)
+    {
+        return a.ptr == b.ptr;
+    }
+
+    friend bool operator!=(const RefCounter& a, const RefCounter& b)
+    {
+        return a.ptr != b.ptr;
+    }
 
 };
-
-static inline bool operator==(const RefCounter& a, nullptr_t)
-{
-    return a.ptr == nullptr;
-}
-
-static inline bool operator!=(const RefCounter& a, nullptr_t)
-{
-    return a.ptr != nullptr;
-}
-
-static inline bool operator==(nullptr_t, const RefCounter& a)
-{
-    return a.ptr == nullptr;
-}
-
-static inline bool operator!=(nullptr_t, const RefCounter& a)
-{
-    return a.ptr != nullptr;
-}
-
-static inline bool operator==(const RefCounter& a, const RefCounter& b)
-{
-    return a.ptr == b.ptr;
-}
-
-static inline bool operator!=(const RefCounter& a, const RefCounter& b)
-{
-    return a.ptr != b.ptr;
-}
