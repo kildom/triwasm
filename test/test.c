@@ -32,3 +32,19 @@ void test1() {
     imptestdot(1, 2, 3, 4, 5, 6);
 }
 
+
+WASM_IMPORT(retint)
+int retint();
+
+
+WASM_EXPORT(test2)
+void test2() {
+    while (1) {
+        imptest();
+        if (!retint()) continue;
+        imptest();
+        if (!retint()) break;
+        imptest();
+    }
+}
+

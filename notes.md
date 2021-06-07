@@ -15,3 +15,30 @@
     * full int64 instruction set
   * float
   * double
+
+* Optimization tips:
+  * Put second const operant into destination instruction: `PUSH X ... SUB  ->  SUB X`
+  * Put first const operant into destination instruction if they can be inverted (add, mul, and, or, xor): `PUSH X ... ADD  ->  ADD X`
+  * If value comes from uvm `NOT` instruction, delete `NOT` and replace destination instruction from `BRT` to `BRF` or the opposite: `EQ ; NOT ; ... ; BRT  ->  EQ ; ... ; BRF`
+  * If value comes from uvm `NOT` instruction, and destination is also `NOT` delete both: `NOT ; ... ; NOT  ->  ...`
+  * Combine immutable globals with the same value
+  * Replace repeating 32-bit const values into immutable globals:
+    * (5 bytes) `PUT x  ->  READ -offset` (2 or 3 bytes + 4 common bytes) or
+    * (5 bytes) `ADD x  ->  READ -offset ; ADD` (3 or 4 bytes + 4 common bytes)
+    * It should be calculated if this optimization is gaining anything
+  * Replace short immutable globals into inline consts: (2-3 bytes + 4 common) `READ -offset  ->  PUSH x` (2-3 bytes)
+  * Replace `PUT X:i32` (5 byte) with `PUT X:i8 ; U/SSHR n` (4 bytes) if possible
+  * Order globals (both mutable and immutable) by the number of uses, so the most common instructions will be shortest.
+
+Compilation flow:
+1. Parse wasm file and check basic integrity *WasmParser* and *WasmReader*
+2. Do data association (e.g. convert index into actual data) and do full validation *WasmParser*
+3. Generate abstract µVM instructions (as objects), keep the blocks as in wasm *IRGenerator*
+4. Execute code optimization passes: *IROptimizer*
+   1. inline operand *InlineOperandOpt*
+   2. reduced negation *ReduceNegationOpt*
+   3. common immediate to globals *CommonImmediateOpt*
+   4. integer constant calculated *CalculateConstOpt*
+5. Generate µVM code for each function *UVMAsmGenerator*
+6. Add used buildins and startup code, data, immutable globals, bindings, e.t.c. *UVMAsmLinker*
+7. Compile µVM code to final representation *UVMAsmBinGenerator* or *UVMAsmTextGenerator*
