@@ -2,12 +2,7 @@
 #include "Vector.hh"
 
 #include <string>
-
-#include <stdio.h>
-
-void f(std::initializer_list<int> a) {
-
-}
+#include <cstdio>
 
 #if 0
 struct FuncType {
@@ -33,170 +28,6 @@ struct Function {
     };
     Array<Inner$>
 }
-#endif
-
-template<typename T>
-struct _$_Inner {
-    size_t counter;
-    T data;
-};
-
-template<typename T, bool nullable = false>
-class $ {
-public:
-    typedef _$_Inner<T> Inner;
-    Inner *_ptr;
-
-    $() : _ptr(nullptr) { }
-
-    $(nullptr_t) : _ptr(nullptr) { }
-
-    $(const $ &a) : _ptr(a._ptr) {
-        if (_ptr)
-            _ptr->counter++;
-    }
-
-    $(const $<T, !nullable> &a) : _ptr(a._ptr) {
-        if (_ptr)
-            _ptr->counter++;
-    }
-
-    $($ &&a) : _ptr(a._ptr) {
-        a._ptr = nullptr;
-    }
-
-    $($<T, !nullable> &&a) : _ptr(a._ptr) {
-        a._ptr = nullptr;
-    }
-
-    $(const T& a) : _ptr(new Inner{1, a}) { }
-
-    ~$() {
-        if (_ptr && (--_ptr->counter) == 0)
-            delete _ptr;
-    }
-
-    $& operator=(nullptr_t) {
-        if (_ptr && (--_ptr->counter) == 0)
-            delete _ptr;
-        _ptr = nullptr;
-        return *this;
-    }
-
-    $& operator=(const $& a) {
-        if (_ptr && (--_ptr->counter) == 0)
-            delete _ptr;
-        _ptr = a._ptr;
-        if (_ptr)
-            _ptr->counter++;
-        return *this;
-    }
-
-    $& operator=(const $<T, !nullable>& a) {
-        if (_ptr && (--_ptr->counter) == 0)
-            delete _ptr;
-        _ptr = a._ptr;
-        if (_ptr)
-            _ptr->counter++;
-        return *this;
-    }
-
-    $& operator=($&& a) {
-        if (_ptr && (--_ptr->counter) == 0)
-            delete _ptr;
-        _ptr = a._ptr;
-        a._ptr = nullptr;
-        return *this;
-    }
-
-    $& operator=($<T, !nullable>&& a) {
-        if (_ptr && (--_ptr->counter) == 0)
-            delete _ptr;
-        _ptr = a._ptr;
-        a._ptr = nullptr;
-        return *this;
-    }
-
-    $& operator=(const T& a) {
-        if (_ptr && (--_ptr->counter) == 0)
-            delete _ptr;
-        _ptr = new Inner{.counter = 1, .data = a};
-        return *this;
-    }
-
-    T* operator->() {
-        if (!_ptr) {
-            if (!nullable)
-                _ptr = new Inner{.counter = 1};
-            else
-                ASSERT("Dereferencing nullptr");
-        }
-        return &_ptr->data;
-    }
-
-    T& operator*() {
-        if (!_ptr) {
-            if (!nullable)
-                _ptr = new Inner{.counter = 1};
-            else
-                ASSERT("Dereferencing nullptr");
-        }
-        return _ptr->data;
-    }
-
-    bool operator!() {
-        return !_ptr;
-    }
-
-    operator bool() {
-        return !!_ptr;
-    }
-
-    friend bool operator==(const $& a, nullptr_t)
-    {
-        return a._ptr == nullptr;
-    }
-
-    friend bool operator!=(const $& a, nullptr_t)
-    {
-        return a._ptr != nullptr;
-    }
-
-    friend bool operator==(nullptr_t, const $& a)
-    {
-        return a._ptr == nullptr;
-    }
-
-    friend bool operator!=(nullptr_t, const $& a)
-    {
-        return a._ptr != nullptr;
-    }
-
-    friend bool operator==(const $& a, const $& b)
-    {
-        return a._ptr == b._ptr;
-    }
-
-    friend bool operator==(const $& a, const $<T, !nullable>& b)
-    {
-        return a._ptr == b._ptr;
-    }
-
-    friend bool operator!=(const $& a, const $& b)
-    {
-        return a._ptr != b._ptr;
-    }
-
-    friend bool operator!=(const $& a, const $<T, !nullable>& b)
-    {
-        return a._ptr != b._ptr;
-    }
-
-};
-
-#define DOLLAR_DEF(kind, Class) \
-    typedef $<kind Class> Class##$; \
-    typedef $<kind Class, true> Class##$$
 
 template <typename T>
 struct ArrayView {
@@ -234,33 +65,187 @@ public:
 };
 
 template <typename T>
-class ArrayViewInner {
-    Array<T> array;
-    size_t offset;
-    size_t length;
-};
-
-template <typename T>
-class ArrayView : public $<ArrayViewInner<T>, false>
+class ArrayView
 {
 public:
+    Array<T> array;
+    size_t offset; // or begin / end
+    size_t length;
     // the same API as Array, but operates on subset of original array
     // TODO: checks if view length is still valid and changes it if original array shrinked
 };
+#endif
 
-DOLLAR_DEF(struct, Test1);
+DOLLAR_STRUCT(Test1);
 
 struct Test1
 {
     int a;
     int b;
     int c;
+    Test1() : a(-1), b(-1), c(-1) {}
+    Test1(int a, int b, int c) : a(a), b(b), c(c) {}
+};
+
+template<typename T>
+class ArrayView;
+
+template<typename T>
+class ArrayInner {
+public:
+    std::vector<T> v;
+
+    template<typename... Args>
+    ArrayInner(Args&&... args) : v(std::forward<Args>(args)...) { }
+
+    ssize length() {
+        return (ssize)v.size();
+    }
+
+    void length(ssize l) {
+        v.resize(l);
+    }
+
+};
+
+template<typename T>
+class Array$ : public $<ArrayInner<T>> {
+public:
+
+    Array$() : $<ArrayInner<T>>() { }
+    Array$(nullptr_t) : $<ArrayInner<T>>(nullptr) { }
+    Array$(const Array$ &a) : $<ArrayInner<T>>(a) { }
+    Array$(Array$ &&a) : $<ArrayInner<T>>(a) { }
+    Array$(const ArrayInner<T>& a) : $<ArrayInner<T>>(a) { }
+    Array$(typename $<ArrayInner<T>>::Inner * a) : $<ArrayInner<T>>(a) { }
+    ~Array$() { }
+
+    Array$(const std::initializer_list<T>& a) : $<ArrayInner<T>>(a) { }
+
+    Array$& operator=(nullptr_t) {
+        $<ArrayInner<T>>::operator=(nullptr);
+        return *this;
+    }
+
+    Array$& operator=(const Array$& a) {
+        $<ArrayInner<int>>::operator=(a);
+        return *this;
+    }
+
+    Array$& operator=(Array$&& a) {
+        $<ArrayInner<T>>::operator=(a);
+        return *this;
+    }
+
+    Array$& operator=(const ArrayInner<T>& a) {
+        $<ArrayInner<T>>::operator=(a);
+        return *this;
+    }
+
+    Array$& operator=(const std::initializer_list<T>& a) {
+        *this = Array$(a);
+        return *this;
+    }
+
+    template<typename... Args>
+    static Array$ create(Args&&... args) {
+        typename $<ArrayInner<T>>::Inner *a = new typename $<ArrayInner<T>>::Inner(std::forward<Args>(args)...);
+        a->counter = 1;
+        return Array$(a);
+    }
+
+    T& operator[](ssize index) {
+        if (index < 0 || (usize)index >= (*this)->v.size()) {
+            FATAL("Index out of bounds");
+        }
+        return (*this)->v[index];
+    }
+
+    ArrayView<T> operator[](const Range &range);
+    ArrayView<T> operator[](const BoundedRange &range);
 };
 
 
+template<typename T>
+class ArrayView {
+public:
+    Array$<T> array;
+    ssize begin;
+    ssize end;
+    ArrayView(const ArrayView& view, ssize begin, ssize end) : array(view.array), begin(begin), end(end) { }
+    ArrayView(Array$<T> array, ssize begin, ssize end) : array(array), begin(begin), end(end) { }
+
+    ssize length() {
+        update();
+        return end - begin;
+    }
+
+    ArrayView& operator=(const std::initializer_list<T>& src) {
+        update();
+        return *this;
+    }
+
+    ArrayView& operator=(const Array$<T>& src) {
+        update();
+        return *this;
+    }
+
+    ArrayView& operator=(const ArrayView& src) {
+        update();
+        return *this;
+    }
+
+    T& operator[](ssize index) {
+        update();
+        if (index < 0 || index >= end - begin) {
+            FATAL("Index out of bounds");
+        }
+        return array[begin + index];
+    }
+
+    ArrayView operator[](const Range &range) {
+        return operator[](range.bound(end - begin));
+    }
+
+    ArrayView operator[](const BoundedRange &range) {
+        update();
+        if (range.beginOffset < 0 || range.beginOffset > end - begin
+            || range.endOffset < 0 || range.endOffset > end - begin) {
+            FATAL("Index out of bounds");
+        }
+        return ArrayView(*this, begin + range.beginOffset, begin + range.endOffset);
+    }
+
+private:
+    void update() {
+        auto length = array->length();
+        if (end > length) {
+            end = length;
+            if (begin > length) {
+                begin = length;
+            }
+        }
+    }
+};
+
+
+template<typename T>
+ArrayView<T> Array$<T>::operator[](const Range &range) {
+    return operator[](range.bound((*this)->v.size()));
+}
+
+template<typename T>
+ArrayView<T> Array$<T>::operator[](const BoundedRange &range) {
+    if (range.beginOffset < 0 || (usize)range.beginOffset > (*this)->v.size()
+        || range.endOffset < 0 || (usize)range.endOffset > (*this)->v.size()) {
+        FATAL("Index out of bounds");
+    }
+    return ArrayView<T>(*this, range.beginOffset, range.endOffset);
+}
+
 int main(int argc, char *argv[]) {
 
-    Test1$ not_null = Test1{1, 2, 3};
+    /*Test1$ not_null = Test1{1, 2, 3};
     Test1$ x;
     not_null->c++;
     x->c++;
@@ -268,20 +253,36 @@ int main(int argc, char *argv[]) {
     Test1$$ y;
     printf("%d\n", y == x);
     x = y;
-    printf("%d", y == x);
+    printf("%d", y == x);*/
 
-    Array<int> a;
+    $<std::vector<s32>> v;
 
-    printf("%d %d %d %d", -1, not_null->a, not_null->b, not_null->c);
+    v = $<std::vector<s32>>::create(std::initializer_list<s32>{1, 2, 3});
+
+    Test1$ c = Test1$::create(1,2,3);
+
+    for (auto i : Range((uint8_t)2).bound(20)) {
+        printf("--%d\n", (int)i);
+    }
+
+    printf("%d %d %d %d\n", -1, (*v)[0], (*v)[1], (*v)[2]);
     //Test1$$ nullable;
 
+    Array$<int> a = {1, 2, 3};
+    Array$<int> b;
+
+    a = { 4,5 ,8};
+
+    auto av = a[Range(1)];
+    av[0];
+
+    printf("%d %d %d %d\n", av[0], a[0], a[1], a[2]);
     #if 0
 
     // TODO:
 
     Array<int> a = {0,1,2,3,4,5,6,7,8};
     auto view = a[range(2, 5)]; // returns ArrayView {2,3,4}
-    auto rev = a[range(5, 2, -1)]; // returns ArrayView {5,4,3}, but original array is copied and reordered
 
     for (auto i: range(2, 5)) {
         // Loop from 2 to 5 (exclusive)
@@ -309,6 +310,11 @@ int main(int argc, char *argv[]) {
     for (auto i: range(1)) {// FAIL: end is unknown in this context
     }
 
+    a[Range(1, 3)] = a[Range(4)];
+    Array$<int> sub = a[Range(1, 3)];
+
+    int a, b, c;
+    RefArray(&a, &b, &c) = tab[Range(0, 3)];
 
     #endif
 
