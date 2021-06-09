@@ -16,25 +16,42 @@ DOLLAR_CLASS(WasmReader);
 
 class WasmReader {
 private:
-    std::basic_string<u8> buffer;
-    ssize offsetOfBuffer; // offset of `buffer` begin in a file
-    u8* wathermark; // if wathermark is less than 20 bytes before `end` of data this means that end of file was reached.
     u8* ptr;
     u8* end;
-    void checkWathermark() {
-        if (ptr >= wathermark) { // wathermark is 20 bytes before end of data `end` or less at the end of file
-            updateBuffer();
-        }
+    WasmInputStream$$ stream;
+    std::basic_string<u8> buffer;
+    ssize offsetOfBuffer; // offset of `buffer` begin in a file
+    void updateBuffer(); // TODO: at the end of this method: if (ptr == end) FATAL("Unexpected end of input");
+
+    template<typename XX>
+    XX WasmReader:: readXX()
+    {
+        XX result = 0;
+        XX shift = 0;
+        XX x;
+        do {
+            if (ptr == end)
+                updateBuffer();
+            x = *ptr++;
+            result |= (x & 0x7F) << shift;
+            shift += 7;
+        } while(x & 0x80);
+        if (std::is_signed<XX>::value && (shift < sizeof(XX) * 8) && (x & 0x40))
+            result |= ~(XX)0 << shift;
+        return result;
     }
+
 public:
     WasmReader(WasmInputStream$$ stream);
+    bool eof();
     ssize offset();
-    u32 readU32();
-    s32 readS32();
-    u64 readU64();
-    s64 readS64();
+    u32 readU32() { return readXX<u32>(); }
+    s32 readS32() { return readXX<s32>(); }
+    u64 readU64() { return readXX<u64>(); }
+    s64 readS64() { return readXX<s64>(); }
     u8 byte() {
-        checkWathermark();
+        if (ptr == end)
+            updateBuffer();
         return *ptr++;
     }
     $<std::string> string();
@@ -42,7 +59,6 @@ public:
     void skip(ssize length);
     ssize startContainer(ssize length); // returns file offset at the end of container: offsetOfBuffer + (ptr - buf.c_str()) + length
     void endContainer(ssize state, bool expectFullyConsumed); // success when ended as expected, fatal read too much or expectAllConsumed and something was  not consumed
-    void updateBuffer(); // TODO: at the end of this method: if (ptr == end) FATAL("Unexpected end of input");
 };
 
 #endif /* _WASM_READER_HH_ */
