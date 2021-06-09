@@ -21,11 +21,15 @@ private:
     WasmInputStream$$ stream;
     std::basic_string<u8> buffer;
     ssize offsetOfBuffer;
+    bool eofReceived;
 
     void updateBuffer();
 
     template<typename XX>
     XX readXX();
+
+    template<typename T$>
+    T$ bufferRead();
 
 public:
     WasmReader(WasmInputStream$$ stream);
@@ -38,8 +42,8 @@ public:
             updateBuffer();
         return *ptr++;
     }
-    $<std::string> string();
-    $<std::basic_string<u8>> bytes();
+    String$ string();
+    Bytes$ bytes();
     void skip(ssize length);
     ssize startContainer(ssize length); // returns file offset at the end of container: offsetOfBuffer + (ptr - buf.c_str()) + length
     void endContainer(ssize state, bool expectFullyConsumed); // success when ended as expected, fatal read too much or expectAllConsumed and something was  not consumed
@@ -62,6 +66,42 @@ XX WasmReader::readXX()
     } while(byte & 0x80);
     if (std::is_signed<XX>::value && (shift < sizeof(XX) * 8) && (byte & 0x40))
         result |= ~(XX)0 << shift;
+    return result;
+}
+
+template<typename T$>
+T$ WasmReader::bufferRead()
+{
+    auto length = readU32();
+    auto result = T$::create(length, 0);
+
+    if (length == 0)
+        return result;
+
+    u8* buffer = (u8*)result->buffer();
+
+    auto available = end - ptr;
+    if (available >= length) {
+        std::memcpy(buffer, ptr, length);
+        ptr += length;
+        return result;
+    }
+
+    std::memcpy(buffer, ptr, available);
+    ptr = end;
+
+    length -= available;
+    buffer += available;
+
+    while (length > 0) {
+        auto n = stream->read(buffer, length);
+        if (n == 0)
+            FATAL("Unexpected end of input");
+        length -= n;
+        buffer += n;
+        offsetOfBuffer += n;
+    }
+
     return result;
 }
 

@@ -34,38 +34,53 @@ void WasmReader::updateBuffer()
     end = ptr;
 }
 
-$<std::basic_string<u8>> WasmReader::bytes()
+
+String$ WasmReader::string() {
+    return bufferRead<String$>();
+}
+
+Bytes$ WasmReader::bytes() {
+    return bufferRead<Bytes$>();
+}
+
+
+void WasmReader::skip(ssize length)
 {
-    auto length = readU32();
-    auto result = $<std::basic_string<u8>>::create(length, 0);
-
+    u8 buffer[1024];
     if (length == 0)
-        return result;
-
-    auto buffer = (u8*)result->c_str();
+        return;
 
     auto available = end - ptr;
     if (available >= length) {
-        std::memcpy(buffer, ptr, length);
         ptr += length;
-        return result;
+        return;
     }
 
-    std::memcpy(buffer, ptr, available);
     ptr = end;
 
     length -= available;
-    buffer += available;
 
     while (length > 0) {
-        auto n = stream->read(buffer, length);
+        auto n = stream->read(buffer, std::min(length, (ssize)sizeof(buffer)));
         if (n == 0)
             FATAL("Unexpected end of input");
         length -= n;
-        buffer += n;
         offsetOfBuffer += n;
     }
-
-    return result;
 }
 
+ssize WasmReader::startContainer(ssize length) {// returns file offset at the end of container: offsetOfBuffer + (ptr - buf.c_str()) + length
+}
+
+void WasmReader::endContainer(ssize state, bool expectFullyConsumed){ // success when ended as expected, fatal read too much or expectAllConsumed and something was  not consumed
+}
+
+ssize WasmReader::offset()
+{
+
+}
+
+bool WasmReader::eof()
+{
+    return ptr == end && end < (u8*)buffer.c_str() + READER_BUFFER_SIZE;
+}

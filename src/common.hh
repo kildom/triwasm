@@ -24,10 +24,6 @@ using s8 = std::int8_t;
 using usize = std::uintptr_t;
 using ssize = std::intptr_t;
 
-
-//typedef GenericString<u8> Bytes; // TODO: safer non-standard classes
-//typedef GenericString<char> String;
-
 #define TRACE(...) // TODO: Macro for tracing call stack
 #define FATAL(...) do { printf(__VA_ARGS__); exit(100); } while(0)// TODO: Macro for unrecoverable fatal error
 #define ASSERT(...) do { printf(__VA_ARGS__); exit(101); } while(0)// TODO: Macro for unrecoverable fatal error
@@ -35,5 +31,6 @@ using ssize = std::intptr_t;
 #include "Dollar.hh"
 #include "Range.hh"
 #include "Array.hh"
+#include "GenericString.hh"
 
 #endif /* _COMMON_H_ */

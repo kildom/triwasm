@@ -221,9 +221,4 @@ public:
 };
 
 
-typedef $<std::basic_string<u8>> Bytes$; // TODO: move somewhere else
-typedef $<std::basic_string<u8>, true> Bytes$$;
-typedef $<std::string> String$;
-typedef $<std::string, true> String$$;
-
 #endif /* _DOLLAR_HH_ */
