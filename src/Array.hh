@@ -22,6 +22,19 @@ public:
         v.resize(l);
     }
 
+    void push(const T& x) {
+        v.push_back(x);
+    }
+
+    T& grow(ssize index) {
+        if (index < 0) {
+            FATAL("Index out of bounds");
+        } else if ((usize)index >= v.size()) {
+            v.resize(index + 1);
+        }
+        return v[index];
+    }
+
 };
 
 template<typename T>

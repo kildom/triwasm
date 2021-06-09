@@ -32,7 +32,26 @@ struct _$_Inner<T, true> {
     T data;
     template<typename... Args>
     _$_Inner(Args&&... args) : data(std::forward<Args>(args)...) { }
-    virtual ~_$_Inner();
+    virtual ~_$_Inner() { }
+};
+
+template<class Inner, bool nullable2>
+struct _$_DefaultInnerCreator;
+
+template<class Inner>
+struct _$_DefaultInnerCreator<Inner, true>
+{
+    static Inner* createInner() {
+        return NULL;
+    }
+};
+
+template<class Inner>
+struct _$_DefaultInnerCreator<Inner, false>
+{
+    static Inner* createInner() {
+        return new Inner();
+    }
 };
 
 template<typename T, bool nullable = false>
@@ -126,7 +145,7 @@ public:
     T* operator->() {
         if (!_ptr) {
             if (!nullable) {
-                _ptr = new Inner();
+                _ptr = _$_DefaultInnerCreator<Inner, nullable>::createInner();
                 _ptr->counter = 1;
             } else
                 ASSERT("Dereferencing nullptr");
@@ -137,7 +156,7 @@ public:
     T& operator*() {
         if (!_ptr) {
             if (!nullable) {
-                _ptr = new Inner();
+                _ptr = _$_DefaultInnerCreator<Inner, nullable>::createInner();
                 _ptr->counter = 1;
             } else
                 ASSERT("Dereferencing nullptr");
@@ -209,7 +228,7 @@ public:
         if ((void*)p != (void*)&_ptr->data) {
             FATAL("Only cast to first parent is allowed");
         }
-        ssize offset = (u8*)&_ptr->data - (u8*)&_ptr;
+        ssize offset = (u8*)&_ptr->data - (u8*)_ptr;
         Inner2* inner = (Inner2*)((u8*)p - offset);
         if ((void*)&inner->counter != (void*)&_ptr->counter) {
             FATAL("Some unconventional platform or compiler");

@@ -25,8 +25,8 @@ using usize = std::uintptr_t;
 using ssize = std::intptr_t;
 
 #define TRACE(...) // TODO: Macro for tracing call stack
-#define FATAL(...) do { printf(__VA_ARGS__); exit(100); } while(0)// TODO: Macro for unrecoverable fatal error
-#define ASSERT(...) do { printf(__VA_ARGS__); exit(101); } while(0)// TODO: Macro for unrecoverable fatal error
+#define FATAL(text, ...) do { printf(text " :%s:%d\n", ##__VA_ARGS__, __FILE__, __LINE__); exit(100); } while(0)// TODO: Macro for unrecoverable fatal error
+#define ASSERT(text, ...) do { printf(text " :%s:%d\\n", ##__VA_ARGS__, __FILE__, __LINE__); exit(101); } while(0)// TODO: Macro for unrecoverable fatal error
 
 #include "Dollar.hh"
 #include "Range.hh"

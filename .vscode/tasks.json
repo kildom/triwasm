@@ -10,6 +10,11 @@
                     "cwd": "${workspaceFolder}/build/windows"
                 }
             },
+            "linux": {
+                "options": {
+                    "cwd": "${workspaceFolder}/build/linux"
+                }
+            },
             "group": "build",
             "problemMatcher": [
                 "$gcc"

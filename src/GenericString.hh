@@ -43,8 +43,6 @@ public:
     GenericString$(typename $<GenericStringInner<T>>::Inner * a) : $<GenericStringInner<T>>(a) { }
     ~GenericString$() { }
 
-    GenericString$(const std::initializer_list<T>& a) : $<GenericStringInner<T>>(a) { }
-
     GenericString$& operator=(nullptr_t) {
         $<GenericStringInner<T>>::operator=(nullptr);
         return *this;
@@ -62,11 +60,6 @@ public:
 
     GenericString$& operator=(const GenericStringInner<T>& a) {
         $<GenericStringInner<T>>::operator=(a);
-        return *this;
-    }
-
-    GenericString$& operator=(const std::initializer_list<T>& a) {
-        *this = GenericString$(a);
         return *this;
     }
 
@@ -101,11 +94,6 @@ public:
     ssize length() {
         update();
         return end - begin;
-    }
-
-    GenericStringView& operator=(const std::initializer_list<T>& src) {
-        update();
-        return *this;
     }
 
     GenericStringView& operator=(const GenericString$<T>& src) {
