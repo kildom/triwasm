@@ -3,9 +3,11 @@
 #include "FileInputStream.hh"
 #include "WasmConsts.hh"
 #include "WasmParser.hh"
+#include "InstructionDesc.hh"
 
 WasmData$ WasmParser::parseFile(const char* fileName)
 {
+    TRACE();
     auto fileInput = FileInputStream$::create(fileName);
     r = WasmReader$$::create(fileInput.cast<WasmInputStream>());
     d = WasmData$::create();
@@ -14,6 +16,7 @@ WasmData$ WasmParser::parseFile(const char* fileName)
 }
 
 void WasmParser::parse() {
+    TRACE();
 
     // modules.html#binary-magic
     auto magicOk = r->byte() == 0x00
@@ -45,6 +48,8 @@ void WasmParser::parse() {
 
 void WasmParser::parseSection()
 {
+    TRACE();
+
     auto id = r->byte();
     auto size = r->readU32();
     printf("Section %d \"%s\" of size %d\n", id, sectionNames[id]->buffer(), size);
@@ -63,7 +68,8 @@ void WasmParser::parseSection()
             expectFullyConsumed = true;
             break;
         case SECTION_ID_TABLE:
-            //this.parseTableSection(r->sub(size));
+            parseTableSection();
+            expectFullyConsumed = true;
             break;
         case SECTION_ID_MEMORY:
             //this.parseMemorySection(r->sub(size));
@@ -81,7 +87,8 @@ void WasmParser::parseSection()
             //this.parseElementSection(r->sub(size));
             break;
         case SECTION_ID_CODE:
-            //this.parseCodeSection(r->sub(size));
+            parseCodeSection();
+            expectFullyConsumed = true;
             break;
         case SECTION_ID_DATA:
             //this.parseDataSection(r->sub(size));
@@ -101,6 +108,8 @@ void WasmParser::parseSection()
 
 void WasmParser::parseTypeSection()
 {
+    TRACE();
+
     // modules.html#binary-typesec
     d->functionTypes = nullptr;
     auto count = r->readU32();
@@ -129,6 +138,8 @@ void WasmParser::parseTypeSection()
 
 void WasmParser::parseImportSection()
 {
+    TRACE();
+
     // modules.html#binary-importsec
     d->importFunctions = nullptr;
     d->importTables = nullptr;
@@ -178,26 +189,247 @@ void WasmParser::parseImportSection()
                 printf("  import table %s::%s of size from %d to %d%s\n", moduleName->buffer(), memberName->buffer(), (int)limits.beginOffset, (int)limits.endOffset, limits.endFromEnd ? "(unlimited)" : "");
                 break;
             }
-            /*case 0x03: {
+            case 0x03: {
                 // types.html#binary-globaltype
                 auto type = r->byte();
                 auto mut = r->byte();
-                this.importGlobals.push({
-                    module: moduleName,
-                    name: memberName,
-                    type: type,
-                    mutable: !!mut,
+                d->importGlobals->push(WasmImportGlobal{
+                    .module = moduleName,
+                    .name = memberName,
+                    .type = type,
+                    .mut = !!mut,
                 });
-                console.log(`  import ${mut ? 'var' : 'const'} global ${moduleName}.${memberName} of type ${consts.typeNames[type]}`);
+                printf("  import %s global %s::%s of type %d", mut ? "var" : "const", moduleName->buffer(), memberName->buffer(), type);
                 break;
-            }*/
+            }
             default:
                 FATAL("Unknown select of import %d", select);
         }
     }
 }
 
+void WasmParser::parseFunctionSection() {
+    TRACE();
+
+    // modules.html#binary-funcsec
+    auto count = r->readU32();
+    for (u32 funcIndex = 0; funcIndex < count; funcIndex++) {
+        auto typeIndex = r->readU32();
+        d->functions->grow(funcIndex)->typeIndex = typeIndex;
+        printf("  function %d type is %d\n", funcIndex, typeIndex);
+    }
+}
+
+void WasmParser::parseTableSection() {
+    TRACE();
+
+    // modules.html#binary-tablesec
+    d->tables = nullptr;
+    auto count = r->readU32();
+    for (u32 i = 0; i < count; i++) {
+        auto type = r->byte();
+        auto limits = parseLimits();
+        d->tables->push(WasmTable{
+            .type = type,
+            .min = (u32)limits.beginOffset,
+            .max = (u32)limits.endOffset,
+            .unlimited = limits.endFromEnd,
+        });
+        std::cout << "  table of type " << (int)type << " and size from " << limits.beginOffset << " to " << limits.endOffset << (limits.endFromEnd ? "(unlimited)" : "") << "\n";
+    }
+}
+
+void WasmParser::parseCodeSection() {
+    TRACE();
+
+    // modules.html#binary-codesec
+    auto count = r->readU32();
+    for (u32 funcIndex = 0; funcIndex < count; funcIndex++) {
+        auto funcSize = r->readU32();
+        std::cout << "  function " << funcIndex << " of size " << funcSize << "\n";
+        auto state = r->startContainer(funcSize);
+        parseFuncCode(funcIndex);
+        r->endContainer(state, true);
+    }
+}
+
+void WasmParser::parseFuncCode(u32 funcIndex) {
+    TRACE();
+
+    // modules.html#binary-codesec
+    Array$<u32> locals;
+    auto count = r->readU32();
+    for (u32 i = 0; i < count; i++) {
+        auto localsCount = r->readU32();
+        auto type = valueType();
+        for (u32 j = 0; j < localsCount; j++)
+            locals->push(type);
+    }
+    d->functions[funcIndex]->locals = locals;
+    std::cout << "    locals: " << locals->length() << "\n";
+    //d->functions[funcIndex]->body = parseExpr();
+}
+
+Array$<WasmInstruction$> WasmParser::parseExpr(bool allowElse) {
+    TRACE();
+    Array$<WasmInstruction$> instructions;
+    while (true) {
+        WasmInstruction$ instr;
+        auto code = r->byte();
+        auto desc = instrDescTable[code];
+        Array$<u64> params;
+        
+        if (desc->name == nullptr)
+            FATAL("Unknown instruction 0x%02d", code);
+
+        if (desc->imm == nullptr)
+            desc->imm = "";
+
+        if (desc->imm[0] == '*') {
+            switch (code) {
+                case 0x02:
+                    params.push(this.parseCompressedBlockType(r));
+                    params.push(this.parseExpr(r));
+                    break;
+                case 0x03:
+                    params.push(this.parseCompressedBlockType(r));
+                    params.push(this.parseExpr(r));
+                    break;
+                case 0x04: {
+                    params.push(this.parseCompressedBlockType(r));
+                    let [subInstr, endedWithElse] = this.parseExpr(r, true);
+                    params.push(subInstr);
+                    if (endedWithElse) {
+                        params.push(this.parseExpr(r));
+                    } else {
+                        params.push([]);
+                    }
+                    break;
+                }
+                case 0x05:
+                    if (!allowElse)
+                        throw error(`'else' instruction not expected here`);
+                    return [instructions, true];
+                case 0x0B:
+                    return allowElse ? [instructions, false] : instructions;
+                case 0x0E: {
+                    let count = r.u32();
+                    params[0] = [];
+                    for (let i = 0; i < count; i++) {
+                        params[0][i] = r.u32();
+                    }
+                    params[1] = r.u32();
+                    break;
+                }
+                case 0x1C: {
+                    let count = r.u32();
+                    params[0] = [];
+                    for (let i = 0; i < count; i++) {
+                        params[0][i] = r.byte();
+                    }
+                    break;
+                }
+                default:
+                    throw error(`internal, code: 0x${code.toString(16)}`);
+            }
+        } else {
+            const char* p = desc->imm;
+            while (*p) {
+                // TODO: value range checking
+                switch (*p++) {
+                    case 'i':
+                    case 'l':
+                        instr->imm->push(r->readS64());
+                        break;
+                    case 'u':
+                        instr->imm->push(r->readU64());
+                        break;
+                    case 'b':
+                        instr->imm->push(r->byte());
+                        break;
+                    default:
+                        FATAL("Internal");
+                }
+            }
+        }
+        #if 0
+        if ('params' in desc) {
+            if (desc.params == null) {
+                switch (code) {
+                    case 0x02:
+                        params.push(this.parseCompressedBlockType(r));
+                        params.push(this.parseExpr(r));
+                        break;
+                    case 0x03:
+                        params.push(this.parseCompressedBlockType(r));
+                        params.push(this.parseExpr(r));
+                        break;
+                    case 0x04: {
+                        params.push(this.parseCompressedBlockType(r));
+                        let [subInstr, endedWithElse] = this.parseExpr(r, true);
+                        params.push(subInstr);
+                        if (endedWithElse) {
+                            params.push(this.parseExpr(r));
+                        } else {
+                            params.push([]);
+                        }
+                        break;
+                    }
+                    case 0x05:
+                        if (!allowElse)
+                            throw error(`'else' instruction not expected here`);
+                        return [instructions, true];
+                    case 0x0B:
+                        return allowElse ? [instructions, false] : instructions;
+                    case 0x0E: {
+                        let count = r.u32();
+                        params[0] = [];
+                        for (let i = 0; i < count; i++) {
+                            params[0][i] = r.u32();
+                        }
+                        params[1] = r.u32();
+                        break;
+                    }
+                    case 0x1C: {
+                        let count = r.u32();
+                        params[0] = [];
+                        for (let i = 0; i < count; i++) {
+                            params[0][i] = r.byte();
+                        }
+                        break;
+                    }
+                    default:
+                        throw error(`internal, code: 0x${code.toString(16)}`);
+                }
+            } else {
+                for (let i = 0; i < desc.params.length; i++) {
+                    switch (desc.params[i]) {
+                        case 'i':
+                        case 'l':
+                            params.push(r.sleb128());
+                            break;
+                        case 'u':
+                            params.push(r.uleb128());
+                            break;
+                        case 'b':
+                            params.push(r.byte());
+                            break;
+                        default:
+                            throw error(`internal, param: ${desc.params[i]}, ${desc.name}`);
+                    }
+                }
+            }
+        }
+        #endif
+        instructions->push(instr);
+    }
+    return instructions;
+}
+
+
 Range WasmParser::parseLimits() {
+    TRACE();
+
     // types.html#binary-limits
     auto isMax = r->byte();
     auto min = r->readU32();
@@ -208,18 +440,10 @@ Range WasmParser::parseLimits() {
     return Range(min, RangeEnd - 0);
 }
 
-void WasmParser::parseFunctionSection() {
-    // modules.html#binary-funcsec
-    auto count = r->readU32();
-    for (u32 funcIndex = 0; funcIndex < count; funcIndex++) {
-        auto typeIndex = r->readU32();
-        d->functions->grow(funcIndex)->typeIndex = typeIndex;
-        printf("  function %d type is %d\n", funcIndex, typeIndex);
-    }
-}
-
 u32 WasmParser::valueType()
 {
+    TRACE();
+
     auto type = r->byte();
     switch (type) {
         case TYPE_I32:
@@ -237,6 +461,8 @@ u32 WasmParser::valueType()
 
 u32 WasmParser::refType()
 {
+    TRACE();
+
     auto type = r->byte();
     switch (type) {
         case TYPE_FUNCREF:

@@ -57,7 +57,7 @@ public:
     }
 
     Array$& operator=(const Array$& a) {
-        $<ArrayInner<int>>::operator=(a);
+        $<ArrayInner<T>>::operator=(a);
         return *this;
     }
 

@@ -3,19 +3,19 @@
 
 #include "common.hh"
 
-#define DOLLAR_TYPEDEF(Class) \
-    typedef $<Class> Class##$; \
-    typedef $<Class, true> Class##$$
+#define DOLLAR_TYPEDEF(Class, ...) \
+    typedef $<Class, false, ##__VA_ARGS__> Class##$; \
+    typedef $<Class, true, ##__VA_ARGS__> Class##$$
 
-#define DOLLAR_CLASS(Class) \
-    typedef $<class Class> Class##$; \
-    typedef $<class Class, true> Class##$$
+#define DOLLAR_CLASS(Class, ...) \
+    typedef $<class Class, false, ##__VA_ARGS__> Class##$; \
+    typedef $<class Class, true, ##__VA_ARGS__> Class##$$
 
-#define DOLLAR_STRUCT(Struct) \
-    typedef $<struct Struct> Struct##$; \
-    typedef $<struct Struct, true> Struct##$$
+#define DOLLAR_STRUCT(Struct, ...) \
+    typedef $<struct Struct, false, ##__VA_ARGS__> Struct##$; \
+    typedef $<struct Struct, true, ##__VA_ARGS__> Struct##$$
 
-template<typename T, bool virtualDestructor>
+template<typename T, bool vd>
 struct _$_Inner;
 
 template<typename T>
@@ -54,13 +54,14 @@ struct _$_DefaultInnerCreator<Inner, false>
     }
 };
 
-template<typename T, bool nullable = false>
+template<typename T, bool nullable = false, bool vd = false>
 class $ {
 public:
-    typedef _$_Inner<T, std::has_virtual_destructor<T>::value> Inner;
+    typedef _$_Inner<T, vd> Inner;
     Inner *_ptr;
 
-    $() : _ptr(nullptr) { }
+    $() : _ptr(nullptr) {
+    }
 
     $(nullptr_t) : _ptr(nullptr) { }
 
@@ -69,7 +70,7 @@ public:
             _ptr->counter++;
     }
 
-    $(const $<T, !nullable> &a) : _ptr(a._ptr) {
+    $(const $<T, !nullable, vd> &a) : _ptr(a._ptr) {
         if (_ptr)
             _ptr->counter++;
     }
@@ -78,7 +79,7 @@ public:
         a._ptr = nullptr;
     }
 
-    $($<T, !nullable> &&a) : _ptr(a._ptr) {
+    $($<T, !nullable, vd> &&a) : _ptr(a._ptr) {
         a._ptr = nullptr;
     }
 
@@ -109,7 +110,7 @@ public:
         return *this;
     }
 
-    $& operator=(const $<T, !nullable>& a) {
+    $& operator=(const $<T, !nullable, vd>& a) {
         if (_ptr && (--_ptr->counter) == 0)
             delete _ptr;
         _ptr = a._ptr;
@@ -126,7 +127,7 @@ public:
         return *this;
     }
 
-    $& operator=($<T, !nullable>&& a) {
+    $& operator=($<T, !nullable, vd>&& a) {
         if (_ptr && (--_ptr->counter) == 0)
             delete _ptr;
         _ptr = a._ptr;
@@ -193,7 +194,7 @@ public:
         return a._ptr == b._ptr;
     }
 
-    friend bool operator==(const $& a, const $<T, !nullable>& b)
+    friend bool operator==(const $& a, const $<T, !nullable, vd>& b)
     {
         return a._ptr == b._ptr;
     }
@@ -203,7 +204,7 @@ public:
         return a._ptr != b._ptr;
     }
 
-    friend bool operator!=(const $& a, const $<T, !nullable>& b)
+    friend bool operator!=(const $& a, const $<T, !nullable, vd>& b)
     {
         return a._ptr != b._ptr;
     }
@@ -222,7 +223,7 @@ public:
     }
 
     template<typename T2>
-    $<T2> cast() {
+    $<T2, nullable, std::has_virtual_destructor<T2>::value> cast() {
         typedef _$_Inner<T2, std::has_virtual_destructor<T2>::value> Inner2;
         T2* p = &_ptr->data;
         if ((void*)p != (void*)&_ptr->data) {
@@ -234,7 +235,7 @@ public:
             FATAL("Some unconventional platform or compiler");
         }
         inner->counter++;
-        return $<T2>(inner);
+        return $<T2, nullable, std::has_virtual_destructor<T2>::value>(inner);
     }
 
 };

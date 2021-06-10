@@ -7,7 +7,7 @@
 
 #include "WasmReader.hh"
 
-DOLLAR_CLASS(FileInputStream);
+DOLLAR_CLASS(FileInputStream, true);
 
 class FileInputStream : public WasmInputStream {
 private:

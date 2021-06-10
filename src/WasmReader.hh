@@ -3,7 +3,7 @@
 
 #include "common.hh"
 
-DOLLAR_CLASS(WasmInputStream);
+DOLLAR_CLASS(WasmInputStream, true);
 
 class WasmInputStream {
 public:

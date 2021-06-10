@@ -21,7 +21,10 @@ public:
     void parseTypeSection();
     void parseImportSection();
     void parseFunctionSection();
-
+    void parseTableSection();
+    void parseCodeSection();
+    void parseFuncCode(u32 funcIndex);
+    Array$<WasmInstruction$> parseExpr(bool allowElse = false);
     Range parseLimits();
     u32 valueType();
     u32 refType();
