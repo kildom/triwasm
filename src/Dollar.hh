@@ -15,6 +15,10 @@
     typedef $<struct Struct, false, ##__VA_ARGS__> Struct##$; \
     typedef $<struct Struct, true, ##__VA_ARGS__> Struct##$$
 
+class _$_New$ { };
+
+static const _$_New$ new$;
+
 template<typename T, bool vd>
 struct _$_Inner;
 
@@ -89,6 +93,10 @@ public:
 
     $(Inner* a) : _ptr(a) { }
 
+    $(_$_New$) : _ptr(new Inner()) {
+        _ptr->counter = 1;
+    }
+
     ~$() {
         if (_ptr && (--_ptr->counter) == 0)
             delete _ptr;
@@ -140,6 +148,11 @@ public:
             delete _ptr;
         _ptr = new Inner(a);
         _ptr->counter = 1;
+        return *this;
+    }
+
+    $& operator=(_$_New$) {
+        createInplace();
         return *this;
     }
 
@@ -214,6 +227,14 @@ public:
         Inner *a = new Inner(std::forward<Args>(args)...);
         a->counter = 1;
         return $(a);
+    }
+
+    template<typename... Args>
+    void createInplace(Args&&... args) {
+        if (_ptr && (--_ptr->counter) == 0)
+            delete _ptr;
+        _ptr = new Inner(std::forward<Args>(args)...);
+        _ptr->counter = 1;
     }
 
     bool assertNotNull() {

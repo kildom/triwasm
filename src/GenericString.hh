@@ -79,6 +79,33 @@ public:
 
     GenericStringView<T> operator[](const Range &range);
     GenericStringView<T> operator[](const BoundedRange &range);
+
+    bool operator==(const char *a) {
+        if ($<GenericStringInner<T>>::_ptr == nullptr) {
+            return a == nullptr;
+        } else if (a == nullptr) {
+            return false;
+        }
+        return (*this)->v == a;
+    }
+
+    bool operator==(GenericString$ a) {
+        if ((*this) == nullptr) {
+            return a == nullptr;
+        } else if (a == nullptr) {
+            return false;
+        }
+        return (*this)->v == a->v;
+    }
+
+    auto begin() {
+        return (*this)->v.begin();
+    }
+
+    auto end() {
+        return (*this)->v.end();
+    }
+
 };
 
 

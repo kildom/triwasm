@@ -39,9 +39,34 @@ void WasmReader::requestData()
         FATAL("Unexpected end of input");
 }
 
+String$ WasmReader::string()
+{
+    auto text = bufferRead<String$>();
 
-String$ WasmReader::string() {
-    return bufferRead<String$>();
+    const char* c = text->buffer();
+    const char* end = c + text->length();
+    
+    while (c < end) {
+        u32 b = (u32)(u8)(*c);
+        if (b & 0x80) {
+            auto ones = __builtin_clz((~b) << 24);
+            if (ones < 2 || ones > 6)
+                FATAL("Invalid sequence in UTF-8 string");
+            auto suffix = c + 1;
+            c += ones;
+            if (c > end)
+                FATAL("Unexpected end of UTF-8 string");
+            while (suffix < c) {
+                if ((*suffix & 0xC0) != 0x80)
+                    FATAL("Invalid sequence in UTF-8 string");
+                suffix++;
+            }
+        } else {
+            c++;
+        }
+    }
+
+    return text;
 }
 
 Bytes$ WasmReader::bytes() {

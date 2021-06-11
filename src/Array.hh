@@ -26,6 +26,10 @@ public:
         v.push_back(x);
     }
 
+    void pushFront(const T& x) {
+        v.insert(v.begin(), x);
+    }
+
     T& grow(ssize index) {
         if (index < 0) {
             FATAL("Index out of bounds");
@@ -47,6 +51,7 @@ public:
     Array$(Array$ &&a) : $<ArrayInner<T>>(a) { }
     Array$(const ArrayInner<T>& a) : $<ArrayInner<T>>(a) { }
     Array$(typename $<ArrayInner<T>>::Inner * a) : $<ArrayInner<T>>(a) { }
+    Array$(_$_New$) : $<ArrayInner<T>>(_$_New$()) { }
     ~Array$() { }
 
     Array$(const std::initializer_list<T>& a) : $<ArrayInner<T>>(a) { }
@@ -76,6 +81,11 @@ public:
         return *this;
     }
 
+    Array$& operator=(_$_New$) {
+        this->createInplace();
+        return *this;
+    }
+
     template<typename... Args>
     static Array$ create(Args&&... args) {
         typename $<ArrayInner<T>>::Inner *a = new typename $<ArrayInner<T>>::Inner(std::forward<Args>(args)...);
@@ -90,8 +100,20 @@ public:
         return (*this)->v[index];
     }
 
+    T& operator[](Range::EndOffset offset) {
+        return operator[]((*this)->v.size() - offset.offset);
+    }
+
     ArrayView<T> operator[](const Range &range);
     ArrayView<T> operator[](const BoundedRange &range);
+
+    auto begin() {
+        return (*this)->v.begin();
+    }
+
+    auto end() {
+        return (*this)->v.end();
+    }
 };
 
 

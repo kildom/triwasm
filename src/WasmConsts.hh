@@ -24,6 +24,14 @@ static const u32 TYPE_F64 = 0x7C;
 static const u32 TYPE_FUNCREF = 0x70;
 static const u32 TYPE_EXTERNREF = 0x6F;
 
+static const s64 TYPE_BT_CMP_I32 = -1;
+static const s64 TYPE_BT_CMP_I64 = -2;
+static const s64 TYPE_BT_CMP_F32 = -3;
+static const s64 TYPE_BT_CMP_F64 = -4;
+static const s64 TYPE_BT_CMP_FUNCREF = -16;
+static const s64 TYPE_BT_CMP_EXTERNREF = -17;
+static const s64 TYPE_BT_CMP_VOID = -64;
+
 static Array$<String$> sectionNames = {
     String$("custom"),
     String$("type"),
