@@ -18,9 +18,6 @@ void WasmParser::parse() {
     TRACE();
 
     d = new$;
-    d->importFunctionsCount = 0;
-    d->startFunction = -1;
-    d->dataCount = -1;
 
     // modules.html#binary-magic
     auto magicOk = r->byte() == 0x00
@@ -120,23 +117,19 @@ void WasmParser::parseTypeSection()
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
         // types.html#binary-functype
+        WasmFunctionType$ type = new$;
         auto startByte = r->byte();
         if (startByte != 0x60)
             FATAL("Invalid function type start byte");
-        Array$<u32> paramTypes;
-        Array$<u32> resultTypes;
         auto paramCount = r->readU32();
         for (u32 k = 0; k < paramCount; k++) {
-            paramTypes->push(valueType());     // VRF9
+            type->param->push(valueType());
         }
         paramCount = r->readU32();
         for (u32 k = 0; k < paramCount; k++) {
-            resultTypes->push(valueType());    // VRF10
+            type->result->push(valueType());
         }
-        d->functionTypes->push(WasmFunctionType{
-            .param = paramTypes,
-            .result = resultTypes,
-        });
+        d->functionTypes->push(type);
         printf("  function type %d\n", i);
     }
 }
@@ -149,60 +142,59 @@ void WasmParser::parseImportSection()
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
         WasmImport$ import;
-        import->module = r->string();   // VRF0
-        import->name = r->string();   // VRF1
+        import->module = r->string();
+        import->name = r->string();
         auto select = r->byte();
         switch (select) {
             case 0x00: {
-                auto typeIndex = r->readU32();
-                d->functions->push(WasmFunction{
-                    .index = (u32)d->functions->length(),
-                    .typeIndex = typeIndex,
-                    .import = import,
-                });
-                d->importFunctionsCount++;
-                printf("  import %d function %s::%s of type %d\n", d->functions[RangeEnd - 1]->index, import->name->buffer(), import->name->buffer(), typeIndex);
+                WasmFunction$ func;
+                func->index = (u32)d->functions->length();
+                func->type = d->functionTypes[r->readU32()];
+                func->import = import;
+                d->functions->push(func);
+                d->importFunctions->push(func);
+                printf("  import %d function %s::%s\n", d->functions[RangeEnd - 1]->index, import->name->buffer(), import->name->buffer());
                 break;
             }
             case 0x01: {
                 // types.html#binary-tabletype
-                auto type = refType();          // VRF11
-                auto limits = parseLimits();    // VRF12
-                d->tables->push(WasmTable {
-                    .index = (u32)d->tables->length(),
-                    .type = type,
-                    .min = (u32)limits.beginOffset,
-                    .max = (u32)limits.endOffset,
-                    .unlimited = limits.endFromEnd,
-                    .import = import,
-                });
-                printf("  import %d table %s::%s of type %d and size from %d to %d%s\n", d->tables[RangeEnd - 1]->index, import->module->buffer(), import->name->buffer(), type, (int)limits.beginOffset, (int)limits.endOffset, limits.endFromEnd ? "(unlimited)" : "");
+                WasmTable$ table;
+                table->index = (u32)d->tables->length(),
+                table->type = refType();
+                auto limits = parseLimits();
+                table->min = (u32)limits.beginOffset;
+                table->max = (u32)limits.endOffset;
+                table->unlimited = limits.endFromEnd;
+                table->import = import;
+                d->tables->push(table);
+                d->importTables->push(table);
+                printf("  import %d table %s::%s of type %d and size from %d to %d%s\n", d->tables[RangeEnd - 1]->index, import->module->buffer(), import->name->buffer(), table->type, (int)limits.beginOffset, (int)limits.endOffset, limits.endFromEnd ? "(unlimited)" : "");
                 break;
             }
             case 0x02: {
                 // types.html#binary-memtype
-                auto limits = parseLimits();    // VRF12
-                d->memories->push(WasmMemory{
-                    .index = (u32)d->memories->length(),
-                    .min = (u32)limits.beginOffset,
-                    .max = (u32)limits.endOffset,
-                    .unlimited = limits.endFromEnd,
-                    .import = import,
-                });
+                WasmMemory$ memory;
+                memory->index = (u32)d->memories->length();
+                auto limits = parseLimits();
+                memory->min = (u32)limits.beginOffset;
+                memory->max = (u32)limits.endOffset;
+                memory->unlimited = limits.endFromEnd;
+                memory->import = import;
+                d->memories->push(memory);
+                d->importMemories->push(memory);
                 printf("  import %d memory %s::%s of size from %d to %d%s\n", d->memories[RangeEnd - 1]->index, import->module->buffer(), import->name->buffer(), (int)limits.beginOffset, (int)limits.endOffset, limits.endFromEnd ? "(unlimited)" : "");
                 break;
             }
             case 0x03: {
                 // types.html#binary-globaltype
-                auto type = valueType();
-                auto mut = r->byte();
-                d->globals->push(WasmGlobal{
-                    .index = (u32)d->globals->length(),
-                    .type = type,
-                    .mut = !!mut,
-                    .import = import,
-                });
-                printf("  import %d %s global %s::%s of type %d", d->globals[RangeEnd - 1]->index, mut ? "var" : "const", import->module->buffer(), import->name->buffer(), type);
+                WasmGlobal$ global;
+                global->index = (u32)d->globals->length();
+                global->type = valueType();
+                global->mut = !!r->byte();
+                global->import = import;
+                d->globals->push(global);
+                d->importGlobals->push(global);
+                printf("  import %d %s global %s::%s of type %d", d->globals[RangeEnd - 1]->index, global->mut ? "var" : "const", import->module->buffer(), import->name->buffer(), global->type);
                 break;
             }
             default:
@@ -217,12 +209,12 @@ void WasmParser::parseFunctionSection() {
     // modules.html#binary-funcsec
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
-        auto typeIndex = r->readU32();
+        auto type = d->functionTypes[r->readU32()];
         d->functions->push(WasmFunction{
             .index = (u32)d->functions->length(),
-            .typeIndex = typeIndex,
-            });
-        printf("  function %d type is %d\n", d->functions[RangeEnd - 1]->index, typeIndex);
+            .type = type,
+        });
+        printf("  function %d\n", d->functions[RangeEnd - 1]->index);
     }
 }
 
@@ -233,7 +225,7 @@ void WasmParser::parseTableSection() {
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
         auto type = refType();
-        auto limits = parseLimits();  // VRF15
+        auto limits = parseLimits();
         d->tables->push(WasmTable{
             .type = type,
             .min = (u32)limits.beginOffset,
@@ -287,22 +279,34 @@ void WasmParser::parseExportSection()
         auto select = r->byte();
         auto index = r->readU32();
         switch (select) {
-            case 0x00:
-                d->exportFunctions->push(WasmExportFunction{ .name = name, .index = index, });
+            case 0x00: {
+                WasmFunction$ func = d->functions[index];
+                func->exportName = name;
+                d->exportFunctions->push(func);
                 printf("  export function %d as %s\n", index, name->buffer());
                 break;
-            case 0x01:
-                d->exportTables->push(WasmExportTable{ .name = name, .index = index, });
+            }
+            case 0x01: {
+                WasmTable$ table = d->tables[index];
+                table->exportName = name;
+                d->exportTables->push(table);
                 printf("  export table %d as %s\n", index, name->buffer());
                 break;
-            case 0x02:
-                d->exportMemories->push(WasmExportMemory{ .name = name, .index = index, });
+            }
+            case 0x02: {
+                WasmMemory$ memory = d->memories[index];
+                memory->exportName = name;
+                d->exportMemories->push(memory);
                 printf("  export memory %d as %s\n", index, name->buffer());
                 break;
-            case 0x03:
-                d->exportGlobals->push(WasmExportGlobal{ .name = name, .index = index, });
+            }
+            case 0x03: {
+                WasmGlobal$ global = d->globals[index];
+                global->exportName = name;
+                d->exportGlobals->push(global);
                 printf("  export global %d as %s\n", index, name->buffer());
                 break;
+            }
             default:
                 FATAL("Unknown select of import 0x%02d\n", select);
         }
@@ -313,8 +317,8 @@ void WasmParser::parseStartSection()
 {
     TRACE();
     // modules.html#binary-startsec
-    d->startFunction = r->readU32();
-    printf("  startup function is %d\n", d->startFunction);
+    d->startFunction = d->functions[r->readU32()];
+    printf("  startup function\n");
 }
 
 void WasmParser::parseElementSection() {
@@ -333,7 +337,7 @@ void WasmParser::parseElementSection() {
         u8 elemkind = 0x00;
         switch (select & 0x03) {
             case 0x00:
-                element->tableidx = 0;
+                element->table = d->tables[0];
                 element->expr = parseExpr();
                 arr = d->activeElements;
                 printf("  element active mode for table 0(default)\n");
@@ -344,11 +348,11 @@ void WasmParser::parseElementSection() {
                 printf("  element passive mode");
                 break;
             case 0x02:
-                element->tableidx = r->readU32();
+                element->table = d->tables[r->readU32()];
                 element->expr = parseExpr();
                 elemkind = r->byte();
                 arr = d->activeElements;
-                printf("  element active mode for table %d\n", element->tableidx);
+                printf("  element active mode for table %d\n", element->table->index);
                 break;
             case 0x03:
                 elemkind = r->byte();
@@ -366,9 +370,9 @@ void WasmParser::parseElementSection() {
             }
             printf("    %d expression(s)\n", itemsCount);
         } else {
-            element->indexItems = new$;
+            element->functionItems = new$;
             for (u32 j = 0; j < itemsCount; j++) {
-                element->indexItems->push(r->readU32());
+                element->functionItems->push(d->functions[r->readU32()]);
             }
             printf("    %d index(es)\n", itemsCount);
         }
@@ -381,9 +385,9 @@ void WasmParser::parseCodeSection() {
 
     // modules.html#binary-codesec
     auto count = r->readU32();
-    if (count != d->functions->length() - d->importFunctionsCount)
+    if (count != d->functions->length() - d->importFunctions->length())
         FATAL("Invalid number of functions in 'code' section.");
-    for (u32 funcIndex = d->importFunctionsCount; funcIndex < d->functions->length(); funcIndex++) {
+    for (u32 funcIndex = d->importFunctions->length(); funcIndex < d->functions->length(); funcIndex++) {
         auto funcSize = r->readU32();
         std::cout << "  function " << funcIndex << " of size " << funcSize << "\n";
         auto state = r->startContainer(funcSize);
@@ -435,7 +439,8 @@ void WasmParser::parseDataCountSection()
 {
     TRACE();
     // modules.html#binary-datacountsec
-    d->dataCount = r->readU32();
+    if (d->activeData->length() + d->passiveData->length() != r->readU32())
+        FATAL("Invalid 'data count' section");
 }
 
 void WasmParser::parseCustomSection()
@@ -459,7 +464,7 @@ void WasmParser::parseFuncCode(u32 funcIndex) {
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
         auto localsCount = r->readU32();
-        auto type = valueType();  // VRF5
+        auto type = valueType();
         for (u32 j = 0; j < localsCount; j++)
             locals->push(type);
     }
@@ -599,7 +604,7 @@ void WasmParser::parseCompressedBlockType(WasmBlock$ block)
         default:
             if (typeIndex < 0)
                 FATAL("Invalid type index");
-            block->typeIndex = typeIndex;
+            block->type = d->functionTypes[typeIndex];
             break;
     }
 }
@@ -658,81 +663,6 @@ u32 WasmParser::refType()
 void WasmParser::postProcess()
 {
     TRACE();
-/*
-    // Add import function to main functions collection
-    for (auto import: d->importFunctions) {
-        WasmFunction$ func;
-        func->import = import;      // VRF6
-        func->typeIndex = import->typeIndex; // VRF2
-        d->functions->pushFront(func);
-    }
-
-    // Fill up `index` and `type` for each function
-    for (auto i = 0; i < d->functions->length(); i++) {
-        WasmFunction$ func = d->functions[i];
-        func->index = i; // VRF4
-        func->type = d->functionTypes[func->typeIndex];  // VRF3
-    }
-
-    // Add import table to main tables collection
-    for (auto import: d->importTables) {
-        WasmTable$ tab;
-        tab->import = import;
-        tab->type = import->type;
-        tab->min = import->min;
-        tab->max = import->max;
-        tab->unlimited = import->unlimited;
-        d->tables->pushFront(tab);
-    }
-
-    // Fill up `index` and `type` for each function
-    for (auto i = 0; i < d->tables->length(); i++) {
-        d->tables[i]->index = i;
-    }
-
-    // Add import memory to main memories collection
-    for (auto import: d->importMemories) {
-        WasmMemory$ mem;
-        mem->import = import;
-        mem->min = import->min;
-        mem->max = import->max;
-        mem->unlimited = import->unlimited;
-        d->memories->pushFront(mem);
-    }
-
-    // Fill up `index` and `type` for each function
-    for (auto i = 0; i < d->memories->length(); i++) {
-        d->memories[i]->index = i;
-    }
-
-    // Add import global to main globals collection
-    for (auto import: d->importGlobals) {
-        WasmGlobal$ global;
-        global->import = import;
-        global->type = import->type;
-        global->mul = import->mul;
-        global->unlimited = import->unlimited;
-        d->memories->pushFront(mem);
-    }
-
-    // Fill up `index` and `type` for each function
-    for (auto i = 0; i < d->memories->length(); i++) {
-        d->memories[i]->index = i;
-    }
-*/
-    // Refernce actual data from exports
-    for (auto exported: d->exportFunctions) {
-        exported->function = d->functions[exported->index];
-    }
-    for (auto exported: d->exportTables) {
-        exported->table = d->tables[exported->index];
-    }
-    for (auto exported: d->exportMemories) {
-        exported->memory = d->memories[exported->index];
-    }
-    for (auto exported: d->exportGlobals) {
-        exported->global = d->globals[exported->index];
-    }
 
     // No longer needed
     d->functionTypes = nullptr;

@@ -49,7 +49,7 @@ public:
     }
 
     GenericString$& operator=(const GenericString$& a) {
-        $<GenericStringInner<int>>::operator=(a);
+        $<GenericStringInner<T>>::operator=(a);
         return *this;
     }
 
