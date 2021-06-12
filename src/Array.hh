@@ -104,6 +104,14 @@ public:
         return operator[]((*this)->v.size() - offset.offset);
     }
 
+    Array$ operator+(Array$ a)
+    {
+        Array$ n;
+        n->v.assign((*this)->v.begin(), (*this)->v.end());
+        n->v.insert(n->v.end(), a->v.begin(), a->v.end());
+        return n;
+    }
+
     ArrayView<T> operator[](const Range &range);
     ArrayView<T> operator[](const BoundedRange &range);
 

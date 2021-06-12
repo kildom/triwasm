@@ -29,6 +29,7 @@
   * Replace short immutable globals into inline consts: (2-3 bytes + 4 common) `READ -offset  ->  PUSH x` (2-3 bytes)
   * Replace `PUT X:i32` (5 byte) with `PUT X:i8 ; U/SSHR n` (4 bytes) if possible
   * Order globals (both mutable and immutable) by the number of uses, so the most common instructions will be shortest.
+  * Merge locals that does not overlap. This may not be optimized by wasm-opt, because they are different types.
 
 Compilation flow:
 1. Parse wasm file and check basic integrity *WasmParser* and *WasmReader*

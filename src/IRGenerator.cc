@@ -32,7 +32,38 @@ void IRGenerator::generateFunction(WasmFunction$ func)
     function = func;
     function->ir = new$;
     ir = function->ir;
+    
+    function->irLocals = 0;
+    Array$<u32> localsOffsets = allocateLocals(function->locals);
+    Array$<u32> paramsOffsets = allocateLocals(function->type->param);
+    function->localsOffsets = paramsOffsets + localsOffsets;
+    function->paramsCount = function->type->param->length();
+
     generateBlock(function->body);
+}
+
+Array$<u32> IRGenerator::allocateLocals(Array$<u32> typeArray)
+{
+    Array$<u32> offsetArray;
+    for (auto type: typeArray) {
+        switch (type)
+        {
+        case TYPE_FUNCREF:
+        case TYPE_EXTERNREF: // TODO: maybe this can be 64-bit on some platforms
+        case TYPE_I32:
+        case TYPE_F32:
+            offsetArray->push(function->irLocals);
+            function->irLocals++;
+            break;
+
+        case TYPE_I64:
+        case TYPE_F64:
+            offsetArray->push(function->irLocals);
+            function->irLocals += 2;
+            break;
+        }
+    }
+    return offsetArray;
 }
 
 void IRGenerator::generateBlock(Array$<WasmInstr$$> body)
@@ -43,15 +74,15 @@ void IRGenerator::generateBlock(Array$<WasmInstr$$> body)
         printf("Instruction 0x%02X %s\n", instr->code, instr->desc->name);
         switch (instr->code) {
             case 0x22: {
-                auto numParams = function->type->param->length();
                 u32 type;
-                if (instr->imm[0] < numParams) {
+                u32 offset = function->localsOffsets[instr->imm[0]];
+                if (instr->imm[0] < function->paramsCount) {
                     type = function->type->param[instr->imm[0]];
                     ir->push(IRInstr{
                         // code = param set 32/64
                     });
                 } else {
-                    type = function->locals[instr->imm[0] - numParams];
+                    type = function->locals[instr->imm[0] - function->paramsCount];
                     ir->push(IRInstr{
                         // code = local set 32/64
                     });

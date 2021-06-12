@@ -49,6 +49,9 @@ struct WasmFunction {
     Array$<IRInstr$$> ir;
     WasmImport$$ import;
     String$ exportName;
+    u32 irLocals;
+    Array$<u32> localsOffsets;
+    u32 paramsCount;
 };
 
 struct WasmBlock {

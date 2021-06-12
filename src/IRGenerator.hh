@@ -19,6 +19,7 @@ private:
 public:
     void generate(WasmData$ d);
     void generateFunction(WasmFunction$ func);
+    Array$<u32> allocateLocals(Array$<u32> typeArray);
     void generateBlock(Array$<WasmInstr$$> body);
 };
 
