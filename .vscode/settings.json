@@ -14,6 +14,7 @@
         "globalsec",
         "globaltype",
         "importsec",
+        "instrs",
         "memsec",
         "memtype",
         "sleb",

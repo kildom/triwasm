@@ -42,3 +42,73 @@ Compilation flow:
 5. Generate µVM code for each function *UVMAsmGenerator*
 6. Add used buildins and startup code, data, immutable globals, bindings, e.t.c. *UVMAsmLinker*
 7. Compile µVM code to final representation *UVMAsmBinGenerator* or *UVMAsmTextGenerator*
+
+
+
+uVM instructions
+----------------
+
+```
+CORE:     int64-full
+
+BR
+BRT
+BRF
+PUSH
+POP
+ADD       ADDQ
+SUB       SUBQ
+MUL       MULQ
+SDIV      SDIVQ
+SMOD      SMODQ
+UDIV      UDIVQ
+UMOD      UMODQ
+NOT
+NEG       NEGQ
+SLT       SLTQ
+SGT       SGTQ
+ULT       ULTQ
+UGT       UGTQ
+EQ        EQQ
+AND       ANDQ
+OR        ORQ
+XOR       XORQ
+SSHR      SSHRQ
+USHR      USHRQ
+          READQ
+          WRITEQ
+
+READ[B|H] addr
+WRITE[B|H] addr
+
+addr:
+    offset
+    [SP] + offset
+    [POP] + offset
+    [LMP] + [POP] + offset
+
+```
+
+
+Stack
+-----
+
+In function:
+
+```
+| operand32    | <- SP + 0
+| operand64_lo | <- SP + 4
+| operand64_hi | <- SP + 8
+| ...          |
+|--------------|
+| local1       |
+| local2_lo    |
+| local2_hi    |
+| ...          |
+|--------------|
+| param1       |
+| param2_lo    |
+| param2_hi    |
+| ...          |
+|--------------|
+```

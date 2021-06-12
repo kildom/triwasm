@@ -32,7 +32,7 @@ public:
     void parseDataCountSection();
     void parseCustomSection();
     void parseFuncCode(u32 funcIndex);
-    Array$<WasmInstr$> parseExpr(bool allowElse = false);
+    Array$<WasmInstr$$> parseExpr(bool allowElse = false);
     void parseCompressedBlockType(WasmBlock$ block);
     Range parseLimits();
     u32 valueType();

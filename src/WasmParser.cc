@@ -1,5 +1,6 @@
 
 #include "common.hh"
+#include "WasmData.hh"
 #include "FileInputStream.hh"
 #include "WasmConsts.hh"
 #include "WasmParser.hh"
@@ -333,7 +334,7 @@ void WasmParser::parseElementSection() {
     for (u32 i = 0; i < count; i++) {
         auto select = r->readU32();
         WasmElement$ element;
-        Array$<WasmElement$> arr;
+        Array$<WasmElement$$> arr;
         u8 elemkind = 0x00;
         switch (select & 0x03) {
             case 0x00:
@@ -473,9 +474,9 @@ void WasmParser::parseFuncCode(u32 funcIndex) {
     d->functions[funcIndex]->body = parseExpr();
 }
 
-Array$<WasmInstr$> WasmParser::parseExpr(bool allowElse) {
+Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
     TRACE();
-    Array$<WasmInstr$> instrs;
+    Array$<WasmInstr$$> instrs;
     while (true) {
         WasmInstr$ instr;
         InstrDesc$ desc;
@@ -488,6 +489,9 @@ Array$<WasmInstr$> WasmParser::parseExpr(bool allowElse) {
         } else {
             desc = instrDescTable[code];
         }
+
+        instr->desc = desc;
+        instr->code = code;
         
         if (desc->name == nullptr)
             FATAL("Unknown instruction 0x%02d", code);
@@ -500,9 +504,10 @@ Array$<WasmInstr$> WasmParser::parseExpr(bool allowElse) {
                 case INSTR_CODE_BLOCK:
                 case INSTR_CODE_LOOP:
                 case INSTR_CODE_IF:
-                    instr->block->parent = instr;
+                    instr->block = new$;
+                    instr->block->instr = instr;
                     parseCompressedBlockType(instr->block);
-                    instr->block->instrs = parseExpr(code == INSTR_CODE_IF);
+                    instr->block->body = parseExpr(code == INSTR_CODE_IF);
                     break;
                 case INSTR_CODE_ELSE:
                     if (!allowElse)
@@ -550,6 +555,7 @@ Array$<WasmInstr$> WasmParser::parseExpr(bool allowElse) {
             }
         }
         instrs->push(instr);
+        //printf("%s\n", instr->desc->name);
     }
     return instrs;
 }
@@ -664,7 +670,5 @@ void WasmParser::postProcess()
 {
     TRACE();
 
-    // No longer needed
-    d->functionTypes = nullptr;
 }
 

@@ -15,8 +15,8 @@ DOLLAR_STRUCT(InstrDesc);
 DOLLAR_STRUCT(WasmBlock);
 DOLLAR_STRUCT(WasmData);
 DOLLAR_STRUCT(WasmElement);
+DOLLAR_STRUCT(IRInstr);
 
-// TODO: a lot of $-references should be replaced by $$-references to avoid default creating objects, where we know that reference must point to specific object.
 
 struct WasmFunctionType {
     Array$<u32> param;
@@ -36,31 +36,33 @@ struct WasmTable {
     u32 min;
     u32 max;
     bool unlimited;
-    WasmImport$ import;
+    WasmImport$$ import;
     String$ exportName;
 };
 
 
 struct WasmFunction {
     u32 index;
-    WasmFunctionType$ type;
+    WasmFunctionType$$ type;
     Array$<u32> locals;
-    Array$<WasmInstr$> body;
-    WasmImport$ import;
+    Array$<WasmInstr$$> body;
+    Array$<IRInstr$$> ir;
+    WasmImport$$ import;
     String$ exportName;
 };
 
 struct WasmBlock {
-    WasmInstr$ parent;
-    WasmFunctionType$ type;
-    Array$<WasmInstr$> instrs;
+    WasmInstr$$ instr;
+    WasmFunctionType$$ type;
+    Array$<WasmInstr$$> body;
+    Array$<IRInstr$$> ir;
 };
 
 struct WasmInstr {
     u32 code;
-    InstrDesc$ desc;
+    InstrDesc$$ desc;
     Array$<u64> imm;
-    WasmBlock$ block;
+    WasmBlock$$ block;
 };
 
 struct InstrDesc
@@ -77,7 +79,7 @@ struct WasmMemory
     u32 min;
     u32 max;
     bool unlimited;
-    WasmImport$ import;
+    WasmImport$$ import;
     String$ exportName;
 };
 
@@ -86,55 +88,58 @@ struct WasmGlobal
     u32 index;
     u32 type;
     bool mut;
-    Array$<WasmInstr$> initializer;
-    WasmImport$ import;
+    Array$<WasmInstr$$> initializer;
+    WasmImport$$ import;
     String$ exportName;
 };
 
 struct WasmElement
 {
-    WasmTable$ table;
-    Array$<WasmInstr$> expr;
-    Array$<Array$<WasmInstr$>> exprItems;
+    WasmTable$$ table;
+    Array$<WasmInstr$$> expr;
+    Array$<Array$<WasmInstr$$>> exprItems;
     Array$<WasmFunction$> functionItems;
 };
 
 struct WasmActiveData
 {
     u32 memory;
-    Array$<WasmInstr$> offset;
+    Array$<WasmInstr$$> offset;
     Bytes$ bytes;
+};
+
+struct IRInstr {
+
 };
 
 struct WasmData {
     // types
-    Array$<WasmFunctionType$> functionTypes;
+    Array$<WasmFunctionType$$> functionTypes;
     // main collectios
-    Array$<WasmFunction$> functions;
-    Array$<WasmTable$> tables;
-    Array$<WasmMemory$> memories;
-    Array$<WasmGlobal$> globals;
+    Array$<WasmFunction$$> functions;
+    Array$<WasmTable$$> tables;
+    Array$<WasmMemory$$> memories;
+    Array$<WasmGlobal$$> globals;
     // imports
-    Array$<WasmFunction$> importFunctions;
-    Array$<WasmTable$> importTables;
-    Array$<WasmMemory$> importMemories;
-    Array$<WasmGlobal$> importGlobals;
+    Array$<WasmFunction$$> importFunctions;
+    Array$<WasmTable$$> importTables;
+    Array$<WasmMemory$$> importMemories;
+    Array$<WasmGlobal$$> importGlobals;
     // exports
-    Array$<WasmFunction$> exportFunctions;
-    Array$<WasmTable$> exportTables;
-    Array$<WasmMemory$> exportMemories;
-    Array$<WasmGlobal$> exportGlobals;
+    Array$<WasmFunction$$> exportFunctions;
+    Array$<WasmTable$$> exportTables;
+    Array$<WasmMemory$$> exportMemories;
+    Array$<WasmGlobal$$> exportGlobals;
     // table elements
-    Array$<WasmElement$> activeElements;
-    Array$<WasmElement$> passiveElements;
-    Array$<WasmElement$> declarativeElements;
+    Array$<WasmElement$$> activeElements;
+    Array$<WasmElement$$> passiveElements;
+    Array$<WasmElement$$> declarativeElements;
     // memory data
-    Array$<WasmActiveData$> activeData;
+    Array$<WasmActiveData$$> activeData;
     Array$<Bytes$> passiveData;
     // entry
-    WasmFunction$ startFunction;
+    WasmFunction$$ startFunction;
 };
-
 
 
 #endif /* _WASM_DATA_HH_ */

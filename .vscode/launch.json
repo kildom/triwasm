@@ -12,7 +12,7 @@
                 "program": "${workspaceFolder}/build/linux/debug/uvmwasm",
             },
             "windows": {
-                "program": "${workspaceFolder}/build/linux/debug/uvmwasm.exe",
+                "program": "${workspaceFolder}/build/windows/debug/uvmwasm.exe",
             },
             "args": [],
             "stopAtEntry": false,
