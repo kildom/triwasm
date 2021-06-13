@@ -4,7 +4,7 @@
 #include "FileInputStream.hh"
 #include "WasmConsts.hh"
 #include "WasmParser.hh"
-#include "InstrDesc.hh"
+#include "WasmInstrDesc.hh"
 
 WasmData$ WasmParser::parseFile(const char* fileName)
 {
@@ -479,7 +479,7 @@ Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
     Array$<WasmInstr$$> instrs;
     while (true) {
         WasmInstr$ instr;
-        InstrDesc$ desc;
+        WasmInstrDesc$ desc;
         auto code = r->byte();
 
         if (code == INSTR_CODE_EXT) {

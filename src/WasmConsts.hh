@@ -48,4 +48,6 @@ static Array$<String$> sectionNames = {
     String$("data count"),
 };
 
+u32 wasmTypeWords(u32 type);
+
 #endif /* _WASM_CONSTS_HH_ */

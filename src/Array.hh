@@ -30,6 +30,12 @@ public:
         v.insert(v.begin(), x);
     }
 
+    T pop() {
+        T x = v.back();
+        v.pop_back();
+        return x;
+    }
+
     T& grow(ssize index) {
         if (index < 0) {
             FATAL("Index out of bounds");

@@ -113,3 +113,120 @@ In function:
 | ...          |
 |--------------|
 ```
+
+
+64-bit emulation example
+------------------------
+
+```
+
+$ADD64:                //                     RET, lo1, hi1, lo2, hi2, ...
+1    READ [SP] + 3     //                lo2, RET, lo1, hi1, lo2, hi2, ...
+1    READ [SP] + 2     //           lo1, lo2, RET, lo1, hi1, lo2, hi2, ...
+1    ADD               //                loR, RET, lo1, hi1, lo2, hi2, ...
+1    READ [SP] + 2     //           lo1, loR, RET, lo1, hi1, lo2, hi2, ...
+1    READ [SP] + 1     //      loR, lo1, loR, RET, lo1, hi1, lo2, hi2, ...
+1    ULT               //      loR<lo1,  loR, RET, lo1, hi1, lo2, hi2, ...
+2    READ [SP] + 5     //      lo2, R<1, loR, RET, lo1, hi1, lo2, hi2, ...
+1    READ [SP] + 2     // loR, lo2, R<1, loR, RET, lo1, hi1, lo2, hi2, ...
+1    ULT               // loR<lo2,  R<1, loR, RET, lo1, hi1, lo2, hi2, ...
+1    AND               //       R<2&R<1, loR, RET, lo1, hi1, lo2, hi2, ...
+2    READ [SP] + 4
+1    ADD               //         c+hi1, loR, RET, lo1, hi1, lo2, hi2, ...
+2    READ [SP] + 6
+1    ADD               //           hiR, loR, RET, lo1, hi1, lo2, hi2, ...
+1    READ [SP] + 1     //      loR, hiR, loR, RET, lo1, hi1, lo2, hi2, ...
+2    PUSH 0x26      | (or with reduce) | 1     READ [SP] + 3
+1    READ [SP] + 3  |                  | 2     REDUCE 0x36
+3    BR $REDUCE8    |                  |
+---                                      ---
+24                                       21
+
+$REDUCE:
+READ SP
+        // sp, skip, keep, RET, ... keep-1 ..., ... skip ...
+        
+                                                WASM_EXPORT($REDUCE_inner)
+                                                void $REDUCE_inner(uint32_t *addr, uint32_t skip, uint32_t keep)
+                                                {
+                                                    // TODO Opposite direction of memory coping
+                                                    uint32_t *src = addr + 3;
+                                                    uint32_t *dst = src + skip;
+                                                    uint32_t *end = src + keep;
+                                                    while (src < end) {
+                                                        *dst++ = *src++;
+                                                    }
+                                                }
+
+                    local.get $p0
+READ [SP] + 0     1
+                    i32.const 12
+                    i32.add
+ADD 12            1
+                    local.tee $p0
+READ  [SP] + 0    2
+WRITE [SP] + 2    1
+                    local.get $p2
+READ [SP] + 3     2
+                    i32.const 2
+                    i32.shl
+USHR -2           2
+                    i32.add
+ADD               1
+                    local.set $p2
+WRITE [SP] + 3    0
+                    local.get $p1
+READ [SP] + 1     1
+                    i32.const 2
+                    i32.shl
+USHR -2           1
+                    local.set $p1
+WRITE [SP] + 2    0
+$REDUCE$start:
+                    loop $L0
+                    local.get $p0
+READ [SP] + 0     1
+                    local.get $p2
+READ [SP] + 3     2
+                    i32.ge_u
+                    i32.eqz
+ULT               1
+                    if $I1
+BRF $REDUCE$end   0
+                        local.get $p0
+READ [SP] + 0     1
+                        local.get $p1
+READ [SP] + 2     2
+                        i32.add
+ADD               1
+                        local.get $p0
+READ [SP] + 1     2
+                        i32.load
+READ [POP]        2
+                        i32.store
+WRITE [POP]       0
+                        local.get $p0
+READ [SP] + 0     1
+                        i32.const 4
+                        i32.add
+ADD 4             1
+                        local.set $p0
+WRITE [SP] + 1    0
+                        br $L0
+BR $REDUCE$start
+                    end
+                    end)
+$REDUCE$end:
+READ SP
+READ [SP] + 2
+ADD
+ADD 4
+WRITE SP
+WRITE PC (the same as RETURN)
+---
+40 bytes
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+
+```

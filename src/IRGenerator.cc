@@ -4,8 +4,9 @@
 #include "FileInputStream.hh"
 #include "WasmConsts.hh"
 #include "WasmParser.hh"
-#include "InstrDesc.hh"
+#include "WasmInstrDesc.hh"
 #include "IRGenerator.hh"
+#include "VMConfig.hh"
 
 
 void IRGenerator::generate(WasmData$ d)
@@ -35,8 +36,10 @@ void IRGenerator::generateFunction(WasmFunction$ func)
     
     function->irLocals = 0;
     Array$<u32> localsOffsets = allocateLocals(function->locals);
+    // TODO: return address between locals and params
     Array$<u32> paramsOffsets = allocateLocals(function->type->param);
-    function->localsOffsets = paramsOffsets + localsOffsets;
+    function->localsParamsOffsets = paramsOffsets + localsOffsets;
+    function->localsParamsTypes = function->type->param + function->locals;
     function->paramsCount = function->type->param->length();
 
     generateBlock(function->body);
@@ -46,22 +49,8 @@ Array$<u32> IRGenerator::allocateLocals(Array$<u32> typeArray)
 {
     Array$<u32> offsetArray;
     for (auto type: typeArray) {
-        switch (type)
-        {
-        case TYPE_FUNCREF:
-        case TYPE_EXTERNREF: // TODO: maybe this can be 64-bit on some platforms
-        case TYPE_I32:
-        case TYPE_F32:
-            offsetArray->push(function->irLocals);
-            function->irLocals++;
-            break;
-
-        case TYPE_I64:
-        case TYPE_F64:
-            offsetArray->push(function->irLocals);
-            function->irLocals += 2;
-            break;
-        }
+        offsetArray->push(function->irLocals);
+        function->irLocals += wasmTypeWords(type);
     }
     return offsetArray;
 }
@@ -73,54 +62,83 @@ void IRGenerator::generateBlock(Array$<WasmInstr$$> body)
     for (auto instr: body) {
         printf("Instruction 0x%02X %s\n", instr->code, instr->desc->name);
         switch (instr->code) {
-            case 0x22: {
-                u32 type;
-                u32 offset = function->localsOffsets[instr->imm[0]];
-                if (instr->imm[0] < function->paramsCount) {
-                    type = function->type->param[instr->imm[0]];
-                    ir->push(IRInstr{
-                        // code = param set 32/64
-                    });
+            case INSTR_CODE_BLOCK: {
+
+                break;
+            }
+            case INSTR_CODE_LOCAL_TEE: {
+                u32 index = instr->imm[0];
+                u32 offset = function->localsParamsOffsets[index];
+                u32 type = function->localsParamsTypes[index];
+                if (wasmTypeWords(type) == 1) {
+                    ir->push(IRInstr{ .code = IR_READ_SP, .offset = 0, });
+                    ir->push(IRInstr{ .code = IR_WRITE_LOCAL, .offset = offset, });
                 } else {
-                    type = function->locals[instr->imm[0] - function->paramsCount];
-                    ir->push(IRInstr{
-                        // code = local set 32/64
-                    });
+                    ir->push(IRInstr{ .code = IR_READ_SP, .offset = 1, });
+                    ir->push(IRInstr{ .code = IR_READ_SP, .offset = 1, });
+                    if (vmConfig.extension64Bit) {
+                        ir->push(IRInstr{ .code = IR_WRITEQ_LOCAL, .offset = offset, });
+                    } else {
+                        ir->push(IRInstr{ .code = IR_WRITE_LOCAL, .offset = offset, });
+                        ir->push(IRInstr{ .code = IR_WRITE_LOCAL, .offset = offset + 1, });
+                    }
                 }
-                // check wasmStack[RangeEnd - 1] == type
+                if (wasmStack[RangeEnd - 1] != type)
+                    FATAL("Invalid WASM stack");
                 break;
             }
-            case 0x23: {
+            case INSTR_CODE_GLOBAL_GET: {
                 auto global = d->globals[instr->imm[0]];
-                wasmStack->push(global->type);
-                ir->push(IRInstr{
-                    // code = global get 32/64
-                });
+                auto type = global->type;
+                wasmStack->push(type);
+                if (wasmTypeWords(type) == 1) {
+                    ir->push(IRInstr{ .code = IR_READ_GLOBAL, .global = global, });
+                } else if (vmConfig.extension64Bit) {
+                    ir->push(IRInstr{ .code = IR_READQ_GLOBAL, .global = global, });
+                } else {
+                    ir->push(IRInstr{ .code = IR_READ_GLOBAL_HI, .global = global, });
+                    ir->push(IRInstr{ .code = IR_READ_GLOBAL, .global = global, });
+                }
                 break;
             }
-            case 0x24: {
+            case INSTR_CODE_GLOBAL_SET: {
                 auto global = d->globals[instr->imm[0]];
-                //auto type = wasmStack->pop();
-                // check type == global->type;
-                ir->push(IRInstr{
-                    // code = global set 32/64
-                });
+                auto type = global->type;
+                auto stackType = wasmStack->pop();
+                if (stackType != type)
+                    FATAL("Invalid WASM stack");
+                if (wasmTypeWords(type) == 1) {
+                    ir->push(IRInstr{ .code = IR_WRITE_GLOBAL, .global = global, });
+                } else if (vmConfig.extension64Bit) {
+                    ir->push(IRInstr{ .code = IR_WRITEQ_GLOBAL, .global = global, });
+                } else {
+                    ir->push(IRInstr{ .code = IR_WRITE_GLOBAL, .global = global, });
+                    ir->push(IRInstr{ .code = IR_WRITE_GLOBAL_HI, .global = global, });
+                }
                 break;
             }
-            case 0x41: {
+            case INSTR_CODE_I32_CONST: {
                 wasmStack->push(TYPE_I32);
-                ir->push(IRInstr{
-                    // code = const
-                });
+                ir->push(IRInstr{ .code = IR_NEG, .value = (u64)0 - instr->imm[0], });
                 break;
             }
-            case 0x6B: {
-                // check wasmStack[RangeEnd - 1] == TYPE_I32
-                // check wasmStack[RangeEnd - 2] == TYPE_I32
-                //wasmStack->pop();
-                ir->push(IRInstr{
-                    // code = sub32
-                });
+            case INSTR_CODE_I64_CONST: {
+                wasmStack->push(TYPE_I64);
+                ir->push(IRInstr{ .code = IR_NEGQ, .value = (u64)0 - instr->imm[0], });
+                break;
+            }
+            case INSTR_CODE_I32_SUB: {
+                auto stackType = wasmStack->pop();
+                if (stackType != TYPE_I32 || wasmStack[RangeEnd - 1] != TYPE_I32)
+                    FATAL("Invalid WASM stack");
+                ir->push(IRInstr{ .code = IR_SUB, });
+                break;
+            }
+            case INSTR_CODE_I64_SUB: {
+                auto stackType = wasmStack->pop();
+                if (stackType != TYPE_I64 || wasmStack[RangeEnd - 1] != TYPE_I64)
+                    FATAL("Invalid WASM stack");
+                ir->push(IRInstr{ .code = IR_SUBQ, });
                 break;
             }
         }
