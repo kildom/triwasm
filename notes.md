@@ -30,6 +30,7 @@
   * Replace `PUT X:i32` (5 byte) with `PUT X:i8 ; U/SSHR n` (4 bytes) if possible
   * Order globals (both mutable and immutable) by the number of uses, so the most common instructions will be shortest.
   * Merge locals that does not overlap. This may not be optimized by wasm-opt, because they are different types.
+  * Reduce shift count operant in i64 shift operations to 32-bit
 
 Compilation flow:
 1. Parse wasm file and check basic integrity *WasmParser* and *WasmReader*
@@ -45,6 +46,21 @@ Compilation flow:
 7. Compile µVM code to final representation *UVMAsmBinGenerator* or *UVMAsmTextGenerator*
 
 
+Buildins
+--------
+
+* Maybe rename to uvmlib for all the functions. `buildins` stays for functions that are actually handled by *IRGenerator* or *UVMAsmGenerator*.
+* `uvmlib` source is in C and in uvm assembler
+* it is compiled into .cc file and added to `src` directory and pushed to the repository
+* buildins:
+  * `i64 __uvmbuildin__make64(i32, i32)` - it will translate into nothing, because two words are already on the stack
+* `uvmlib` functions written in uvm assembler:
+  * Reduce functions `REDUCE8`, `REDUCE16`, `REDUCE`
+  * Startup functions
+* `uvmlib` functions written in C:
+  * WASM Instruction polyfill, e.g. `__uvmlibbuildin__clz`, `__uvmlibbuildin__clz64`
+  * i64 emulation: `__uvmlibbuildin__add64`, `__uvmlibbuildin__udiv64`, ...
+  * floating point emulation
 
 uVM instructions
 ----------------
@@ -226,7 +242,30 @@ WRITE PC (the same as RETURN)
 ---
 40 bytes
 
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+
+WASM_EXPORT($MUL64_32)
+uint64_t $MUL64_32(uint32_t a, uint32_t b) {
+    uint32_t r0 = (a & 0xFFFF) * (b & 0xFFFF);
+    uint32_t r16p1 = (a >> 16) * (b & 0xFFFF);
+    uint32_t r16p2 = (a & 0xFFFF) * (b >> 16);
+    uint32_t r32 = (a >> 16) * (b >> 16);
+    uint64_t r = (uint64_t)r0;
+    r += (uint64_t)r16p1 << 16;
+    r += (uint64_t)r16p2 << 16;
+    r += (uint64_t)r32 << 32;
+    return r;
+}
+
+WASM_EXPORT($MUL64)
+uint64_t $MUL64(uint32_t al, uint32_t ah, uint32_t bl, uint32_t bh) {
+    uint64_t r = $MUL64_32(al, bl);
+    r += $MUL64_32(al, bh) << 32;
+    r += $MUL64_32(ah, bl) << 32;
+    return r;
+}
+
+
 
 
 ```
