@@ -124,7 +124,7 @@ void IRGenerator::generateBlock(Array$<WasmInstr$$> body)
             }
             case INSTR_CODE_I64_CONST: {
                 wasmStack->push(TYPE_I64);
-                ir->push(IRInstr{ .code = IR_NEGQ, .value = (u64)0 - instr->imm[0], });
+                ir->push(IRInstr{ .code = IR_Q_NEG, .value = (u64)0 - instr->imm[0], });
                 break;
             }
             case INSTR_CODE_I32_SUB: {
@@ -138,7 +138,7 @@ void IRGenerator::generateBlock(Array$<WasmInstr$$> body)
                 auto stackType = wasmStack->pop();
                 if (stackType != TYPE_I64 || wasmStack[RangeEnd - 1] != TYPE_I64)
                     FATAL("Invalid WASM stack");
-                ir->push(IRInstr{ .code = IR_SUBQ, });
+                ir->push(IRInstr{ .code = IR_Q_SUB, });
                 break;
             }
         }

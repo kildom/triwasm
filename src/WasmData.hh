@@ -76,6 +76,7 @@ struct WasmInstrDesc
     const char* imm;
     Array$<u32> param;
     Array$<u32> result;
+    u32 ir;
 };
 
 struct WasmMemory
