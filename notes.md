@@ -30,7 +30,9 @@
   * Replace `PUT X:i32` (5 byte) with `PUT X:i8 ; U/SSHR n` (4 bytes) if possible
   * Order globals (both mutable and immutable) by the number of uses, so the most common instructions will be shortest.
   * Merge locals that does not overlap. This may not be optimized by wasm-opt, because they are different types.
+  * Use TMP registers for the mostly used locals that not need to be kept during calls.
   * Reduce shift count operant in i64 shift operations to 32-bit
+  * Put constant address into memory access instruction (4 - 8 bytes) `PUSH X ... READ [LPM] + [POP] + offset  ->  READ offset_combined` (3 - 5 bytes)
 
 Compilation flow:
 1. Parse wasm file and check basic integrity *WasmParser* and *WasmReader*

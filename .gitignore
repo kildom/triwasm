@@ -1,2 +1,4 @@
 /build/*/debug
 /build/*/release
+/uvmlib/build/tools
+/uvmlib/build/obj
