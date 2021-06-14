@@ -3,8 +3,6 @@
 
 #include "common.hh"
 
-#include "IRData.hh"
-
 DOLLAR_STRUCT(WasmFunctionType);
 DOLLAR_STRUCT(WasmImport);
 DOLLAR_STRUCT(WasmTable);
@@ -50,10 +48,7 @@ struct WasmFunction {
     Array$<IRInstr$$> ir;
     WasmImport$$ import;
     String$ exportName;
-    u32 irLocals;
-    Array$<u32> localsParamsOffsets;
-    Array$<u32> localsParamsTypes;
-    u32 paramsCount;
+    Array$<u32> paramsOffsets;
 };
 
 struct WasmBlock {
@@ -76,7 +71,7 @@ struct WasmInstrDesc
     const char* imm;
     Array$<u32> param;
     Array$<u32> result;
-    u32 ir;
+    Array$<u32> repl;
 };
 
 struct WasmMemory

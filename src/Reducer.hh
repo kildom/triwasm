@@ -1,5 +1,5 @@
-#ifndef _IR_GENERATOR_
-#define _IR_GENERATOR_
+#ifndef _REDUCER_HH_
+#define _REDUCER_HH_
 
 #include "common.hh"
 
@@ -19,8 +19,7 @@ private:
 public:
     void generate(WasmData$ d);
     void generateFunction(WasmFunction$ func);
-    Array$<u32> allocateLocals(Array$<u32> typeArray);
     void generateBlock(Array$<WasmInstr$$> body);
 };
 
-#endif /* _IR_GENERATOR_ */
+#endif /* _REDUCER_HH_ */

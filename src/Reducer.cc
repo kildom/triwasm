@@ -34,25 +34,24 @@ void IRGenerator::generateFunction(WasmFunction$ func)
     function->ir = new$;
     ir = function->ir;
     
-    function->irLocals = 0;
-    Array$<u32> localsOffsets = allocateLocals(function->locals);
-    // TODO: return address between locals and params
-    Array$<u32> paramsOffsets = allocateLocals(function->type->param);
-    function->localsParamsOffsets = paramsOffsets + localsOffsets;
-    function->localsParamsTypes = function->type->param + function->locals;
-    function->paramsCount = function->type->param->length();
+    allocateParams();
 
     generateBlock(function->body);
 }
 
-Array$<u32> IRGenerator::allocateLocals(Array$<u32> typeArray)
+void IRGenerator::allocateParams()
 {
     Array$<u32> offsetArray;
-    for (auto type: typeArray) {
-        offsetArray->push(function->irLocals);
-        function->irLocals += wasmTypeWords(type);
+    u32 offset = 0;
+    for (auto type: function->type->param) {
+        offsetArray->push(offset);
+        offset += wasmTypeWords(type);
     }
-    return offsetArray;
+    for (auto& o: offsetArray) {
+        o = offset - o
+    }
+    
+    function->paramsOffsets = offsetArray;
 }
 
 void IRGenerator::generateBlock(Array$<WasmInstr$$> body)

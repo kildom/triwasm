@@ -34,6 +34,8 @@
   * Reduce shift count operant in i64 shift operations to 32-bit
   * Put constant address into memory access instruction (4 - 8 bytes) `PUSH X ... READ [LPM] + [POP] + offset  ->  READ offset_combined` (3 - 5 bytes)
   * Remove unused stack entries (may appear after i64 optimizations)
+  * Use param as local if they are not overlapping, especially if param is moved to local and never touched again, then moving part may be removed
+  * Inline simple `uvmlib` functions if they are not used many times `CALL __uvmlib__eq64  ->  READ [SP]+2; EQ; WRITE [SP]+2; READ [SP]+2; EQ; WRITE [SP]+2; AND`
 
 Compilation flow:
 1. Parse wasm file and check basic integrity *WasmParser* and *WasmReader*
