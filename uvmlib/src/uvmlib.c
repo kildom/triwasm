@@ -46,6 +46,23 @@ uint64_t __uvmlib__add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     return __uvm_buildin__make64(ah, al);
 }
 
+EXPORT(__uvmlib__f32_min)
+float __uvmlib__f32_min(float a, float b)
+{
+    if (__uvm_buildin__ext_f32()) {
+        // Call of __uvm_buildin__ext_f32 function should be replaced by const,
+        // and const will remove part of the if block (in reduction stage).
+        // In optimization stage, `const` instruction will be removed and
+        // `if` block will be replaced by ordinary `block`.
+        // To avoid clang optimizations `__uvm_buildin__ext_xxx` should be
+        // used with the bit operators: && -> &, || -> |, ! -> 1^
+        return a < b ? a : b;
+    } else {
+        // TODO: different implementation
+    }
+    return 0;
+}
+
 static
 uint64_t mul32_64(uint32_t a, uint32_t b) {
     uint32_t r0 = (a & 0xFFFF) * (b & 0xFFFF);

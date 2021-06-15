@@ -482,7 +482,7 @@ Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
         WasmInstrDesc$ desc;
         auto code = r->byte();
 
-        if (code == INSTR_CODE_EXT) {
+        if (code == INSTR_EXT) {
             auto extCode = r->readU32();
             code |= extCode << 8;
             desc = instrDescTable[extCode];
@@ -501,22 +501,22 @@ Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
 
         if (desc->imm[0] == '*') {
             switch (code) {
-                case INSTR_CODE_BLOCK:
-                case INSTR_CODE_LOOP:
-                case INSTR_CODE_IF:
+                case INSTR_BLOCK:
+                case INSTR_LOOP:
+                case INSTR_IF:
                     instr->block = new$;
                     instr->block->instr = instr;
                     parseCompressedBlockType(instr->block);
-                    instr->block->body = parseExpr(code == INSTR_CODE_IF);
+                    instr->block->body = parseExpr(code == INSTR_IF);
                     break;
-                case INSTR_CODE_ELSE:
+                case INSTR_ELSE:
                     if (!allowElse)
                         FATAL("'else' instruction not expected here");
                     allowElse = false;
                     break;
-                case INSTR_CODE_END:
+                case INSTR_END:
                     return instrs;
-                case INSTR_CODE_BR_TABLE: {
+                case INSTR_BR_TABLE: {
                     auto count = r->readU32();
                     for (u32 i = 0; i < count; i++) {
                         instr->imm->push(r->readU32());
@@ -524,7 +524,7 @@ Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
                     instr->imm->push(r->readU32());
                     break;
                 }
-                case INSTR_CODE_SELECT_ANNOTATED: {
+                case INSTR_SELECT_ANNOTATED: {
                     auto count = r->readU32();
                     for (u32 i = 0; i < count; i++) {
                         instr->imm->push(r->byte());

@@ -61,11 +61,11 @@ void IRGenerator::generateBlock(Array$<WasmInstr$$> body)
     for (auto instr: body) {
         printf("Instruction 0x%02X %s\n", instr->code, instr->desc->name);
         switch (instr->code) {
-            case INSTR_CODE_BLOCK: {
+            case INSTR_BLOCK: {
 
                 break;
             }
-            case INSTR_CODE_LOCAL_TEE: {
+            case INSTR_LOCAL_TEE: {
                 u32 index = instr->imm[0];
                 u32 offset = function->localsParamsOffsets[index];
                 u32 type = function->localsParamsTypes[index];
@@ -86,7 +86,7 @@ void IRGenerator::generateBlock(Array$<WasmInstr$$> body)
                     FATAL("Invalid WASM stack");
                 break;
             }
-            case INSTR_CODE_GLOBAL_GET: {
+            case INSTR_GLOBAL_GET: {
                 auto global = d->globals[instr->imm[0]];
                 auto type = global->type;
                 wasmStack->push(type);
@@ -100,7 +100,7 @@ void IRGenerator::generateBlock(Array$<WasmInstr$$> body)
                 }
                 break;
             }
-            case INSTR_CODE_GLOBAL_SET: {
+            case INSTR_GLOBAL_SET: {
                 auto global = d->globals[instr->imm[0]];
                 auto type = global->type;
                 auto stackType = wasmStack->pop();
@@ -116,24 +116,24 @@ void IRGenerator::generateBlock(Array$<WasmInstr$$> body)
                 }
                 break;
             }
-            case INSTR_CODE_I32_CONST: {
+            case INSTR_I32_CONST: {
                 wasmStack->push(TYPE_I32);
                 ir->push(IRInstr{ .code = IR_NEG, .value = (u64)0 - instr->imm[0], });
                 break;
             }
-            case INSTR_CODE_I64_CONST: {
+            case INSTR_I64_CONST: {
                 wasmStack->push(TYPE_I64);
                 ir->push(IRInstr{ .code = IR_Q_NEG, .value = (u64)0 - instr->imm[0], });
                 break;
             }
-            case INSTR_CODE_I32_SUB: {
+            case INSTR_I32_SUB: {
                 auto stackType = wasmStack->pop();
                 if (stackType != TYPE_I32 || wasmStack[RangeEnd - 1] != TYPE_I32)
                     FATAL("Invalid WASM stack");
                 ir->push(IRInstr{ .code = IR_SUB, });
                 break;
             }
-            case INSTR_CODE_I64_SUB: {
+            case INSTR_I64_SUB: {
                 auto stackType = wasmStack->pop();
                 if (stackType != TYPE_I64 || wasmStack[RangeEnd - 1] != TYPE_I64)
                     FATAL("Invalid WASM stack");

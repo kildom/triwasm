@@ -17,6 +17,7 @@
         "instrs",
         "memsec",
         "memtype",
+        "rotr",
         "sleb",
         "startsec",
         "tableidx",

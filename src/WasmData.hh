@@ -45,7 +45,6 @@ struct WasmFunction {
     WasmFunctionType$$ type;
     Array$<u32> locals;
     Array$<WasmInstr$$> body;
-    Array$<IRInstr$$> ir;
     WasmImport$$ import;
     String$ exportName;
     Array$<u32> paramsOffsets;
@@ -55,7 +54,6 @@ struct WasmBlock {
     WasmInstr$$ instr;
     WasmFunctionType$$ type;
     Array$<WasmInstr$$> body;
-    Array$<IRInstr$$> ir;
 };
 
 struct WasmInstr {
@@ -72,7 +70,10 @@ struct WasmInstrDesc
     Array$<u32> param;
     Array$<u32> result;
     Array$<u32> repl;
+    const char* replName;
+    $$<u64> replImm;
 };
+
 
 struct WasmMemory
 {

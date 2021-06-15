@@ -33,9 +33,11 @@
   * Use TMP registers for the mostly used locals that not need to be kept during calls.
   * Reduce shift count operant in i64 shift operations to 32-bit
   * Put constant address into memory access instruction (4 - 8 bytes) `PUSH X ... READ [LPM] + [POP] + offset  ->  READ offset_combined` (3 - 5 bytes)
-  * Remove unused stack entries (may appear after i64 optimizations)
+  * Remove unused stack entries (may appear after i64 optimizations). Back-track stack entries that are not used and delete or modify instruction that put it there. `i64.const 1 ... i32.wrap_i64; call __uvmlib__shl64  ->  i32.const 1 ... call __uvmlib__shl64`
   * Use param as local if they are not overlapping, especially if param is moved to local and never touched again, then moving part may be removed
   * Inline simple `uvmlib` functions if they are not used many times `CALL __uvmlib__eq64  ->  READ [SP]+2; EQ; WRITE [SP]+2; READ [SP]+2; EQ; WRITE [SP]+2; AND`
+  * Put second const operant into calls like `__uvmlib__xor64` and inline it, `PUSH hi ... PUSH lo; CALL __uvmlib__xor64  ->  XOR lo ; XOR hi` 
+  * Put constant offset to memory load/store instructions `PUSH 32 ; ADD ; I32.LOAD [POP] ->  I32.LOAD [POP]+32`
 
 Compilation flow:
 1. Parse wasm file and check basic integrity *WasmParser* and *WasmReader*
@@ -99,6 +101,8 @@ SSHR      SSHRQ
 USHR      USHRQ
           READQ
           WRITEQ
+
+TODO: EXTS imm ->  return (uint32_t)(((int32_t)arg0 << arg1) >> arg1);
 
 READ[B|H] addr
 WRITE[B|H] addr

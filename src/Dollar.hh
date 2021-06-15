@@ -261,5 +261,7 @@ public:
 
 };
 
+template<typename T>
+using $$ = $<T, true>;
 
 #endif /* _DOLLAR_HH_ */
