@@ -2,3 +2,7 @@
 /build/*/release
 /uvmlib/build/tools
 /uvmlib/build/obj
+/scripts/temp
+/scripts/output
+package-lock.json
+node_modules

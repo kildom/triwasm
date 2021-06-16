@@ -1,0 +1,9 @@
+{
+  "name": "uvmwasm-scripts",
+  "version": "0.0.1",
+  "private": "true",
+  "dependencies": {
+    "extract-zip": "^2.0.1",
+    "xml2js": "^0.4.23"
+  }
+}

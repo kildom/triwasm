@@ -10,7 +10,7 @@ DOLLAR_STRUCT(WasmFunction);
 DOLLAR_STRUCT(WasmMemory);
 DOLLAR_STRUCT(WasmGlobal);
 DOLLAR_STRUCT(WasmInstr);
-DOLLAR_STRUCT(WasmActiveData);
+DOLLAR_STRUCT(WasmDataSegment);
 DOLLAR_STRUCT(WasmInstrDesc);
 DOLLAR_STRUCT(WasmBlock);
 DOLLAR_STRUCT(WasmData);
@@ -103,7 +103,7 @@ struct WasmElement
     Array$<WasmFunction$> functionItems;
 };
 
-struct WasmActiveData
+struct WasmDataSegment
 {
     u32 memory;
     Array$<WasmInstr$$> offset;
@@ -133,9 +133,11 @@ struct WasmData {
     Array$<WasmElement$$> activeElements;
     Array$<WasmElement$$> passiveElements;
     Array$<WasmElement$$> declarativeElements;
+    Array$<WasmElement$$> allElements; // TODO: is it required to split into different kinds
     // memory data
-    Array$<WasmActiveData$$> activeData;
-    Array$<Bytes$> passiveData;
+    Array$<WasmDataSegment$$> activeData;
+    Array$<WasmDataSegment$$> passiveData;
+    Array$<WasmDataSegment$$> allData; // TODO: is it required to split into different kinds
     // entry
     WasmFunction$$ startFunction;
 };
