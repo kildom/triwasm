@@ -13,6 +13,8 @@
     * A way to determinate its limits:
       * maximum is in global initialization
       * minimum is maximum minus stack size, which is known at the clang compilation stage.
+  * Add memory tips at the end of compilation, e.g.
+    * µVM stack size is 62K, minimum is 8K, you can increase `global-base` by 54K to provide more space for your wasm module.
 
 * Add µVM extensions:
   * External memory:
