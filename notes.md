@@ -1,3 +1,18 @@
+* General
+  * Add option to ignore some or all unresolved imports. Calling ignored import function will cause µVM exception.
+  * Allow compilation of µVM assembly file.
+  * Abiliti to watch C stack (only for clang):
+    * µVM need to have optional feature that adds a register that contains linked list of structures that describes watched memory:
+      * structure: address, min_value, max_value, exception_code, next_entry
+      * all stuctures are in µVM memory
+    * Second option (better): Add three registers: WPTR, WMIN, WMAX
+    * A way to determinate which global is a C stack pointer:
+      * dummy exported function that must be linked during wasm generation and will be deleted during the compilation.
+      * it creates some volatile buffer on the stack and passes it to some dummy imported function.
+      * If there is no dummy function and there is only one global, this global is used.
+    * A way to determinate its limits:
+      * maximum is in global initialization
+      * minimum is maximum minus stack size, which is known at the clang compilation stage.
 
 * Add µVM extensions:
   * External memory:
@@ -9,7 +24,7 @@
     * only READ/WRITE instructions can access external memory, stack cannot be there
     * Memory will be fragmented: | normal memory | allocable space for external memory | linear memory |
     * it is compiler independent, so this option is not needed to generate the bytecode.
-  * int64-partial:
+  * int64-partial: (is it really needed?)
     * int32 instructions uses additional register as a carry to perform faster int64 operations
   * int64-full:
     * full int64 instruction set
