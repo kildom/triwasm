@@ -1,4 +1,8 @@
+<img src="logo.svg" alt="" align="right" width="160" />
+
 # uvm-wasm
+
+<br clear="both" />
 
 WebAssembly compiler for [µVM](https://github.com/kildom/uvm) - an embeddable, portable and minimalistic virtual machine.
 
