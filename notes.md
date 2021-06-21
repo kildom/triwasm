@@ -302,4 +302,15 @@ On-line demo
 ------------
 
 May use web browser PC emulator: https://github.com/s-macke/jor1k/wiki/Benchmark-with-other-emulators
-my tests shows that v86 is significantly faster than jslinux. 12 sec vs 0.8 sec
+
+`time head -c 5000000 /dev/urandom | gzip -c -9 - > /dev/null`
+
+native |	0,2
+-----|-----
+v86 chrome	|10,7
+v86 firefox	|5,3
+jsLinux firefox |	23,2
+jsLinux chrome	20,4
+
+Best case is 26x slower than native - it is acceptable?
+
