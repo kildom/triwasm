@@ -302,3 +302,4 @@ On-line demo
 ------------
 
 May use web browser PC emulator: https://github.com/s-macke/jor1k/wiki/Benchmark-with-other-emulators
+my tests shows that v86 is significantly faster than jslinux. 12 sec vs 0.8 sec
