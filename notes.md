@@ -297,3 +297,8 @@ uint64_t $MUL64(uint32_t al, uint32_t ah, uint32_t bl, uint32_t bh) {
 
 
 ```
+
+On-line demo
+------------
+
+May use web browser PC emulator: https://github.com/s-macke/jor1k/wiki/Benchmark-with-other-emulators
