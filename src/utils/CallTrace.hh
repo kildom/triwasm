@@ -1,7 +1,7 @@
 #ifndef _CALL_TRACE_HH_
 #define _CALL_TRACE_HH_
 
-#include "common.hh"
+#include "Utils.hh"
 
 #define TRACE() CallTrace _callTraceObject(__FILE__, __LINE__, __FUNCTION__);
 

@@ -25,14 +25,14 @@ using s8 = std::int8_t;
 using usize = std::uintptr_t;
 using ssize = std::intptr_t;
 
-#include "CallTrace.hh"
+#include "utils/CallTrace.hh"
 
 #define FATAL(text, ...) do { printf(text " :%s:%d\n", ##__VA_ARGS__, __FILE__, __LINE__); CallTrace::print(); exit(100); } while(0)// TODO: Macro for unrecoverable fatal error
 #define ASSERT(text, ...) do { printf(text " :%s:%d\n", ##__VA_ARGS__, __FILE__, __LINE__); CallTrace::print(); exit(101); } while(0)// TODO: Macro for unrecoverable fatal error
 
-#include "Dollar.hh"
-#include "Range.hh"
-#include "Array.hh"
-#include "GenericString.hh"
+#include "utils/Dollar.hh"
+#include "utils/Range.hh"
+#include "utils/Array.hh"
+#include "utils/GenericString.hh"
 
 #endif /* _COMMON_H_ */

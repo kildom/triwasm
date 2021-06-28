@@ -1,5 +1,5 @@
-
-#include "common.hh"
+#if 0
+#include "Utils.hh"
 #include "WasmData.hh"
 #include "FileInputStream.hh"
 #include "WasmConsts.hh"
@@ -144,3 +144,4 @@ void IRGenerator::generateBlock(Array$<WasmInstr$$> body)
     }
 }
 
+#endif

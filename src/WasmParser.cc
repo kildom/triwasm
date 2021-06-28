@@ -1,24 +1,22 @@
 
-#include "common.hh"
+#include "Utils.hh"
 #include "WasmData.hh"
 #include "FileInputStream.hh"
 #include "WasmConsts.hh"
+#include "WasmInstr.hh"
 #include "WasmParser.hh"
-#include "WasmInstrDesc.hh"
 
-WasmData$ WasmParser::parseFile(const char* fileName)
+WasmData$ WasmParser::parse(WasmInputStream$$ stream)
 {
     TRACE();
-    auto fileInput = FileInputStream$::create(fileName);
-    r = WasmReader$$::create(fileInput.cast<WasmInputStream>());
+    r = WasmReader$$::create(stream);
+    d = new$;
     parse();
     return d;
 }
 
 void WasmParser::parse() {
     TRACE();
-
-    d = new$;
 
     // modules.html#binary-magic
     auto magicOk = r->byte() == 0x00
@@ -325,9 +323,7 @@ void WasmParser::parseStartSection()
 void WasmParser::parseElementSection() {
     TRACE();
 
-    d->activeElements = new$;
-    d->passiveElements = new$;
-    d->declarativeElements = new$;
+    d->elements = new$;
 
     // modules.html#binary-elemsec
     auto count = r->readU32();
@@ -338,26 +334,26 @@ void WasmParser::parseElementSection() {
         u8 elemkind = 0x00;
         switch (select & 0x03) {
             case 0x00:
+                element->kind = WASM_ELEMENT_ACTIVE;
                 element->table = d->tables[0];
                 element->expr = parseExpr();
-                arr = d->activeElements;
                 printf("  element active mode for table 0(default)\n");
                 break;
             case 0x01:
+                element->kind = WASM_ELEMENT_PASSIVE;
                 elemkind = r->byte();
-                arr = d->passiveElements;
                 printf("  element passive mode");
                 break;
             case 0x02:
+                element->kind = WASM_ELEMENT_ACTIVE;
                 element->table = d->tables[r->readU32()];
                 element->expr = parseExpr();
                 elemkind = r->byte();
-                arr = d->activeElements;
                 printf("  element active mode for table %d\n", element->table->index);
                 break;
             case 0x03:
+                element->kind = WASM_ELEMENT_DECLARATIVE;
                 elemkind = r->byte();
-                arr = d->declarativeElements;
                 printf("  element declarative mode");
                 break;
         }
@@ -400,11 +396,10 @@ void WasmParser::parseCodeSection() {
 void WasmParser::parseDataSection() {
     TRACE();
 
-    WasmActiveData$ data;
+    WasmDataSegment$ data;
 
     // modules.html#binary-datasec
-    d->activeData = new$;
-    d->passiveData = new$;
+    d->data = new$;
 
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
@@ -412,22 +407,27 @@ void WasmParser::parseDataSection() {
         switch (select) {
             case 0x00:
                 data = new$;
+                data->active = true;
                 data->memory = 0;
                 data->offset = parseExpr();
                 data->bytes = r->bytes();
-                d->activeData->push(data);
+                d->data->push(data);
                 printf("  data active mode for memory 0(default) of size %d\n", (int)data->bytes->length());
                 break;
             case 0x01:
-                d->passiveData->push(r->bytes());
-                printf("  data passive mode of size %d\n", (int)d->passiveData[RangeEnd - 1]->length());
+                data = new$;
+                data->active = false;
+                data->bytes = r->bytes();
+                d->data->push(data);
+                printf("  data passive mode of size %d\n", (int)data->bytes->length());
                 break;
             case 0x02:
                 data = new$;
+                data->active = true;
                 data->memory = r->readU32();
                 data->offset = parseExpr();
                 data->bytes = r->bytes();
-                d->activeData->push(data);
+                d->data->push(data);
                 printf("  data active mode for memory %d of size %d\n", data->memory, (int)data->bytes->length());
                 break;
             default:
@@ -440,7 +440,7 @@ void WasmParser::parseDataCountSection()
 {
     TRACE();
     // modules.html#binary-datacountsec
-    if (d->activeData->length() + d->passiveData->length() != r->readU32())
+    if (d->data->length() != r->readU32())
         FATAL("Invalid 'data count' section");
 }
 
@@ -469,9 +469,12 @@ void WasmParser::parseFuncCode(u32 funcIndex) {
         for (u32 j = 0; j < localsCount; j++)
             locals->push(type);
     }
-    d->functions[funcIndex]->locals = locals;
+    function = d->functions[funcIndex];
+    function->locals = locals;
     std::cout << "    locals: " << locals->length() << "\n";
-    d->functions[funcIndex]->body = parseExpr();
+    blockStack = new$;
+    function->body = parseExpr();
+    function = nullptr;
 }
 
 Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
@@ -479,28 +482,26 @@ Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
     Array$<WasmInstr$$> instrs;
     while (true) {
         WasmInstr$ instr;
-        WasmInstrDesc$ desc;
         auto code = r->byte();
 
-        if (code == INSTR_EXT) {
+        if (code == INSTR_UVM_WASM_EXT) {
             auto extCode = r->readU32();
             code |= extCode << 8;
-            desc = instrDescTable[extCode];
-        } else {
-            desc = instrDescTable[code];
         }
 
-        instr->desc = desc;
         instr->code = code;
-        
-        if (desc->name == nullptr)
-            FATAL("Unknown instruction 0x%02d", code);
+        instr->imm = new$;
 
-        if (desc->imm == nullptr)
-            desc->imm = "";
+        bool last = parseInstr(instr, allowElse);
 
-        if (desc->imm[0] == '*') {
-            switch (code) {
+        if (last) {
+            return instrs;
+        }
+
+        instrs->push(instr);
+    }
+
+    /*switch (code) {
                 case INSTR_BLOCK:
                 case INSTR_LOOP:
                 case INSTR_IF:
@@ -533,32 +534,416 @@ Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
                 }
                 default:
                     FATAL("internal");
-            }
-        } else {
-            const char* p = desc->imm;
-            while (*p) {
-                // TODO: value range checking
-                switch (*p++) {
-                    case 'i':
-                    case 'l':
-                        instr->imm->push(r->readS64());
-                        break;
-                    case 'u':
-                        instr->imm->push(r->readU64());
-                        break;
-                    case 'b':
-                        instr->imm->push(r->byte());
-                        break;
-                    default:
-                        FATAL("Internal");
-                }
-            }
-        }
-        instrs->push(instr);
-        //printf("%s\n", instr->desc->name);
-    }
+            }*/
     return instrs;
 }
+
+bool WasmParser::parseInstr(WasmInstr$$ instr, bool &allowElse)
+{
+    TRACE();
+
+    instr->imm = new$;
+    auto imm = instr->imm;
+
+    switch (instr->code)
+    {
+    /* -- Begin of source code generated with help of "gen_instr.js" script -- */
+    case INSTR_BLOCK:
+    case INSTR_LOOP:
+    case INSTR_IF: {
+        TRACE();
+        instr->block = new$;
+        instr->block->instr = instr;
+        parseCompressedBlockType(instr->block);
+        blockStack->push(instr->block);
+        instr->block->body = parseExpr(instr->code == INSTR_IF);
+        blockStack->pop();
+        break;
+    }
+    case INSTR_ELSE: {
+        TRACE();
+        if (!allowElse)
+            FATAL("'else' instruction not expected here");
+        allowElse = false;
+        break;
+    }
+    case INSTR_END: {
+        TRACE();
+        return true;
+    }
+    case INSTR_BR:
+    case INSTR_BR_IF: {
+        TRACE();
+        u32 labelidx0 = r->readU32();
+        if (labelidx0 >= blockStack->length())
+            FATAL("Invlaid label index");
+        instr->imm->push(labelidx0);
+        break;
+    }
+    case INSTR_BR_TABLE: {
+        TRACE();
+        u32 length = r->readU32();
+        for (u32 i = 0; i < length + 1; i++)
+        {
+            u32 labelidx0 = r->readU32();
+            if (labelidx0 >= blockStack->length())
+                FATAL("Invlaid label index");
+            instr->imm->push(labelidx0);
+        }
+        break;
+    }
+    case INSTR_CALL_INDIRECT: {
+        TRACE();
+        u32 typeidx0 = r->readU32();
+        if (typeidx0 >= d->functionTypes->length())
+            FATAL("Invalid type index");
+        imm->push(typeidx0);
+        u32 tableidx1 = r->readU32();
+        if (tableidx1 >= d->tables->length())
+            FATAL("Invalid table index");
+        imm->push(tableidx1);
+        break;
+    }
+    case INSTR_SELECT_T: {
+        TRACE();
+        u32 length = r->readU32();
+        for (u32 i = 0; i < length; i++)
+        {
+            u32 valtype0 = valueType();
+            instr->imm->push(valtype0);
+        }
+        break;
+    }
+    case INSTR_I32_CONST: {
+        TRACE();
+        u32 const0 = r->readU32();
+        imm->push(const0);
+        break;
+    }
+    case INSTR_I64_CONST: {
+        TRACE();
+        u64 const0 = r->readU64();
+        imm->push(const0);
+        break;
+    }
+    case INSTR_F32_CONST: {
+        TRACE();
+        u32 const0 = r->readF32();
+        imm->push(const0);
+        break;
+    }
+    case INSTR_F64_CONST: {
+        TRACE();
+        u64 const0 = r->readF64();
+        imm->push(const0);
+        break;
+    }
+    case INSTR_REF_NULL: {
+        TRACE();
+        u32 const0 = r->readF32();
+        if (const0 != TYPE_FUNCREF && const0 != TYPE_EXTERNREF)
+            FATAL("Unknown type of reference");
+        imm->push(const0);
+        break;
+    }
+    // ===== Generated parsers =====
+    case INSTR_UNREACHABLE:
+    case INSTR_NOP:
+    case INSTR_RETURN:
+    case INSTR_DROP:
+    case INSTR_SELECT:
+    case INSTR_I32_EQZ:
+    case INSTR_I32_EQ:
+    case INSTR_I32_NE:
+    case INSTR_I32_LT_S:
+    case INSTR_I32_LT_U:
+    case INSTR_I32_GT_S:
+    case INSTR_I32_GT_U:
+    case INSTR_I32_LE_S:
+    case INSTR_I32_LE_U:
+    case INSTR_I32_GE_S:
+    case INSTR_I32_GE_U:
+    case INSTR_I64_EQZ:
+    case INSTR_I64_EQ:
+    case INSTR_I64_NE:
+    case INSTR_I64_LT_S:
+    case INSTR_I64_LT_U:
+    case INSTR_I64_GT_S:
+    case INSTR_I64_GT_U:
+    case INSTR_I64_LE_S:
+    case INSTR_I64_LE_U:
+    case INSTR_I64_GE_S:
+    case INSTR_I64_GE_U:
+    case INSTR_F32_EQ:
+    case INSTR_F32_NE:
+    case INSTR_F32_LT:
+    case INSTR_F32_GT:
+    case INSTR_F32_LE:
+    case INSTR_F32_GE:
+    case INSTR_F64_EQ:
+    case INSTR_F64_NE:
+    case INSTR_F64_LT:
+    case INSTR_F64_GT:
+    case INSTR_F64_LE:
+    case INSTR_F64_GE:
+    case INSTR_I32_CLZ:
+    case INSTR_I32_CTZ:
+    case INSTR_I32_POPCNT:
+    case INSTR_I32_ADD:
+    case INSTR_I32_SUB:
+    case INSTR_I32_MUL:
+    case INSTR_I32_DIV_S:
+    case INSTR_I32_DIV_U:
+    case INSTR_I32_REM_S:
+    case INSTR_I32_REM_U:
+    case INSTR_I32_AND:
+    case INSTR_I32_OR:
+    case INSTR_I32_XOR:
+    case INSTR_I32_SHL:
+    case INSTR_I32_SHR_S:
+    case INSTR_I32_SHR_U:
+    case INSTR_I32_ROTL:
+    case INSTR_I32_ROTR:
+    case INSTR_I64_CLZ:
+    case INSTR_I64_CTZ:
+    case INSTR_I64_POPCNT:
+    case INSTR_I64_ADD:
+    case INSTR_I64_SUB:
+    case INSTR_I64_MUL:
+    case INSTR_I64_DIV_S:
+    case INSTR_I64_DIV_U:
+    case INSTR_I64_REM_S:
+    case INSTR_I64_REM_U:
+    case INSTR_I64_AND:
+    case INSTR_I64_OR:
+    case INSTR_I64_XOR:
+    case INSTR_I64_SHL:
+    case INSTR_I64_SHR_S:
+    case INSTR_I64_SHR_U:
+    case INSTR_I64_ROTL:
+    case INSTR_I64_ROTR:
+    case INSTR_F32_ABS:
+    case INSTR_F32_NEG:
+    case INSTR_F32_CEIL:
+    case INSTR_F32_FLOOR:
+    case INSTR_F32_TRUNC:
+    case INSTR_F32_NEAREST:
+    case INSTR_F32_SQRT:
+    case INSTR_F32_ADD:
+    case INSTR_F32_SUB:
+    case INSTR_F32_MUL:
+    case INSTR_F32_DIV:
+    case INSTR_F32_MIN:
+    case INSTR_F32_MAX:
+    case INSTR_F32_COPYSIGN:
+    case INSTR_F64_ABS:
+    case INSTR_F64_NEG:
+    case INSTR_F64_CEIL:
+    case INSTR_F64_FLOOR:
+    case INSTR_F64_TRUNC:
+    case INSTR_F64_NEAREST:
+    case INSTR_F64_SQRT:
+    case INSTR_F64_ADD:
+    case INSTR_F64_SUB:
+    case INSTR_F64_MUL:
+    case INSTR_F64_DIV:
+    case INSTR_F64_MIN:
+    case INSTR_F64_MAX:
+    case INSTR_F64_COPYSIGN:
+    case INSTR_I32_WRAP_I64:
+    case INSTR_I32_TRUNC_F32_S:
+    case INSTR_I32_TRUNC_F32_U:
+    case INSTR_I32_TRUNC_F64_S:
+    case INSTR_I32_TRUNC_F64_U:
+    case INSTR_I64_EXTEND_I32_S:
+    case INSTR_I64_EXTEND_I32_U:
+    case INSTR_I64_TRUNC_F32_S:
+    case INSTR_I64_TRUNC_F32_U:
+    case INSTR_I64_TRUNC_F64_S:
+    case INSTR_I64_TRUNC_F64_U:
+    case INSTR_F32_CONVERT_I32_S:
+    case INSTR_F32_CONVERT_I32_U:
+    case INSTR_F32_CONVERT_I64_S:
+    case INSTR_F32_CONVERT_I64_U:
+    case INSTR_F32_DEMOTE_F64:
+    case INSTR_F64_CONVERT_I32_S:
+    case INSTR_F64_CONVERT_I32_U:
+    case INSTR_F64_CONVERT_I64_S:
+    case INSTR_F64_CONVERT_I64_U:
+    case INSTR_F64_PROMOTE_F32:
+    case INSTR_I32_REINTERPRET_F32:
+    case INSTR_I64_REINTERPRET_F64:
+    case INSTR_F32_REINTERPRET_I32:
+    case INSTR_F64_REINTERPRET_I64:
+    case INSTR_I32_EXTEND8_S:
+    case INSTR_I32_EXTEND16_S:
+    case INSTR_I64_EXTEND8_S:
+    case INSTR_I64_EXTEND16_S:
+    case INSTR_I64_EXTEND32_S:
+    case INSTR_REF_IS_NULL:
+    case INSTR_I32_TRUNC_SAT_F32_S:
+    case INSTR_I32_TRUNC_SAT_F32_U:
+    case INSTR_I32_TRUNC_SAT_F64_S:
+    case INSTR_I32_TRUNC_SAT_F64_U:
+    case INSTR_I64_TRUNC_SAT_F32_S:
+    case INSTR_I64_TRUNC_SAT_F32_U:
+    case INSTR_I64_TRUNC_SAT_F64_S:
+    case INSTR_I64_TRUNC_SAT_F64_U: {
+        TRACE();
+        break;
+    }
+    case INSTR_CALL:
+    case INSTR_REF_FUNC: {
+        TRACE();
+        u32 funcidx0 = r->readU32();
+        if (funcidx0 >= d->functions->length())
+            FATAL("Invalid function index");
+        imm->push(funcidx0);
+        break;
+    }
+    case INSTR_LOCAL_GET:
+    case INSTR_LOCAL_SET:
+    case INSTR_LOCAL_TEE: {
+        TRACE();
+        u32 localidx0 = r->readU32();
+        if (localidx0 >= function->locals->length() + function->type->param->length())
+            FATAL("Invalid local variable index");
+        imm->push(localidx0);
+        break;
+    }
+    case INSTR_GLOBAL_GET:
+    case INSTR_GLOBAL_SET: {
+        TRACE();
+        u32 globalidx0 = r->readU32();
+        if (globalidx0 >= d->globals->length())
+            FATAL("Invalid global variable index");
+        imm->push(globalidx0);
+        break;
+    }
+    case INSTR_TABLE_GET:
+    case INSTR_TABLE_SET:
+    case INSTR_TABLE_GROW:
+    case INSTR_TABLE_SIZE:
+    case INSTR_TABLE_FILL: {
+        TRACE();
+        u32 tableidx0 = r->readU32();
+        if (tableidx0 >= d->tables->length())
+            FATAL("Invalid table index");
+        imm->push(tableidx0);
+        break;
+    }
+    case INSTR_I32_LOAD:
+    case INSTR_I64_LOAD:
+    case INSTR_F32_LOAD:
+    case INSTR_F64_LOAD:
+    case INSTR_I32_LOAD8_S:
+    case INSTR_I32_LOAD8_U:
+    case INSTR_I32_LOAD16_S:
+    case INSTR_I32_LOAD16_U:
+    case INSTR_I64_LOAD8_S:
+    case INSTR_I64_LOAD8_U:
+    case INSTR_I64_LOAD16_S:
+    case INSTR_I64_LOAD16_U:
+    case INSTR_I64_LOAD32_S:
+    case INSTR_I64_LOAD32_U:
+    case INSTR_I32_STORE:
+    case INSTR_I64_STORE:
+    case INSTR_F32_STORE:
+    case INSTR_F64_STORE:
+    case INSTR_I32_STORE8:
+    case INSTR_I32_STORE16:
+    case INSTR_I64_STORE8:
+    case INSTR_I64_STORE16:
+    case INSTR_I64_STORE32: {
+        TRACE();
+        r->readU32(); // ignore align
+        u32 offset0 = r->readU32();
+        imm->push(offset0);
+        break;
+    }
+    case INSTR_MEMORY_SIZE:
+    case INSTR_MEMORY_GROW:
+    case INSTR_MEMORY_FILL: {
+        TRACE();
+        u32 memidx0 = r->readU32();
+        if (memidx0 != 0)
+            FATAL("Only one memory is supported");
+        imm->push(memidx0);
+        break;
+    }
+    case INSTR_MEMORY_INIT: {
+        TRACE();
+        u32 dataidx0 = r->readU32();
+        // TODO: dataidx validation must be done later
+        imm->push(dataidx0);
+        u32 memidx1 = r->readU32();
+        if (memidx1 != 0)
+            FATAL("Only one memory is supported");
+        imm->push(memidx1);
+        break;
+    }
+    case INSTR_DATA_DROP: {
+        TRACE();
+        u32 dataidx0 = r->readU32();
+        // dataidx validation must be done later
+        imm->push(dataidx0);
+        break;
+    }
+    case INSTR_MEMORY_COPY: {
+        TRACE();
+        u32 memidx0 = r->readU32();
+        if (memidx0 != 0)
+            FATAL("Only one memory is supported");
+        imm->push(memidx0);
+        u32 memidx1 = r->readU32();
+        if (memidx1 != 0)
+            FATAL("Only one memory is supported");
+        imm->push(memidx1);
+        break;
+    }
+    case INSTR_TABLE_INIT: {
+        TRACE();
+        u32 elemidx0 = r->readU32();
+        if (elemidx0 >= d->elements->length()) // TODO: check if elemidx is for passive only or both
+            FATAL("Invalid table element index");
+        if (d->elements[elemidx0]->kind != WASM_ELEMENT_PASSIVE)
+            FATAL("Invalid initialization of non-passive element");
+        imm->push(elemidx0);
+        u32 tableidx1 = r->readU32();
+        if (tableidx1 >= d->tables->length())
+            FATAL("Invalid table index");
+        imm->push(tableidx1);
+        break;
+    }
+    case INSTR_ELEM_DROP: {
+        TRACE();
+        u32 elemidx0 = r->readU32();
+        if (elemidx0 >= d->elements->length()) // TODO: check if elemidx is for passive only or both
+            FATAL("Invalid table element index");
+        imm->push(elemidx0);
+        break;
+    }
+    case INSTR_TABLE_COPY: {
+        TRACE();
+        u32 tableidx0 = r->readU32();
+        if (tableidx0 >= d->tables->length())
+            FATAL("Invalid table index");
+        imm->push(tableidx0);
+        u32 tableidx1 = r->readU32();
+        if (tableidx1 >= d->tables->length())
+            FATAL("Invalid table index");
+        imm->push(tableidx1);
+        break;
+    }
+    /* -- End of source code generated with help of "gen_instr.js" script -- */
+    default:
+        TRACE();
+        FATAL("Invalid instruction opcode 0x%02X", instr->code);
+        break;
+    }
+    return false;
+}
+
 
 void WasmParser::parseCompressedBlockType(WasmBlock$ block)
 {

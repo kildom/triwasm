@@ -1,14 +1,9 @@
-#ifndef _WASM_INSTR_DESC_HH_
-#define _WASM_INSTR_DESC_HH_
+#ifndef _WASM_INSTR_HH_
+#define _WASM_INSTR_HH_
 
-#include "common.hh"
+#include "Utils.hh"
 
-#include "WasmData.hh"
-
-extern Array$<WasmInstrDesc$> instrDescTable;
-extern Array$<WasmInstrDesc$> extInstrDescTable;
-
-enum {
+enum InstrOpcode {
     INSTR_UNREACHABLE = 0x00,
     INSTR_NOP = 0x01,
     INSTR_BLOCK = 0x02,
@@ -24,7 +19,7 @@ enum {
     INSTR_CALL_INDIRECT = 0x11,
     INSTR_DROP = 0x1A,
     INSTR_SELECT = 0x1B,
-    INSTR_SELECT_ANNOTATED = 0x1C,
+    INSTR_SELECT_T = 0x1C,
     INSTR_LOCAL_GET = 0x20,
     INSTR_LOCAL_SET = 0x21,
     INSTR_LOCAL_TEE = 0x22,
@@ -192,7 +187,6 @@ enum {
     INSTR_REF_NULL = 0xD0,
     INSTR_REF_IS_NULL = 0xD1,
     INSTR_REF_FUNC = 0xD2,
-    INSTR_EXT = 0xFC,
     INSTR_I32_TRUNC_SAT_F32_S = 0x00FC,
     INSTR_I32_TRUNC_SAT_F32_U = 0x01FC,
     INSTR_I32_TRUNC_SAT_F64_S = 0x02FC,
@@ -211,31 +205,12 @@ enum {
     INSTR_TABLE_GROW = 0x0FFC,
     INSTR_TABLE_SIZE = 0x10FC,
     INSTR_TABLE_FILL = 0x11FC,
-
-    INSTR_UVM_EMPTY = 0x3FFFFF00,
-    INSTR_UVM_CUSTOM = 0x3FFFFF01,
-    INSTR_UVM_CALL_LIB = 0x3FFFFF02,
-    INSTR_UVM_EXTS = 0x3FFFFF03,
-    INSTR_UVM_WRITE_TMP = 0x3FFFFF04,
-    INSTR_UVM_EXT = 0x3FFFFF05,
-    INSTR_UVM_LOAD_STACK = 0x3FFFFF06,
-
-    /*
-        00000000 00000000 XXXXXXXX XXXXXXXX - WASM instruction
-        00111111 11111111 11111111 XXXXXXXX - UVM custom instructions
-        01NFNFNF NFNFNFNF NFNFNFNF NFNFNFNF - Flags for reduction replacements of the next item
-            NF - extension flags: F=1 - this extension have to be enabled, N=1 - this extension have to be disabled
-    */
-    EXT_FLAG_START = 0x40000000,
-    EXT_FLAG_64_BIT = 0x40000001,
-    EXT_FLAG_NO_64_BIT = 0x40000002,
-    EXT_FLAG_F32 = 0x40000004,
-    EXT_FLAG_NO_F32 = 0x40000008,
-    EXT_FLAG_F64 = 0x40000010,
-    EXT_FLAG_NO_F64 = 0x40000020,
-    EXT_FLAG_MEM_GROW = 0x40000040,
-    EXT_FLAG_NO_MEM_GROW = 0x40000080,
+    INSTR_UVM_EMPTY = 0x7FFFFF00,
+    INSTR_UVM_CALL_LIB = 0x7FFFFF01,
+    INSTR_UVM_EXTS = 0x7FFFFF02,
+    INSTR_UVM_POP = 0x7FFFFF03,
+    INSTR_UVM_WASM_EXT = 0xFC,
 };
 
 
-#endif /* _WASM_INSTR_DESC_HH_ */
+#endif /* _WASM_INSTR_HH_ */

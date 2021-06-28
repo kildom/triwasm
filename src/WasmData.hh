@@ -1,7 +1,9 @@
 #ifndef _WASM_DATA_HH_
 #define _WASM_DATA_HH_
 
-#include "common.hh"
+#include "Utils.hh"
+
+#include "WasmConsts.hh"
 
 DOLLAR_STRUCT(WasmFunctionType);
 DOLLAR_STRUCT(WasmImport);
@@ -11,7 +13,6 @@ DOLLAR_STRUCT(WasmMemory);
 DOLLAR_STRUCT(WasmGlobal);
 DOLLAR_STRUCT(WasmInstr);
 DOLLAR_STRUCT(WasmDataSegment);
-DOLLAR_STRUCT(WasmInstrDesc);
 DOLLAR_STRUCT(WasmBlock);
 DOLLAR_STRUCT(WasmData);
 DOLLAR_STRUCT(WasmElement);
@@ -58,22 +59,9 @@ struct WasmBlock {
 
 struct WasmInstr {
     u32 code;
-    WasmInstrDesc$$ desc;
     Array$<u64> imm;
     WasmBlock$$ block;
 };
-
-struct WasmInstrDesc
-{
-    const char* name;
-    const char* imm;
-    Array$<u32> param;
-    Array$<u32> result;
-    Array$<u32> repl;
-    const char* replName;
-    $$<u64> replImm;
-};
-
 
 struct WasmMemory
 {
@@ -97,6 +85,7 @@ struct WasmGlobal
 
 struct WasmElement
 {
+    WasmElementKind kind;
     WasmTable$$ table;
     Array$<WasmInstr$$> expr;
     Array$<Array$<WasmInstr$$>> exprItems;
@@ -105,6 +94,7 @@ struct WasmElement
 
 struct WasmDataSegment
 {
+    bool active;
     u32 memory;
     Array$<WasmInstr$$> offset;
     Bytes$ bytes;
@@ -130,14 +120,9 @@ struct WasmData {
     Array$<WasmMemory$$> exportMemories;
     Array$<WasmGlobal$$> exportGlobals;
     // table elements
-    Array$<WasmElement$$> activeElements;
-    Array$<WasmElement$$> passiveElements;
-    Array$<WasmElement$$> declarativeElements;
-    Array$<WasmElement$$> allElements; // TODO: is it required to split into different kinds
+    Array$<WasmElement$$> elements;
     // memory data
-    Array$<WasmDataSegment$$> activeData;
-    Array$<WasmDataSegment$$> passiveData;
-    Array$<WasmDataSegment$$> allData; // TODO: is it required to split into different kinds
+    Array$<WasmDataSegment$$> data;
     // entry
     WasmFunction$$ startFunction;
 };

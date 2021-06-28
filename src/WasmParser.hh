@@ -1,7 +1,7 @@
 #ifndef _WASM_PARSER_HH_
 #define _WASM_PARSER_HH_
 
-#include "common.hh"
+#include "Utils.hh"
 
 #include "WasmData.hh"
 #include "WasmReader.hh"
@@ -12,10 +12,13 @@ class WasmParser {
 private:
     WasmData$ d;
     WasmReader$$ r;
+    WasmFunction$$ function;
+    Array$<WasmBlock$> blockStack;
 
 public:
-    WasmData$ parseFile(const char* fileName);
+    WasmData$ parse(WasmInputStream$$ stream);
 
+private:
     void parse();
     void parseSection();
     void parseTypeSection();
@@ -33,6 +36,7 @@ public:
     void parseCustomSection();
     void parseFuncCode(u32 funcIndex);
     Array$<WasmInstr$$> parseExpr(bool allowElse = false);
+    bool parseInstr(WasmInstr$$ instr, bool &allowElse);
     void parseCompressedBlockType(WasmBlock$ block);
     Range parseLimits();
     u32 valueType();

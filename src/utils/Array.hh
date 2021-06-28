@@ -1,7 +1,7 @@
 #ifndef _ARRAY_HH_
 #define _ARRAY_HH_
 
-#include "common.hh"
+#include "Utils.hh"
 
 template<typename T>
 class ArrayView;

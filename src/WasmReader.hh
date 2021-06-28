@@ -1,7 +1,7 @@
 #ifndef _WASM_READER_HH_
 #define _WASM_READER_HH_
 
-#include "common.hh"
+#include "Utils.hh"
 
 DOLLAR_CLASS(WasmInputStream, true);
 
@@ -36,6 +36,8 @@ public:
     s32     readS32();
     u64     readU64();
     s64     readS64();
+    u32     readF32();
+    u64     readF64();
     u8      byte();
     String$ string();
     Bytes$  bytes();

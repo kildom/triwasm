@@ -8,7 +8,10 @@ else
   OUTDIR = release
 endif
 
+CXXFLAGS += -I../../src
+
 OBJ := $(patsubst ../../src/%.cc,$(OUTDIR)/obj/%.o,$(wildcard ../../src/*.cc))
+OBJ += $(patsubst ../../src/utils/%.cc,$(OUTDIR)/obj/utils/%.o,$(wildcard ../../src/utils/*.cc))
 
 all: postprocess
 
@@ -25,6 +28,7 @@ rebuild: clean
 
 $(OUTDIR)/obj/marker.txt:
 	mkdir -p $(OUTDIR)/obj
+	mkdir -p $(OUTDIR)/obj/utils
 	echo OK > $(OUTDIR)/obj/marker.txt
 
 $(OUTDIR)/$(TARGET): $(OBJ)

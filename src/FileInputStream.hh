@@ -3,7 +3,7 @@
 
 #include <cstdio>
 
-#include "common.hh"
+#include "Utils.hh"
 
 #include "WasmReader.hh"
 

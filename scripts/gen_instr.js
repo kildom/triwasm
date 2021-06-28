@@ -20,8 +20,8 @@ async function parseOds() {
             return x.toString();
         }
     }
-    fs.rmdirSync('temp', { 'recursive': true });
-    fs.mkdirSync('temp', { 'recursive': true });
+    //fs.rmdirSync('temp', { 'recursive': true });
+    //fs.mkdirSync('temp', { 'recursive': true });
     await extract('instructions.ods', { dir: path.realpathSync('temp') });
     let xml = fs.readFileSync('temp/content.xml');
     let parser = new xml2js.Parser();
@@ -68,24 +68,24 @@ function generateOpcodes(table) {
     let out = 'enum InstrOpcode {\n'
     for (let row of table) {
         row._identifier = `INSTR_${row.name.toUpperCase().replace(/\./g, '_')}`;
-        out += `\t${row._identifier} = ${row.binaryOpcode},\n`;
+        out += `    ${row._identifier} = ${row.binaryOpcode},\n`;
     }
     out += '};\n';
     fs.writeFileSync('output/instr.hh', out);
 }
 
 function generateParser(table) {
-    let out = '\tswitch(opcode) {'
+    let out = '    /* -- Begin of source code generated with help of "gen_instr.js" script -- */';
     for (let row of table)
         if (row.name.startsWith('uvm.'))
             row._uvm = true;
     for (let row of table) {
         if (row.parsing != 'custom' || row._uvm)
             continue;
-        out += `\n\tcase ${row._identifier}: {\n\t\tbreak;\n\t}`;
+        out += `\n    case ${row._identifier}: {\n        TRACE();\n        break;\n    }`;
         row._parsingDone = true;
     }
-    out += '\n\t// ===== Generated parsers =====';
+    out += '\n    // ===== Generated parsers =====';
     for (let row1 of table) {
         if (row1._parsingDone || row1._uvm)
             continue;
@@ -93,57 +93,56 @@ function generateParser(table) {
         for (let row of table) {
             if (row._parsingDone || row.parsing != tab || row._uvm)
                 continue;
-            out += `\n\tcase ${row._identifier}:`;
+            out += `\n    case ${row._identifier}:`;
             row._parsingDone = true;
         }
-        out += ' {\n';
+        out += ' {\n        TRACE();\n';
         tab = tab.trim().split(/\s*,\s*/);
         for (let i = 0; i < tab.length; i++) {
             let type = tab[i];
             if (type == '') {
                 // nothing to parse
             } else if (type == 'funcidx') {
-                out += `\t\tu32 funcidx${i} = r->readU32();\n`;
-                out += `\t\tif (funcidx${i} >= d->functions->length())\n\t\t\tFATAL("Invalid function index");\n`;
-                out += `\t\timm->push(funcidx${i});\n`;
+                out += `        u32 funcidx${i} = r->readU32();\n`;
+                out += `        if (funcidx${i} >= d->functions->length())\n            FATAL("Invalid function index");\n`;
+                out += `        imm->push(funcidx${i});\n`;
             } else if (type == 'localidx') {
-                out += `\t\tu32 localidx${i} = r->readU32();\n`;
-                out += `\t\tif (localidx${i} >= function->locals->length())\n\t\t\tFATAL("Invalid local variable index");\n`;
-                out += `\t\timm->push(localidx${i});\n`;
+                out += `        u32 localidx${i} = r->readU32();\n`;
+                out += `        if (localidx${i} >= function->locals->length() + function->type->param->length())\n            FATAL("Invalid local variable index");\n`;
+                out += `        imm->push(localidx${i});\n`;
             } else if (type == 'globalidx') {
-                out += `\t\tu32 globalidx${i} = r->readU32();\n`;
-                out += `\t\tif (globalidx${i} >= d->globals->length())\n\t\t\tFATAL("Invalid global variable index");\n`;
-                out += `\t\timm->push(globalidx${i});\n`;
+                out += `        u32 globalidx${i} = r->readU32();\n`;
+                out += `        if (globalidx${i} >= d->globals->length())\n            FATAL("Invalid global variable index");\n`;
+                out += `        imm->push(globalidx${i});\n`;
             } else if (type == 'tableidx') {
-                out += `\t\tu32 tableidx${i} = r->readU32();\n`;
-                out += `\t\tif (tableidx${i} >= d->tables->length())\n\t\t\tFATAL("Invalid table index");\n`;
-                out += `\t\timm->push(tableidx${i});\n`;
+                out += `        u32 tableidx${i} = r->readU32();\n`;
+                out += `        if (tableidx${i} >= d->tables->length())\n            FATAL("Invalid table index");\n`;
+                out += `        imm->push(tableidx${i});\n`;
             } else if (type == 'memidx') {
-                out += `\t\tu32 memidx${i} = r->readU32();\n`;
-                out += `\t\tif (memidx${i} != 0)\n\t\t\tFATAL("Only one memory is supported");\n`;
-                out += `\t\timm->push(memidx${i});\n`;
+                out += `        u32 memidx${i} = r->readU32();\n`;
+                out += `        if (memidx${i} != 0)\n            FATAL("Only one memory is supported");\n`;
+                out += `        imm->push(memidx${i});\n`;
             } else if (type == 'dataidx') {
-                out += `\t\tu32 dataidx${i} = r->readU32();\n`;
-                out += `\t\t// dataidx validation must be done later\n`;
-                out += `\t\timm->push(dataidx${i});\n`;
+                out += `        u32 dataidx${i} = r->readU32();\n`;
+                out += `        // dataidx validation must be done later\n`;
+                out += `        imm->push(dataidx${i});\n`;
             } else if (type == 'memarg') {
-                out += `\t\tr->readU32(); // ignore align\n`;
-                out += `\t\tu32 offset${i} = r->readU32();\n`;
-                out += `\t\timm->push(offset${i});\n`;
+                out += `        r->readU32(); // ignore align\n`;
+                out += `        u32 offset${i} = r->readU32();\n`;
+                out += `        imm->push(offset${i});\n`;
             } else if (type == 'elemidx') {
-                out += `\t\tu32 elemidx${i} = r->readU32();\n`;
-                out += `\t\tif (elemidx${i} >= d->data->allElements->length()) // TODO: check if elemidx is for passive only or both\n\t\t\tFATAL("Invalid table element index");\n`;
-                out += `\t\timm->push(elemidx${i});\n`;
+                out += `        u32 elemidx${i} = r->readU32();\n`;
+                out += `        if (elemidx${i} >= d->elements->length()) // TODO: check if elemidx is for passive only or both\n            FATAL("Invalid table element index");\n`;
+                out += `        imm->push(elemidx${i});\n`;
             } else {
                 console.log(JSON.stringify(row1, null, 4));
                 console.log(type);
                 process.exit();
             }
         }
-        out += '\t\tbreak;\n\t}';
+        out += '        break;\n    }';
     }
-    out += '\n\tdefault:\n\t\tFATAL("Invalid instruction opcode 0x%02X", opcode);\n\t\tbreak;\n';
-    out += '\t};\n';
+     out += '\n    /* -- End of source code generated with help of "gen_instr.js" script -- */';
     fs.writeFileSync('output/parse.cc', out);
 }
 
@@ -168,15 +167,15 @@ function generateReducer(table) {
         return tab.filter(x => x != '');
     }
 
-    let out = '\tswitch(opcode) {'
+    let out = '    switch(opcode) {'
     for (let row of table) {
         row._reduceUnique = `${row.params}|${row.results}|${row.reduceTo}`;
         if (!row.customReduction.toLowerCase().startsWith('y') || row._uvm)
             continue;
-        out += `\n\tcase ${row._identifier}: {\n\t\tbreak;\n\t}`;
+        out += `\n    case ${row._identifier}: {\n        break;\n    }`;
         row._reduceDone = true;
     }
-    out += '\n\t// ===== Generated reducers =====';
+    out += '\n    // ===== Generated reducers =====';
     for (let row of table) {
         // Cases
         if (row._reduceDone || row._uvm)
@@ -184,7 +183,7 @@ function generateReducer(table) {
         for (let row2 of table) {
             if (row2._reduceDone || row2._reduceUnique != row._reduceUnique || row2._uvm)
                 continue;
-            out += `\n\tcase ${row2._identifier}:`;
+            out += `\n    case ${row2._identifier}:`;
             row2._reduceDone = true;
         }
         out += ' {\n';
@@ -192,19 +191,19 @@ function generateReducer(table) {
         // Check stack params
         let params = explodeParams(row.params);
         for (let i = params.length - 1; i >= 0; i--) {
-            out += `\t\tu32 type${i} = stack->pop();\n`;
+            out += `        u32 type${i} = stack->pop();\n`;
         }
         let tab = [];
         for (let i = params.length - 1; i >= 0; i--) {
             tab.push(`type${i} != TYPE_${params[i].toUpperCase()}`);
         }
         if (tab.length)
-            out += `\t\tif (${tab.join(' || ')})\n\t\t\tFATAL("Invalid type on the stack");\n`;
+            out += `        if (${tab.join(' || ')})\n            FATAL("Invalid type on the stack");\n`;
         
         // Reduced instruction generation
         let reduceTo = explodeReduceTo(row.reduceTo);
         if (reduceTo.length == 0) {
-            out += `\t\treduced->push(instr);\n`;
+            out += `        reduced->push(instr);\n`;
         } else {
             let ind = '';
             let inIf = false;
@@ -213,47 +212,47 @@ function generateReducer(table) {
                 if (item.startsWith('{')) {
                     let cond = item.substring(1, item.length - 1);
                     if (cond == 'else') {
-                        out += `\t\t} else {\n`;
+                        out += `        } else {\n`;
                         inIf = false;
                     } else if (cond == 'end') {
-                        out += `\t\t}\n`;
+                        out += `        }\n`;
                         ind = '';
                         inIf = false;
                     } else {
-                        out += `\t\tif (${cond}) {\n`;
-                        ind = '\t';
+                        out += `        if (${cond}) {\n`;
+                        ind = '    ';
                         inIf = true;
                     }
                     continue;
                 }
                 let [opcode, imm] = item.split(/\s+/, 2);
-                out += `\t\t${ind}reduced->push(WasmInstr{\n`;
-                out += `\t\t\t${ind}.code = INSTR_${opcode.trim().toUpperCase().replace(/\./g, '_')},\n`;
+                out += `        ${ind}reduced->push(WasmInstr{\n`;
+                out += `            ${ind}.code = INSTR_${opcode.trim().toUpperCase().replace(/\./g, '_')},\n`;
                 if (imm) {
                     imm = imm.trim();
                     if (imm.startsWith('"')) {
-                        out += `\t\t\t${ind}.immString = "__uvmlib__${imm.substr(1)},\n`;
+                        out += `            ${ind}.immString = "__uvmlib__${imm.substr(1)},\n`;
                     } else {
-                        out += `\t\t\t${ind}.imm = { ${imm} },\n`;
+                        out += `            ${ind}.imm = { ${imm} },\n`;
                     }
                 }
-                out += `\t\t${ind}});\n`;
+                out += `        ${ind}});\n`;
             }
             if (inIf) {
-                out += `\t\t} else {\n`;
-                out += `\t\t\treduced->push(instr);\n`;
+                out += `        } else {\n`;
+                out += `            reduced->push(instr);\n`;
             }
             if (ind != '')
-                out += `\t\t}\n`;
+                out += `        }\n`;
         }
 
         // Push stack result
         if (row.results != '')
-            out += `\t\tstack->push(TYPE_${row.results.toUpperCase()})\n`;
-        out += '\t\tbreak;\n\t}';
+            out += `        stack->push(TYPE_${row.results.toUpperCase()})\n`;
+        out += '        break;\n    }';
     }
-    out += '\n\tdefault:\n\t\tbreak;\n';
-    out += '\t};\n';
+    out += '\n    default:\n        break;\n';
+    out += '    };\n';
     fs.writeFileSync('output/reduce.cc', out);
 }
 

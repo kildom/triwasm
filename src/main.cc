@@ -1,17 +1,17 @@
 
-#include "common.hh"
+#include "Utils.hh"
 
+#include "FileInputStream.hh"
 #include "WasmParser.hh"
-#include "IRGenerator.hh"
 
 int main(int argc, char *argv[]) {
     TRACE();
 
-    auto parser = WasmParser$::create();
-    auto tree = parser->parseFile("test/libbzip2-dec.wasm");
+    auto fileInput = FileInputStream$::create("../../test/libbzip2-dec.wasm");
+    auto wasmInput = fileInput.cast<WasmInputStream>();
 
-    auto irGenerator = IRGenerator$::create();
-    irGenerator->generate(tree);
+    auto parser = WasmParser$::create();
+    auto tree = parser->parse(wasmInput);
 
     return 0;
 

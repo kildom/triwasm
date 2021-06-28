@@ -1,7 +1,7 @@
 #ifndef _RANGE_HH_
 #define _RANGE_HH_
 
-#include "common.hh"
+#include "Utils.hh"
 
 class BoundedRange {
 public:

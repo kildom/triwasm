@@ -1,7 +1,7 @@
 #ifndef _WASM_CONSTS_HH_
 #define _WASM_CONSTS_HH_
 
-#include "common.hh"
+#include "Utils.hh"
 
 static const u32 SECTION_ID_CUSTOM = 0;
 static const u32 SECTION_ID_TYPE = 1;
@@ -31,6 +31,12 @@ static const s64 TYPE_BT_CMP_F64 = -4;
 static const s64 TYPE_BT_CMP_FUNCREF = -16;
 static const s64 TYPE_BT_CMP_EXTERNREF = -17;
 static const s64 TYPE_BT_CMP_VOID = -64;
+
+enum WasmElementKind {
+    WASM_ELEMENT_ACTIVE,
+    WASM_ELEMENT_PASSIVE,
+    WASM_ELEMENT_DECLARATIVE,
+};
 
 static Array$<String$> sectionNames = {
     String$("custom"),

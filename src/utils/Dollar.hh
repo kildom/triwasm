@@ -1,7 +1,7 @@
 #ifndef _DOLLAR_HH_
 #define _DOLLAR_HH_
 
-#include "common.hh"
+#include "Utils.hh"
 
 #define DOLLAR_TYPEDEF(Class, ...) \
     typedef $<Class, false, ##__VA_ARGS__> Class##$; \

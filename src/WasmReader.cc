@@ -1,5 +1,5 @@
 
-#include "common.hh"
+#include "Utils.hh"
 #include "WasmReader.hh"
 
 #define READER_BUFFER_SIZE 65536
@@ -155,7 +155,22 @@ s64 WasmReader::readS64() {
     return readXX<s64>();
 }
 
-    
+u32 WasmReader::readF32() {
+    u32 result = 0;
+    for (auto i = 0; i < 32; i += 8) {
+        result |= byte() << i;
+    }
+    return result;
+}
+
+u64 WasmReader::readF64() {
+    u64 result = 0;
+    for (auto i = 0; i < 64; i += 8) {
+        result |= byte() << i;
+    }
+    return result;
+}
+
 ssize WasmReader::startContainer(ssize length) {// returns file offset at the end of container: offsetOfBuffer + (ptr - buf.c_str()) + length
     return offset() + length;
 }
@@ -166,7 +181,7 @@ void WasmReader::endContainer(ssize state, bool expectFullyConsumed) { // succes
         FATAL("Part of the input was bigger than expected");
     if (current < state) {
         if (expectFullyConsumed)
-            FATAL("Part of the input was smaller than expected");
+            FATAL("Part of the input %d was smaller than expected %d", (int)current, (int)state);
         skip(state - current);
     }
 }
