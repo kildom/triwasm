@@ -17,7 +17,7 @@
     * µVM stack size is 62K, minimum is 8K, you can increase `global-base` by 54K to provide more space for your heap size.
   * Add special virtual memory area (e.g. 0x80000000) that will be compiled to globals, e.g. `((uint32_t*)0x80000014) = 123`.
     Globals have smaller instruction size, so this is only optimization solution.
-  * Use (LEMON)[https://en.wikipedia.org/wiki/Lemon_(parser_generator)] parser generator to parse assembly file.
+  * Use [LEMON](https://en.wikipedia.org/wiki/Lemon_(parser_generator)) parser generator to parse assembly file.
 
 * Add µVM extensions:
   * External memory:
