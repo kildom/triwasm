@@ -85,17 +85,19 @@ struct WasmGlobal
 
 struct WasmElement
 {
+    u32 index;
     WasmElementKind kind;
     WasmTable$$ table;
-    Array$<WasmInstr$$> expr;
+    Array$<WasmInstr$$> offset;
     Array$<Array$<WasmInstr$$>> exprItems;
     Array$<WasmFunction$> functionItems;
 };
 
 struct WasmDataSegment
 {
+    u32 index;
     bool active;
-    u32 memory;
+    WasmMemory$$ memory;
     Array$<WasmInstr$$> offset;
     Bytes$ bytes;
 };
@@ -126,6 +128,8 @@ struct WasmData {
     // entry
     WasmFunction$$ startFunction;
 };
+
+void dumpData(WasmData$$ data);
 
 
 #endif /* _WASM_DATA_HH_ */

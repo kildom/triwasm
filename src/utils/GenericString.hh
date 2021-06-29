@@ -106,6 +106,13 @@ public:
         return (*this)->v.end();
     }
 
+    GenericString$ operator+(const T* value) const {
+        GenericString$ a;
+        a->v = (*this)->v;
+        a->v += value;
+        return a;
+    }
+
 };
 
 

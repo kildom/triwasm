@@ -330,13 +330,12 @@ void WasmParser::parseElementSection() {
     for (u32 i = 0; i < count; i++) {
         auto select = r->readU32();
         WasmElement$ element;
-        Array$<WasmElement$$> arr;
         u8 elemkind = 0x00;
         switch (select & 0x03) {
             case 0x00:
                 element->kind = WASM_ELEMENT_ACTIVE;
                 element->table = d->tables[0];
-                element->expr = parseExpr();
+                element->offset = parseExpr();
                 printf("  element active mode for table 0(default)\n");
                 break;
             case 0x01:
@@ -347,7 +346,7 @@ void WasmParser::parseElementSection() {
             case 0x02:
                 element->kind = WASM_ELEMENT_ACTIVE;
                 element->table = d->tables[r->readU32()];
-                element->expr = parseExpr();
+                element->offset = parseExpr();
                 elemkind = r->byte();
                 printf("  element active mode for table %d\n", element->table->index);
                 break;
@@ -373,7 +372,8 @@ void WasmParser::parseElementSection() {
             }
             printf("    %d index(es)\n", itemsCount);
         }
-        arr->push(element);
+        element->index = d->elements->length();
+        d->elements->push(element);
     }
 }
 
@@ -403,6 +403,7 @@ void WasmParser::parseDataSection() {
 
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
+        u32 memoryIndex;
         u8 select = r->byte();
         switch (select) {
             case 0x00:
@@ -411,28 +412,30 @@ void WasmParser::parseDataSection() {
                 data->memory = 0;
                 data->offset = parseExpr();
                 data->bytes = r->bytes();
-                d->data->push(data);
                 printf("  data active mode for memory 0(default) of size %d\n", (int)data->bytes->length());
                 break;
             case 0x01:
                 data = new$;
                 data->active = false;
                 data->bytes = r->bytes();
-                d->data->push(data);
                 printf("  data passive mode of size %d\n", (int)data->bytes->length());
                 break;
             case 0x02:
                 data = new$;
                 data->active = true;
-                data->memory = r->readU32();
+                memoryIndex = r->readU32();
+                if (memoryIndex >= d->memories->length())
+                    FATAL("Unknown memory index %d", (int)memoryIndex);
+                data->memory = d->memories[memoryIndex];
                 data->offset = parseExpr();
                 data->bytes = r->bytes();
-                d->data->push(data);
-                printf("  data active mode for memory %d of size %d\n", data->memory, (int)data->bytes->length());
+                printf("  data active mode for memory %d of size %d\n", data->memory->index, (int)data->bytes->length());
                 break;
             default:
                 FATAL("Unknown kind of data ${select}");
         }
+        data->index = i;
+        d->data->push(data);
     }
 }
 

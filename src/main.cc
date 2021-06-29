@@ -13,6 +13,8 @@ int main(int argc, char *argv[]) {
     auto parser = WasmParser$::create();
     auto tree = parser->parse(wasmInput);
 
+    dumpData(tree);
+
     return 0;
 
 }

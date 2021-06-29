@@ -22,3 +22,18 @@ u32 wasmTypeWords(u32 type)
             FATAL("Unknown type 0x%02X\n", type);
         }
 }
+
+const char* wasmTypeName(u32 type)
+{
+        switch (type)
+        {
+        case TYPE_FUNCREF: return "funcref";
+        case TYPE_EXTERNREF: return "externref";
+        case TYPE_I32: return "i32";
+        case TYPE_F32: return "f32";
+        case TYPE_I64: return "i64";
+        case TYPE_F64: return "f64";
+        default:
+            FATAL("Unknown type 0x%02X\n", type);
+        }
+}

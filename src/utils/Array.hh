@@ -99,14 +99,14 @@ public:
         return Array$(a);
     }
 
-    T& operator[](ssize index) {
+    T& operator[](ssize index) const {
         if (index < 0 || (usize)index >= (*this)->v.size()) {
             FATAL("Index out of bounds");
         }
         return (*this)->v[index];
     }
 
-    T& operator[](Range::EndOffset offset) {
+    T& operator[](Range::EndOffset offset) const {
         return operator[]((*this)->v.size() - offset.offset);
     }
 
@@ -118,8 +118,8 @@ public:
         return n;
     }
 
-    ArrayView<T> operator[](const Range &range);
-    ArrayView<T> operator[](const BoundedRange &range);
+    ArrayView<T> operator[](const Range &range) const;
+    ArrayView<T> operator[](const BoundedRange &range) const;
 
     auto begin() {
         return (*this)->v.begin();
@@ -160,7 +160,7 @@ public:
         return *this;
     }
 
-    T& operator[](ssize index) {
+    T& operator[](ssize index) const {
         update();
         if (index < 0 || index >= end - begin) {
             FATAL("Index out of bounds");
@@ -168,11 +168,11 @@ public:
         return array[begin + index];
     }
 
-    ArrayView operator[](const Range &range) {
+    ArrayView operator[](const Range &range) const {
         return operator[](range.bound(end - begin));
     }
 
-    ArrayView operator[](const BoundedRange &range) {
+    ArrayView operator[](const BoundedRange &range) const {
         update();
         if (range.beginOffset < 0 || range.beginOffset > end - begin
             || range.endOffset < 0 || range.endOffset > end - begin) {
@@ -195,12 +195,12 @@ private:
 
 
 template<typename T>
-ArrayView<T> Array$<T>::operator[](const Range &range) {
+ArrayView<T> Array$<T>::operator[](const Range &range) const {
     return operator[](range.bound((*this)->v.size()));
 }
 
 template<typename T>
-ArrayView<T> Array$<T>::operator[](const BoundedRange &range) {
+ArrayView<T> Array$<T>::operator[](const BoundedRange &range) const {
     if (range.beginOffset < 0 || (usize)range.beginOffset > (*this)->v.size()
         || range.endOffset < 0 || (usize)range.endOffset > (*this)->v.size()) {
         FATAL("Index out of bounds");

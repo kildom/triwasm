@@ -55,5 +55,6 @@ static Array$<String$> sectionNames = {
 };
 
 u32 wasmTypeWords(u32 type);
+const char* wasmTypeName(u32 type);
 
 #endif /* _WASM_CONSTS_HH_ */

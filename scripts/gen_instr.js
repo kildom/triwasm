@@ -146,6 +146,15 @@ function generateParser(table) {
     fs.writeFileSync('output/parse.cc', out);
 }
 
+function generateDumper(table) {
+    let out = '    /* -- Begin of source code generated with help of "gen_instr.js" script -- */';
+    for (let row of table) {
+        out += `\n    case ${row._identifier}: return "${row.name}";`
+    }
+     out += '\n    /* -- End of source code generated with help of "gen_instr.js" script -- */';
+    fs.writeFileSync('output/dump.cc', out);
+}
+
 
 function generateReducer(table) {
     function explodeParams(params) {
@@ -262,6 +271,7 @@ async function main() {
     generateOpcodes(table);
     generateParser(table);
     generateReducer(table);
+    generateDumper(table);
 }
 
 main();

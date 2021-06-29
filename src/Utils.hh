@@ -10,6 +10,8 @@
 #include <tuple>
 #include <string>
 #include <iostream>
+#include <algorithm>
+#include <iomanip>
 
 // Using type names as in WASM core specification
 using u64 = std::uint64_t;

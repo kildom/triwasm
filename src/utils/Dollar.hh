@@ -62,7 +62,7 @@ template<typename T, bool nullable = false, bool vd = false>
 class $ {
 public:
     typedef _$_Inner<T, vd> Inner;
-    Inner *_ptr;
+    mutable Inner *_ptr;
 
     $() : _ptr(nullptr) {
     }
@@ -156,7 +156,7 @@ public:
         return *this;
     }
 
-    T* operator->() {
+    T* operator->() const {
         if (!_ptr) {
             if (!nullable) {
                 _ptr = _$_DefaultInnerCreator<Inner, nullable>::createInner();
