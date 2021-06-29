@@ -133,7 +133,7 @@ void dumpData(WasmData$$ data)
         }
         if (g->initializer != nullptr) {
             out << ", initialization:" << std::endl;
-            dumpInstr(out, String$("    "), g->initializer);
+            dumpInstr(out, "    "_S, g->initializer);
         } else {
             out << std::endl;
         }
@@ -165,7 +165,7 @@ void dumpData(WasmData$$ data)
                 }
             }
             out << "    body:" << std::endl;
-            dumpInstr(out, String$("      "), f->body);
+            dumpInstr(out, "      "_S, f->body);
         } else {
             out << std::endl;
         }
@@ -181,7 +181,7 @@ void dumpData(WasmData$$ data)
         }
         if (d->offset != nullptr) {
             out << "    offset:" << std::endl;
-            dumpInstr(out, String$("      "), d->offset);
+            dumpInstr(out, "      "_S, d->offset);
         }
         if (d->bytes != nullptr) {
             std::ios::fmtflags saved(out.flags());
@@ -209,12 +209,12 @@ void dumpData(WasmData$$ data)
         }
         if (e->offset != nullptr) {
             out << "    offset:" << std::endl;
-            dumpInstr(out, String$("      "), e->offset);
+            dumpInstr(out, "      "_S, e->offset);
         }
         if (e->exprItems != nullptr) {
             for (auto item : e->exprItems) {
                 out << "    item:" << std::endl;
-                dumpInstr(out, String$("      "), item);
+                dumpInstr(out, "      "_S, item);
             }
         }
         if (e->functionItems != nullptr) {

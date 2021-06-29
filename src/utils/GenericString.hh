@@ -191,5 +191,14 @@ GenericStringView<T> GenericString$<T>::operator[](const BoundedRange &range) {
 typedef GenericString$<u8> Bytes$;
 typedef GenericString$<char> String$;
 
+static inline String$ operator""_S(const char *str, std::size_t len)
+{
+    return String$(GenericStringInner<String$::type>(str, len));
+}
+
+static inline Bytes$ operator""_B(const char *str, std::size_t len)
+{
+    return Bytes$(GenericStringInner<Bytes$::type>((const u8 *)str, len));
+}
 
 #endif /* _GENERIC_STRING_HH_ */

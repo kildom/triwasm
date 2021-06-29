@@ -39,19 +39,19 @@ enum WasmElementKind {
 };
 
 static Array$<String$> sectionNames = {
-    String$("custom"),
-    String$("type"),
-    String$("import"),
-    String$("function"),
-    String$("table"),
-    String$("memory"),
-    String$("global"),
-    String$("export"),
-    String$("start"),
-    String$("element"),
-    String$("code"),
-    String$("data"),
-    String$("data count"),
+    "custom"_S,
+    "type"_S,
+    "import"_S,
+    "function"_S,
+    "table"_S,
+    "memory"_S,
+    "global"_S,
+    "export"_S,
+    "start"_S,
+    "element"_S,
+    "code"_S,
+    "data"_S,
+    "data count"_S,
 };
 
 u32 wasmTypeWords(u32 type);
