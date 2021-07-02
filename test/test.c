@@ -19,6 +19,9 @@ void imptest3(void (*f)());
 WASM_IMPORT(imptestdot)
 void imptestdot(int x, ...);
 
+WASM_IMPORT(imptestmuti)
+void imptestmuti(int x, int y, int z);
+
 __attribute__((noinline))
 void sub() {
     imptest();
@@ -26,10 +29,32 @@ void sub() {
 
 WASM_EXPORT(test1)
 void test1() {
+    imptestmuti(1, 2, 3);
     imptest();
     imptest2();
     imptest3(sub);
     imptestdot(1, 2, 3, 4, 5, 6);
+}
+
+WASM_EXPORT(aaaaa)
+void aaaaa(int i) {
+    do {
+        imptestmuti(i, 2, 3);
+        i--;
+    } while (i);
+}
+
+WASM_EXPORT(aaaaab)
+void aaaaab(int i) {
+    while (i) {
+        imptestmuti(i, 2, 3);
+        i--;
+    }
+}
+
+WASM_EXPORT(aaaaac)
+void aaaaac(int i) {
+    *(int*)234894 = 123;
 }
 
 

@@ -2,16 +2,25 @@
 #ifndef _VM_CONFIG_HH_
 #define _VM_CONFIG_HH_
 
-#include "common.hh"
+#include "Utils.hh"
 
 
 struct VMConfig
 {
-    bool extension64Bit;
+    struct {
+        bool reduce;
+        bool i64;
+        bool f64;
+        bool f32;
+        bool unreachable;
+    } ext;
 };
 
 static const VMConfig vmConfig = {
-    .extension64Bit = false,
+    .ext = {
+        .i64 = false,
+        .unreachable = false,
+    },
 };
 
 

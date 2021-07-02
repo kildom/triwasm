@@ -27,7 +27,11 @@ struct _$_Inner<T, false> {
     size_t counter;
     T data;
     template<typename... Args>
-    _$_Inner(Args&&... args) : data(std::forward<Args>(args)...) { }
+    _$_Inner(Args&&... args) : data(std::forward<Args>(args)...) {
+    }
+    /*~_$_Inner() {
+        printf("DELETE: %p\n", &data);
+    }*/
 };
 
 template<typename T>

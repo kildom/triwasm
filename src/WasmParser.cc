@@ -464,7 +464,11 @@ void WasmParser::parseFuncCode(u32 funcIndex) {
     TRACE();
 
     // modules.html#binary-codesec
+    function = d->functions[funcIndex];
     Array$<u32> locals;
+    for (auto type : function->type->param) {
+        locals->push(type);
+    }
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
         auto localsCount = r->readU32();
@@ -472,11 +476,17 @@ void WasmParser::parseFuncCode(u32 funcIndex) {
         for (u32 j = 0; j < localsCount; j++)
             locals->push(type);
     }
-    function = d->functions[funcIndex];
     function->locals = locals;
     std::cout << "    locals: " << locals->length() << "\n";
-    blockStack = new$;
-    function->body = parseExpr();
+    function->block = WasmBlock{
+        .type = function->type,
+    };
+    function->block->instr = WasmInstr{
+        .code = INSTR_TRIVM_FUNCTION,
+        .block = function->block,
+    };
+    blockStack = { function->block };
+    function->block->body = parseExpr();
     function = nullptr;
 }
 
@@ -487,7 +497,7 @@ Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
         WasmInstr$ instr;
         auto code = r->byte();
 
-        if (code == INSTR_UVM_WASM_EXT) {
+        if (code == INSTR_TRIVM_WASM_EXT) {
             auto extCode = r->readU32();
             code |= extCode << 8;
         }
@@ -497,11 +507,11 @@ Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
 
         bool last = parseInstr(instr, allowElse);
 
+        instrs->push(instr);
+
         if (last) {
             return instrs;
         }
-
-        instrs->push(instr);
     }
 
     /*switch (code) {
@@ -619,13 +629,13 @@ bool WasmParser::parseInstr(WasmInstr$$ instr, bool &allowElse)
     }
     case INSTR_I32_CONST: {
         TRACE();
-        u32 const0 = r->readU32();
+        u32 const0 = r->readS32();
         imm->push(const0);
         break;
     }
     case INSTR_I64_CONST: {
         TRACE();
-        u64 const0 = r->readU64();
+        u64 const0 = r->readS64();
         imm->push(const0);
         break;
     }
@@ -809,7 +819,7 @@ bool WasmParser::parseInstr(WasmInstr$$ instr, bool &allowElse)
     case INSTR_LOCAL_TEE: {
         TRACE();
         u32 localidx0 = r->readU32();
-        if (localidx0 >= function->locals->length() + function->type->param->length())
+        if (localidx0 >= function->locals->length())
             FATAL("Invalid local variable index");
         imm->push(localidx0);
         break;

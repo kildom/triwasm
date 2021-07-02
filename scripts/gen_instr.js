@@ -77,21 +77,21 @@ function generateOpcodes(table) {
 function generateParser(table) {
     let out = '    /* -- Begin of source code generated with help of "gen_instr.js" script -- */';
     for (let row of table)
-        if (row.name.startsWith('uvm.'))
-            row._uvm = true;
+        if (row.name.startsWith('trivm.'))
+            row._trivm = true;
     for (let row of table) {
-        if (row.parsing != 'custom' || row._uvm)
+        if (row.parsing != 'custom' || row._trivm)
             continue;
         out += `\n    case ${row._identifier}: {\n        TRACE();\n        break;\n    }`;
         row._parsingDone = true;
     }
     out += '\n    // ===== Generated parsers =====';
     for (let row1 of table) {
-        if (row1._parsingDone || row1._uvm)
+        if (row1._parsingDone || row1._trivm)
             continue;
         let tab = row1.parsing;
         for (let row of table) {
-            if (row._parsingDone || row.parsing != tab || row._uvm)
+            if (row._parsingDone || row.parsing != tab || row._trivm)
                 continue;
             out += `\n    case ${row._identifier}:`;
             row._parsingDone = true;
@@ -169,7 +169,7 @@ function generateReducer(table) {
         tab = tab.map(x => {
             x = x.trim();
             if (x.startsWith('{')) {
-                x = x.replace(/(i64|f32|f64|grow)/, 'config.ext.$1')
+                x = x.replace(/(i64|f32|f64|grow)/, 'vmConfig.ext.$1')
             }
             return x;
         });
@@ -179,36 +179,32 @@ function generateReducer(table) {
     let out = '    switch(opcode) {'
     for (let row of table) {
         row._reduceUnique = `${row.params}|${row.results}|${row.reduceTo}`;
-        if (!row.customReduction.toLowerCase().startsWith('y') || row._uvm)
+        if (!row.customReduction.toLowerCase().startsWith('y') || row._trivm)
             continue;
-        out += `\n    case ${row._identifier}: {\n        break;\n    }`;
+        out += `\n    case ${row._identifier}: {\n        TRACE();\n        break;\n    }`;
         row._reduceDone = true;
     }
     out += '\n    // ===== Generated reducers =====';
     for (let row of table) {
         // Cases
-        if (row._reduceDone || row._uvm)
+        if (row._reduceDone || row._trivm)
             continue;
         for (let row2 of table) {
-            if (row2._reduceDone || row2._reduceUnique != row._reduceUnique || row2._uvm)
+            if (row2._reduceDone || row2._reduceUnique != row._reduceUnique || row2._trivm)
                 continue;
             out += `\n    case ${row2._identifier}:`;
             row2._reduceDone = true;
         }
-        out += ' {\n';
+        out += ' {\n        TRACE();\n';
 
         // Check stack params
         let params = explodeParams(row.params);
-        for (let i = params.length - 1; i >= 0; i--) {
-            out += `        u32 type${i} = stack->pop();\n`;
+        if (params.length > 1) {
+            out += `        stack->pop(${params.length});\n`;
+        } else if (params.length > 0) {
+            out += `        stack->pop();\n`;
         }
-        let tab = [];
-        for (let i = params.length - 1; i >= 0; i--) {
-            tab.push(`type${i} != TYPE_${params[i].toUpperCase()}`);
-        }
-        if (tab.length)
-            out += `        if (${tab.join(' || ')})\n            FATAL("Invalid type on the stack");\n`;
-        
+
         // Reduced instruction generation
         let reduceTo = explodeReduceTo(row.reduceTo);
         if (reduceTo.length == 0) {
@@ -234,13 +230,14 @@ function generateReducer(table) {
                     }
                     continue;
                 }
-                let [opcode, imm] = item.split(/\s+/, 2);
+                let [opcode, ...imm] = item.split(/\s+/);
+                if (imm) imm = imm.join(' ');
                 out += `        ${ind}reduced->push(WasmInstr{\n`;
                 out += `            ${ind}.code = INSTR_${opcode.trim().toUpperCase().replace(/\./g, '_')},\n`;
                 if (imm) {
                     imm = imm.trim();
                     if (imm.startsWith('"')) {
-                        out += `            ${ind}.immString = "__uvmlib__${imm.substr(1)},\n`;
+                        out += `            ${ind}.immString = "__trivmlib__.${imm.substr(1)}_S,\n`;
                     } else {
                         out += `            ${ind}.imm = { ${imm} },\n`;
                     }
@@ -257,12 +254,31 @@ function generateReducer(table) {
 
         // Push stack result
         if (row.results != '')
-            out += `        stack->push(TYPE_${row.results.toUpperCase()})\n`;
+            out += `        stack->push(TYPE_${row.results.toUpperCase()});\n`;
         out += '        break;\n    }';
     }
     out += '\n    default:\n        break;\n';
     out += '    };\n';
     fs.writeFileSync('output/reduce.cc', out);
+}
+
+
+function generateOutputNames(table) {
+    let out = '    switch(opcode) {'
+    for (let row of table) {
+        // Cases
+        if (row._namesDone || !row.compileTo || row.compileTo == '')
+            continue;
+        for (let row2 of table) {
+            if (row2._namesDone || row2.compileTo != row.compileTo)
+                continue;
+            out += `\n    case ${row2._identifier}:`;
+            row2._namesDone = true;
+        }
+        out += `\n        return "${row.compileTo}";\n`;
+    }
+    out += '    };\n';
+    fs.writeFileSync('output/names.cc', out);
 }
 
 async function main() {
@@ -272,6 +288,7 @@ async function main() {
     generateParser(table);
     generateReducer(table);
     generateDumper(table);
+    generateOutputNames(table);
 }
 
 main();

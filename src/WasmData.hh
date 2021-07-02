@@ -41,25 +41,27 @@ struct WasmTable {
 };
 
 
+struct WasmBlock {
+    WasmInstr$$ instr;
+    WasmFunctionType$$ type;
+    Array$<WasmInstr$$> body;
+    u32 stackBase;
+};
+
 struct WasmFunction {
     u32 index;
     WasmFunctionType$$ type;
     Array$<u32> locals;
-    Array$<WasmInstr$$> body;
+    WasmBlock$$ block;
     WasmImport$$ import;
     String$ exportName;
     Array$<u32> paramsOffsets;
 };
 
-struct WasmBlock {
-    WasmInstr$$ instr;
-    WasmFunctionType$$ type;
-    Array$<WasmInstr$$> body;
-};
-
 struct WasmInstr {
     u32 code;
     Array$<u64> imm;
+    String$ immString;
     WasmBlock$$ block;
 };
 

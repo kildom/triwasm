@@ -47,6 +47,9 @@ static void dumpImm(std::ostream& out, WasmInstr$$ instr, Array$<u32> blockStack
         for (auto imm : instr->imm) {
             out << imm << " ";
         }
+        if (instr->immString != nullptr && instr->immString->length()) {
+            out << "\"" << instr->immString->buffer() << "\" ";
+        }
         break;
     }
 }
@@ -76,7 +79,8 @@ static void dumpInstr(std::ostream& out, String$ ind, Array$<WasmInstr$$> instrL
 
 void dumpData(WasmData$$ data)
 {
-    std::stringstream out;
+    //std::stringstream out;
+    auto &out = std::cout;
 
     out << "Function types: " << std::endl;
     for (int i = 0; i < data->functionTypes->length(); i++) {
@@ -151,27 +155,26 @@ void dumpData(WasmData$$ data)
         if (f == data->startFunction) {
             out << ", startup function";
         }
-        if (f->body != nullptr) {
+        if (f->block != nullptr) {
             out << std::endl << "    locals:" << std::endl;
-            int localIndex = 0;
-            for (auto t : f->type->param) {
-                out << "      [" << localIndex << "] " << wasmTypeName(t) << " (param) " << std::endl;
-                localIndex++;
-            }
             if (f->locals != nullptr) {
+                int localIndex = 0;
                 for (auto t : f->locals) {
-                    out << "      [" << localIndex << "] " << wasmTypeName(t) << std::endl;
+                    out << "      [" << localIndex << "] " << wasmTypeName(t);
+                    if (localIndex < f->type->param->length())
+                        out << " (param) ";
+                    out << std::endl;
                     localIndex++;
                 }
             }
             out << "    body:" << std::endl;
-            dumpInstr(out, "      "_S, f->body);
+            dumpInstr(out, "      "_S, f->block->body);
         } else {
             out << std::endl;
         }
     }
 
-    out << "Data: " << std::endl;
+    /*out << "Data: " << std::endl;
     for (auto d : data->data) {
         out << "  [" << d->index << "] " << (d->active ? "active" : "passive");
         if (d->memory != nullptr) {
@@ -197,7 +200,7 @@ void dumpData(WasmData$$ data)
             }
             out.flags(saved);
         }
-    }
+    }*/
 
     out << "Elements: " << std::endl;
     for (auto e : data->elements) {
@@ -224,7 +227,7 @@ void dumpData(WasmData$$ data)
         }
     }
 
-    printf("%s", out.str().c_str());
+    //printf("%s", out.str().c_str());
 }
 
 static const char* instrName(u32 opcode)
@@ -433,10 +436,13 @@ static const char* instrName(u32 opcode)
     case INSTR_TABLE_GROW: return "table.grow";
     case INSTR_TABLE_SIZE: return "table.size";
     case INSTR_TABLE_FILL: return "table.fill";
-    case INSTR_UVM_EMPTY: return "uvm.empty";
-    case INSTR_UVM_CALL_LIB: return "uvm.call_lib";
-    case INSTR_UVM_EXTS: return "uvm.exts";
-    case INSTR_UVM_POP: return "uvm.pop";
+    case INSTR_TRIVM_EMPTY: return "trivm.empty";
+    case INSTR_TRIVM_CALL_IMPORT: return "trivm.call_import";
+    case INSTR_TRIVM_EXTS: return "trivm.exts";
+    case INSTR_TRIVM_EXTS64: return "trivm.exts64";
+    case INSTR_TRIVM_POP: return "trivm.pop";
+    case INSTR_TRIVM_DUP: return "trivm.dup";
+    case INSTR_TRIVM_FUNCTION: return "trivm.function";
     /* -- End of source code generated with help of "gen_instr.js" script -- */
     }
     FATAL("Unknown instruction opcode 0x%02X", opcode);

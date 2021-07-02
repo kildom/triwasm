@@ -52,6 +52,9 @@ public:
         EndOffset operator-(ssize offset) {
             return EndOffset(offset);
         }
+        operator EndOffset() {
+            return EndOffset(0);
+        }
     };
 
     ssize beginOffset;

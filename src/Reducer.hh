@@ -1,25 +1,27 @@
 #ifndef _REDUCER_HH_
 #define _REDUCER_HH_
 
-#include "common.hh"
+#include "Utils.hh"
 
 #include "WasmData.hh"
 #include "WasmReader.hh"
 
-DOLLAR_CLASS(IRGenerator);
+DOLLAR_CLASS(Reducer);
 
-class IRGenerator {
+class Reducer {
 private:
     WasmData$ d;
-    Array$<u32> wasmStack;
+    Array$<u32> stack;
     Array$<WasmBlock$$> blockStack;
     WasmFunction$$ function;
-    Array$<IRInstr$$> ir;
 
 public:
-    void generate(WasmData$ d);
-    void generateFunction(WasmFunction$ func);
-    void generateBlock(Array$<WasmInstr$$> body);
+    void reduce(WasmData$ d);
+    void reduceFunction(WasmFunction$ func);
+    void reduceBlock(WasmBlock$$ body);
+    void reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced);
+    void blockExit();
+
 };
 
 #endif /* _REDUCER_HH_ */

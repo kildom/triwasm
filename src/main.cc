@@ -3,6 +3,7 @@
 
 #include "FileInputStream.hh"
 #include "WasmParser.hh"
+#include "Reducer.hh"
 
 int main(int argc, char *argv[]) {
     TRACE();
@@ -12,7 +13,9 @@ int main(int argc, char *argv[]) {
 
     auto parser = WasmParser$::create();
     auto tree = parser->parse(wasmInput);
-
+    
+    Reducer$ reducer;
+    reducer->reduce(tree);
     dumpData(tree);
 
     return 0;

@@ -31,9 +31,20 @@ public:
     }
 
     T pop() {
+        if (v.size() < 1)
+            FATAL("Cannot pop from empty array");
         T x = v.back();
         v.pop_back();
         return x;
+    }
+
+    void pop(ssize n) {
+        if ((ssize)v.size() < n)
+            FATAL("Cannot pop from empty array");
+        while (n) {
+            v.pop_back();
+            n--;
+        }
     }
 
     T& grow(ssize index) {
@@ -43,6 +54,10 @@ public:
             v.resize(index + 1);
         }
         return v[index];
+    }
+
+    void clear() {
+        v.clear();
     }
 
 };
@@ -144,21 +159,41 @@ public:
         update();
         return end - begin;
     }
+    template <class InputIterator>
+    ArrayView& assign(InputIterator first, InputIterator last, ssize inputLen) {
+        update();
+        ssize thisLen = end - begin;
+        auto& v = array->v;
+        if (inputLen > thisLen) {
+            //          [0] cccccc [thisLen] iiiiii [inputLen]
+            // .... [begin] cccccc [end]     iiiiii [begin+inputLen]
+            v.insert(v.begin() + end, first + thisLen, last);
+            std::copy(first, first + thisLen, v.begin() + begin);
+        } else {
+            if (inputLen < end - begin) {
+                //          [0] cccccc [inputLen]
+                // .... [begin] cccccc [begin+inputLen] eeee [end]
+                v.erase(v.begin() + begin + inputLen, v.begin() + end);
+            }
+            std::copy(first, last, v.begin() + begin);
+        }
+        return *this;
+    }
 
     ArrayView& operator=(const std::initializer_list<T>& src) {
-        update();
-        return *this;
+        return assign(src.begin(), src.end(), src.size());
     }
 
-    ArrayView& operator=(const Array$<T>& src) {
-        update();
-        return *this;
+    ArrayView& operator=(Array$<T>& src) {
+        return assign(src.begin(), src.end(), src->length());
     }
+
+    /*
 
     ArrayView& operator=(const ArrayView& src) {
         update();
         return *this;
-    }
+    }*/
 
     T& operator[](ssize index) const {
         update();
