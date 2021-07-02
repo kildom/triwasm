@@ -159,7 +159,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
         for (int i = 0; i < words; i++) {
             reduced->push(WasmInstr{
                 .code = INSTR_LOCAL_SET,
-                .imm = { imm[0], (u64)(4 * i) },
+                .imm = { imm[0], (u64)i },
             });
         }
         break;
@@ -177,7 +177,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
         for (int i = 0; i < words; i++) {
             reduced->push(WasmInstr{
                 .code = INSTR_LOCAL_SET,
-                .imm = { imm[0], (u64)(4 * i) },
+                .imm = { imm[0], (u64)i },
             });
         }
         break;

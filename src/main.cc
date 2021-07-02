@@ -4,6 +4,7 @@
 #include "FileInputStream.hh"
 #include "WasmParser.hh"
 #include "Reducer.hh"
+#include "Generator.hh"
 
 int main(int argc, char *argv[]) {
     TRACE();
@@ -16,7 +17,10 @@ int main(int argc, char *argv[]) {
     
     Reducer$ reducer;
     reducer->reduce(tree);
-    dumpData(tree);
+    //dumpData(tree);
+
+    Generator$$ generator = Generator$$::create(std::cout);
+    generator->generate(tree);
 
     return 0;
 

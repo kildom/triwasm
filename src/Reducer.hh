@@ -20,8 +20,6 @@ public:
     void reduceFunction(WasmFunction$ func);
     void reduceBlock(WasmBlock$$ body);
     void reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced);
-    void blockExit();
-
 };
 
 #endif /* _REDUCER_HH_ */

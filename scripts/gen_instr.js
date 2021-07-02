@@ -275,9 +275,9 @@ function generateOutputNames(table) {
             out += `\n    case ${row2._identifier}:`;
             row2._namesDone = true;
         }
-        out += `\n        return "${row.compileTo}";\n`;
+        out += `\n        return "${row.compileTo}";`;
     }
-    out += '    };\n';
+    out += '\n    };\n';
     fs.writeFileSync('output/names.cc', out);
 }
 

@@ -46,6 +46,8 @@ struct WasmBlock {
     WasmFunctionType$$ type;
     Array$<WasmInstr$$> body;
     u32 stackBase;
+    u32 id;
+    bool elsePresent;
 };
 
 struct WasmFunction {
