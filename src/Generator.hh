@@ -24,6 +24,7 @@ public:
     void generateBlock(WasmBlock$$ body);
     void generateInstr(WasmInstr$$ instr);
     static const char* getTrivmInstr(u32 opcode);
+    void generateUnwind(u32 keep, u32 skip);
 };
 
 #endif /* _GENERATOR_HH_ */

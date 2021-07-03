@@ -1,8 +1,9 @@
 
+
+#include "Utils.hh"
 #include <iostream>
 #include <sstream>
 
-#include "Utils.hh"
 #include "WasmData.hh"
 #include "WasmConsts.hh"
 #include "WasmInstr.hh"
@@ -443,6 +444,11 @@ static const char* instrName(u32 opcode)
     case INSTR_TRIVM_POP: return "trivm.pop";
     case INSTR_TRIVM_DUP: return "trivm.dup";
     case INSTR_TRIVM_FUNCTION: return "trivm.function";
+    case INSTR_TRIVM_FBR: return "trivm.fbr";
+    case INSTR_TRIVM_BBR: return "trivm.bbr";
+    case INSTR_TRIVM_FBR_IF: return "trivm.fbr_if";
+    case INSTR_TRIVM_BBR_IF: return "trivm.bbr_if";
+    case INSTR_TRIVM_RETURN_IF: return "trivm.return_if";
     /* -- End of source code generated with help of "gen_instr.js" script -- */
     }
     FATAL("Unknown instruction opcode 0x%02X", opcode);

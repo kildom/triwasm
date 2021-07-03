@@ -64,7 +64,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
     case INSTR_ELSE: {
         TRACE();
         reduced->push(WasmInstr{
-            .code = INSTR_BR,
+            .code = INSTR_TRIVM_FBR,
             .imm = { 0 },
         });
         reduced->push(instr);
@@ -77,20 +77,67 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
     }
     case INSTR_END: {
         TRACE();
-        if (blockStack->length() > 0) {
-            auto block = blockStack[RangeEnd - 1];
-            stack[Range(block->stackBase, RangeEnd - block->type->result->length())] = {};
+        auto block = blockStack[RangeEnd - 1];
+        if (block->instr->code == INSTR_TRIVM_FUNCTION) {
+            reduced->push(WasmInstr{
+                .code = INSTR_RETURN,
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_FBR,
+                .imm = { 0 },
+            });
         }
+        stack[Range(block->stackBase, RangeEnd - block->type->result->length())] = {};
         reduced->push(instr);
         break;
     }
-    case INSTR_BR:
+    case INSTR_BR: {
+        TRACE();
+        auto block = blockStack[RangeEnd - (1 + imm[0])];
+        if (block->instr->code == INSTR_LOOP) {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_BBR,
+                .imm = { imm[0] },
+            });
+        } else if (block->instr->code == INSTR_TRIVM_FUNCTION) {
+            reduced->push(WasmInstr{
+                .code = INSTR_RETURN,
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_FBR,
+                .imm = { imm[0] },
+            });
+        }
+        break;
+    }
     case INSTR_RETURN: {
         TRACE();
         reduced->push(instr);
         break;
     }
-    case INSTR_BR_IF:
+    case INSTR_BR_IF: {
+        TRACE();
+        stack->pop();
+        auto block = blockStack[RangeEnd - (1 + imm[0])];
+        if (block->instr->code == INSTR_LOOP) {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_BBR_IF,
+                .imm = { imm[0] },
+            });
+        } else if (block->instr->code == INSTR_TRIVM_FUNCTION) {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_RETURN_IF,
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_FBR_IF,
+                .imm = { imm[0] },
+            });
+        }
+        break;
+    }
     case INSTR_BR_TABLE: {
         TRACE();
         stack->pop();
@@ -133,9 +180,11 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
         TRACE();
         stack->pop();
         auto type = stack->pop();
+        std::stringstream str;
+        str << "__trivmlib__.select" << wasmTypeWords(type);
         reduced->push(WasmInstr{
-            .code = INSTR_SELECT,
-            .imm = { wasmTypeWords(type) },
+            .code = INSTR_TRIVM_CALL_IMPORT,
+            .immString = String$(str.str()),
         });
         break;
     }
@@ -159,7 +208,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
         for (int i = 0; i < words; i++) {
             reduced->push(WasmInstr{
                 .code = INSTR_LOCAL_SET,
-                .imm = { imm[0], (u64)i },
+                .imm = { imm[0], (u64)(4 * i) },
             });
         }
         break;
@@ -177,7 +226,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
         for (int i = 0; i < words; i++) {
             reduced->push(WasmInstr{
                 .code = INSTR_LOCAL_SET,
-                .imm = { imm[0], (u64)i },
+                .imm = { imm[0], (u64)(4 * i) },
             });
         }
         break;

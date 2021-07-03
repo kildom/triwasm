@@ -18,6 +18,7 @@ struct VMConfig
 
 static const VMConfig vmConfig = {
     .ext = {
+        .reduce = true,
         .i64 = false,
         .unreachable = false,
     },

@@ -1,6 +1,8 @@
 #ifndef _DOLLAR_HH_
 #define _DOLLAR_HH_
 
+#include <cstddef>
+
 #include "Utils.hh"
 
 #define DOLLAR_TYPEDEF(Class, ...) \

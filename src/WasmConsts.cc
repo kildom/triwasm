@@ -23,6 +23,15 @@ u32 wasmTypeWords(u32 type)
         }
 }
 
+
+u32 wasmTypesWords(Array$<u32> types)
+{
+    u32 result = 0;
+    for (auto t : types)
+        result += wasmTypeWords(t);
+    return result;
+}
+
 const char* wasmTypeName(u32 type)
 {
         switch (type)

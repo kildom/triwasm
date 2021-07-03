@@ -57,7 +57,8 @@ struct WasmFunction {
     WasmBlock$$ block;
     WasmImport$$ import;
     String$ exportName;
-    Array$<u32> paramsOffsets;
+    Array$<u32> localsOffsets;
+    u32 returnAddressOffset;
 };
 
 struct WasmInstr {
