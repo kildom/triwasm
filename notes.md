@@ -18,6 +18,10 @@
   * Add special virtual memory area (e.g. 0x80000000) that will be compiled to globals, e.g. `((uint32_t*)0x80000014) = 123`.
     Globals have smaller instruction size, so this is only optimization solution.
   * Use [LEMON](https://en.wikipedia.org/wiki/Lemon_(parser_generator)) parser generator to parse assembly file.
+  * Add option to compile into one memory.
+    * Program will be loaded by host to the beginning of the data memory.
+    * PMB register will be 0 (or program memory will be disabled in triVM).
+    * Startup code should move initialized data into right place, making room for e.g. VM stack
 
 * Add µVM extensions:
   * External memory:
