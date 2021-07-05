@@ -24,14 +24,17 @@
     * Startup code should move initialized data into right place, making room for e.g. VM stack
 
 * Add µVM extensions:
+  * Memory mappings:
+    * VM can be configured to use N MSB bits as memory identifier, e.g 2 bits gives 4 memories 1GB each.
+    * Each memory can grow indepenently
+    * By default stack can be allocated only on memory 0, but it can be configured to use any, but it cannot span on multiple memories.
   * External memory:
     * User can provide list of buffers (pointer and size) that virtual machine can access
     * List is valid only during specific function call
-    * It is mapped to the beginning of a linear memory (unused part)
+    * The list is mapped to one specific memory identifier
     * it is less safer than copying data to linear memory, so it should not be recommended
     * it it useful for passing large buffers that will take too much space in the linear memory
     * only READ/WRITE instructions can access external memory, stack cannot be there
-    * Memory will be fragmented: | normal memory | allocable space for external memory | linear memory |
     * it is compiler independent, so this option is not needed to generate the bytecode.
   * int64-partial: (is it really needed?)
     * int32 instructions uses additional register as a carry to perform faster int64 operations
