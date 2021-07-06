@@ -46,7 +46,7 @@ struct WasmBlock {
     WasmInstr$$ instr;
     WasmFunctionType$$ type;
     Array$<WasmInstr$$> body;
-    u32 stackBase;
+    s32 stackBase;
     u32 id;
     bool elsePresent;
 };
@@ -65,7 +65,8 @@ struct WasmFunction {
 struct WasmInstrBr {
     bool conditional;
     bool negated;
-    WasmInstrBr() : conditional(false), negated(false) {}
+    bool forceForward;
+    WasmInstrBr() : conditional(false), negated(false), forceForward(false) {}
 };
 
 struct WasmInstr {

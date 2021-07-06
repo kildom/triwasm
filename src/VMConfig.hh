@@ -14,6 +14,7 @@ struct VMConfig
         bool f32;
         bool unreachable;
     } ext;
+    bool verboseAsm;
 };
 
 static const VMConfig vmConfig = {
@@ -22,6 +23,7 @@ static const VMConfig vmConfig = {
         .i64 = false,
         .unreachable = false,
     },
+    .verboseAsm = true,
 };
 
 

@@ -317,9 +317,8 @@ template<typename T, bool nullable, bool vd>
 $<T, nullable, vd>::$(any$ * anyPtr) {
     auto &any = *anyPtr;
     if (any.ptr == nullptr) {
-        if (nullable) {
-            _ptr = nullptr;
-        } else {
+        _ptr = nullptr;
+        if (!nullable) {
             createInplace();
             auto p = $<_any$Inner<T, vd>, true, true>::create();
             p->ptr = *this;

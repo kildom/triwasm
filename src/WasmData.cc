@@ -40,9 +40,14 @@ static void dumpImm(std::ostream& out, WasmInstr$$ instr, Array$<u32> blockStack
     switch (instr->code)
     {
     case INSTR_BR:
-    case INSTR_BR_IF:
+    case INSTR_BR_IF: {
         out << instr->imm[0] << " {block" << blockStack[blockStack->length() - 1 - instr->imm[0]] << "} ";
+        auto d = WasmInstrBr$(instr->data);
+        if (d->conditional) out << "(conditional)";
+        if (d->forceForward) out << "(forward)";
+        if (d->negated) out << "(negated)";
         break;
+    }
     
     default:
         for (auto imm : instr->imm) {
@@ -444,11 +449,6 @@ static const char* instrName(u32 opcode)
     case INSTR_TRIVM_POP: return "trivm.pop";
     case INSTR_TRIVM_DUP: return "trivm.dup";
     case INSTR_TRIVM_FUNCTION: return "trivm.function";
-    case INSTR_TRIVM_FBR: return "trivm.fbr";
-    case INSTR_TRIVM_BBR: return "trivm.bbr";
-    case INSTR_TRIVM_FBR_IF: return "trivm.fbr_if";
-    case INSTR_TRIVM_BBR_IF: return "trivm.bbr_if";
-    case INSTR_TRIVM_RETURN_IF: return "trivm.return_if";
     /* -- End of source code generated with help of "gen_instr.js" script -- */
     }
     FATAL("Unknown instruction opcode 0x%02X", opcode);

@@ -34,25 +34,30 @@ void Generator::generateFunction(WasmFunction$ func)
     function = func;
     ind = "";
 
+    if (vmConfig.verboseAsm) out << "\n\n// ========== Function " << func->index << " ========== //\n";
+
     int localOffset = 0;
     int reserveBytes = 0;
     function->localsOffsets->length(func->locals->length());
     for (int i = func->type->param->length(); i < func->locals->length(); i++) {
         int words = wasmTypeWords(func->locals[i]);
         function->localsOffsets[i] = localOffset;
+        if (vmConfig.verboseAsm) out << "   // local " << wasmTypeName(func->locals[i]) << " @" << localOffset << "\n";
         localOffset += 4 * words;
         reserveBytes += 4 * words;
     }
     function->returnAddressOffset = localOffset;
+    if (vmConfig.verboseAsm) out << "   // return address @" << localOffset << "\n";
     localOffset += 4;
     for (int i = func->type->param->length() - 1; i >= 0; i--) {
         int words = wasmTypeWords(func->locals[i]);
         function->localsOffsets[i] = localOffset;
+        if (vmConfig.verboseAsm) out << "   // param " << wasmTypeName(func->locals[i]) << " @" << localOffset << "\n";
         localOffset += 4 * words;
     }
+    function->block->stackBase = -localOffset / 4;
 
-    out << "\n\n// ========== Function " << func->index << " ========== //" << std::endl;
-    out << "func" << func->index << ":" << std::endl;
+    out << "func" << func->index << ":\n";
 
     if (reserveBytes > 12) {
         out << "READ SP\nSUB " << reserveBytes << "\nWRITE SP\n";
@@ -84,14 +89,12 @@ void Generator::generateInstr(WasmInstr$$ instr)
 {
     Array$<u64> imm = instr->imm;
 
-    out << ind->buffer() << "                     // " << stackSize << std::endl;
-
     switch(instr->code) {
     case INSTR_ELSE: {
         TRACE();
         auto block = blockStack[RangeEnd - 1];
-        out << ind->buffer() << "BR block" << block->id << "_end" << std::endl;
-        out << ind->buffer() << "block" << block->id << "_else:" << std::endl;
+        out << ind->buffer() << "BR block" << block->id << "_end\n";
+        out << ind->buffer() << "block" << block->id << "_else:";
         block->elsePresent = true;
         stackSize = block->stackBase + wasmTypesWords(block->type->param);
         break;
@@ -100,11 +103,11 @@ void Generator::generateInstr(WasmInstr$$ instr)
         TRACE();
         instr->block->id = totalBlocks++;
         instr->block->stackBase = stackSize - wasmTypesWords(instr->block->type->param);
-        out << ind->buffer() << "BRF block" << instr->block->id << "_else" << std::endl;
+        out << ind->buffer() << "BRF block" << instr->block->id << "_else\n";
         generateBlock(instr->block);
         if (!instr->block->elsePresent)
-            out << ind->buffer() << "block" << instr->block->id << "_else:" << std::endl;
-        out << ind->buffer() << "block" << instr->block->id << "_end:" << std::endl;
+            out << ind->buffer() << "block" << instr->block->id << "_else:\n";
+        out << ind->buffer() << "block" << instr->block->id << "_end:";
         break;
     }
     case INSTR_BLOCK: {
@@ -112,36 +115,34 @@ void Generator::generateInstr(WasmInstr$$ instr)
         instr->block->id = totalBlocks++;
         instr->block->stackBase = stackSize - wasmTypesWords(instr->block->type->param);
         generateBlock(instr->block);
-        out << ind->buffer() << "block" << instr->block->id << "_end:" << std::endl;
+        out << ind->buffer() << "block" << instr->block->id << "_end:";
         break;
     }
     case INSTR_LOOP: {
         TRACE();
         instr->block->id = totalBlocks++;
         instr->block->stackBase = stackSize - wasmTypesWords(instr->block->type->param);
-        out << ind->buffer() << "block" << instr->block->id << "_begin:" << std::endl;
+        out << ind->buffer() << "block" << instr->block->id << "_begin:\n";
         generateBlock(instr->block);
-        out << ind->buffer() << "block" << instr->block->id << "_end:" << std::endl;
+        out << ind->buffer() << "block" << instr->block->id << "_end:";
         break;
     }
     case INSTR_END: {
         TRACE();
         auto block = blockStack[RangeEnd - 1];
-        if (block->instr->code == INSTR_LOOP) {
-
-        }
+        stackSize = block->stackBase + wasmTypesWords(block->type->result);
         break;
     }
     case INSTR_GLOBAL_GET: {
         TRACE();
-        out << ind->buffer() << "READ global" << instr->imm[0] << " + " << instr->imm[1] << std::endl;
+        out << ind->buffer() << "READ global" << instr->imm[0] << " + " << instr->imm[1];
         stackSize++;
         break;
     }
     case INSTR_CALL: {
         TRACE();
         auto callee = d->functions[instr->imm[0]];
-        out << ind->buffer() << "CALL func" << instr->imm[0] << std::endl;
+        out << ind->buffer() << "CALL func" << instr->imm[0];
         stackSize -= wasmTypesWords(callee->type->param);
         stackSize += wasmTypesWords(callee->type->result);
         break;
@@ -151,7 +152,7 @@ void Generator::generateInstr(WasmInstr$$ instr)
         auto functionType = d->functionTypes[imm[0]];
         auto table = imm[1];
         if (table > 0) {
-            out << ind->buffer() << "NEG -table" << table << std::endl;
+            out << ind->buffer() << "NEG -table" << table << "\n";
             generateInstr(WasmInstr{
                 .code = INSTR_TRIVM_CALL_IMPORT,
                 .immString = "__trivmlib__.call_indirect_n"_S,
@@ -166,45 +167,45 @@ void Generator::generateInstr(WasmInstr$$ instr)
     }
     case INSTR_LOCAL_GET: {
         TRACE();
-        out << ind->buffer() << "READ [SP] + " << 4 * stackSize << " + " << function->localsOffsets[instr->imm[0]] << " + " << instr->imm[1] << std::endl;
+        out << ind->buffer() << "READ [SP] + " << 4 * stackSize << " + " << function->localsOffsets[instr->imm[0]] << " + " << instr->imm[1];
         stackSize++;
         break;
     }
     case INSTR_I32_CONST: {
         TRACE();
         if (instr->imm[0] < 0x80000000 && instr->imm[0] != 0) {
-            out << ind->buffer() << "NEG -" << instr->imm[0] << std::endl;
+            out << ind->buffer() << "NEG -" << instr->imm[0];
         } else {
-            out << ind->buffer() << "NEG " << -(s32)instr->imm[0] << std::endl;
+            out << ind->buffer() << "NEG " << -(s32)instr->imm[0];
         }
         stackSize++;
         break;
     }
     case INSTR_TRIVM_DUP: {
         TRACE();
-        out << ind->buffer() << "READ [SP]" << std::endl;
+        out << ind->buffer() << "READ [SP]";
         stackSize++;
         break;
     }
     case INSTR_LOCAL_SET: {
         TRACE();
         stackSize--;
-        out << ind->buffer() << "WRITE [SP] + " << 4 * stackSize << " + " << function->localsOffsets[instr->imm[0]] << " + " << instr->imm[1] << std::endl;
+        out << ind->buffer() << "WRITE [SP] + " << 4 * stackSize << " + " << function->localsOffsets[instr->imm[0]] << " + " << instr->imm[1];
         break;
     }
     case INSTR_GLOBAL_SET: {
         TRACE();
         stackSize--;
-        out << ind->buffer() << "WRITE global" << instr->imm[0] << " + " << instr->imm[1] << std::endl;
+        out << ind->buffer() << "WRITE global" << instr->imm[0] << " + " << instr->imm[1];
         break;
     }
     case INSTR_I32_LOAD: {
         TRACE();
         if (instr->imm[0] % 4 == 0) {
-            out << ind->buffer() << "READ [IMP] + [POP] + " << instr->imm[0] << std::endl;
+            out << ind->buffer() << "READ [IMP] + [POP] + " << instr->imm[0];
         } else {
-            out << ind->buffer() << "ADD " << instr->imm[0] << std::endl;
-            out << ind->buffer() << "READ [IMP] + [POP]" << std::endl;
+            out << ind->buffer() << "ADD " << instr->imm[0] << "\n";
+            out << ind->buffer() << "READ [IMP] + [POP]";
         }
         break;
     }
@@ -212,10 +213,10 @@ void Generator::generateInstr(WasmInstr$$ instr)
     case INSTR_I32_LOAD16_U: {
         TRACE();
         if (instr->imm[0] % 2 == 0) {
-            out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP] + " << instr->imm[0] << std::endl;
+            out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP] + " << instr->imm[0];
         } else {
-            out << ind->buffer() << "ADD " << instr->imm[0] << std::endl;
-            out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP]" << std::endl;
+            out << ind->buffer() << "ADD " << instr->imm[0] << "\n";
+            out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP]";
         }
         break;
     }
@@ -223,23 +224,23 @@ void Generator::generateInstr(WasmInstr$$ instr)
         TRACE();
         stackSize -= 2;
         if (instr->imm[0] % 2 == 0) {
-            out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP] + " << instr->imm[0] << std::endl;
+            out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP] + " << instr->imm[0];
         } else {
-            out << ind->buffer() << "ADD " << instr->imm[0] << std::endl;
-            out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP]" << std::endl;
+            out << ind->buffer() << "ADD " << instr->imm[0] << "\n";
+            out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP]";
         }
         break;
     }
     case INSTR_I32_LOAD8_S:
     case INSTR_I32_LOAD8_U: {
         TRACE();
-        out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP] + " << instr->imm[0] << std::endl;
+        out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP] + " << instr->imm[0];
         break;
     }
     case INSTR_I32_STORE8: {
         TRACE();
         stackSize -= 2;
-        out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP] + " << instr->imm[0] << std::endl;
+        out << ind->buffer() << getTrivmInstr(instr->code) << " [IMP] + [POP] + " << instr->imm[0];
         break;
     }
     case INSTR_TRIVM_EMPTY: {
@@ -250,10 +251,10 @@ void Generator::generateInstr(WasmInstr$$ instr)
         TRACE();
         stackSize -= 2;
         if (instr->imm[0] % 4 == 0) {
-            out << ind->buffer() << "WRITE [IMP] + [POP] + " << instr->imm[0] << std::endl;
+            out << ind->buffer() << "WRITE [IMP] + [POP] + " << instr->imm[0];
         } else {
-            out << ind->buffer() << "ADD " << instr->imm[0] << std::endl;
-            out << ind->buffer() << "WRITE [IMP] + [POP]" << std::endl;
+            out << ind->buffer() << "ADD " << instr->imm[0] << "\n";
+            out << ind->buffer() << "WRITE [IMP] + [POP]";
         }
         break;
     }
@@ -262,116 +263,68 @@ void Generator::generateInstr(WasmInstr$$ instr)
         stackSize--;
         break;
     }
-    case INSTR_TRIVM_FBR: {
+    case INSTR_BR: {
         TRACE();
         auto block = blockStack[RangeEnd - (1 + instr->imm[0])];
-        int skip = stackSize - wasmTypesWords(block->type->result) - block->stackBase;
-        if (skip == 0) {
-            out << ind->buffer() << "BR block" << block->id << "_end" << std::endl;
-        } else {
-            generateUnwind(wasmTypesWords(block->type->result), skip);
-            out << ind->buffer() << "BR block" << block->id << "_end" << std::endl;
+        auto data = WasmInstrBr$(block->instr->data);
+        bool backward = (block->instr->code == INSTR_LOOP && !data->forceForward);
+        bool isReturn = (block->instr->code == INSTR_TRIVM_FUNCTION);
+        int skip;
+        int keep;
+        const char* label;
+        if (data->conditional) {
+            stackSize--;
         }
-        break;
-    }
-    case INSTR_TRIVM_BBR: {
-        TRACE();
-        auto block = blockStack[RangeEnd - (1 + instr->imm[0])];
-        int skip = stackSize - wasmTypesWords(block->type->param) - block->stackBase;
-        if (skip == 0) {
-            out << ind->buffer() << "BR block" << block->id << "_begin" << std::endl;
+        if (backward) {
+            label = "_begin";
+            keep = wasmTypesWords(block->type->param);
         } else {
-            generateUnwind(wasmTypesWords(block->type->result), skip);
-            out << ind->buffer() << "BR block" << block->id << "_begin" << std::endl;
+            label = "_end";
+            keep = wasmTypesWords(block->type->result);
         }
-        break;
-    }
-    case INSTR_RETURN: {
-        TRACE();
-        out << ind->buffer() << "READ [SP] + " << 4 * stackSize << " + " << function->returnAddressOffset << std::endl;
-        generateUnwind(wasmTypesWords(function->type->result) + 1, stackSize + wasmTypesWords(function->type->param) + wasmTypesWords(function->locals) + 1);
-        out << ind->buffer() << "WRITE PC" << std::endl;
-        break;
-    }
-    case INSTR_TRIVM_RETURN_IF: {
-        TRACE();
-        auto index = totalBlocks++;
-        out << ind->buffer() << "BRF skip" << index << std::endl;
-        generateInstr(WasmInstr{
-            .code = INSTR_RETURN,
-        });
-        out << ind->buffer() << "skip" << index << ":" << std::endl;
-        break;
-    }
-    case INSTR_TRIVM_FBR_IF: {
-        TRACE();
-        stackSize--;
-        auto block = blockStack[RangeEnd - (1 + instr->imm[0])];
-        int skip = stackSize - wasmTypesWords(block->type->result) - block->stackBase;
-        if (skip == 0) {
-            out << ind->buffer() << "BRT block" << block->id << "_end" << std::endl;
-        } else {
-            auto index = totalBlocks++;
-            out << ind->buffer() << "BRF skip" << index << std::endl;
-            generateUnwind(wasmTypesWords(block->type->result), skip);
-            out << ind->buffer() << "BR block" << block->id << "_end" << std::endl;
-            out << ind->buffer() << "skip" << index << ":" << std::endl;
-        }
-        break;
-    }
-    case INSTR_TRIVM_BBR_IF: {
-        TRACE();
-        stackSize--;
-        auto block = blockStack[RangeEnd - (1 + instr->imm[0])];
-        int skip = stackSize - wasmTypesWords(block->type->param) - block->stackBase;
-        if (skip == 0) {
-            out << ind->buffer() << "BRT block" << block->id << "_begin" << std::endl;
-        } else {
-            auto index = totalBlocks++;
-            out << ind->buffer() << "BRF skip" << index << std::endl;
-            generateUnwind(wasmTypesWords(block->type->result), skip);
-            out << ind->buffer() << "BR block" << block->id << "_begin" << std::endl;
-            out << ind->buffer() << "skip" << index << ":" << std::endl;
-        }
-        break;
-    }
-    case INSTR_BR_IF: {
-        TRACE();
-        stackSize--;
-        auto block = blockStack[RangeEnd - (1 + instr->imm[0])];
-        if (block->instr->code == INSTR_LOOP) {
-            int skip = stackSize - wasmTypesWords(block->type->param) - block->stackBase;
+        skip = stackSize - (block->stackBase + keep);
+        if (data->conditional) {
             if (skip == 0) {
-                out << ind->buffer() << "BRT block" << block->id << "_begin" << std::endl;
+                out << ind->buffer() << "BR" << (data->negated ? "F" : "T") << " block" << block->id << label;
             } else {
                 auto index = totalBlocks++;
-                out << ind->buffer() << "BRF skip" << index << std::endl;
-                generateUnwind(wasmTypesWords(block->type->result), skip);
-                out << ind->buffer() << "BR block" << block->id << "_begin" << std::endl;
-                out << ind->buffer() << "skip" << index << ":" << std::endl;
+                out << ind->buffer() << "BR" << (data->negated ? "T" : "F") << " skip" << index;
+                if (isReturn) {
+                    if (block->stackBase != -1 || keep != 0 || skip != 1) {
+                        out << ind->buffer() << "READ [SP] + " << 4 * stackSize << " + " << function->returnAddressOffset << "\n";
+                        generateUnwind(keep + 1, skip);
+                    }
+                    out << ind->buffer() << "READ PC";
+                } else {
+                    generateUnwind(keep, skip);
+                    out << ind->buffer() << "BR block" << block->id << label;
+                }
+                out << ind->buffer() << "skip" << index << ":";
             }
         } else {
-            int skip = stackSize - wasmTypesWords(block->type->result) - block->stackBase;
-            if (skip == 0) {
-                out << ind->buffer() << "BRT block" << block->id << "_end" << std::endl;
+            if (isReturn) {
+                if (block->stackBase != -1 || keep != 0 || skip != 1) {
+                    out << ind->buffer() << "READ [SP] + " << 4 * stackSize << " + " << function->returnAddressOffset << "\n";
+                    generateUnwind(keep + 1, skip);
+                }
+                out << ind->buffer() << "READ PC";
+            } else if (skip == 0) {
+                out << ind->buffer() << "BR block" << block->id << label;
             } else {
-                auto index = totalBlocks++;
-                out << ind->buffer() << "BRF skip" << index << std::endl;
-                generateUnwind(wasmTypesWords(block->type->result), skip);
-                out << ind->buffer() << "BR block" << block->id << "_end" << std::endl;
-                out << ind->buffer() << "skip" << index << ":" << std::endl;
+                generateUnwind(keep, skip);
+                out << ind->buffer() << "BR block" << block->id << label;
             }
         }
         break;
     }
     case INSTR_TRIVM_CALL_IMPORT: {
         TRACE();
-        out << ind->buffer() << "CALL " << instr->immString->buffer() << " // TODO: implement" << std::endl;
+        out << ind->buffer() << "CALL " << instr->immString->buffer() << " // TODO: implement";
         break;
     }
     case INSTR_TRIVM_POP: {
         TRACE();
-        out << ind->buffer() << "BRT 0" << std::endl;
+        out << ind->buffer() << "BRT 0";
         break;
     }
     case INSTR_I32_SHL:
@@ -391,21 +344,23 @@ void Generator::generateInstr(WasmInstr$$ instr)
     case INSTR_I32_OR:
     case INSTR_I32_XOR: {
         TRACE();
-        out << ind->buffer() << getTrivmInstr(instr->code) << std::endl;
+        out << ind->buffer() << getTrivmInstr(instr->code);
         stackSize--;
         break;
     }
     case INSTR_I32_EQZ: {
         TRACE();
-        out << ind->buffer() << getTrivmInstr(instr->code) << std::endl;
+        out << ind->buffer() << getTrivmInstr(instr->code);
         break;
     }
     default: {
         //FATAL("Unexpected instruction");
-        out << ind->buffer() << "// Unexpected instruction " << std::hex << instr->code << std::dec << std::endl;
+        out << ind->buffer() << "// Unexpected instruction " << std::hex << instr->code << std::dec;
         break;
     }
     };
+    
+    if (vmConfig.verboseAsm) out << "               // " << stackSize << "\n";
 }
 
 void Generator::generateUnwind(u32 keep, u32 skip)
@@ -413,15 +368,15 @@ void Generator::generateUnwind(u32 keep, u32 skip)
     if (vmConfig.ext.reduce) {
         if (keep < 16 && skip < 16) {
             s8 value = (keep << 4) | skip;
-            out << ind->buffer() << "UNWIND " << (s32)value << std::endl;
+            out << ind->buffer() << "UNWIND " << (s32)value << "\n";
             return;
         } else if (keep < 256 && skip < 256) {
             s16 value = (keep << 8) | skip;
-            out << ind->buffer() << "UNWIND " << (s32)value << std::endl;
+            out << ind->buffer() << "UNWIND " << (s32)value << "\n";
             return;
         } else if (keep < 65536 && skip < 65536) {
             u32 value = (keep << 16) | skip;
-            out << ind->buffer() << "UNWIND " << value << std::endl;
+            out << ind->buffer() << "UNWIND " << value << "\n";
             return;
         }
     }
