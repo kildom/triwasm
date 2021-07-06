@@ -230,11 +230,6 @@ void Generator::generateInstr(WasmInstr$$ instr)
         }
         break;
     }
-    case INSTR_BR_TABLE: {
-        TRACE();
-        stackSize--;
-        break;
-    }
     case INSTR_I32_LOAD8_S:
     case INSTR_I32_LOAD8_U: {
         TRACE();
@@ -253,12 +248,18 @@ void Generator::generateInstr(WasmInstr$$ instr)
     }
     case INSTR_I32_STORE: {
         TRACE();
+        stackSize -= 2;
         if (instr->imm[0] % 4 == 0) {
             out << ind->buffer() << "WRITE [IMP] + [POP] + " << instr->imm[0] << std::endl;
         } else {
             out << ind->buffer() << "ADD " << instr->imm[0] << std::endl;
             out << ind->buffer() << "WRITE [IMP] + [POP]" << std::endl;
         }
+        break;
+    }
+    case INSTR_BR_TABLE: {
+        TRACE();
+        stackSize--;
         break;
     }
     case INSTR_TRIVM_FBR: {

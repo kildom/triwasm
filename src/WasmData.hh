@@ -11,6 +11,7 @@ DOLLAR_STRUCT(WasmTable);
 DOLLAR_STRUCT(WasmFunction);
 DOLLAR_STRUCT(WasmMemory);
 DOLLAR_STRUCT(WasmGlobal);
+DOLLAR_STRUCT(WasmInstrBr);
 DOLLAR_STRUCT(WasmInstr);
 DOLLAR_STRUCT(WasmDataSegment);
 DOLLAR_STRUCT(WasmBlock);

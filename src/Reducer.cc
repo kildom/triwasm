@@ -94,48 +94,21 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
     }
     case INSTR_BR: {
         TRACE();
-        auto block = blockStack[RangeEnd - (1 + imm[0])];
-        if (block->instr->code == INSTR_LOOP) {
-            reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_BBR,
-                .imm = { imm[0] },
-            });
-        } else if (block->instr->code == INSTR_TRIVM_FUNCTION) {
-            reduced->push(WasmInstr{
-                .code = INSTR_RETURN,
-            });
-        } else {
-            reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_FBR,
-                .imm = { imm[0] },
-            });
-        }
+        reduced->push(instr);
         break;
     }
     case INSTR_RETURN: {
         TRACE();
-        reduced->push(instr);
+        reduced->push(WasmInstr{
+            .code = INSTR_BR,
+            .imm = { (u64)blockStack->length() - 1 },
+        });
         break;
     }
     case INSTR_BR_IF: {
         TRACE();
-        stack->pop();
-        auto block = blockStack[RangeEnd - (1 + imm[0])];
-        if (block->instr->code == INSTR_LOOP) {
-            reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_BBR_IF,
-                .imm = { imm[0] },
-            });
-        } else if (block->instr->code == INSTR_TRIVM_FUNCTION) {
-            reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_RETURN_IF,
-            });
-        } else {
-            reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_FBR_IF,
-                .imm = { imm[0] },
-            });
-        }
+        reduced->push(instr);
+        instr->info.get<WasmInstrInfoBr$$>()->conditional = true;
         break;
     }
     case INSTR_BR_TABLE: {
