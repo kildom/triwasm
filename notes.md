@@ -22,6 +22,13 @@
     * Program will be loaded by host to the beginning of the data memory.
     * PMB register will be 0 (or program memory will be disabled in triVM).
     * Startup code should move initialized data into right place, making room for e.g. VM stack
+  * Move WasmData content to WasmModule and collect all modules into Program structure (preparation for module linking)
+  * Add special type of module for `trivmlib` module
+    * It is identified by special export function name e.g. `__trivm__simple_module_linkage_marker()`
+    * Functions are not allowed to use memory and tables
+    * Memory data may contain special string e.g. `__triVM_inline_asm_begin_378dkjaJhDk278B28:function_name:code:__triVM_inline_asm_end_378dkjaJhDk278B28`.
+      Function body and locals of function `function_name` will be removed and replaced by the `code` which is triVM assembly code.
+    * Other modules can also use this feature.
 
 * Add µVM extensions:
   * Memory mappings:

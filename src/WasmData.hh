@@ -61,11 +61,18 @@ struct WasmFunction {
     u32 returnAddressOffset;
 };
 
+struct WasmInstrBr {
+    bool conditional;
+    bool negated;
+    WasmInstrBr() : conditional(false), negated(false) {}
+};
+
 struct WasmInstr {
     u32 code;
     Array$<u64> imm;
     String$ immString;
     WasmBlock$$ block;
+    any$ data;
 };
 
 struct WasmMemory

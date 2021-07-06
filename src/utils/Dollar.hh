@@ -17,6 +17,8 @@
     typedef $<struct Struct, false, ##__VA_ARGS__> Struct##$; \
     typedef $<struct Struct, true, ##__VA_ARGS__> Struct##$$
 
+class any$;
+
 class _$_New$ { };
 
 static const _$_New$ new$;
@@ -102,6 +104,8 @@ public:
     $(_$_New$) : _ptr(new Inner()) {
         _ptr->counter = 1;
     }
+
+    $(any$* anyPtr);
 
     ~$() {
         if (_ptr && (--_ptr->counter) == 0)
@@ -265,9 +269,71 @@ public:
         return $<T2, nullable, std::has_virtual_destructor<T2>::value>(inner);
     }
 
+    template<typename T2>
+    $<T2, nullable, std::has_virtual_destructor<T2>::value> castUnsafe() {
+        typedef _$_Inner<T2, std::has_virtual_destructor<T2>::value> Inner2;
+        T2* p = (T2*)&_ptr->data;
+        if ((void*)p != (void*)&_ptr->data) {
+            FATAL("Only cast to first parent is allowed");
+        }
+        ssize offset = (u8*)&_ptr->data - (u8*)_ptr;
+        Inner2* inner = (Inner2*)((u8*)p - offset);
+        if ((void*)&inner->counter != (void*)&_ptr->counter) {
+            FATAL("Some unconventional platform or compiler");
+        }
+        inner->counter++;
+        return $<T2, nullable, std::has_virtual_destructor<T2>::value>(inner);
+    }
+
 };
 
 template<typename T>
 using $$ = $<T, true>;
+
+struct anyInnerBase {
+    void* typeId;
+    virtual ~anyInnerBase() { }
+};
+
+class any$ {
+public:
+    $<anyInnerBase, true, true> ptr;
+    operator any$*()
+    {
+        return this;
+    }
+};
+
+template<typename T, bool vd>
+struct _any$Inner : public anyInnerBase {
+    $<T, true, vd> ptr;
+    static int typeIdField;
+};
+
+template<typename T, bool vd>
+int _any$Inner<T, vd>::typeIdField;
+
+template<typename T, bool nullable, bool vd>
+$<T, nullable, vd>::$(any$ * anyPtr) {
+    auto &any = *anyPtr;
+    if (any.ptr == nullptr) {
+        if (nullable) {
+            _ptr = nullptr;
+        } else {
+            createInplace();
+            auto p = $<_any$Inner<T, vd>, true, true>::create();
+            p->ptr = *this;
+            p->typeId = &_any$Inner<T, vd>::typeIdField;
+            any.ptr = p.template cast<anyInnerBase>();
+        }
+    } else if (any.ptr->typeId == &_any$Inner<T, vd>::typeIdField) {
+        auto p = any.ptr.castUnsafe<_any$Inner<T, vd>>();
+        _ptr = p->ptr._ptr;
+        if (_ptr)
+            _ptr->counter++;
+    } else {
+        ASSERT("Expected different type");
+    }
+}
 
 #endif /* _DOLLAR_HH_ */
