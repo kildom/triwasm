@@ -10,13 +10,13 @@ DOLLAR_CLASS(Reducer);
 
 class Reducer {
 private:
-    WasmData$ d;
+    WasmModule$$ mod;
     Array$<u32> stack;
     Array$<WasmBlock$$> blockStack;
     WasmFunction$$ function;
 
 public:
-    void reduce(WasmData$ d);
+    void reduce(WasmModule$ mod);
     void reduceFunction(WasmFunction$ func);
     void reduceBlock(WasmBlock$$ body);
     void reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced);

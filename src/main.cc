@@ -13,14 +13,18 @@ int main(int argc, char *argv[]) {
     auto wasmInput = fileInput.cast<WasmInputStream>();
 
     auto parser = WasmParser$::create();
-    auto tree = parser->parse(wasmInput);
+    auto mod = parser->parse(wasmInput);
+    mod->index = 0;
+
+    WasmProgram$ prog;
+    prog->modules->grow(0) = mod;
     
     Reducer$ reducer;
-    reducer->reduce(tree);
+    reducer->reduce(mod);
     //dumpData(tree);
 
     Generator$$ generator = Generator$$::create(std::cout);
-    generator->generate(tree);
+    generator->generate(prog);
 
     return 0;
 

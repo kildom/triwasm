@@ -8,20 +8,22 @@
 #include "VMConfig.hh"
 
 
-void Generator::generate(WasmData$ d)
+void Generator::generate(WasmProgram$ prog)
 {
     TRACE();
 
-    this->d = d;
+    this->prog = prog;
 
     totalBlocks = 0;
 
-    for (auto func: d->functions) {
-        if (func->import == nullptr) {
-            generateFunction(func);
+    for (auto mod: prog->modules) {
+        this->mod = mod;
+        for (auto func: mod->functions) {
+            if (func->import == nullptr) {
+                generateFunction(func);
+            }
         }
     }
-
 }
 
 
@@ -101,6 +103,7 @@ void Generator::generateInstr(WasmInstr$$ instr)
     }
     case INSTR_IF: {
         TRACE();
+        stackSize--;
         instr->block->id = totalBlocks++;
         instr->block->stackBase = stackSize - wasmTypesWords(instr->block->type->param);
         out << ind->buffer() << "BRF block" << instr->block->id << "_else\n";
@@ -135,21 +138,21 @@ void Generator::generateInstr(WasmInstr$$ instr)
     }
     case INSTR_GLOBAL_GET: {
         TRACE();
-        out << ind->buffer() << "READ global" << instr->imm[0] << " + " << instr->imm[1];
+        out << ind->buffer() << "READ mod" << mod->index << "global" << instr->imm[0] << " + " << instr->imm[1];
         stackSize++;
         break;
     }
     case INSTR_CALL: {
         TRACE();
-        auto callee = d->functions[instr->imm[0]];
-        out << ind->buffer() << "CALL func" << instr->imm[0];
+        auto callee = mod->functions[instr->imm[0]];
+        out << ind->buffer() << "CALL mod" << mod->index << "func" << instr->imm[0];
         stackSize -= wasmTypesWords(callee->type->param);
         stackSize += wasmTypesWords(callee->type->result);
         break;
     }
     case INSTR_CALL_INDIRECT: {
         TRACE();
-        auto functionType = d->functionTypes[imm[0]];
+        auto functionType = mod->functionTypes[imm[0]];
         auto table = imm[1];
         if (table > 0) {
             out << ind->buffer() << "NEG -table" << table << "\n";
@@ -266,7 +269,7 @@ void Generator::generateInstr(WasmInstr$$ instr)
     case INSTR_BR: {
         TRACE();
         auto block = blockStack[RangeEnd - (1 + instr->imm[0])];
-        auto data = WasmInstrBr$(block->instr->data);
+        auto data = WasmInstrBr$(instr->data);
         bool backward = (block->instr->code == INSTR_LOOP && !data->forceForward);
         bool isReturn = (block->instr->code == INSTR_TRIVM_FUNCTION);
         int skip;

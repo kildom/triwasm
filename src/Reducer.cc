@@ -8,13 +8,13 @@
 #include "VMConfig.hh"
 
 
-void Reducer::reduce(WasmData$ d)
+void Reducer::reduce(WasmModule$ mod)
 {
     TRACE();
 
-    this->d = d;
+    this->mod = mod;
 
-    for (auto func: d->functions) {
+    for (auto func: mod->functions) {
         if (func->import == nullptr) {
             reduceFunction(func);
         }
@@ -117,7 +117,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
     }
     case INSTR_CALL: {
         TRACE();
-        auto callee = d->functions[imm[0]];
+        auto callee = mod->functions[imm[0]];
         stack->pop(callee->type->param->length());
         reduced->push(instr);
         for (auto t : callee->type->result) {
@@ -127,7 +127,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
     }
     case INSTR_CALL_INDIRECT: {
         TRACE();
-        auto type = d->functionTypes[imm[0]];
+        auto type = mod->functionTypes[imm[0]];
         stack->pop(type->param->length());
         reduced->push(instr);
         for (auto t : type->result) {
@@ -204,7 +204,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
     }
     case INSTR_GLOBAL_GET: {
         TRACE();
-        auto global = d->globals[imm[0]];
+        auto global = mod->globals[imm[0]];
         int words = wasmTypeWords(global->type);
         for (int i = words - 1; i >= 0; i--) {
             reduced->push(WasmInstr{

@@ -15,8 +15,9 @@ DOLLAR_STRUCT(WasmInstrBr);
 DOLLAR_STRUCT(WasmInstr);
 DOLLAR_STRUCT(WasmDataSegment);
 DOLLAR_STRUCT(WasmBlock);
-DOLLAR_STRUCT(WasmData);
 DOLLAR_STRUCT(WasmElement);
+DOLLAR_STRUCT(WasmModule);
+DOLLAR_STRUCT(WasmProgram);
 
 
 struct WasmFunctionType {
@@ -117,7 +118,8 @@ struct WasmDataSegment
 };
 
 
-struct WasmData {
+struct WasmModule {
+    u32 index;
     // types
     Array$<WasmFunctionType$$> functionTypes;
     // main collectios
@@ -143,7 +145,12 @@ struct WasmData {
     WasmFunction$$ startFunction;
 };
 
-void dumpData(WasmData$$ data);
+struct WasmProgram {
+    WasmModule$ trivmlibMod;
+    Array$<WasmModule$$> modules;
+};
+
+void dumpProgram(WasmProgram$$ prog);
 
 
 #endif /* _WASM_DATA_HH_ */

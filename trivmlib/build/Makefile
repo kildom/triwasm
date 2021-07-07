@@ -11,20 +11,20 @@ else
 endif
 
 
-all: ../../lib/uvmlib.uvml
+all: ../../lib/trivmlib.wasm
 
 cleanobj:
 	rm -Rf obj
 
 clean: cleanobj
-	rm ../../lib/uvmlib.uvml
+	rm ../../lib/trivmlib.wasm
 
-../../lib/uvmlib.uvml: obj/uvmlib.wasm ../src/uvmlib.uvma
-	echo TODO > $@
+../../lib/trivmlib.wasm: obj/trivmlib.wasm
+	cp obj/trivmlib.wasm ../../lib/trivmlib.wasm
 
-obj/uvmlib.wasm: ../src/uvmlib.c
+obj/trivmlib.wasm: ../src/trivmlib.c
 	mkdir -p obj
-	$(CLANG) -Wl,--no-entry -nostartfiles -Wl,--import-memory -flto -Oz -g0 -o $@-no-opt $<
+	$(CLANG) -Wl,--no-entry -nostartfiles -Wl,--import-memory -mtail-call -msign-ext -mexec-model=reactor -flto -Oz -g0 -o $@-no-opt $<
 	$(WASM_OPT) -Oz -o $@ $@-no-opt
 
 get-tools: tools/wasi-sdk/bin/clang tools/binaryen/bin/wasm-opt

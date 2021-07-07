@@ -1,7 +1,7 @@
 /build/*/debug
 /build/*/release
-/uvmlib/build/tools
-/uvmlib/build/obj
+/trivmlib/build/tools
+/trivmlib/build/obj
 /scripts/temp
 /scripts/output
 package-lock.json

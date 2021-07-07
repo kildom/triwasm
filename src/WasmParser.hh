@@ -10,13 +10,13 @@ DOLLAR_CLASS(WasmParser);
 
 class WasmParser {
 private:
-    WasmData$ d;
+    WasmModule$ mod;
     WasmReader$$ r;
     WasmFunction$$ function;
     Array$<WasmBlock$> blockStack;
 
 public:
-    WasmData$ parse(WasmInputStream$$ stream);
+    WasmModule$ parse(WasmInputStream$$ stream);
 
 private:
     void parse();

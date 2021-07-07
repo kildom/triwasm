@@ -83,19 +83,21 @@ static void dumpInstr(std::ostream& out, String$ ind, Array$<WasmInstr$$> instrL
     }
 }
 
-void dumpData(WasmData$$ data)
+void dumpModule(WasmModule$$ mod)
 {
     //std::stringstream out;
     auto &out = std::cout;
 
+    //out << "================== MODULE " <<  << std::endl;
+
     out << "Function types: " << std::endl;
-    for (int i = 0; i < data->functionTypes->length(); i++) {
-        auto t = data->functionTypes[i];
+    for (int i = 0; i < mod->functionTypes->length(); i++) {
+        auto t = mod->functionTypes[i];
         out << "  [" << i << "] " << TypeList{t->param, true} << ":" << TypeList{t->result, false} << std::endl;
     }
 
     out << "Tables: " << std::endl;
-    for (auto t : data->tables) {
+    for (auto t : mod->tables) {
         out << "  [" << t->index << "] " << wasmTypeName(t->type) << ", size = ";
         if (t->unlimited) {
             out << t->min << " or more";
@@ -114,7 +116,7 @@ void dumpData(WasmData$$ data)
     }
 
     out << "Memories: " << std::endl;
-    for (auto m : data->memories) {
+    for (auto m : mod->memories) {
         out << "  [" << m->index << "] size = ";
         if (m->unlimited) {
             out << m->min << " or more";
@@ -133,7 +135,7 @@ void dumpData(WasmData$$ data)
     }
 
     out << "Globals: " << std::endl;
-    for (auto g : data->globals) {
+    for (auto g : mod->globals) {
         out << "  [" << g->index << "] " << (g->mut ? "var " : "const ") << wasmTypeName(g->type);
         if (g->import != nullptr) {
             out << ", import as " << g->import->module->buffer() << "." << g->import->name->buffer();
@@ -150,7 +152,7 @@ void dumpData(WasmData$$ data)
     }
 
     out << "Functions: " << std::endl;
-    for (auto f : data->functions) {
+    for (auto f : mod->functions) {
         out << "  [" << f->index << "] " << TypeList{f->type->param, true} << ":" << TypeList{f->type->result, false};
         if (f->import != nullptr) {
             out << ", import as " << f->import->module->buffer() << "." << f->import->name->buffer();
@@ -158,7 +160,7 @@ void dumpData(WasmData$$ data)
         if (f->exportName != nullptr) {
             out << ", export as " << f->exportName->buffer();
         }
-        if (f == data->startFunction) {
+        if (f == mod->startFunction) {
             out << ", startup function";
         }
         if (f->block != nullptr) {
@@ -180,8 +182,8 @@ void dumpData(WasmData$$ data)
         }
     }
 
-    /*out << "Data: " << std::endl;
-    for (auto d : data->data) {
+    out << "Data: " << std::endl;
+    for (auto d : mod->data) {
         out << "  [" << d->index << "] " << (d->active ? "active" : "passive");
         if (d->memory != nullptr) {
             out << " for memory " << d->memory->index << std::endl;
@@ -206,10 +208,10 @@ void dumpData(WasmData$$ data)
             }
             out.flags(saved);
         }
-    }*/
+    }
 
     out << "Elements: " << std::endl;
-    for (auto e : data->elements) {
+    for (auto e : mod->elements) {
         out << "  [" << e->index << "] " << (e->kind == WASM_ELEMENT_ACTIVE ? "active" : e->kind == WASM_ELEMENT_PASSIVE ? "passive" : "declarative");
         if (e->table != nullptr) {
             out << " for table " << e->table->index << std::endl;
@@ -234,6 +236,13 @@ void dumpData(WasmData$$ data)
     }
 
     //printf("%s", out.str().c_str());
+}
+
+void dumpProgram(WasmProgram$$ prog)
+{
+    for (auto mod : prog->modules) {
+        dumpModule(mod);
+    }
 }
 
 static const char* instrName(u32 opcode)

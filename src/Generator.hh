@@ -9,7 +9,8 @@ DOLLAR_CLASS(Generator);
 
 class Generator {
 private:
-    WasmData$ d;
+    WasmProgram$ prog;
+    WasmModule$ mod;
     u32 stackSize;
     Array$<WasmBlock$$> blockStack;
     WasmFunction$$ function;
@@ -19,7 +20,7 @@ private:
 
 public:
     Generator(std::ostream& out) : out(out) {}
-    void generate(WasmData$ d);
+    void generate(WasmProgram$ prog);
     void generateFunction(WasmFunction$ func);
     void generateBlock(WasmBlock$$ body);
     void generateInstr(WasmInstr$$ instr);
