@@ -24,8 +24,10 @@ clean: cleanobj
 
 obj/trivmlib.wasm: ../src/trivmlib.c
 	mkdir -p obj
-	$(CLANG) -Wl,--no-entry -nostartfiles -Wl,--import-memory -mtail-call -msign-ext -mexec-model=reactor -flto -Oz -g0 -o $@-no-opt $<
+	# TODO: -mtail-call 
+	$(CLANG) -Wl,--no-entry -nostartfiles -Wl,--import-memory -msign-ext -mexec-model=reactor -flto -Oz -g0 -o $@-no-opt $<
 	$(WASM_OPT) -Oz -o $@ $@-no-opt
+	#cp $@-no-opt $@
 
 get-tools: tools/wasi-sdk/bin/clang tools/binaryen/bin/wasm-opt
 

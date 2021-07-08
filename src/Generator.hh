@@ -26,6 +26,7 @@ public:
     void generateInstr(WasmInstr$$ instr);
     static const char* getTrivmInstr(u32 opcode);
     void generateUnwind(u32 keep, u32 skip);
+    void generateBuiltin(WasmInstr$$ instr);
 };
 
 #endif /* _GENERATOR_HH_ */

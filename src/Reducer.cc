@@ -1,3 +1,4 @@
+#include <sstream>
 #include "Utils.hh"
 #include "WasmData.hh"
 #include "FileInputStream.hh"
@@ -5,6 +6,7 @@
 #include "WasmParser.hh"
 #include "WasmInstr.hh"
 #include "Reducer.hh"
+#include "Builtins.hh"
 #include "VMConfig.hh"
 
 
@@ -119,9 +121,16 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
         TRACE();
         auto callee = mod->functions[imm[0]];
         stack->pop(callee->type->param->length());
-        reduced->push(instr);
         for (auto t : callee->type->result) {
             stack->push(t);
+        }
+        if (callee->import != nullptr && callee->import->module == "__trivm_builtin__") {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_BUILTIN,
+                .imm = { builtinFromName(callee->import->name) },
+            });
+        } else {
+            reduced->push(instr);
         }
         break;
     }
@@ -133,6 +142,25 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
         for (auto t : type->result) {
             stack->push(t);
         }
+        break;
+    }
+    case INSTR_RETURN_CALL: {
+        TRACE();
+        FATAL("Unimplemented");
+        auto callee = mod->functions[imm[0]];
+        if (callee->import != nullptr && callee->import->module == "__trivm_builtin__") {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_BUILTIN,
+                .imm = { builtinFromName(callee->import->name) },
+            });
+        } else {
+            reduced->push(instr);
+        }
+        break;
+    }
+    case INSTR_RETURN_CALL_INDIRECT: {
+        TRACE();
+        FATAL("Unimplemented");
         break;
     }
     case INSTR_DROP: {

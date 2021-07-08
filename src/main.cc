@@ -9,19 +9,22 @@
 int main(int argc, char *argv[]) {
     TRACE();
 
-    auto fileInput = FileInputStream$::create("../../test/libbzip2-dec.wasm");
-    auto wasmInput = fileInput.cast<WasmInputStream>();
-
     auto parser = WasmParser$::create();
-    auto mod = parser->parse(wasmInput);
-    mod->index = 0;
+    auto trivmlib = parser->parse(FileInputStream$::create("../../lib/trivmlib.wasm").cast<WasmInputStream>());
+    auto mod = parser->parse(FileInputStream$::create("../../test/libbzip2-dec.wasm").cast<WasmInputStream>());
+    trivmlib->index = 0;
+    mod->index = 1;
 
     WasmProgram$ prog;
-    prog->modules->grow(0) = mod;
+    prog->modules->grow(0) = trivmlib;
+    prog->modules->grow(1) = mod;
     
     Reducer$ reducer;
+    reducer->reduce(trivmlib);
+    reducer = new$;
     reducer->reduce(mod);
-    //dumpData(tree);
+
+    //dumpProgram(prog);
 
     Generator$$ generator = Generator$$::create(std::cout);
     generator->generate(prog);

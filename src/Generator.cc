@@ -5,6 +5,7 @@
 #include "WasmParser.hh"
 #include "WasmInstr.hh"
 #include "Generator.hh"
+#include "Builtins.hh"
 #include "VMConfig.hh"
 
 
@@ -140,6 +141,11 @@ void Generator::generateInstr(WasmInstr$$ instr)
         TRACE();
         out << ind->buffer() << "READ mod" << mod->index << "global" << instr->imm[0] << " + " << instr->imm[1];
         stackSize++;
+        break;
+    }
+    case INSTR_TRIVM_CALL_IMPORT: {
+        TRACE();
+        out << ind->buffer() << "CALL " << instr->immString->buffer() << " // TODO: implement";
         break;
     }
     case INSTR_CALL: {
@@ -320,9 +326,9 @@ void Generator::generateInstr(WasmInstr$$ instr)
         }
         break;
     }
-    case INSTR_TRIVM_CALL_IMPORT: {
+    case INSTR_TRIVM_BUILTIN: {
         TRACE();
-        out << ind->buffer() << "CALL " << instr->immString->buffer() << " // TODO: implement";
+        generateBuiltin(instr);
         break;
     }
     case INSTR_TRIVM_POP: {
@@ -386,12 +392,29 @@ void Generator::generateUnwind(u32 keep, u32 skip)
     // TODO: implement
 }
 
+
+void Generator::generateBuiltin(WasmInstr$$ instr)
+{
+    switch (instr->imm[0])
+    {
+    case BUILTIN_MAKE64: {
+        TRACE();
+        // Nothing to generate
+        break;
+    }
+    default:
+        FATAL("Unimplemented builtin");
+    }
+}
+
 const char* Generator::getTrivmInstr(u32 opcode)
 {
     switch (opcode)
     {
     case INSTR_CALL:
     case INSTR_CALL_INDIRECT:
+    case INSTR_RETURN_CALL:
+    case INSTR_RETURN_CALL_INDIRECT:
     case INSTR_TRIVM_CALL_IMPORT:
         return "CALL";
     case INSTR_LOCAL_GET:

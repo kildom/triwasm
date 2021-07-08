@@ -2,10 +2,25 @@
 #include <stdint.h>
 
 #define EXPORT(name) __attribute__((used)) __attribute__((export_name(#name)))
-#define IMPORT_BUILDIN(name) __attribute__((used)) __attribute__((import_module("__trivm_buildin__"))) __attribute__((import_name(#name)))
+#define IMPORT(module, name) __attribute__((used)) __attribute__((import_module(module))) __attribute__((import_name(#name)))
+#define IMPORT_BUILTIN(name) IMPORT("__trivm_builtin__", name)
 
-IMPORT_BUILDIN(make64)
-uint64_t __trivm_buildin__make64(uint32_t h, uint32_t l);
+#define TRIVM_ASSEMBLY(code) \
+__attribute__((used)) \
+__attribute__((import_module("__trivm_assembly_function__"))) \
+__attribute__((import_name(code)))
+
+#define TRIVM_INLINE_ASSEMBLY(code) \
+__attribute__((used)) \
+__attribute__((import_module("__trivm_inline_assembly_function__"))) \
+__attribute__((import_name(code)))
+
+
+TRIVM_INLINE_ASSEMBLY(
+    "// empty\n"
+    )
+uint64_t make64(uint32_t h, uint32_t l);
+
 
 EXPORT(sub64)
 uint64_t sub64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
@@ -16,7 +31,7 @@ uint64_t sub64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     }
     al -= bl;
     ah -= bh + carry;
-    return __trivm_buildin__make64(ah, al);
+    return make64(ah, al);
 }
 
 EXPORT(add64)
@@ -28,7 +43,7 @@ uint64_t add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     }
     al += bl;
     ah += bh + carry;
-    return __trivm_buildin__make64(ah, al);
+    return make64(ah, al);
 }
 
 #if 0

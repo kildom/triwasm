@@ -605,7 +605,8 @@ bool WasmParser::parseInstr(WasmInstr$$ instr, bool &allowElse)
         }
         break;
     }
-    case INSTR_CALL_INDIRECT: {
+    case INSTR_CALL_INDIRECT:
+    case INSTR_RETURN_CALL_INDIRECT: {
         TRACE();
         u32 typeidx0 = r->readU32();
         if (typeidx0 >= mod->functionTypes->length())
@@ -806,6 +807,7 @@ bool WasmParser::parseInstr(WasmInstr$$ instr, bool &allowElse)
         break;
     }
     case INSTR_CALL:
+    case INSTR_RETURN_CALL:
     case INSTR_REF_FUNC: {
         TRACE();
         u32 funcidx0 = r->readU32();

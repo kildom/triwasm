@@ -263,6 +263,8 @@ static const char* instrName(u32 opcode)
     case INSTR_RETURN: return "return";
     case INSTR_CALL: return "call";
     case INSTR_CALL_INDIRECT: return "call_indirect";
+    case INSTR_RETURN_CALL: return "return_call";
+    case INSTR_RETURN_CALL_INDIRECT: return "return_call_indirect";
     case INSTR_DROP: return "drop";
     case INSTR_SELECT: return "select";
     case INSTR_SELECT_T: return "select_t";
@@ -458,6 +460,7 @@ static const char* instrName(u32 opcode)
     case INSTR_TRIVM_POP: return "trivm.pop";
     case INSTR_TRIVM_DUP: return "trivm.dup";
     case INSTR_TRIVM_FUNCTION: return "trivm.function";
+    case INSTR_TRIVM_BUILTIN: return "trivm.builtin";
     /* -- End of source code generated with help of "gen_instr.js" script -- */
     }
     FATAL("Unknown instruction opcode 0x%02X", opcode);

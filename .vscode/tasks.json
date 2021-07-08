@@ -50,8 +50,8 @@
                 "options": {
                     "cwd": "${workspaceFolder}/build/wasm",
                     "env": {
-                        "WASI_SDK_ROOT": "C:\\work\\wasmbzip2\\wasi-sdk",
-                        "BINARYEN_ROOT": "C:\\work\\wasmbzip2\\binaryen"
+                        "WASI_SDK_ROOT": "${workspaceFolder}\\trivmlib\\build\\tools\\wasi-sdk",
+                        "BINARYEN_ROOT": "${workspaceFolder}\\trivmlib\\build\\tools\\binaryen"
                     }
                 }
             },
@@ -59,8 +59,8 @@
                 "options": {
                     "cwd": "${workspaceFolder}/build/wasm",
                     "env": {
-                        "WASI_SDK_ROOT": "/home/doki/my/wasmbzip2/wasi-sdk",
-                        "BINARYEN_ROOT": "/home/doki/my/wasmbzip2/binaryen"
+                        "WASI_SDK_ROOT": "${workspaceFolder}/trivmlib/build/tools/wasi-sdk",
+                        "BINARYEN_ROOT": "${workspaceFolder}/trivmlib/build/tools/binaryen"
                     }
                 }
             },
