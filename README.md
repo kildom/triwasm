@@ -1,4 +1,4 @@
-<img src="logo.svg" alt="" align="right" width="160" />
+<img src="doc/logo.svg" alt="" align="right" width="160" />
 
 # triWASM
 
