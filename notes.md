@@ -29,6 +29,10 @@
     * Memory data may contain special string e.g. `__triVM_inline_asm_begin_378dkjaJhDk278B28:function_name:code:__triVM_inline_asm_end_378dkjaJhDk278B28`.
       Function body and locals of function `function_name` will be removed and replaced by the `code` which is triVM assembly code.
     * Other modules can also use this feature.
+  * CoreMark test for wasm:
+    https://github.com/wasm3/wasm-coremark
+  * List of other engines:
+    https://github.com/wasm3/wasm3/blob/main/docs/Performance.md
 
 * Add µVM extensions:
   * Memory mappings:
@@ -325,7 +329,7 @@ native |	0,2
 v86 chrome	|10,7
 v86 firefox	|5,3
 jsLinux firefox |	23,2
-jsLinux chrome	20,4
+jsLinux chrome	| 20,4
 
 Best case is 26x slower than native - it is acceptable?
 
