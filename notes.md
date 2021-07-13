@@ -33,6 +33,8 @@
     https://github.com/wasm3/wasm-coremark
   * List of other engines:
     https://github.com/wasm3/wasm3/blob/main/docs/Performance.md
+  * Soft float library:
+    http://www.jhauser.us/arithmetic/SoftFloat.html
 
 * Add µVM extensions:
   * Memory mappings:
