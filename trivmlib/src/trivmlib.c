@@ -46,6 +46,50 @@ uint64_t add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     return make64(ah, al);
 }
 
+#define WASM_GLOBAL_SET_U64(name, value) name#__set_u64__(void); do { \
+    __attribute__((used)) \
+    __attribute__((import_module("__trivm_common_global__"))) \
+    __attribute__((import_name(name#__set_u64__))) \
+    void name#__set_u64__(long long); \
+    name#__set_u64__((value)); \
+    } while (0)
+
+#define WASM_GLOBAL_GET_U64(name, value) name#__set_u64__(void); do { \
+    __attribute__((used)) \
+    __attribute__((import_module("__trivm_common_global__"))) \
+    __attribute__((import_name(name#__get_u64__))) \
+    long long name#__get_u64__(void); \
+    value = name#__get_u64__(); \
+    } while (0)
+
+EXPORT(udiv64)
+uint64_t udiv64(uint64_t b, uint64_t a)
+{
+    uint32_t zeros = __builtin_clzll(b);
+    b <<= zeros;
+    uint64_t shift = (uint64_t)1 << zeros;
+    uint64_t result = 0;
+    while (shift) {
+        if (a >= b) {
+            result |= shift;
+            a -= b;
+        }
+        shift >>= 1;
+        b >>= 1;
+    }
+    WASM_GLOBAL_SET_U64(div64mod_value, a);
+    return result;
+}
+
+EXPORT(umod64)
+uint64_t umod64(uint64_t b, uint64_t a)
+{
+    udiv64(b, a);
+    WASM_GLOBAL_GET_U64(div64mod_value, a);
+    return a;
+}
+
+
 #if 0
 
 IMPORT(__trivm_buildin__make64)
