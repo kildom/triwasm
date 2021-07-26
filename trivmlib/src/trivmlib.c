@@ -46,6 +46,64 @@ uint64_t add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     return make64(ah, al);
 }
 
+EXPORT(udiv64)
+uint64_t udivmod64(uint32_t is_mod, uint64_t b, uint64_t a)
+{
+    uint32_t zeros = __builtin_clzll(b);
+    b <<= zeros;
+    uint64_t shift = (uint64_t)1 << zeros;
+    uint64_t result = 0;
+    while (shift) {
+        if (a >= b) {
+            result |= shift;
+            a -= b;
+        }
+        shift >>= 1;
+        b >>= 1;
+    }
+    return is_mod ? a : result;
+}
+
+TRIVM_ASSEMBLY(
+    "READ [SP]\n"
+    "PUSH 0\n"
+    "WRITE [SP] + 1\n"
+    "JUMP udivmod64"
+    )
+uint64_t udiv64(uint64_t b, uint64_t a);
+
+TRIVM_ASSEMBLY(
+    "READ [SP]\n"
+    "PUSH 1\n"
+    "WRITE [SP] + 1\n"
+    "JUMP udivmod64"
+    )
+uint64_t umod64(uint64_t b, uint64_t a);
+
+#if 0 // TODO: when SIMD is implemented, this implementation can be checked if it is more optimal.
+
+v128 udivmod64(uint64_t b, uint64_t a) { ... };
+
+TRIVM_ASSEMBLY(
+    "CALL udivmod64\n"
+    "POP\n"
+    "POP\n"
+    "RETURN\n"
+    )
+uint64_t udiv64(uint64_t b, uint64_t a);
+
+TRIVM_ASSEMBLY(
+    "CALL udivmod64\n"
+    "WRITE [SP] + 2\n"
+    "WRITE [SP] + 2\n"
+    "RETURN\n"
+    )
+uint64_t umod64(uint64_t b, uint64_t a);
+
+#endif
+
+#if 0
+
 #define WASM_GLOBAL_SET_U64(name, value) name#__set_u64__(void); do { \
     __attribute__((used)) \
     __attribute__((import_module("__trivm_common_global__"))) \
@@ -61,36 +119,6 @@ uint64_t add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     long long name#__get_u64__(void); \
     value = name#__get_u64__(); \
     } while (0)
-
-EXPORT(udiv64)
-uint64_t udiv64(uint64_t b, uint64_t a)
-{
-    uint32_t zeros = __builtin_clzll(b);
-    b <<= zeros;
-    uint64_t shift = (uint64_t)1 << zeros;
-    uint64_t result = 0;
-    while (shift) {
-        if (a >= b) {
-            result |= shift;
-            a -= b;
-        }
-        shift >>= 1;
-        b >>= 1;
-    }
-    WASM_GLOBAL_SET_U64(div64mod_value, a);
-    return result;
-}
-
-EXPORT(umod64)
-uint64_t umod64(uint64_t b, uint64_t a)
-{
-    udiv64(b, a);
-    WASM_GLOBAL_GET_U64(div64mod_value, a);
-    return a;
-}
-
-
-#if 0
 
 IMPORT(__trivm_buildin__make64)
 uint64_t __trivm_buildin__make64(uint32_t h, uint32_t l);
