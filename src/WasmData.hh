@@ -8,6 +8,8 @@
 DOLLAR_STRUCT(WasmFunctionType);
 DOLLAR_STRUCT(WasmImport);
 DOLLAR_STRUCT(WasmTable);
+DOLLAR_STRUCT(HostFunction);
+DOLLAR_STRUCT(AssemblyFunction);
 DOLLAR_STRUCT(WasmFunction);
 DOLLAR_STRUCT(WasmMemory);
 DOLLAR_STRUCT(WasmGlobal);
@@ -52,12 +54,22 @@ struct WasmBlock {
     bool elsePresent;
 };
 
+struct HostFunction {
+    u32 index;
+};
+
+struct AssemblyFunction {
+    bool inlined;
+    String$ code;
+};
+
 struct WasmFunction {
     u32 index;
     WasmFunctionType$$ type;
     Array$<u32> locals;
     WasmBlock$$ block;
     WasmImport$$ import;
+    any$ /* WasmFunction, HostFunction, AssemblyFunction */ link;
     String$ exportName;
     Array$<u32> localsOffsets;
     u32 returnAddressOffset;
@@ -146,7 +158,7 @@ struct WasmModule {
 };
 
 struct WasmProgram {
-    WasmModule$ trivmlibMod;
+    std::map<std::string, u32> trivmlibExports;
     Array$<WasmModule$$> modules;
 };
 

@@ -15,6 +15,7 @@ struct VMConfig
         bool unreachable;
     } ext;
     bool verboseAsm;
+    std::map<std::string, u32> imports;
 };
 
 static const VMConfig vmConfig = {

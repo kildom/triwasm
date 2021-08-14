@@ -1,17 +1,20 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <utility>
 #include <vector>
 #include <tuple>
 #include <string>
+#include <map>
 #include <iostream>
 #include <algorithm>
 #include <iomanip>
+
+using nullptr_t = std::nullptr_t;
 
 // Using type names as in WASM core specification
 using u64 = std::uint64_t;

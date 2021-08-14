@@ -5,6 +5,7 @@
 #include "WasmParser.hh"
 #include "Reducer.hh"
 #include "Generator.hh"
+#include "Linker.hh"
 
 int main(int argc, char *argv[]) {
     TRACE();
@@ -18,6 +19,9 @@ int main(int argc, char *argv[]) {
     WasmProgram$ prog;
     prog->modules->grow(0) = trivmlib;
     prog->modules->grow(1) = mod;
+
+    Linker$ linker;
+    linker->link(prog);
     
     Reducer$ reducer;
     reducer->reduce(trivmlib);
