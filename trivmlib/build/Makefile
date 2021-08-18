@@ -2,6 +2,20 @@
 CLANG=tools/wasi-sdk/bin/clang --sysroot=tools/wasi-sdk/share/wasi-sysroot
 WASM_OPT=tools/binaryen/bin/wasm-opt
 
+SF_SPEC=8086-SSE
+SF_ROUNDING_MODE=softfloat_round_near_even
+SF_DETECT_TININESS=softfloat_tininess_beforeRounding
+
+CFLAGS=\
+	-Wl,--no-entry -nostartfiles -Wl,--import-memory -msign-ext -mexec-model=reactor \
+	-flto -Oz -g0 \
+	-I../src \
+	-I../Berkeley-SoftFloat/include \
+	-I../Berkeley-SoftFloat/$(SF_SPEC) \
+	-DINLINE_LEVEL=10000 \
+	-DSF_ROUNDING_MODE=$(SF_ROUNDING_MODE) \
+	-DSF_DETECT_TININESS=$(SF_DETECT_TININESS)
+
 ifeq ($(OS),Windows_NT)
   WASI_SDK_URL=https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-12/wasi-sdk-12.0-mingw.tar.gz
   BINARYEN_URL=https://github.com/WebAssembly/binaryen/releases/download/version_101/binaryen-version_101-x86_64-windows.tar.gz
@@ -10,6 +24,59 @@ else
   BINARYEN_URL=https://github.com/WebAssembly/binaryen/releases/download/version_101/binaryen-version_101-x86_64-linux.tar.gz
 endif
 
+
+SRC=../src/i64.c \
+	../src/f32.c \
+	../src/f64.c \
+	\
+	../Berkeley-SoftFloat/f32_eq.c \
+	../Berkeley-SoftFloat/f32_lt.c \
+	../Berkeley-SoftFloat/f32_le.c \
+	../Berkeley-SoftFloat/f32_add.c \
+	../Berkeley-SoftFloat/f32_sub.c \
+	../Berkeley-SoftFloat/f32_mul.c \
+	../Berkeley-SoftFloat/f32_div.c \
+	../Berkeley-SoftFloat/f32_roundToInt.c \
+	../Berkeley-SoftFloat/s_addMagsF32.c \
+	../Berkeley-SoftFloat/s_subMagsF32.c \
+	../Berkeley-SoftFloat/s_normSubnormalF32Sig.c \
+	../Berkeley-SoftFloat/s_shiftRightJam32.c \
+	../Berkeley-SoftFloat/s_shortShiftRightJam64.c \
+	../Berkeley-SoftFloat/s_roundPackToF32.c \
+	../Berkeley-SoftFloat/s_normRoundPackToF32.c \
+	../Berkeley-SoftFloat/s_approxRecip32_1.c \
+	../Berkeley-SoftFloat/s_approxRecip_1Ks.c \
+	../Berkeley-SoftFloat/$(SF_SPEC)/s_propagateNaNF32UI.c \
+	../Berkeley-SoftFloat/f64_eq.c \
+	../Berkeley-SoftFloat/f64_lt.c \
+	../Berkeley-SoftFloat/f64_le.c \
+	../Berkeley-SoftFloat/f64_add.c \
+	../Berkeley-SoftFloat/f64_sub.c \
+	../Berkeley-SoftFloat/f64_mul.c \
+	../Berkeley-SoftFloat/f64_div.c \
+	../Berkeley-SoftFloat/f64_roundToInt.c \
+	../Berkeley-SoftFloat/s_addMagsF64.c \
+	../Berkeley-SoftFloat/s_subMagsF64.c \
+	../Berkeley-SoftFloat/s_normSubnormalF64Sig.c \
+	../Berkeley-SoftFloat/s_shiftRightJam64.c \
+	../Berkeley-SoftFloat/s_roundPackToF64.c \
+	../Berkeley-SoftFloat/s_normRoundPackToF64.c \
+	../Berkeley-SoftFloat/s_mul64To128M.c \
+	../Berkeley-SoftFloat/$(SF_SPEC)/s_propagateNaNF64UI.c \
+	../Berkeley-SoftFloat/$(SF_SPEC)/s_f64UIToCommonNaN.c \
+	../Berkeley-SoftFloat/$(SF_SPEC)/s_commonNaNToF32UI.c \
+	../Berkeley-SoftFloat/$(SF_SPEC)/s_f32UIToCommonNaN.c \
+	../Berkeley-SoftFloat/$(SF_SPEC)/s_commonNaNToF64UI.c \
+	../Berkeley-SoftFloat/i32_to_f32.c \
+	../Berkeley-SoftFloat/ui32_to_f32.c \
+	../Berkeley-SoftFloat/i64_to_f32.c \
+	../Berkeley-SoftFloat/ui64_to_f32.c \
+	../Berkeley-SoftFloat/i32_to_f64.c \
+	../Berkeley-SoftFloat/ui32_to_f64.c \
+	../Berkeley-SoftFloat/i64_to_f64.c \
+	../Berkeley-SoftFloat/ui64_to_f64.c \
+	../Berkeley-SoftFloat/f64_to_f32.c \
+	../Berkeley-SoftFloat/f32_to_f64.c \
 
 all: ../../lib/trivmlib.wasm
 
@@ -22,10 +89,10 @@ clean: cleanobj
 ../../lib/trivmlib.wasm: obj/trivmlib.wasm
 	cp obj/trivmlib.wasm ../../lib/trivmlib.wasm
 
-obj/trivmlib.wasm: ../src/trivmlib.c
+obj/trivmlib.wasm: $(SRC)
 	mkdir -p obj
 	# TODO: -mtail-call 
-	$(CLANG) -Wl,--no-entry -nostartfiles -Wl,--import-memory -msign-ext -mexec-model=reactor -flto -Oz -g0 -o $@-no-opt $<
+	$(CLANG) $(CFLAGS) -o $@-no-opt $(SRC)
 	$(WASM_OPT) -Oz -o $@ $@-no-opt
 	#cp $@-no-opt $@
 
