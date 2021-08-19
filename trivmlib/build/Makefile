@@ -1,6 +1,7 @@
 
 CLANG=tools/wasi-sdk/bin/clang --sysroot=tools/wasi-sdk/share/wasi-sysroot
 WASM_OPT=tools/binaryen/bin/wasm-opt
+WASM_DIS=tools/binaryen/bin/wasm-dis
 
 SF_SPEC=8086-SSE
 SF_ROUNDING_MODE=softfloat_round_near_even
@@ -80,6 +81,11 @@ SRC=../src/i64.c \
 
 all: ../../lib/trivmlib.wasm
 
+wat: all obj/trivmlib.wat
+
+obj/trivmlib.wat: obj/trivmlib.wasm
+	$(WASM_DIS) -o $@ $<
+
 cleanobj:
 	rm -Rf obj
 
@@ -89,7 +95,7 @@ clean: cleanobj
 ../../lib/trivmlib.wasm: obj/trivmlib.wasm
 	cp obj/trivmlib.wasm ../../lib/trivmlib.wasm
 
-obj/trivmlib.wasm: $(SRC)
+obj/trivmlib.wasm: $(SRC) ../src/*.h ../Berkeley-SoftFloat/include/*.h ../Berkeley-SoftFloat/$(SF_SPEC)/*.h Makefile
 	mkdir -p obj
 	# TODO: -mtail-call 
 	$(CLANG) $(CFLAGS) -o $@-no-opt $(SRC)
