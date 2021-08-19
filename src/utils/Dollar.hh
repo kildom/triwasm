@@ -5,7 +5,7 @@
 
 #define DOLLAR_TYPEDEF(Class, ...) \
     typedef $<Class, false, ##__VA_ARGS__> Class##$; \
-    typedef $<Class, true, ##__VA_ARGS__> Class##$$
+    typedef $<Class, true, ##__VA_ARGS__> Class##$$ // TODO: Reconsider keeping just one variant: nullable only
 
 #define DOLLAR_CLASS(Class, ...) \
     typedef $<class Class, false, ##__VA_ARGS__> Class##$; \

@@ -157,7 +157,7 @@ struct WasmModule {
     WasmFunction$$ startFunction;
 };
 
-struct WasmProgram {
+struct WasmProgram { // TODO: this struct is no longer needed, because linker will put everything into main module
     std::map<std::string, u32> trivmlibExports;
     Array$<WasmModule$$> modules;
 };
