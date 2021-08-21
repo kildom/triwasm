@@ -6,10 +6,10 @@
 #include "WasmInstr.hh"
 #include "WasmParser.hh"
 
-WasmModule$ WasmParser::parse(WasmInputStream$$ stream)
+WasmModule$$ WasmParser::parse(WasmInputStream$ stream)
 {
     TRACE();
-    r = WasmReader$$::create(stream);
+    r = WasmReader$::create(stream);
     mod = new$;
     parse();
     return mod;
@@ -116,7 +116,7 @@ void WasmParser::parseTypeSection()
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
         // types.html#binary-functype
-        WasmFunctionType$ type = new$;
+        WasmFunctionType$$ type = new$;
         auto startByte = r->byte();
         if (startByte != 0x60)
             FATAL("Invalid function type start byte");
@@ -140,13 +140,13 @@ void WasmParser::parseImportSection()
     // modules.html#binary-importsec
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
-        WasmImport$ import;
+        WasmImport$$ import;
         import->module = r->string();
         import->name = r->string();
         auto select = r->byte();
         switch (select) {
             case 0x00: {
-                WasmFunction$ func;
+                WasmFunction$$ func;
                 func->index = (u32)mod->functions->length();
                 func->type = mod->functionTypes[r->readU32()];
                 func->import = import;
@@ -157,7 +157,7 @@ void WasmParser::parseImportSection()
             }
             case 0x01: {
                 // types.html#binary-tabletype
-                WasmTable$ table;
+                WasmTable$$ table;
                 table->index = (u32)mod->tables->length(),
                 table->type = refType();
                 auto limits = parseLimits();
@@ -171,7 +171,7 @@ void WasmParser::parseImportSection()
             }
             case 0x02: {
                 // types.html#binary-memtype
-                WasmMemory$ memory;
+                WasmMemory$$ memory;
                 memory->index = (u32)mod->memories->length();
                 auto limits = parseLimits();
                 memory->min = (u32)limits.beginOffset;
@@ -184,7 +184,7 @@ void WasmParser::parseImportSection()
             }
             case 0x03: {
                 // types.html#binary-globaltype
-                WasmGlobal$ global;
+                WasmGlobal$$ global;
                 global->index = (u32)mod->globals->length();
                 global->type = valueType();
                 global->mut = !!r->byte();
@@ -276,25 +276,25 @@ void WasmParser::parseExportSection()
         auto index = r->readU32();
         switch (select) {
             case 0x00: {
-                WasmFunction$ func = mod->functions[index];
+                WasmFunction$$ func = mod->functions[index];
                 func->exportName = name;
                 printf("  export function %d as %s\n", index, name->buffer());
                 break;
             }
             case 0x01: {
-                WasmTable$ table = mod->tables[index];
+                WasmTable$$ table = mod->tables[index];
                 table->exportName = name;
                 printf("  export table %d as %s\n", index, name->buffer());
                 break;
             }
             case 0x02: {
-                WasmMemory$ memory = mod->memories[index];
+                WasmMemory$$ memory = mod->memories[index];
                 memory->exportName = name;
                 printf("  export memory %d as %s\n", index, name->buffer());
                 break;
             }
             case 0x03: {
-                WasmGlobal$ global = mod->globals[index];
+                WasmGlobal$$ global = mod->globals[index];
                 global->exportName = name;
                 printf("  export global %d as %s\n", index, name->buffer());
                 break;
@@ -322,7 +322,7 @@ void WasmParser::parseElementSection() {
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
         auto select = r->readU32();
-        WasmElement$ element;
+        WasmElement$$ element;
         u8 elemkind = 0x00;
         switch (select & 0x03) {
             case 0x00:
@@ -389,7 +389,7 @@ void WasmParser::parseCodeSection() {
 void WasmParser::parseDataSection() {
     TRACE();
 
-    WasmDataSegment$ data;
+    WasmDataSegment$$ data;
 
     // modules.html#binary-datasec
     mod->data = new$;
@@ -458,7 +458,7 @@ void WasmParser::parseFuncCode(u32 funcIndex) {
 
     // modules.html#binary-codesec
     function = mod->functions[funcIndex];
-    Array$<u32> locals;
+    Array$$<u32> locals;
     for (auto type : function->type->param) {
         locals->push(type);
     }
@@ -483,11 +483,11 @@ void WasmParser::parseFuncCode(u32 funcIndex) {
     function = nullptr;
 }
 
-Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
+Array$$<WasmInstr$> WasmParser::parseExpr(bool allowElse) {
     TRACE();
-    Array$<WasmInstr$$> instrs;
+    Array$$<WasmInstr$> instrs;
     while (true) {
-        WasmInstr$ instr;
+        WasmInstr$$ instr;
         auto code = r->byte();
 
         if (code == INSTR_TRIVM_WASM_EXT) {
@@ -544,7 +544,7 @@ Array$<WasmInstr$$> WasmParser::parseExpr(bool allowElse) {
     return instrs;
 }
 
-bool WasmParser::parseInstr(WasmInstr$$ instr, bool &allowElse)
+bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
 {
     TRACE();
 
@@ -953,7 +953,7 @@ bool WasmParser::parseInstr(WasmInstr$$ instr, bool &allowElse)
 }
 
 
-void WasmParser::parseCompressedBlockType(WasmBlock$ block)
+void WasmParser::parseCompressedBlockType(WasmBlock$$ block)
 {
     TRACE();
 
@@ -961,7 +961,7 @@ void WasmParser::parseCompressedBlockType(WasmBlock$ block)
 
     switch (typeIndex) {
         case TYPE_BT_CMP_I32: {
-                static WasmFunctionType$ resultType = WasmFunctionType {
+                static WasmFunctionType$$ resultType = WasmFunctionType {
                     .param = { },
                     .result = { TYPE_I32 },
                 };
@@ -969,7 +969,7 @@ void WasmParser::parseCompressedBlockType(WasmBlock$ block)
                 break;
             }
         case TYPE_BT_CMP_I64: {
-                static WasmFunctionType$ resultType = WasmFunctionType {
+                static WasmFunctionType$$ resultType = WasmFunctionType {
                     .param = { },
                     .result = { TYPE_I64 },
                 };
@@ -977,7 +977,7 @@ void WasmParser::parseCompressedBlockType(WasmBlock$ block)
                 break;
             }
         case TYPE_BT_CMP_F32: {
-                static WasmFunctionType$ resultType = WasmFunctionType {
+                static WasmFunctionType$$ resultType = WasmFunctionType {
                     .param = { },
                     .result = { TYPE_F32 },
                 };
@@ -985,7 +985,7 @@ void WasmParser::parseCompressedBlockType(WasmBlock$ block)
                 break;
             }
         case TYPE_BT_CMP_F64: {
-                static WasmFunctionType$ resultType = WasmFunctionType {
+                static WasmFunctionType$$ resultType = WasmFunctionType {
                     .param = { },
                     .result = { TYPE_F64 },
                 };
@@ -993,7 +993,7 @@ void WasmParser::parseCompressedBlockType(WasmBlock$ block)
                 break;
             }
         case TYPE_BT_CMP_VOID: {
-                static WasmFunctionType$ resultType = WasmFunctionType {
+                static WasmFunctionType$$ resultType = WasmFunctionType {
                     .param = { },
                     .result = { },
                 };

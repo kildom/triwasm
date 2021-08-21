@@ -10,7 +10,7 @@
 #include "VMConfig.hh"
 
 
-void Reducer::reduce(WasmModule$ mod)
+void Reducer::reduce(WasmModule$$ mod)
 {
     TRACE();
 
@@ -25,7 +25,7 @@ void Reducer::reduce(WasmModule$ mod)
 }
 
 
-void Reducer::reduceFunction(WasmFunction$ func)
+void Reducer::reduceFunction(WasmFunction$$ func)
 {
     TRACE();
 
@@ -36,10 +36,10 @@ void Reducer::reduceFunction(WasmFunction$ func)
     reduceBlock(function->block);
 }
 
-void Reducer::reduceBlock(WasmBlock$$ block)
+void Reducer::reduceBlock(WasmBlock$ block)
 {
     TRACE();
-    Array$<WasmInstr$$> reduced = new$;
+    Array$$<WasmInstr$> reduced = new$;
     blockStack->push(block);
     for (auto instr: block->body) {
         reduceInstr(instr, reduced);
@@ -49,9 +49,9 @@ void Reducer::reduceBlock(WasmBlock$$ block)
 }
 
 
-void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
+void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
 {
-    Array$<u64> imm = instr->imm;
+    Array$$<u64> imm = instr->imm;
 
     switch(instr->code) {
     case INSTR_BLOCK:
@@ -84,7 +84,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
             .code = INSTR_BR,
             .imm = { 0 },
         });
-        WasmInstrBr$(reduced[RangeEnd - 1]->data)->forceForward = true;
+        WasmInstrBr$$(reduced[RangeEnd - 1]->data)->forceForward = true;
         stack[Range(block->stackBase, RangeEnd - block->type->result->length())] = {};
         reduced->push(instr);
         break;
@@ -108,7 +108,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
             .code = INSTR_BR,
             .imm = { 0 },
         });
-        WasmInstrBr$(reduced[RangeEnd - 1]->data)->conditional = true;
+        WasmInstrBr$$(reduced[RangeEnd - 1]->data)->conditional = true;
         break;
     }
     case INSTR_BR_TABLE: {
@@ -183,7 +183,7 @@ void Reducer::reduceInstr(WasmInstr$$ instr, Array$<WasmInstr$$> reduced)
         str << "__trivmlib__.select" << wasmTypeWords(type);
         reduced->push(WasmInstr{
             .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = String$(str.str()),
+            .immString = String$$(str.str()),
         });
         break;
     }

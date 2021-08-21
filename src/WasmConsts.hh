@@ -38,7 +38,7 @@ enum WasmElementKind {
     WASM_ELEMENT_DECLARATIVE,
 };
 
-static Array$<String$> sectionNames = {
+static Array$<String$$> sectionNames = {
     "custom"_S,
     "type"_S,
     "import"_S,
@@ -55,7 +55,7 @@ static Array$<String$> sectionNames = {
 };
 
 u32 wasmTypeWords(u32 type);
-u32 wasmTypesWords(Array$<u32> types);
+u32 wasmTypesWords(Array$$<u32> types);
 const char* wasmTypeName(u32 type);
 
 #endif /* _WASM_CONSTS_HH_ */

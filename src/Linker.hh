@@ -9,11 +9,11 @@ DOLLAR_CLASS(Linker);
 
 class Linker {
 private:
-    WasmProgram$$ prog;
-    WasmModule$$ mod;
+    WasmProgram$ prog;
+    WasmModule$ mod;
 
 public:
-    void link(WasmProgram$ prog);
+    void link(WasmProgram$$ prog);
 };
 
 #endif /* _LINKER_HH_ */

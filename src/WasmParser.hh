@@ -10,13 +10,13 @@ DOLLAR_CLASS(WasmParser);
 
 class WasmParser {
 private:
-    WasmModule$ mod;
-    WasmReader$$ r;
-    WasmFunction$$ function;
-    Array$<WasmBlock$> blockStack;
+    WasmModule$$ mod;
+    WasmReader$ r;
+    WasmFunction$ function;
+    Array$<WasmBlock$$> blockStack;
 
 public:
-    WasmModule$ parse(WasmInputStream$$ stream);
+    WasmModule$$ parse(WasmInputStream$ stream);
 
 private:
     void parse();
@@ -35,13 +35,13 @@ private:
     void parseDataCountSection();
     void parseCustomSection();
     void parseFuncCode(u32 funcIndex);
-    Array$<WasmInstr$$> parseExpr(bool allowElse = false);
-    bool parseInstr(WasmInstr$$ instr, bool &allowElse);
-    void parseCompressedBlockType(WasmBlock$ block);
+    Array$$<WasmInstr$> parseExpr(bool allowElse = false);
+    bool parseInstr(WasmInstr$ instr, bool &allowElse);
+    void parseCompressedBlockType(WasmBlock$$ block);
     Range parseLimits();
     u32 valueType();
     u32 refType();
-    void utf8Check(String$ text);
+    void utf8Check(String$$ text);
 
     void postProcess();
 };

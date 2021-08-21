@@ -4,16 +4,16 @@
 #include "Utils.hh"
 
 #define DOLLAR_TYPEDEF(Class, ...) \
-    typedef $<Class, false, ##__VA_ARGS__> Class##$; \
-    typedef $<Class, true, ##__VA_ARGS__> Class##$$ // TODO: Reconsider keeping just one variant: nullable only
+    typedef $<Class, true, ##__VA_ARGS__> Class##$; \
+    typedef $<Class, false, ##__VA_ARGS__> Class##$$
 
 #define DOLLAR_CLASS(Class, ...) \
-    typedef $<class Class, false, ##__VA_ARGS__> Class##$; \
-    typedef $<class Class, true, ##__VA_ARGS__> Class##$$
+    typedef $<class Class, true, ##__VA_ARGS__> Class##$; \
+    typedef $<class Class, false, ##__VA_ARGS__> Class##$$
 
 #define DOLLAR_STRUCT(Struct, ...) \
-    typedef $<struct Struct, false, ##__VA_ARGS__> Struct##$; \
-    typedef $<struct Struct, true, ##__VA_ARGS__> Struct##$$
+    typedef $<struct Struct, true, ##__VA_ARGS__> Struct##$; \
+    typedef $<struct Struct, false, ##__VA_ARGS__> Struct##$$
 
 class any$;
 
@@ -64,7 +64,7 @@ struct _$_DefaultInnerCreator<Inner, false>
     }
 };
 
-template<typename T, bool nullable = false, bool vd = false>
+template<typename T, bool nullable = true, bool vd = false>
 class $ {
 public:
     typedef _$_Inner<T, vd> Inner;
@@ -81,6 +81,10 @@ public:
     }
 
     $(const $<T, !nullable, vd> &a) : _ptr(a._ptr) {
+        if (!a._ptr && nullable) {
+            a.create();
+            _ptr = a._ptr;
+        }
         if (_ptr)
             _ptr->counter++;
     }
@@ -129,6 +133,8 @@ public:
     $& operator=(const $<T, !nullable, vd>& a) {
         if (_ptr && (--_ptr->counter) == 0)
             delete _ptr;
+        if (!a._ptr && nullable)
+            a.create();
         _ptr = a._ptr;
         if (_ptr)
             _ptr->counter++;
@@ -286,7 +292,7 @@ public:
 };
 
 template<typename T>
-using $$ = $<T, true>;
+using $$ = $<T, false>;
 
 struct anyInnerBase {
     void* typeId;

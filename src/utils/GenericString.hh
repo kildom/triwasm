@@ -29,45 +29,45 @@ public:
 };
 
 template<typename T>
-class GenericString$ : public $<GenericStringInner<T>> {
+class GenericString$$ : public $<GenericStringInner<T>> {
 public:
 
     typedef std::basic_string<T> basic_string;
     typedef T type;
 
-    GenericString$() : $<GenericStringInner<T>>() { }
-    GenericString$(nullptr_t) : $<GenericStringInner<T>>(nullptr) { }
-    GenericString$(const GenericString$ &a) : $<GenericStringInner<T>>(a) { }
-    GenericString$(GenericString$ &&a) : $<GenericStringInner<T>>(a) { }
-    GenericString$(const GenericStringInner<T>& a) : $<GenericStringInner<T>>(a) { }
-    GenericString$(typename $<GenericStringInner<T>>::Inner * a) : $<GenericStringInner<T>>(a) { }
-    ~GenericString$() { }
+    GenericString$$() : $<GenericStringInner<T>>() { }
+    GenericString$$(nullptr_t) : $<GenericStringInner<T>>(nullptr) { }
+    GenericString$$(const GenericString$$ &a) : $<GenericStringInner<T>>(a) { }
+    GenericString$$(GenericString$$ &&a) : $<GenericStringInner<T>>(a) { }
+    GenericString$$(const GenericStringInner<T>& a) : $<GenericStringInner<T>>(a) { }
+    GenericString$$(typename $<GenericStringInner<T>>::Inner * a) : $<GenericStringInner<T>>(a) { }
+    ~GenericString$$() { }
 
-    GenericString$& operator=(nullptr_t) {
+    GenericString$$& operator=(nullptr_t) {
         $<GenericStringInner<T>>::operator=(nullptr);
         return *this;
     }
 
-    GenericString$& operator=(const GenericString$& a) {
+    GenericString$$& operator=(const GenericString$$& a) {
         $<GenericStringInner<T>>::operator=(a);
         return *this;
     }
 
-    GenericString$& operator=(GenericString$&& a) {
+    GenericString$$& operator=(GenericString$$&& a) {
         $<GenericStringInner<T>>::operator=(a);
         return *this;
     }
 
-    GenericString$& operator=(const GenericStringInner<T>& a) {
+    GenericString$$& operator=(const GenericStringInner<T>& a) {
         $<GenericStringInner<T>>::operator=(a);
         return *this;
     }
 
     template<typename... Args>
-    static GenericString$ create(Args&&... args) {
+    static GenericString$$ create(Args&&... args) {
         typename $<GenericStringInner<T>>::Inner *a = new typename $<GenericStringInner<T>>::Inner(std::forward<Args>(args)...);
         a->counter = 1;
-        return GenericString$(a);
+        return GenericString$$(a);
     }
 
     T& operator[](ssize index) {
@@ -89,7 +89,7 @@ public:
         return (*this)->v == a;
     }
 
-    bool operator==(GenericString$ a) {
+    bool operator==(GenericString$$ a) {
         if ((*this) == nullptr) {
             return a == nullptr;
         } else if (a == nullptr) {
@@ -106,8 +106,8 @@ public:
         return (*this)->v.end();
     }
 
-    GenericString$ operator+(const T* value) const {
-        GenericString$ a;
+    GenericString$$ operator+(const T* value) const {
+        GenericString$$ a;
         a->v = (*this)->v;
         a->v += value;
         return a;
@@ -119,18 +119,18 @@ public:
 template<typename T>
 class GenericStringView {
 public:
-    GenericString$<T> str;
+    GenericString$$<T> str;
     ssize begin;
     ssize end;
     GenericStringView(const GenericStringView& view, ssize begin, ssize end) : str(view.str), begin(begin), end(end) { }
-    GenericStringView(GenericString$<T> str, ssize begin, ssize end) : str(str), begin(begin), end(end) { }
+    GenericStringView(GenericString$$<T> str, ssize begin, ssize end) : str(str), begin(begin), end(end) { }
 
     ssize length() {
         update();
         return end - begin;
     }
 
-    GenericStringView& operator=(const GenericString$<T>& src) {
+    GenericStringView& operator=(const GenericString$$<T>& src) {
         update();
         return *this;
     }
@@ -175,12 +175,12 @@ private:
 
 
 template<typename T>
-GenericStringView<T> GenericString$<T>::operator[](const Range &range) {
+GenericStringView<T> GenericString$$<T>::operator[](const Range &range) {
     return operator[](range.bound((*this)->v.size()));
 }
 
 template<typename T>
-GenericStringView<T> GenericString$<T>::operator[](const BoundedRange &range) {
+GenericStringView<T> GenericString$$<T>::operator[](const BoundedRange &range) {
     if (range.beginOffset < 0 || (usize)range.beginOffset > (*this)->v.size()
         || range.endOffset < 0 || (usize)range.endOffset > (*this)->v.size()) {
         FATAL("Index out of bounds");
@@ -188,17 +188,17 @@ GenericStringView<T> GenericString$<T>::operator[](const BoundedRange &range) {
     return GenericStringView<T>(*this, range.beginOffset, range.endOffset);
 }
 
-typedef GenericString$<u8> Bytes$;
-typedef GenericString$<char> String$;
+typedef GenericString$$<u8> Bytes$$;
+typedef GenericString$$<char> String$$;
 
-static inline String$ operator""_S(const char *str, std::size_t len)
+static inline String$$ operator""_S(const char *str, std::size_t len)
 {
-    return String$(GenericStringInner<String$::type>(str, len));
+    return String$$(GenericStringInner<String$$::type>(str, len));
 }
 
-static inline Bytes$ operator""_B(const char *str, std::size_t len)
+static inline Bytes$$ operator""_B(const char *str, std::size_t len)
 {
-    return Bytes$(GenericStringInner<Bytes$::type>((const u8 *)str, len));
+    return Bytes$$(GenericStringInner<Bytes$$::type>((const u8 *)str, len));
 }
 
 #endif /* _GENERIC_STRING_HH_ */

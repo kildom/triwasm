@@ -17,7 +17,7 @@ class WasmReader {
 private:
     u8* ptr;
     u8* end;
-    WasmInputStream$$ stream;
+    WasmInputStream$ stream;
     std::basic_string<u8> buffer;
     ssize offsetOfBuffer;
 
@@ -27,11 +27,11 @@ private:
     template<typename XX>
     XX readXX();
 
-    template<typename T$>
-    T$ bufferRead();
+    template<typename T$$>
+    T$$ bufferRead();
 
 public:
-    WasmReader(WasmInputStream$$ stream);
+    WasmReader(WasmInputStream$ stream);
     u32     readU32();
     s32     readS32();
     u64     readU64();
@@ -39,8 +39,8 @@ public:
     u32     readF32();
     u64     readF64();
     u8      byte();
-    String$ string();
-    Bytes$  bytes();
+    String$$ string();
+    Bytes$$  bytes();
     void    skip(ssize length);
     ssize   startContainer(ssize length);
     void    endContainer(ssize state, bool expectFullyConsumed);

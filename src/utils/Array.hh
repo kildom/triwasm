@@ -62,38 +62,50 @@ public:
 
 };
 
-template<typename T>
-class Array$ : public $<ArrayInner<T>> {
+template<typename T, bool nullable = true>
+class Array$ : public $<ArrayInner<T>, nullable> {
 public:
 
-    Array$() : $<ArrayInner<T>>() { }
-    Array$(nullptr_t) : $<ArrayInner<T>>(nullptr) { }
-    Array$(const Array$ &a) : $<ArrayInner<T>>(a) { }
-    Array$(Array$ &&a) : $<ArrayInner<T>>(a) { }
-    Array$(const ArrayInner<T>& a) : $<ArrayInner<T>>(a) { }
-    Array$(typename $<ArrayInner<T>>::Inner * a) : $<ArrayInner<T>>(a) { }
-    Array$(_$_New$) : $<ArrayInner<T>>(_$_New$()) { }
+    Array$() : $<ArrayInner<T>, nullable>() { }
+    Array$(nullptr_t) : $<ArrayInner<T>, nullable>(nullptr) { }
+    Array$(const Array$ &a) : $<ArrayInner<T>, nullable>(a) { }
+    Array$(Array$ &&a) : $<ArrayInner<T>, nullable>(a) { }
+    Array$(const Array$<T, !nullable> &a) : $<ArrayInner<T>, nullable>(a) { }
+    Array$(Array$<T, !nullable> &&a) : $<ArrayInner<T>, nullable>(a) { }
+    Array$(const ArrayInner<T>& a) : $<ArrayInner<T>, nullable>(a) { }
+    Array$(typename $<ArrayInner<T>, nullable>::Inner * a) : $<ArrayInner<T>, nullable>(a) { }
+    Array$(_$_New$) : $<ArrayInner<T>, nullable>(_$_New$()) { }
     ~Array$() { }
 
-    Array$(const std::initializer_list<T>& a) : $<ArrayInner<T>>(a) { }
+    Array$(const std::initializer_list<T>& a) : $<ArrayInner<T>, nullable>(a) { }
 
     Array$& operator=(nullptr_t) {
-        $<ArrayInner<T>>::operator=(nullptr);
+        $<ArrayInner<T>, nullable>::operator=(nullptr);
         return *this;
     }
 
     Array$& operator=(const Array$& a) {
-        $<ArrayInner<T>>::operator=(a);
+        $<ArrayInner<T>, nullable>::operator=(a);
         return *this;
     }
 
     Array$& operator=(Array$&& a) {
-        $<ArrayInner<T>>::operator=(a);
+        $<ArrayInner<T>, nullable>::operator=(a);
+        return *this;
+    }
+
+    Array$& operator=(const Array$<T, !nullable>& a) {
+        $<ArrayInner<T>, nullable>::operator=(a);
+        return *this;
+    }
+
+    Array$& operator=(Array$<T, !nullable>&& a) {
+        $<ArrayInner<T>, nullable>::operator=(a);
         return *this;
     }
 
     Array$& operator=(const ArrayInner<T>& a) {
-        $<ArrayInner<T>>::operator=(a);
+        $<ArrayInner<T>, nullable>::operator=(a);
         return *this;
     }
 
@@ -109,7 +121,7 @@ public:
 
     template<typename... Args>
     static Array$ create(Args&&... args) {
-        typename $<ArrayInner<T>>::Inner *a = new typename $<ArrayInner<T>>::Inner(std::forward<Args>(args)...);
+        typename $<ArrayInner<T>, nullable>::Inner *a = new typename $<ArrayInner<T>, nullable>::Inner(std::forward<Args>(args)...);
         a->counter = 1;
         return Array$(a);
     }
@@ -153,7 +165,8 @@ public:
     ssize begin;
     ssize end;
     ArrayView(const ArrayView& view, ssize begin, ssize end) : array(view.array), begin(begin), end(end) { }
-    ArrayView(Array$<T> array, ssize begin, ssize end) : array(array), begin(begin), end(end) { }
+    ArrayView(Array$<T, true> array, ssize begin, ssize end) : array(array), begin(begin), end(end) { }
+    ArrayView(Array$<T, false> array, ssize begin, ssize end) : array(array), begin(begin), end(end) { }
 
     ssize length() {
         update();
@@ -229,13 +242,13 @@ private:
 };
 
 
-template<typename T>
-ArrayView<T> Array$<T>::operator[](const Range &range) const {
+template<typename T, bool nullable>
+ArrayView<T> Array$<T, nullable>::operator[](const Range &range) const {
     return operator[](range.bound((*this)->v.size()));
 }
 
-template<typename T>
-ArrayView<T> Array$<T>::operator[](const BoundedRange &range) const {
+template<typename T, bool nullable>
+ArrayView<T> Array$<T, nullable>::operator[](const BoundedRange &range) const {
     if (range.beginOffset < 0 || (usize)range.beginOffset > (*this)->v.size()
         || range.endOffset < 0 || (usize)range.endOffset > (*this)->v.size()) {
         FATAL("Index out of bounds");
@@ -243,5 +256,7 @@ ArrayView<T> Array$<T>::operator[](const BoundedRange &range) const {
     return ArrayView<T>(*this, range.beginOffset, range.endOffset);
 }
 
+template <typename T>
+using Array$$ = Array$<T, false>;
 
 #endif /* _ARRAY_HH_ */

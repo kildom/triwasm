@@ -24,7 +24,7 @@ u32 wasmTypeWords(u32 type)
 }
 
 
-u32 wasmTypesWords(Array$<u32> types)
+u32 wasmTypesWords(Array$$<u32> types)
 {
     u32 result = 0;
     for (auto t : types)

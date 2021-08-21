@@ -10,7 +10,7 @@
 
 struct TypeList
 {
-    Array$<u32> list;
+    Array$$<u32> list;
     bool forceBrackets;
 };
 
@@ -36,13 +36,13 @@ std::ostream& operator<<(std::ostream& out, const TypeList& list)
 
 static u32 blockLabelIndex = 1;
 
-static void dumpImm(std::ostream& out, WasmInstr$$ instr, Array$<u32> blockStack) {
+static void dumpImm(std::ostream& out, WasmInstr$ instr, Array$$<u32> blockStack) {
     switch (instr->code)
     {
     case INSTR_BR:
     case INSTR_BR_IF: {
         out << instr->imm[0] << " {block" << blockStack[blockStack->length() - 1 - instr->imm[0]] << "} ";
-        auto d = WasmInstrBr$(instr->data);
+        auto d = WasmInstrBr$$(instr->data);
         if (d->conditional) out << "(conditional)";
         if (d->forceForward) out << "(forward)";
         if (d->negated) out << "(negated)";
@@ -60,7 +60,7 @@ static void dumpImm(std::ostream& out, WasmInstr$$ instr, Array$<u32> blockStack
     }
 }
 
-static void dumpInstr(std::ostream& out, String$ ind, Array$<WasmInstr$$> instrList, Array$<u32> blockStack = Array$<u32>())
+static void dumpInstr(std::ostream& out, String$$ ind, Array$$<WasmInstr$> instrList, Array$$<u32> blockStack = Array$$<u32>())
 {
     for (auto instr : instrList) {
         if (instr->block != nullptr) {
@@ -83,7 +83,7 @@ static void dumpInstr(std::ostream& out, String$ ind, Array$<WasmInstr$$> instrL
     }
 }
 
-void dumpModule(WasmModule$$ mod)
+void dumpModule(WasmModule$ mod)
 {
     //std::stringstream out;
     auto &out = std::cout;

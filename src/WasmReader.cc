@@ -4,7 +4,7 @@
 
 #define READER_BUFFER_SIZE 65536
 
-WasmReader::WasmReader(WasmInputStream$$ stream) :
+WasmReader::WasmReader(WasmInputStream$ stream) :
     stream(stream),
     buffer(READER_BUFFER_SIZE, '\0')
 {
@@ -39,9 +39,9 @@ void WasmReader::requestData()
         FATAL("Unexpected end of input");
 }
 
-String$ WasmReader::string()
+String$$ WasmReader::string()
 {
-    auto text = bufferRead<String$>();
+    auto text = bufferRead<String$$>();
 
     const char* c = text->buffer();
     const char* end = c + text->length();
@@ -69,8 +69,8 @@ String$ WasmReader::string()
     return text;
 }
 
-Bytes$ WasmReader::bytes() {
-    return bufferRead<Bytes$>();
+Bytes$$ WasmReader::bytes() {
+    return bufferRead<Bytes$$>();
 }
 
 
@@ -103,11 +103,11 @@ XX WasmReader::readXX()
     return result;
 }
 
-template<typename T$>
-T$ WasmReader::bufferRead()
+template<typename T$$>
+T$$ WasmReader::bufferRead()
 {
     auto length = readU32();
-    auto result = T$::create(length, 0);
+    auto result = T$$::create(length, 0);
 
     if (length == 0)
         return result;

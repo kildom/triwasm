@@ -11,7 +11,7 @@
 #include "Linker.hh"
 
 
-void Linker::link(WasmProgram$ prog)
+void Linker::link(WasmProgram$$ prog)
 {
     /*
         Requirements:
@@ -64,11 +64,11 @@ void Linker::link(WasmProgram$ prog)
             if (func->import == nullptr) continue;
             auto import = func->import;
             if (import->module == "__trivm_assembly_function__") {
-                AssemblyFunction$ af(func->link);
+                AssemblyFunction$$ af(func->link);
                 af->code = import->name;
                 af->inlined = false;
             } else if (import->module == "__trivm_inline_assembly_function__") {
-                AssemblyFunction$ af(func->link);
+                AssemblyFunction$$ af(func->link);
                 af->code = import->name;
                 af->inlined = true;
             } else if (import->module == "__trivmlib__") {

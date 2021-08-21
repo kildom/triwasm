@@ -9,7 +9,7 @@
 #include "VMConfig.hh"
 
 
-void Generator::generate(WasmModule$$ mod)
+void Generator::generate(WasmModule$ mod)
 {
     TRACE();
 
@@ -24,7 +24,7 @@ void Generator::generate(WasmModule$$ mod)
 }
 
 
-void Generator::generateFunction(WasmFunction$ func)
+void Generator::generateFunction(WasmFunction$$ func)
 {
     TRACE();
 
@@ -70,7 +70,7 @@ void Generator::generateFunction(WasmFunction$ func)
     generateBlock(function->block);
 }
 
-void Generator::generateBlock(WasmBlock$$ block)
+void Generator::generateBlock(WasmBlock$ block)
 {
     TRACE();
     blockStack->push(block);
@@ -84,9 +84,9 @@ void Generator::generateBlock(WasmBlock$$ block)
 }
 
 
-void Generator::generateInstr(WasmInstr$$ instr)
+void Generator::generateInstr(WasmInstr$ instr)
 {
-    Array$<u64> imm = instr->imm;
+    Array$$<u64> imm = instr->imm;
 
     switch(instr->code) {
     case INSTR_ELSE: {
@@ -271,7 +271,7 @@ void Generator::generateInstr(WasmInstr$$ instr)
     case INSTR_BR: {
         TRACE();
         auto block = blockStack[RangeEnd - (1 + instr->imm[0])];
-        auto data = WasmInstrBr$(instr->data);
+        auto data = WasmInstrBr$$(instr->data);
         bool backward = (block->instr->code == INSTR_LOOP && !data->forceForward);
         bool isReturn = (block->instr->code == INSTR_TRIVM_FUNCTION);
         int skip;
@@ -389,7 +389,7 @@ void Generator::generateUnwind(u32 keep, u32 skip)
 }
 
 
-void Generator::generateBuiltin(WasmInstr$$ instr)
+void Generator::generateBuiltin(WasmInstr$ instr)
 {
     switch (instr->imm[0])
     {
