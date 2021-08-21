@@ -13,13 +13,8 @@ int main(int argc, char *argv[]) {
     auto parser = WasmParser$::create();
     auto trivmlib = parser->parse(FileInputStream$::create("../../lib/trivmlib.wasm").cast<WasmInputStream>());
     auto mod = parser->parse(FileInputStream$::create("../../test/libbzip2-dec.wasm").cast<WasmInputStream>());
-    trivmlib->index = 0;
-    mod->index = 1;
 
-    WasmProgram$ prog;
-    prog->modules->grow(0) = trivmlib;
-    prog->modules->grow(1) = mod;
-
+    /*
     Linker$ linker;
     linker->link(prog);
     
@@ -30,8 +25,9 @@ int main(int argc, char *argv[]) {
 
     //dumpProgram(prog);
 
-    Generator$$ generator = Generator$$::create(std::cout);
+    Generator$ generator = Generator$$::create(std::cout);
     generator->generate(prog);
+    */
 
     return 0;
 

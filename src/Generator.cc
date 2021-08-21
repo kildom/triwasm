@@ -9,20 +9,16 @@
 #include "VMConfig.hh"
 
 
-void Generator::generate(WasmProgram$ prog)
+void Generator::generate(WasmModule$$ mod)
 {
     TRACE();
 
-    this->prog = prog;
-
     totalBlocks = 0;
 
-    for (auto mod: prog->modules) {
-        this->mod = mod;
-        for (auto func: mod->functions) {
-            if (func->import == nullptr) {
-                generateFunction(func);
-            }
+    this->mod = mod;
+    for (auto func: mod->functions) {
+        if (func->import == nullptr) {
+            generateFunction(func);
         }
     }
 }
@@ -139,7 +135,7 @@ void Generator::generateInstr(WasmInstr$$ instr)
     }
     case INSTR_GLOBAL_GET: {
         TRACE();
-        out << ind->buffer() << "READ mod" << mod->index << "global" << instr->imm[0] << " + " << instr->imm[1];
+        out << ind->buffer() << "READ global" << instr->imm[0] << " + " << instr->imm[1];
         stackSize++;
         break;
     }
@@ -151,7 +147,7 @@ void Generator::generateInstr(WasmInstr$$ instr)
     case INSTR_CALL: {
         TRACE();
         auto callee = mod->functions[instr->imm[0]];
-        out << ind->buffer() << "CALL mod" << mod->index << "func" << instr->imm[0];
+        out << ind->buffer() << "CALL func" << instr->imm[0];
         stackSize -= wasmTypesWords(callee->type->param);
         stackSize += wasmTypesWords(callee->type->result);
         break;

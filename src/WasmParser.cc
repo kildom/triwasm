@@ -151,7 +151,7 @@ void WasmParser::parseImportSection()
                 func->type = mod->functionTypes[r->readU32()];
                 func->import = import;
                 mod->functions->push(func);
-                mod->importFunctions->push(func);
+                mod->importFunctionsCount++;
                 printf("  import %d function %s::%s\n", mod->functions[RangeEnd - 1]->index, import->name->buffer(), import->name->buffer());
                 break;
             }
@@ -166,7 +166,6 @@ void WasmParser::parseImportSection()
                 table->unlimited = limits.endFromEnd;
                 table->import = import;
                 mod->tables->push(table);
-                mod->importTables->push(table);
                 printf("  import %d table %s::%s of type %d and size from %d to %d%s\n", mod->tables[RangeEnd - 1]->index, import->module->buffer(), import->name->buffer(), table->type, (int)limits.beginOffset, (int)limits.endOffset, limits.endFromEnd ? "(unlimited)" : "");
                 break;
             }
@@ -180,7 +179,6 @@ void WasmParser::parseImportSection()
                 memory->unlimited = limits.endFromEnd;
                 memory->import = import;
                 mod->memories->push(memory);
-                mod->importMemories->push(memory);
                 printf("  import %d memory %s::%s of size from %d to %d%s\n", mod->memories[RangeEnd - 1]->index, import->module->buffer(), import->name->buffer(), (int)limits.beginOffset, (int)limits.endOffset, limits.endFromEnd ? "(unlimited)" : "");
                 break;
             }
@@ -192,7 +190,6 @@ void WasmParser::parseImportSection()
                 global->mut = !!r->byte();
                 global->import = import;
                 mod->globals->push(global);
-                mod->importGlobals->push(global);
                 printf("  import %d %s global %s::%s of type %d", mod->globals[RangeEnd - 1]->index, global->mut ? "var" : "const", import->module->buffer(), import->name->buffer(), global->type);
                 break;
             }
@@ -281,28 +278,24 @@ void WasmParser::parseExportSection()
             case 0x00: {
                 WasmFunction$ func = mod->functions[index];
                 func->exportName = name;
-                mod->exportFunctions->push(func);
                 printf("  export function %d as %s\n", index, name->buffer());
                 break;
             }
             case 0x01: {
                 WasmTable$ table = mod->tables[index];
                 table->exportName = name;
-                mod->exportTables->push(table);
                 printf("  export table %d as %s\n", index, name->buffer());
                 break;
             }
             case 0x02: {
                 WasmMemory$ memory = mod->memories[index];
                 memory->exportName = name;
-                mod->exportMemories->push(memory);
                 printf("  export memory %d as %s\n", index, name->buffer());
                 break;
             }
             case 0x03: {
                 WasmGlobal$ global = mod->globals[index];
                 global->exportName = name;
-                mod->exportGlobals->push(global);
                 printf("  export global %d as %s\n", index, name->buffer());
                 break;
             }
@@ -382,9 +375,9 @@ void WasmParser::parseCodeSection() {
 
     // modules.html#binary-codesec
     auto count = r->readU32();
-    if (count != mod->functions->length() - mod->importFunctions->length())
+    if (count != mod->functions->length() - mod->importFunctionsCount)
         FATAL("Invalid number of functions in 'code' section.");
-    for (u32 funcIndex = mod->importFunctions->length(); funcIndex < mod->functions->length(); funcIndex++) {
+    for (u32 funcIndex = mod->importFunctionsCount; funcIndex < mod->functions->length(); funcIndex++) {
         auto funcSize = r->readU32();
         std::cout << "  function " << funcIndex << " of size " << funcSize << "\n";
         auto state = r->startContainer(funcSize);

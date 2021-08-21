@@ -131,7 +131,6 @@ struct WasmDataSegment
 
 
 struct WasmModule {
-    u32 index;
     // types
     Array$<WasmFunctionType$$> functionTypes;
     // main collectios
@@ -139,30 +138,14 @@ struct WasmModule {
     Array$<WasmTable$$> tables;
     Array$<WasmMemory$$> memories;
     Array$<WasmGlobal$$> globals;
-    // imports
-    Array$<WasmFunction$$> importFunctions;
-    Array$<WasmTable$$> importTables;
-    Array$<WasmMemory$$> importMemories;
-    Array$<WasmGlobal$$> importGlobals;
-    // exports
-    Array$<WasmFunction$$> exportFunctions;
-    Array$<WasmTable$$> exportTables;
-    Array$<WasmMemory$$> exportMemories;
-    Array$<WasmGlobal$$> exportGlobals;
+    uint32_t importFunctionsCount;
     // table elements
     Array$<WasmElement$$> elements;
     // memory data
     Array$<WasmDataSegment$$> data;
     // entry
     WasmFunction$$ startFunction;
+    WasmModule() : importFunctionsCount(0) { }
 };
-
-struct WasmProgram { // TODO: this struct is no longer needed, because linker will put everything into main module
-    std::map<std::string, u32> trivmlibExports;
-    Array$<WasmModule$$> modules;
-};
-
-void dumpProgram(WasmProgram$$ prog);
-
 
 #endif /* _WASM_DATA_HH_ */

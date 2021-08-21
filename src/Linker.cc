@@ -56,6 +56,7 @@ void Linker::link(WasmProgram$ prog)
                this export can be removed (and all unreferenced symbols cause by this removal).
 
     */
+    #if 0
     this->prog = prog;
     for (auto mod : prog->modules) {
         this->mod = mod;
@@ -81,5 +82,6 @@ void Linker::link(WasmProgram$ prog)
             }
         }
     }
+    #endif
 }
 

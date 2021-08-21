@@ -238,13 +238,6 @@ void dumpModule(WasmModule$$ mod)
     //printf("%s", out.str().c_str());
 }
 
-void dumpProgram(WasmProgram$$ prog)
-{
-    for (auto mod : prog->modules) {
-        dumpModule(mod);
-    }
-}
-
 static const char* instrName(u32 opcode)
 {
     switch (opcode)
