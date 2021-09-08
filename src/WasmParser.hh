@@ -17,7 +17,7 @@ private:
     Array$<WasmBlock$$> blockStack;
 
 public:
-    WasmModule$$ parse(WasmInputStream$ stream);
+    WasmModule$$ parse(WasmInputStream$ stream, bool isMainModule);
 
 private:
     void parse();

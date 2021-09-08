@@ -11,8 +11,8 @@ int main(int argc, char *argv[]) {
     TRACE();
 
     auto parser = WasmParser$$::create();
-    auto trivmlib = parser->parse(FileInputStream$$::create("../../lib/trivmlib.wasm").cast<WasmInputStream>());
-    auto mod = parser->parse(FileInputStream$$::create("../../test/libbzip2-dec.wasm").cast<WasmInputStream>());
+    auto trivmlib = parser->parse(FileInputStream$$::create("../../lib/trivmlib.wasm").cast<WasmInputStream>(), false);
+    auto mod = parser->parse(FileInputStream$$::create("../../test/libbzip2-dec.wasm").cast<WasmInputStream>(), true);
 
     /*
     Linker$$ linker;

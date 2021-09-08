@@ -172,6 +172,7 @@ struct WasmModule {
     WasmFunction$ startFunction;
     // only functions with body
     Array$$<WasmFunction$> definedFunctions;
+    bool isMainModule;
 };
 
 #endif /* _WASM_DATA_HH_ */

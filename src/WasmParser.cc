@@ -6,11 +6,12 @@
 #include "WasmInstr.hh"
 #include "WasmParser.hh"
 
-WasmModule$$ WasmParser::parse(WasmInputStream$ stream)
+WasmModule$$ WasmParser::parse(WasmInputStream$ stream, bool isMainModule)
 {
     TRACE();
     r = WasmReader$::create(stream);
     mod = new$;
+    mod->isMainModule = isMainModule;
     parse();
     return mod;
 }
@@ -156,6 +157,8 @@ void WasmParser::parseImportSection()
             }
             case 0x01: {
                 // types.html#binary-tabletype
+                if (!mod->isMainModule)
+                    FATAL("Only main module can import any table");
                 WasmTable$$ table;
                 table->index = (u32)mod->tables->length(),
                 table->type = refType();
@@ -170,6 +173,8 @@ void WasmParser::parseImportSection()
             }
             case 0x02: {
                 // types.html#binary-memtype
+                if (!mod->isMainModule)
+                    FATAL("Only main module can import any memory");
                 WasmMemory$$ memory;
                 memory->index = (u32)mod->memories->length();
                 auto limits = parseLimits();
@@ -183,6 +188,8 @@ void WasmParser::parseImportSection()
             }
             case 0x03: {
                 // types.html#binary-globaltype
+                if (!mod->isMainModule)
+                    FATAL("Only main module can import any global");
                 WasmGlobal$$ global;
                 global->index = (u32)mod->globals->length();
                 global->type = valueType();
@@ -219,6 +226,8 @@ void WasmParser::parseTableSection() {
 
     // modules.html#binary-tablesec
     auto count = r->readU32();
+    if (count > 0 && !mod->isMainModule)
+        FATAL("Only main module can have any table");
     for (u32 i = 0; i < count; i++) {
         auto type = refType();
         auto limits = parseLimits();
@@ -236,6 +245,8 @@ void WasmParser::parseMemorySection()
 {
     // modules.html#binary-memsec
     auto count = r->readU32();
+    if (count > 0 && !mod->isMainModule)
+        FATAL("Only main module can have any memory");
     for (u32 i = 0; i < count; i++) {
         // types.html#binary-memtype
         auto limits = parseLimits();
@@ -252,6 +263,8 @@ void WasmParser::parseGlobalSection()
 {
     // modules.html#binary-globalsec
     auto count = r->readU32();
+    if (count > 0 && !mod->isMainModule)
+        FATAL("Only main module can have any global");
     for (u32 i = 0; i < count; i++) {
         // types.html#binary-globaltype
         auto type = r->byte();
