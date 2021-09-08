@@ -63,6 +63,8 @@ public:
         return *this;
     }
 
+    GenericString$$& operator=(const GenericStringView<T>& a);
+
     template<typename... Args>
     static GenericString$$ create(Args&&... args) {
         typename $<GenericStringInner<T>>::Inner *a = new typename $<GenericStringInner<T>>::Inner(std::forward<Args>(args)...);
@@ -113,6 +115,29 @@ public:
         return a;
     }
 
+    bool startsWith(GenericString$$ str) {
+        return (*this)->v.compare(0, str->length(), str->v) == 0;
+    }
+
+    int find(GenericString$$ str) {
+        auto pos = (*this)->v.find(str->v);
+        if (pos == std::string::npos)
+            return -1;
+        return pos;
+    }
+
+    template<typename Tstr>
+    int find(Tstr str) {
+        auto pos = (*this)->v.find(str);
+        if (pos == std::string::npos)
+            return -1;
+        return pos;
+    }
+
+    const char* cStr() {
+        return (*this)->v.c_str();
+    }
+
 };
 
 
@@ -120,8 +145,8 @@ template<typename T>
 class GenericStringView {
 public:
     GenericString$$<T> str;
-    ssize begin;
-    ssize end;
+    mutable ssize begin;
+    mutable ssize end;
     GenericStringView(const GenericStringView& view, ssize begin, ssize end) : str(view.str), begin(begin), end(end) { }
     GenericStringView(GenericString$$<T> str, ssize begin, ssize end) : str(str), begin(begin), end(end) { }
 
@@ -161,8 +186,15 @@ public:
         return GenericStringView(*this, begin + range.beginOffset, begin + range.endOffset);
     }
 
+    GenericString$$<T> getString() const {
+        GenericString$$<T> a;
+        update();
+        a->v.assign(str->v, begin, end - begin);
+        return a;
+    }
+
 private:
-    void update() {
+    void update() const {
         auto length = str->length();
         if (end > length) {
             end = length;
@@ -186,6 +218,12 @@ GenericStringView<T> GenericString$$<T>::operator[](const BoundedRange &range) {
         FATAL("Index out of bounds");
     }
     return GenericStringView<T>(*this, range.beginOffset, range.endOffset);
+}
+
+template<typename T>
+GenericString$$<T>& GenericString$$<T>::operator=(const GenericStringView<T>& a) {
+    $<GenericStringInner<T>>::operator=(a.getString());
+    return *this;
 }
 
 typedef GenericString$$<u8> Bytes$$;

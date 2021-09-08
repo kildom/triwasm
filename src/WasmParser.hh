@@ -17,7 +17,7 @@ private:
     Array$<WasmBlock$$> blockStack;
 
 public:
-    WasmModule$$ parse(WasmInputStream$ stream, bool isMainModule);
+    WasmModule$$ parse(WasmInputStream$ stream, bool isMain, String$$ name);
 
 private:
     void parse();
@@ -38,6 +38,7 @@ private:
     void parseTargetFeaturesSection();
     ConstExpr$ parseConstExpr();
     void parseFuncCode();
+    WasmFunction$ parseMagicFunction(WasmFunction$ input, String$$ content);
     Array$$<WasmInstr$> parseExpr(bool allowElse = false);
     bool parseInstr(WasmInstr$ instr, bool &allowElse);
     void parseCompressedBlockType(WasmBlock$$ block);
@@ -45,8 +46,6 @@ private:
     u32 valueType();
     u32 refType();
     void utf8Check(String$$ text);
-
-    void postProcess();
 };
 
 #endif /* _WASM_PARSER_HH_ */

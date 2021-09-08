@@ -6,12 +6,13 @@
 #include "WasmInstr.hh"
 #include "WasmParser.hh"
 
-WasmModule$$ WasmParser::parse(WasmInputStream$ stream, bool isMainModule)
+WasmModule$$ WasmParser::parse(WasmInputStream$ stream, bool isMain, String$$ name)
 {
     TRACE();
     r = WasmReader$::create(stream);
     mod = new$;
-    mod->isMainModule = isMainModule;
+    mod->isMain = isMain;
+    mod->name = name;
     parse();
     return mod;
 }
@@ -43,14 +44,13 @@ void WasmParser::parse() {
     while (!r->endOfInput()) {
         parseSection();
     }
-
-    postProcess();
 }
 
 void WasmParser::parseSection()
 {
     TRACE();
 
+    // modules.html#sections
     u8 lastId = 0;
     auto id = r->byte();
     auto size = r->readU32();
@@ -151,13 +151,15 @@ void WasmParser::parseImportSection()
                 func->index = (u32)mod->functions->length();
                 func->type = mod->functionTypes[r->readU32()];
                 func->import = import;
+                if (import->module == "__trivm_magic_function__")
+                    func = parseMagicFunction(func, import->name);
                 mod->functions->push(func);
                 printf("  import %d function %s::%s\n", mod->functions[RangeEnd - 1]->index, import->name->buffer(), import->name->buffer());
                 break;
             }
             case 0x01: {
                 // types.html#binary-tabletype
-                if (!mod->isMainModule)
+                if (!mod->isMain)
                     FATAL("Only main module can import any table");
                 WasmTable$$ table;
                 table->index = (u32)mod->tables->length(),
@@ -173,7 +175,7 @@ void WasmParser::parseImportSection()
             }
             case 0x02: {
                 // types.html#binary-memtype
-                if (!mod->isMainModule)
+                if (!mod->isMain)
                     FATAL("Only main module can import any memory");
                 WasmMemory$$ memory;
                 memory->index = (u32)mod->memories->length();
@@ -188,7 +190,7 @@ void WasmParser::parseImportSection()
             }
             case 0x03: {
                 // types.html#binary-globaltype
-                if (!mod->isMainModule)
+                if (!mod->isMain)
                     FATAL("Only main module can import any global");
                 WasmGlobal$$ global;
                 global->index = (u32)mod->globals->length();
@@ -226,7 +228,7 @@ void WasmParser::parseTableSection() {
 
     // modules.html#binary-tablesec
     auto count = r->readU32();
-    if (count > 0 && !mod->isMainModule)
+    if (count > 0 && !mod->isMain)
         FATAL("Only main module can have any table");
     for (u32 i = 0; i < count; i++) {
         auto type = refType();
@@ -245,7 +247,7 @@ void WasmParser::parseMemorySection()
 {
     // modules.html#binary-memsec
     auto count = r->readU32();
-    if (count > 0 && !mod->isMainModule)
+    if (count > 0 && !mod->isMain)
         FATAL("Only main module can have any memory");
     for (u32 i = 0; i < count; i++) {
         // types.html#binary-memtype
@@ -263,7 +265,7 @@ void WasmParser::parseGlobalSection()
 {
     // modules.html#binary-globalsec
     auto count = r->readU32();
-    if (count > 0 && !mod->isMainModule)
+    if (count > 0 && !mod->isMain)
         FATAL("Only main module can have any global");
     for (u32 i = 0; i < count; i++) {
         // types.html#binary-globaltype
@@ -576,6 +578,55 @@ void WasmParser::parseFuncCode() {
     blockStack = { function->block };
     function->block->body = parseExpr();
     function = nullptr;
+}
+
+struct MagicFunctionPartResult {
+    String$$ part;
+    String$$ rest;
+};
+
+MagicFunctionPartResult magicFunctionPart(String$$ input)
+{
+    MagicFunctionPartResult result;
+    auto pos = input.find(':');
+    if (pos < 0)
+        FATAL("Invalid format of triVM magic function.");
+    result.part = input[Range(0, pos)];
+    result.rest = input[Range(pos + 1)];
+    return result;
+}
+
+WasmFunction$ WasmParser::parseMagicFunction(WasmFunction$ func, String$$ content)
+{
+    if (content.startsWith("__trivm_magic_function__:"_S)) {
+        content = content[Range(25)];
+    }
+    auto r = magicFunctionPart(content);
+    auto type = r.part;
+    content = r.rest;
+    if (type == "annotation") {
+        if (func->type->param->length() > 0 || func->type->result->length() > 0)
+            FATAL("triVM annotation function cannot have any parameter or return value.");
+        r = magicFunctionPart(content);
+        type = r.part;
+        content = r.rest;
+        if (type == "license") {
+            return WasmFunction {
+                .index = func->index,
+                .type = func->type,
+                WasmImport$ import;
+                any$ /* WasmFunction, HostFunction, AssemblyFunction */ link;
+                String$$ exportName;
+                Array$$<u32> localsOffsets;
+                u32 returnAddressOffset;
+            }
+        }
+    } else if (type == "assembly") {
+
+    } else {
+        FATAL("Unknown type of triVM magic function: %s", type.cStr());
+    }
+    return func;
 }
 
 Array$$<WasmInstr$> WasmParser::parseExpr(bool allowElse) {

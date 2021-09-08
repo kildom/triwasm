@@ -157,6 +157,8 @@ struct WasmDataSegment
 
 
 struct WasmModule {
+    String$$ name;
+    bool isMain;
     // types
     Array$$<WasmFunctionType$> functionTypes;
     // main collectios
