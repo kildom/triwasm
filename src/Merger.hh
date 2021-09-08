@@ -1,5 +1,5 @@
-#ifndef _JOINER_HH_
-#define _JOINER_HH_
+#ifndef _MERGER_HH_
+#define _MERGER_HH_
 
 #include "Utils.hh"
 
@@ -7,7 +7,7 @@
 
 DOLLAR_CLASS(Joiner);
 
-class Joiner {
+class Merger {
 private:
     WasmModule$ main;
     WasmModule$ source;
@@ -18,4 +18,4 @@ public:
     void resolveReferences();
 };
 
-#endif /* _JOINER_HH_ */
+#endif /* _MERGER_HH_ */

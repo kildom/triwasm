@@ -8,21 +8,21 @@
 #include "Reducer.hh"
 #include "Builtins.hh"
 #include "VMConfig.hh"
-#include "Joiner.hh"
+#include "Merger.hh"
 
-void Joiner::setMain(WasmModule$ main)
+void Merger::setMain(WasmModule$ main)
 {
     this->main = main;
 }
 
 
-void Joiner::join(WasmModule$ source)
+void Merger::join(WasmModule$ source)
 {
     this->source = source;
 }
 
 
-void Joiner::resolveReferences()
+void Merger::resolveReferences()
 {
 
 }

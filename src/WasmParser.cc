@@ -614,12 +614,12 @@ WasmFunction$ WasmParser::parseMagicFunction(WasmFunction$ func, String$$ conten
             return WasmFunction {
                 .index = func->index,
                 .type = func->type,
-                WasmImport$ import;
-                any$ /* WasmFunction, HostFunction, AssemblyFunction */ link;
+                /*WasmImport$ import;
+                any$ / * WasmFunction, HostFunction, AssemblyFunction * / link;
                 String$$ exportName;
                 Array$$<u32> localsOffsets;
-                u32 returnAddressOffset;
-            }
+                u32 returnAddressOffset;*/
+            };
         }
     } else if (type == "assembly") {
 
@@ -1202,12 +1202,5 @@ u32 WasmParser::refType()
             FATAL("Unknown value type 0x%02X", type);
             return 0;
     }
-}
-
-
-void WasmParser::postProcess()
-{
-    TRACE();
-
 }
 
