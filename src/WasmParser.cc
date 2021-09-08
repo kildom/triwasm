@@ -151,7 +151,6 @@ void WasmParser::parseImportSection()
                 func->type = mod->functionTypes[r->readU32()];
                 func->import = import;
                 mod->functions->push(func);
-                mod->importFunctionsCount++;
                 printf("  import %d function %s::%s\n", mod->functions[RangeEnd - 1]->index, import->name->buffer(), import->name->buffer());
                 break;
             }
@@ -210,6 +209,7 @@ void WasmParser::parseFunctionSection() {
             .index = (u32)mod->functions->length(),
             .type = type,
         });
+        mod->definedFunctions->push(mod->functions[mod->functions->length() - 1]);
         printf("  function %d\n", mod->functions[RangeEnd - 1]->index);
     }
 }
@@ -256,13 +256,17 @@ void WasmParser::parseGlobalSection()
         // types.html#binary-globaltype
         auto type = r->byte();
         auto mut = r->byte();
-        auto expr = parseExpr();
+        auto expr = parseConstExpr();
         mod->globals->push(WasmGlobal{
             .type = type,
             .mut = !!mut,
             .initializer = expr,
         });
         printf("  global %s of type %d\n", mut ? "var" : "const", type);
+        if (expr->kind == CONST_EXPR_I32 || expr->kind == CONST_EXPR_F32)
+            printf("    const initializer %d\n", expr->i32Value);
+        if (expr->kind == CONST_EXPR_I64 || expr->kind == CONST_EXPR_F64)
+            printf("    const initializer %lld\n", expr->i64Value);
     }
 }
 
@@ -328,8 +332,10 @@ void WasmParser::parseElementSection() {
             case 0x00:
                 element->kind = WASM_ELEMENT_ACTIVE;
                 element->table = mod->tables[0];
-                element->offset = parseExpr();
+                element->offset = parseConstExpr();
                 printf("  element active mode for table 0(default)\n");
+                if (element->offset->kind == CONST_EXPR_I32)
+                    printf("    const offset %d\n", element->offset->i32Value);
                 break;
             case 0x01:
                 element->kind = WASM_ELEMENT_PASSIVE;
@@ -339,9 +345,11 @@ void WasmParser::parseElementSection() {
             case 0x02:
                 element->kind = WASM_ELEMENT_ACTIVE;
                 element->table = mod->tables[r->readU32()];
-                element->offset = parseExpr();
+                element->offset = parseConstExpr();
                 elemkind = r->byte();
                 printf("  element active mode for table %d\n", element->table->index);
+                if (element->offset->kind == CONST_EXPR_I32)
+                    printf("    const offset %d\n", element->offset->i32Value);
                 break;
             case 0x03:
                 element->kind = WASM_ELEMENT_DECLARATIVE;
@@ -355,7 +363,7 @@ void WasmParser::parseElementSection() {
         if (select & 0x04) {
             element->exprItems = new$;
             for (u32 j = 0; j < itemsCount; j++) {
-                element->exprItems->push(parseExpr());
+                element->exprItems->push(parseConstExpr());
             }
             printf("    %d expression(s)\n", itemsCount);
         } else {
@@ -375,13 +383,14 @@ void WasmParser::parseCodeSection() {
 
     // modules.html#binary-codesec
     auto count = r->readU32();
-    if (count != mod->functions->length() - mod->importFunctionsCount)
+    if (count != mod->definedFunctions->length())
         FATAL("Invalid number of functions in 'code' section.");
-    for (u32 funcIndex = mod->importFunctionsCount; funcIndex < mod->functions->length(); funcIndex++) {
+    for (auto f : mod->definedFunctions) {
+        function = f;
         auto funcSize = r->readU32();
-        std::cout << "  function " << funcIndex << " of size " << funcSize << "\n";
+        std::cout << "  function " << function->index << " of size " << funcSize << "\n";
         auto state = r->startContainer(funcSize);
-        parseFuncCode(funcIndex);
+        parseFuncCode();
         r->endContainer(state, true);
     }
 }
@@ -403,9 +412,11 @@ void WasmParser::parseDataSection() {
                 data = new$;
                 data->active = true;
                 data->memory = 0;
-                data->offset = parseExpr();
+                data->offset = parseConstExpr();
                 data->bytes = r->bytes();
                 printf("  data active mode for memory 0(default) of size %d\n", (int)data->bytes->length());
+                if (data->offset->kind == CONST_EXPR_I32)
+                    printf("    const offset %d\n", data->offset->i32Value);
                 break;
             case 0x01:
                 data = new$;
@@ -420,9 +431,11 @@ void WasmParser::parseDataSection() {
                 if (memoryIndex >= mod->memories->length())
                     FATAL("Unknown memory index %d", (int)memoryIndex);
                 data->memory = mod->memories[memoryIndex];
-                data->offset = parseExpr();
+                data->offset = parseConstExpr();
                 data->bytes = r->bytes();
                 printf("  data active mode for memory %d of size %d\n", data->memory->index, (int)data->bytes->length());
+                if (data->offset->kind == CONST_EXPR_I32)
+                    printf("    const offset %d\n", data->offset->i32Value);
                 break;
             default:
                 FATAL("Unknown kind of data ${select}");
@@ -450,14 +463,83 @@ void WasmParser::parseCustomSection()
         //parseNameSection();
     } else if (name == "producers") {
         //parseProducersSection();
+    } else if (name == "target_features") {
+        parseTargetFeaturesSection();
     }
 }
 
-void WasmParser::parseFuncCode(u32 funcIndex) {
+void WasmParser::parseTargetFeaturesSection() {
+    TRACE();
+
+    auto count = r->readU32();
+    for (u32 i = 0; i < count; i++) {
+        auto prefix = r->byte();
+        auto feature = r->string();
+        printf("  %c%s\n", prefix, feature->v.c_str());
+    }
+    
+}
+
+ConstExpr$ WasmParser::parseConstExpr() {
+    TRACE();
+
+    ConstExpr$ result = new$;
+
+    // ../valid/instructions.html#valid-constant
+
+    auto instrs = this->parseExpr();
+
+    if (instrs->length() != 2)
+        FATAL("Invalid constant expression");
+
+    if (instrs[1]->code != INSTR_END)
+        FATAL("Invalid constant expression");
+
+    auto instr = instrs[0];
+
+    switch (instr->code)
+    {
+    case INSTR_REF_NULL:
+        result->kind = CONST_EXPR_NULL;
+        return result;
+    case INSTR_REF_FUNC:
+        result->kind = CONST_EXPR_FUNC;
+        result->functionIndex = instr->imm[0];
+        return result;
+    case INSTR_I32_CONST:
+        result->kind = CONST_EXPR_I32;
+        result->i32Value = (u32)instr->imm[0];
+        return result;
+    case INSTR_I64_CONST:
+        result->kind = CONST_EXPR_I64;
+        result->i64Value = instr->imm[0];
+        return result;
+    case INSTR_F32_CONST:
+        result->kind = CONST_EXPR_F32;
+        result->f32Value = (u32)instr->imm[0];
+        return result;
+    case INSTR_F64_CONST:
+        result->kind = CONST_EXPR_F64;
+        result->f64Value = instr->imm[0];
+        return result;
+    case INSTR_GLOBAL_GET: {
+        auto global = mod->globals[instr->imm[0]];
+        if (global->import == nullptr) {
+            return global->initializer;
+        }
+        result->kind = CONST_EXPR_GLOBAL_IMPORT;
+        result->globalIndex = instr->imm[0];
+        return result;
+    }
+    default:
+        FATAL("Invalid constant expression");
+    }
+}
+
+void WasmParser::parseFuncCode() {
     TRACE();
 
     // modules.html#binary-codesec
-    function = mod->functions[funcIndex];
     Array$$<u32> locals;
     for (auto type : function->type->param) {
         locals->push(type);

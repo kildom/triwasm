@@ -3,7 +3,9 @@
 
 #include "Utils.hh"
 
-#define TRACE() CallTrace _callTraceObject(__FILE__, __LINE__, __FUNCTION__);
+#define TRACE2(a, b) CallTrace _callTraceObject##a##_##b(__FILE__, __LINE__, __FUNCTION__);
+#define TRACE1(a, b) TRACE2(a, b)
+#define TRACE() TRACE1(__COUNTER__, __LINE__)
 
 struct CallTrace {
 

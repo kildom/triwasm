@@ -83,6 +83,36 @@ static void dumpInstr(std::ostream& out, String$$ ind, Array$$<WasmInstr$> instr
     }
 }
 
+static void dumpConstInstr(std::ostream& out, String$$ ind, ConstExpr$ expr)
+{
+    switch (expr->kind) {
+    case CONST_EXPR_UNDEFINED:
+        out << ind->buffer() << "UNDEFINED" << std::endl;
+        break;
+    case CONST_EXPR_I32:
+        out << ind->buffer() << "i32 " << expr->i32Value << std::endl;
+        break;
+    case CONST_EXPR_I64:
+        out << ind->buffer() << "i64 " << expr->i64Value << std::endl;
+        break;
+    case CONST_EXPR_F32:
+        out << ind->buffer() << "f32 " << expr->f32Value << std::endl;
+        break;
+    case CONST_EXPR_F64:
+        out << ind->buffer() << "f64 " << expr->f64Value << std::endl;
+        break;
+    case CONST_EXPR_FUNC:
+        out << ind->buffer() << "function " << expr->functionIndex << std::endl;
+        break;
+    case CONST_EXPR_NULL:
+        out << ind->buffer() << "null" << std::endl;
+        break;
+    case CONST_EXPR_GLOBAL_IMPORT:
+        out << ind->buffer() << "import global " << expr->globalIndex << std::endl;
+        break;
+    }
+}
+
 void dumpModule(WasmModule$ mod)
 {
     //std::stringstream out;
@@ -145,7 +175,7 @@ void dumpModule(WasmModule$ mod)
         }
         if (g->initializer != nullptr) {
             out << ", initialization:" << std::endl;
-            dumpInstr(out, "    "_S, g->initializer);
+            dumpConstInstr(out, "    "_S, g->initializer);
         } else {
             out << std::endl;
         }
@@ -192,7 +222,7 @@ void dumpModule(WasmModule$ mod)
         }
         if (d->offset != nullptr) {
             out << "    offset:" << std::endl;
-            dumpInstr(out, "      "_S, d->offset);
+            dumpConstInstr(out, "      "_S, d->offset);
         }
         if (d->bytes != nullptr) {
             std::ios::fmtflags saved(out.flags());
@@ -220,12 +250,12 @@ void dumpModule(WasmModule$ mod)
         }
         if (e->offset != nullptr) {
             out << "    offset:" << std::endl;
-            dumpInstr(out, "      "_S, e->offset);
+            dumpConstInstr(out, "      "_S, e->offset);
         }
         if (e->exprItems != nullptr) {
             for (auto item : e->exprItems) {
                 out << "    item:" << std::endl;
-                dumpInstr(out, "      "_S, item);
+                dumpConstInstr(out, "      "_S, item);
             }
         }
         if (e->functionItems != nullptr) {

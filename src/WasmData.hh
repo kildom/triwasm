@@ -12,6 +12,7 @@ DOLLAR_STRUCT(HostFunction);
 DOLLAR_STRUCT(AssemblyFunction);
 DOLLAR_STRUCT(WasmFunction);
 DOLLAR_STRUCT(WasmMemory);
+DOLLAR_STRUCT(ConstExpr);
 DOLLAR_STRUCT(WasmGlobal);
 DOLLAR_STRUCT(WasmInstrBr);
 DOLLAR_STRUCT(WasmInstr);
@@ -100,12 +101,37 @@ struct WasmMemory
     String$$ exportName;
 };
 
+enum WasmConstExprKind {
+    CONST_EXPR_UNDEFINED,
+    CONST_EXPR_I32,
+    CONST_EXPR_I64,
+    CONST_EXPR_F32,
+    CONST_EXPR_F64,
+    CONST_EXPR_FUNC,
+    CONST_EXPR_NULL,
+    CONST_EXPR_GLOBAL_IMPORT,
+};
+
+struct ConstExpr {
+    WasmConstExprKind kind;
+    union
+    {
+        u32 globalIndex;
+        u32 functionIndex;
+        u32 i32Value;
+        u64 i64Value;
+        u32 f32Value;
+        u64 f64Value;
+    };
+    ConstExpr() : kind(CONST_EXPR_UNDEFINED) { }
+};
+
 struct WasmGlobal
 {
     u32 index;
     u32 type;
     bool mut;
-    Array$$<WasmInstr$> initializer;
+    ConstExpr$ initializer;
     WasmImport$ import;
     String$$ exportName;
 };
@@ -115,8 +141,8 @@ struct WasmElement
     u32 index;
     WasmElementKind kind;
     WasmTable$ table;
-    Array$$<WasmInstr$> offset;
-    Array$$<Array$$<WasmInstr$>> exprItems;
+    ConstExpr$ offset;
+    Array$$<ConstExpr$> exprItems;
     Array$$<WasmFunction$$> functionItems;
 };
 
@@ -125,7 +151,7 @@ struct WasmDataSegment
     u32 index;
     bool active;
     WasmMemory$ memory;
-    Array$$<WasmInstr$> offset;
+    ConstExpr$ offset;
     Bytes$$ bytes;
 };
 
@@ -138,15 +164,14 @@ struct WasmModule {
     Array$$<WasmTable$> tables;
     Array$$<WasmMemory$> memories;
     Array$$<WasmGlobal$> globals;
-    uint32_t importFunctionsCount;
     // table elements
     Array$$<WasmElement$> elements;
     // memory data
     Array$$<WasmDataSegment$> data;
     // entry
     WasmFunction$ startFunction;
-    // construction
-    WasmModule() : importFunctionsCount(0) { }
+    // only functions with body
+    Array$$<WasmFunction$> definedFunctions;
 };
 
 #endif /* _WASM_DATA_HH_ */

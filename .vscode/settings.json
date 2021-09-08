@@ -73,5 +73,6 @@
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "typeinfo": "cpp"
-    }
+    },
+    "terminal.integrated.automationShell.windows": "cmd.exe"
 }

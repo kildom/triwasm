@@ -10,6 +10,7 @@ DOLLAR_CLASS(WasmParser);
 
 class WasmParser {
 private:
+    Array$$<WasmFunctionType$> functionTypes;
     WasmModule$$ mod;
     WasmReader$ r;
     WasmFunction$ function;
@@ -34,7 +35,9 @@ private:
     void parseDataSection();
     void parseDataCountSection();
     void parseCustomSection();
-    void parseFuncCode(u32 funcIndex);
+    void parseTargetFeaturesSection();
+    ConstExpr$ parseConstExpr();
+    void parseFuncCode();
     Array$$<WasmInstr$> parseExpr(bool allowElse = false);
     bool parseInstr(WasmInstr$ instr, bool &allowElse);
     void parseCompressedBlockType(WasmBlock$$ block);
