@@ -295,15 +295,6 @@ struct anyInnerBase {
     virtual ~anyInnerBase() { }
 };
 
-class any$ {
-public:
-    $<anyInnerBase, true, true> ptr;
-    operator any$*()
-    {
-        return this;
-    }
-};
-
 template<typename T, bool vd>
 struct _any$Inner : public anyInnerBase {
     $<T, true, vd> ptr;
@@ -312,6 +303,26 @@ struct _any$Inner : public anyInnerBase {
 
 template<typename T, bool vd>
 int _any$Inner<T, vd>::typeIdField;
+
+class any$ {
+public:
+    $<anyInnerBase, true, true> ptr;
+    
+    template<typename T, bool nullable, bool vd>
+    any$ &operator=(const $<T, nullable, vd>& a)
+    {
+        auto p = $<_any$Inner<T, vd>, true, true>::create();
+        p->ptr = a;
+        p->typeId = &_any$Inner<T, vd>::typeIdField;
+        ptr = p.template cast<anyInnerBase>();
+        return *this;
+    }
+
+    operator any$*()
+    {
+        return this;
+    }
+};
 
 template<typename T, bool nullable, bool vd>
 $<T, nullable, vd>::$(any$ * anyPtr) {

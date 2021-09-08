@@ -38,7 +38,7 @@ private:
     void parseTargetFeaturesSection();
     ConstExpr$ parseConstExpr();
     void parseFuncCode();
-    WasmFunction$ parseMagicFunction(WasmFunction$ input, String$$ content);
+    WasmFunction$ parseMagicFunction(u32 index, WasmFunctionType$ type, String$$ content);
     Array$$<WasmInstr$> parseExpr(bool allowElse = false);
     bool parseInstr(WasmInstr$ instr, bool &allowElse);
     void parseCompressedBlockType(WasmBlock$$ block);

@@ -37,9 +37,11 @@ public:
 
     GenericString$$() : $<GenericStringInner<T>>() { }
     GenericString$$(nullptr_t) : $<GenericStringInner<T>>(nullptr) { }
+    GenericString$$(const _$_New$&) : $<GenericStringInner<T>>(GenericStringInner<T>()) { }
     GenericString$$(const GenericString$$ &a) : $<GenericStringInner<T>>(a) { }
     GenericString$$(GenericString$$ &&a) : $<GenericStringInner<T>>(a) { }
     GenericString$$(const GenericStringInner<T>& a) : $<GenericStringInner<T>>(a) { }
+    GenericString$$(const GenericStringView<T>& a);
     GenericString$$(typename $<GenericStringInner<T>>::Inner * a) : $<GenericStringInner<T>>(a) { }
     ~GenericString$$() { }
 
@@ -92,9 +94,9 @@ public:
     }
 
     bool operator==(GenericString$$ a) {
-        if ((*this) == nullptr) {
-            return a == nullptr;
-        } else if (a == nullptr) {
+        if ($<GenericStringInner<T>>::_ptr == nullptr) {
+            return a._ptr == nullptr;
+        } else if (a._ptr == nullptr) {
             return false;
         }
         return (*this)->v == a->v;
@@ -117,6 +119,21 @@ public:
 
     bool startsWith(GenericString$$ str) {
         return (*this)->v.compare(0, str->length(), str->v) == 0;
+    }
+
+    Array$$<GenericString$$> split(GenericString$$ str) {
+        Array$$<GenericString$$> result = new$;
+        std::basic_string<T>& s = (*this)->v;
+        size_t start = 0;
+        do {
+            auto pos = s.find(str->v, start);
+            if (pos == std::string::npos)
+                break;
+            result->push((*this)[Range(start, pos)]);
+            start = pos + str->length();
+        } while (true);
+        result->push((*this)[Range(start)]);
+        return result;
     }
 
     int find(GenericString$$ str) {
@@ -187,7 +204,7 @@ public:
     }
 
     GenericString$$<T> getString() const {
-        GenericString$$<T> a;
+        GenericString$$<T> a = new$;
         update();
         a->v.assign(str->v, begin, end - begin);
         return a;
@@ -218,6 +235,11 @@ GenericStringView<T> GenericString$$<T>::operator[](const BoundedRange &range) {
         FATAL("Index out of bounds");
     }
     return GenericStringView<T>(*this, range.beginOffset, range.endOffset);
+}
+
+template<typename T>
+GenericString$$<T>::GenericString$$(const GenericStringView<T>& a) : $<GenericStringInner<T>>(a.getString()) 
+{
 }
 
 template<typename T>

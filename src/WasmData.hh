@@ -10,6 +10,7 @@ DOLLAR_STRUCT(WasmImport);
 DOLLAR_STRUCT(WasmTable);
 DOLLAR_STRUCT(HostFunction);
 DOLLAR_STRUCT(AssemblyFunction);
+DOLLAR_STRUCT(WasmAnnotationFunction);
 DOLLAR_STRUCT(WasmFunction);
 DOLLAR_STRUCT(WasmMemory);
 DOLLAR_STRUCT(ConstExpr);
@@ -59,13 +60,21 @@ struct HostFunction {
     u32 index;
 };
 
-struct AssemblyFunction {
-    bool inlined;
-    String$$ code;
+enum WasmFunctionKind {
+    FUNCTION_WASM,            ///< Normal WASM function with body
+    FUNCTION_ANNOTATION,      ///< Annotation magic function, does not generate a bytecode, call replaced by ".annotation" during triasm generation
+    FUNCTION_IMPORT,          ///< Import function, will be replaced by FUNCTION_HOST_* or FUNCTION_LINK during references resolving
+    FUNCTION_HOST_BY_INDEX,   ///< Host function referenced by index
+    FUNCTION_HOST_BY_NAME,    ///< Host function referenced by name, trivm runtime startup will resolve its index
+    FUNCTION_ASSEMBLY,        ///< Function with triasm body
+    FUNCTION_INLINE_ASSEMBLY, ///< Function with triasm body that will be inlined always
+    FUNCTION_LINK,            ///< A link to actual function
+    FUNCTION_UNUSED,          ///< Function created as a placeholder, cannot be called, will not be generated
 };
 
 struct WasmFunction {
     u32 index;
+    WasmFunctionKind kind;
     WasmFunctionType$ type;
     Array$$<u32> locals;
     WasmBlock$ block;

@@ -148,11 +148,12 @@ void WasmParser::parseImportSection()
         switch (select) {
             case 0x00: {
                 WasmFunction$$ func;
+                func->kind = FUNCTION_IMPORT;
                 func->index = (u32)mod->functions->length();
                 func->type = mod->functionTypes[r->readU32()];
                 func->import = import;
                 if (import->module == "__trivm_magic_function__")
-                    func = parseMagicFunction(func, import->name);
+                    func = parseMagicFunction(func->index, func->type, import->name);
                 mod->functions->push(func);
                 printf("  import %d function %s::%s\n", mod->functions[RangeEnd - 1]->index, import->name->buffer(), import->name->buffer());
                 break;
@@ -216,6 +217,7 @@ void WasmParser::parseFunctionSection() {
         auto type = mod->functionTypes[r->readU32()];
         mod->functions->push(WasmFunction{
             .index = (u32)mod->functions->length(),
+            .kind = FUNCTION_WASM,
             .type = type,
         });
         mod->definedFunctions->push(mod->functions[mod->functions->length() - 1]);
@@ -295,9 +297,15 @@ void WasmParser::parseExportSection()
         auto index = r->readU32();
         switch (select) {
             case 0x00: {
-                WasmFunction$$ func = mod->functions[index];
-                func->exportName = name;
-                printf("  export function %d as %s\n", index, name->buffer());
+                auto func = mod->functions[index];
+                if (name.startsWith("__trivm_magic_function__:"_S)) {
+                    mod->functions->push(parseMagicFunction(mod->functions->length(), func->type, name));
+                    func->kind = FUNCTION_UNUSED;
+                    printf("  magic export function %d with content %s\n", index, name->buffer());
+                } else {
+                    func->exportName = name;
+                    printf("  export function %d as %s\n", index, name->buffer());
+                }
                 break;
             }
             case 0x01: {
@@ -587,6 +595,8 @@ struct MagicFunctionPartResult {
 
 MagicFunctionPartResult magicFunctionPart(String$$ input)
 {
+    TRACE();
+
     MagicFunctionPartResult result;
     auto pos = input.find(':');
     if (pos < 0)
@@ -596,37 +606,47 @@ MagicFunctionPartResult magicFunctionPart(String$$ input)
     return result;
 }
 
-WasmFunction$ WasmParser::parseMagicFunction(WasmFunction$ func, String$$ content)
+WasmFunction$ WasmParser::parseMagicFunction(u32 index, WasmFunctionType$ type, String$$ content)
 {
+    TRACE();
+
     if (content.startsWith("__trivm_magic_function__:"_S)) {
         content = content[Range(25)];
     }
+    WasmFunction$ result = new$;
     auto r = magicFunctionPart(content);
-    auto type = r.part;
+    auto magicName = r.part;
     content = r.rest;
-    if (type == "annotation") {
-        if (func->type->param->length() > 0 || func->type->result->length() > 0)
+    if (magicName == "annotation") {
+        if (type->param->length() > 0 || type->result->length() > 0)
             FATAL("triVM annotation function cannot have any parameter or return value.");
+        result->index = index;
+        result->kind = FUNCTION_ANNOTATION;
+        result->type = type;
+        result->link = content;
+    } else if (magicName == "assembly") {
         r = magicFunctionPart(content);
-        type = r.part;
+        auto optionsText = r.part;
         content = r.rest;
-        if (type == "license") {
-            return WasmFunction {
-                .index = func->index,
-                .type = func->type,
-                /*WasmImport$ import;
-                any$ / * WasmFunction, HostFunction, AssemblyFunction * / link;
-                String$$ exportName;
-                Array$$<u32> localsOffsets;
-                u32 returnAddressOffset;*/
-            };
+        result->index = index;
+        result->kind = FUNCTION_ASSEMBLY;
+        result->type = type;
+        result->link = content;
+        auto options = optionsText.split(","_S);
+        for (auto opt : options) {
+            auto optParts = opt.split("="_S);
+            if (optParts[0] == "inline" && optParts->length() == 1) {
+                result->kind = FUNCTION_INLINE_ASSEMBLY;
+            } else if (optParts[0] == "export" && optParts->length() == 2) {
+                result->exportName = optParts[1];
+            } else {
+                FATAL("Invalid assembly function option: %s", opt.cStr());
+            }
         }
-    } else if (type == "assembly") {
-
     } else {
-        FATAL("Unknown type of triVM magic function: %s", type.cStr());
+        FATAL("Unknown type of triVM magic function: %s", magicName.cStr());
     }
-    return func;
+    return result;
 }
 
 Array$$<WasmInstr$> WasmParser::parseExpr(bool allowElse) {
