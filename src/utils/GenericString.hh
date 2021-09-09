@@ -11,8 +11,12 @@ class GenericStringInner {
 public:
     std::basic_string<T> v;
 
-    template<typename... Args>
-    GenericStringInner(Args&&... args) : v(std::forward<Args>(args)...) { }
+    //template<typename... Args>
+    //GenericStringInner(Args&&... args) : v(std::forward<Args>(args)...) { }
+
+    GenericStringInner() : v() { }
+    GenericStringInner(const T *str, std::size_t len) : v(str, len) { }
+    GenericStringInner(std::size_t repeat, T item) : v(repeat, item) { }
 
     ssize length() {
         return (ssize)v.size();
@@ -43,6 +47,7 @@ public:
     GenericString$$(const GenericStringInner<T>& a) : $<GenericStringInner<T>>(a) { }
     GenericString$$(const GenericStringView<T>& a);
     GenericString$$(typename $<GenericStringInner<T>>::Inner * a) : $<GenericStringInner<T>>(a) { }
+    GenericString$$(any$* a) : $<GenericStringInner<T>>(a) { }
     ~GenericString$$() { }
 
     GenericString$$& operator=(nullptr_t) {

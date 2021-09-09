@@ -41,4 +41,13 @@ using ssize = std::intptr_t;
 #include "utils/Array.hh"
 #include "utils/GenericString.hh"
 
+DOLLAR_TYPEDEF(u64);
+DOLLAR_TYPEDEF(s64);
+DOLLAR_TYPEDEF(u32);
+DOLLAR_TYPEDEF(s32);
+DOLLAR_TYPEDEF(u16);
+DOLLAR_TYPEDEF(s16);
+DOLLAR_TYPEDEF(u8);
+DOLLAR_TYPEDEF(s8);
+
 #endif /* _COMMON_H_ */

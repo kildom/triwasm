@@ -113,12 +113,13 @@ static void dumpConstInstr(std::ostream& out, String$$ ind, ConstExpr$ expr)
     }
 }
 
-void dumpModule(WasmModule$ mod)
+void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags)
 {
-    //std::stringstream out;
-    auto &out = std::cout;
-
-    //out << "================== MODULE " <<  << std::endl;
+    if (mod->isMain) {
+        out << "================== MAIN MODULE " << mod->name.cStr() << std::endl;
+    } else {
+        out << "================== MERGED MODULE " << mod->name.cStr() << std::endl;
+    }
 
     out << "Function types: " << std::endl;
     for (int i = 0; i < mod->functionTypes->length(); i++) {
@@ -184,31 +185,75 @@ void dumpModule(WasmModule$ mod)
     out << "Functions: " << std::endl;
     for (auto f : mod->functions) {
         out << "  [" << f->index << "] " << TypeList{f->type->param, true} << ":" << TypeList{f->type->result, false};
-        if (f->import != nullptr) {
-            out << ", import as " << f->import->module->buffer() << "." << f->import->name->buffer();
-        }
         if (f->exportName != nullptr) {
-            out << ", export as " << f->exportName->buffer();
+            out << ", export as " << f->exportName.cStr();
         }
         if (f == mod->startFunction) {
             out << ", startup function";
         }
-        if (f->block != nullptr) {
-            out << std::endl << "    locals:" << std::endl;
-            if (f->locals != nullptr) {
-                int localIndex = 0;
-                for (auto t : f->locals) {
-                    out << "      [" << localIndex << "] " << wasmTypeName(t);
-                    if (localIndex < f->type->param->length())
-                        out << " (param) ";
-                    out << std::endl;
-                    localIndex++;
+        switch (f->kind)
+        {
+        case FUNCTION_WASM:
+            out << ", normal wasm function";
+            if (f->block != nullptr && (flags & DUMP_WASM_ASSEMBLY)) {
+                out << std::endl << "    locals:" << std::endl;
+                if (f->locals != nullptr) {
+                    int localIndex = 0;
+                    for (auto t : f->locals) {
+                        out << "      [" << localIndex << "] " << wasmTypeName(t);
+                        if (localIndex < f->type->param->length())
+                            out << " (param) ";
+                        out << std::endl;
+                        localIndex++;
+                    }
                 }
+                out << "    body:" << std::endl;
+                dumpInstr(out, "      "_S, f->block->body);
+            } else {
+                out << std::endl;
             }
-            out << "    body:" << std::endl;
-            dumpInstr(out, "      "_S, f->block->body);
-        } else {
+            break;
+
+        case FUNCTION_ANNOTATION:
+            out << ", annotation function: " << String$$(f->data).cStr() << std::endl;
+            break;
+        
+        case FUNCTION_IMPORT:
+            out << ", import function";
+            if (f->import != nullptr) {
+                out << ", import as " << f->import->module.cStr() << "." << f->import->name.cStr();
+            }
             out << std::endl;
+            break;
+        
+        case FUNCTION_HOST_BY_INDEX:
+            out << ", host function: index=" << *u32$$(f->data) << std::endl;
+            break;
+        
+        case FUNCTION_HOST_BY_NAME:
+            out << ", host function: name=" << String$$(f->data).cStr() << std::endl;
+            break;
+        
+        case FUNCTION_ASSEMBLY:
+        case FUNCTION_INLINE_ASSEMBLY:
+            if (flags & DUMP_TRI_ASSEMBLY) {
+                out << ", " << (f->kind == FUNCTION_ASSEMBLY ? "" : "inline ") << "assembly function:" << std::endl << "----------------------" << std::endl << String$$(f->data).cStr() << std::endl << "----------------------" << std::endl;
+            } else {
+                out << ", " << (f->kind == FUNCTION_ASSEMBLY ? "" : "inline ") << "assembly function" << std::endl;
+            }
+            break;
+        
+        case FUNCTION_LINK:
+            out << ", links to function index " << WasmFunction$(f->data)->index << std::endl;
+            break;
+        
+        case FUNCTION_UNUSED:
+            out << ", unused function" << std::endl;
+            break;
+        
+        default:
+            FATAL("Unknown kind of function");
+            break;
         }
     }
 
@@ -224,7 +269,7 @@ void dumpModule(WasmModule$ mod)
             out << "    offset:" << std::endl;
             dumpConstInstr(out, "      "_S, d->offset);
         }
-        if (d->bytes != nullptr) {
+        if (d->bytes != nullptr && (flags & DUMP_HEX_DATA)) {
             std::ios::fmtflags saved(out.flags());
             out << "    content:" << std::endl << std::setfill('0') << std::uppercase << std::hex << std::internal;
             for (ssize line = 0; line < d->bytes->length(); line += 32) {
@@ -264,8 +309,6 @@ void dumpModule(WasmModule$ mod)
             }
         }
     }
-
-    //printf("%s", out.str().c_str());
 }
 
 static const char* instrName(u32 opcode)

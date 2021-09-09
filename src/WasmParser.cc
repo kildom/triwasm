@@ -623,7 +623,7 @@ WasmFunction$ WasmParser::parseMagicFunction(u32 index, WasmFunctionType$ type, 
         result->index = index;
         result->kind = FUNCTION_ANNOTATION;
         result->type = type;
-        result->link = content;
+        result->data = content;
     } else if (magicName == "assembly") {
         r = magicFunctionPart(content);
         auto optionsText = r.part;
@@ -631,7 +631,7 @@ WasmFunction$ WasmParser::parseMagicFunction(u32 index, WasmFunctionType$ type, 
         result->index = index;
         result->kind = FUNCTION_ASSEMBLY;
         result->type = type;
-        result->link = content;
+        result->data = content;
         auto options = optionsText.split(","_S);
         for (auto opt : options) {
             auto optParts = opt.split("="_S);

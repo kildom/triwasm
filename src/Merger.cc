@@ -5,8 +5,6 @@
 #include "WasmConsts.hh"
 #include "WasmParser.hh"
 #include "WasmInstr.hh"
-#include "Reducer.hh"
-#include "Builtins.hh"
 #include "VMConfig.hh"
 #include "Merger.hh"
 
@@ -16,7 +14,7 @@ void Merger::setMain(WasmModule$ main)
 }
 
 
-void Merger::join(WasmModule$ source)
+void Merger::merge(WasmModule$ source)
 {
     this->source = source;
 }

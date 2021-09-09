@@ -14,7 +14,7 @@ private:
 
 public:
     void setMain(WasmModule$ main);
-    void join(WasmModule$ source);
+    void merge(WasmModule$ source);
     void resolveReferences();
 };
 

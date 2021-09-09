@@ -56,33 +56,33 @@ struct WasmBlock {
     bool elsePresent;
 };
 
-struct HostFunction {
-    u32 index;
+enum WasmFunctionKind {
+    FUNCTION_WASM,            ///< [WasmFunctionData] Normal WASM function with body
+    FUNCTION_ANNOTATION,      ///< [String$$]         Annotation magic function, does not generate a bytecode, call replaced by ".annotation" during triasm generation
+    FUNCTION_IMPORT,          ///< [null]             Import function, will be replaced by FUNCTION_HOST_* or FUNCTION_LINK during references resolving
+    FUNCTION_HOST_BY_INDEX,   ///< [u32$]             Host function referenced by index
+    FUNCTION_HOST_BY_NAME,    ///< [String$$]         Host function referenced by name, trivm runtime startup will resolve its index
+    FUNCTION_ASSEMBLY,        ///< [String$$]         Function with triasm body
+    FUNCTION_INLINE_ASSEMBLY, ///< [String$$]         Function with triasm body that will be inlined always
+    FUNCTION_LINK,            ///< [WasmFunction]     A link to actual function
+    FUNCTION_UNUSED,          ///< [null]             Function created as a placeholder, cannot be called, will not be generated
 };
 
-enum WasmFunctionKind {
-    FUNCTION_WASM,            ///< Normal WASM function with body
-    FUNCTION_ANNOTATION,      ///< Annotation magic function, does not generate a bytecode, call replaced by ".annotation" during triasm generation
-    FUNCTION_IMPORT,          ///< Import function, will be replaced by FUNCTION_HOST_* or FUNCTION_LINK during references resolving
-    FUNCTION_HOST_BY_INDEX,   ///< Host function referenced by index
-    FUNCTION_HOST_BY_NAME,    ///< Host function referenced by name, trivm runtime startup will resolve its index
-    FUNCTION_ASSEMBLY,        ///< Function with triasm body
-    FUNCTION_INLINE_ASSEMBLY, ///< Function with triasm body that will be inlined always
-    FUNCTION_LINK,            ///< A link to actual function
-    FUNCTION_UNUSED,          ///< Function created as a placeholder, cannot be called, will not be generated
+struct WasmFunctionData {
+    //TODO:
+    //Array$$<u32> localsOffsets;
+    //u32 returnAddressOffset;
 };
 
 struct WasmFunction {
     u32 index;
     WasmFunctionKind kind;
     WasmFunctionType$ type;
+    WasmImport$ import;
+    String$$ exportName;
     Array$$<u32> locals;
     WasmBlock$ block;
-    WasmImport$ import;
-    any$ /* WasmFunction, HostFunction, AssemblyFunction */ link;
-    String$$ exportName;
-    Array$$<u32> localsOffsets;
-    u32 returnAddressOffset;
+    any$ data;
 };
 
 struct WasmInstrBr {
@@ -166,6 +166,7 @@ struct WasmDataSegment
 
 
 struct WasmModule {
+    // general information
     String$$ name;
     bool isMain;
     // types
@@ -181,9 +182,16 @@ struct WasmModule {
     Array$$<WasmDataSegment$> data;
     // entry
     WasmFunction$ startFunction;
-    // only functions with body
+    // functions with body only
     Array$$<WasmFunction$> definedFunctions;
-    bool isMainModule;
 };
+
+enum DumpFlags {
+    DUMP_WASM_ASSEMBLY = 1,
+    DUMP_TRI_ASSEMBLY = 2,
+    DUMP_HEX_DATA = 4,
+};
+
+void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags);
 
 #endif /* _WASM_DATA_HH_ */

@@ -29,6 +29,8 @@
     * Memory data may contain special string e.g. `__triVM_inline_asm_begin_378dkjaJhDk278B28:function_name:code:__triVM_inline_asm_end_378dkjaJhDk278B28`.
       Function body and locals of function `function_name` will be removed and replaced by the `code` which is triVM assembly code.
     * Other modules can also use this feature.
+  * Security issue to solve: attacker may create very long instructions using variable length address of read/write instructions.
+    Host will allow limited number of instructions, but still it will take a long time to process very long instructions.
   * CoreMark test for wasm:
     https://github.com/wasm3/wasm-coremark
   * List of other engines:
@@ -58,7 +60,7 @@
 
 * Optimization tips:
   * Put second const operant into destination instruction: `PUSH X ... SUB  ->  SUB X`
-  * Put first const operant into destination instruction if they can be inverted (add, mul, and, or, xor): `PUSH X ... ADD  ->  ADD X`
+  * Put first const operant into destination instruction if they can be inverted (add, mul, and, or, xor, lt/gt): `PUSH X ... ADD  ->  ADD X` or `PUSH X ... ULT  ->  UGT X`
   * If value comes from uvm `NOT` instruction, delete `NOT` and replace destination instruction from `BRT` to `BRF` or the opposite: `EQ ; NOT ; ... ; BRT  ->  EQ ; ... ; BRF`
   * If value comes from uvm `NOT` instruction, and destination is also `NOT` delete both: `NOT ; ... ; NOT  ->  ...`
   * Combine immutable globals with the same value

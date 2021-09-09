@@ -66,7 +66,7 @@ TRIVM_EXPORT_ASSEMBLY(
     "BR __trivmlib_f32_le\n",
     bool, ( float32_t a, float32_t b ));
 
-TRIVM_EXPORT_ASSEMBLY(
+TRIVM_EXPORT_ASSEMBLY( // TODO: This function should not exist, code should be generated during reduce and optimized later: CALL eq, NOT, BRT --> CALL eq, BRF
     trivm_f32_ne,
     "CALL __trivmlib_f32_eq\n"
     "NOT\n"
