@@ -121,11 +121,11 @@ void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags)
         out << "================== MERGED MODULE " << mod->name.cStr() << std::endl;
     }
 
-    out << "Function types: " << std::endl;
-    for (int i = 0; i < mod->functionTypes->length(); i++) {
+    /*out << "Function types: " << std::endl;
+    for (int i = 0; i < mod->length(); i++) {
         auto t = mod->functionTypes[i];
         out << "  [" << i << "] " << TypeList{t->param, true} << ":" << TypeList{t->result, false} << std::endl;
-    }
+    }*/
 
     out << "Tables: " << std::endl;
     for (auto t : mod->tables) {
@@ -187,6 +187,9 @@ void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags)
         out << "  [" << f->index << "] " << TypeList{f->type->param, true} << ":" << TypeList{f->type->result, false};
         if (f->exportName != nullptr) {
             out << ", export as " << f->exportName.cStr();
+            if (f->moduleName != nullptr) {
+                out << " from module " << f->moduleName.cStr();
+            }
         }
         if (f == mod->startFunction) {
             out << ", startup function";

@@ -154,7 +154,7 @@ void Generator::generateInstr(WasmInstr$ instr)
     }
     case INSTR_CALL_INDIRECT: {
         TRACE();
-        auto functionType = mod->functionTypes[imm[0]];
+        auto functionType = mod->functionTypes[imm[0]]; // TODO: keep type as reference to object (not index)
         auto table = imm[1];
         if (table > 0) {
             out << ind->buffer() << "NEG -table" << table << "\n";

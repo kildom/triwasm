@@ -80,6 +80,7 @@ struct WasmFunction {
     WasmFunctionType$ type;
     WasmImport$ import;
     String$$ exportName;
+    String$$ moduleName;
     Array$$<u32> locals;
     WasmBlock$ block;
     any$ data;
@@ -169,8 +170,6 @@ struct WasmModule {
     // general information
     String$$ name;
     bool isMain;
-    // types
-    Array$$<WasmFunctionType$> functionTypes;
     // main collectios
     Array$$<WasmFunction$> functions;
     Array$$<WasmTable$> tables;

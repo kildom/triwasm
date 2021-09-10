@@ -136,7 +136,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     }
     case INSTR_CALL_INDIRECT: {
         TRACE();
-        auto type = mod->functionTypes[imm[0]];
+        auto type = mod->functionTypes[imm[0]]; // TODO: keep type as reference to object (not index)
         stack->pop(type->param->length());
         reduced->push(instr);
         for (auto t : type->result) {

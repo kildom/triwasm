@@ -1,10 +1,10 @@
 * General
-  * Add option to ignore some or all unresolved imports. Calling ignored import function will cause µVM exception.
-  * Allow compilation of µVM assembly file.
+  * Add option to ignore some or all unresolved imports. Calling ignored import function will cause triVM exception.
+  * Allow compilation of triVM assembly file.
   * Abiliti to watch C stack (only for clang):
-    * µVM need to have optional feature that adds a register that contains linked list of structures that describes watched memory:
+    * triVM need to have optional feature that adds a register that contains linked list of structures that describes watched memory:
       * structure: address, min_value, max_value, exception_code, next_entry
-      * all stuctures are in µVM memory
+      * all stuctures are in triVM memory
     * Second option (better): Add three registers: WPTR, WMIN, WMAX
     * A way to determinate which global is a C stack pointer:
       * dummy exported function that must be linked during wasm generation and will be deleted during the compilation.
@@ -14,7 +14,7 @@
       * maximum is in global initialization
       * minimum is maximum minus stack size, which is known at the clang compilation stage.
   * Add memory tips at the end of compilation, e.g.
-    * µVM stack size is 62K, minimum is 8K, you can increase `global-base` by 54K to provide more space for your heap size.
+    * triVM stack size is 62K, minimum is 8K, you can increase `global-base` by 54K to provide more space for your heap size.
   * Add special virtual memory area (e.g. 0x80000000) that will be compiled to globals, e.g. `((uint32_t*)0x80000014) = 123`.
     Globals have smaller instruction size, so this is only optimization solution.
   * Use [LEMON](https://en.wikipedia.org/wiki/Lemon_(parser_generator)) parser generator to parse assembly file.
@@ -38,7 +38,7 @@
   * Soft float library:
     http://www.jhauser.us/arithmetic/SoftFloat.html
 
-* Add µVM extensions:
+* Add triVM extensions:
   * Memory mappings:
     * VM can be configured to use N MSB bits as memory identifier, e.g 2 bits gives 4 memories 1GB each.
     * Each memory can grow indepenently
@@ -84,15 +84,15 @@
 Compilation flow:
 1. Parse wasm file and check basic integrity *WasmParser* and *WasmReader*
 2. Do data association (e.g. convert index into actual data) and do full validation *WasmParser*
-3. Generate abstract µVM instructions (as objects), keep the blocks as in wasm *IRGenerator*
+3. Generate abstract triVM instructions (as objects), keep the blocks as in wasm *IRGenerator*
 4. Execute code optimization passes: *IROptimizer*
    1. inline operand *InlineOperandOpt*
    2. reduced negation *ReduceNegationOpt*
    3. common immediate to globals *CommonImmediateOpt*
    4. integer constant calculated *CalculateConstOpt*
-5. Generate µVM code for each function *UVMAsmGenerator*
+5. Generate triVM code for each function *UVMAsmGenerator*
 6. Add used buildins and startup code, data, immutable globals, bindings, e.t.c. *UVMAsmLinker*
-7. Compile µVM code to final representation *UVMAsmBinGenerator* or *UVMAsmTextGenerator*
+7. Compile triVM code to final representation *UVMAsmBinGenerator* or *UVMAsmTextGenerator*
 
 
 Buildins

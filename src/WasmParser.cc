@@ -13,6 +13,7 @@ WasmModule$$ WasmParser::parse(WasmInputStream$ stream, bool isMain, String$$ na
     mod = new$;
     mod->isMain = isMain;
     mod->name = name;
+    functionTypes = new$;
     parse();
     return mod;
 }
@@ -129,7 +130,7 @@ void WasmParser::parseTypeSection()
         for (u32 k = 0; k < paramCount; k++) {
             type->result->push(valueType());
         }
-        mod->functionTypes->push(type);
+        functionTypes->push(type);
         printf("  function type %d\n", i);
     }
 }
@@ -150,7 +151,7 @@ void WasmParser::parseImportSection()
                 WasmFunction$$ func;
                 func->kind = FUNCTION_IMPORT;
                 func->index = (u32)mod->functions->length();
-                func->type = mod->functionTypes[r->readU32()];
+                func->type = functionTypes[r->readU32()];
                 func->import = import;
                 if (import->module == "__trivm_magic_function__")
                     func = parseMagicFunction(func->index, func->type, import->name);
@@ -214,7 +215,7 @@ void WasmParser::parseFunctionSection() {
     // modules.html#binary-funcsec
     auto count = r->readU32();
     for (u32 i = 0; i < count; i++) {
-        auto type = mod->functionTypes[r->readU32()];
+        auto type = functionTypes[r->readU32()];
         mod->functions->push(WasmFunction{
             .index = (u32)mod->functions->length(),
             .kind = FUNCTION_WASM,
@@ -304,6 +305,7 @@ void WasmParser::parseExportSection()
                     printf("  magic export function %d with content %s\n", index, name->buffer());
                 } else {
                     func->exportName = name;
+                    func->moduleName = mod->name;
                     printf("  export function %d as %s\n", index, name->buffer());
                 }
                 break;
@@ -639,6 +641,7 @@ WasmFunction$ WasmParser::parseMagicFunction(u32 index, WasmFunctionType$ type, 
                 result->kind = FUNCTION_INLINE_ASSEMBLY;
             } else if (optParts[0] == "export" && optParts->length() == 2) {
                 result->exportName = optParts[1];
+                result->moduleName = mod->name;
             } else {
                 FATAL("Invalid assembly function option: %s", opt.cStr());
             }
@@ -768,7 +771,7 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
     case INSTR_RETURN_CALL_INDIRECT: {
         TRACE();
         u32 typeidx0 = r->readU32();
-        if (typeidx0 >= mod->functionTypes->length())
+        if (typeidx0 >= functionTypes->length())
             FATAL("Invalid type index");
         imm->push(typeidx0);
         u32 tableidx1 = r->readU32();
@@ -1169,7 +1172,7 @@ void WasmParser::parseCompressedBlockType(WasmBlock$$ block)
         default:
             if (typeIndex < 0)
                 FATAL("Invalid type index");
-            block->type = mod->functionTypes[typeIndex];
+            block->type = functionTypes[typeIndex];
             break;
     }
 }

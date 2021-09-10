@@ -10,8 +10,8 @@ DOLLAR_CLASS(WasmParser);
 
 class WasmParser {
 private:
-    Array$$<WasmFunctionType$> functionTypes;
     WasmModule$$ mod;
+    Array$$<WasmFunctionType$> functionTypes;
     WasmReader$ r;
     WasmFunction$ function;
     Array$<WasmBlock$$> blockStack;

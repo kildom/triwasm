@@ -5,17 +5,22 @@
 
 #include "WasmData.hh"
 
-DOLLAR_CLASS(Joiner);
+DOLLAR_CLASS(Merger);
 
 class Merger {
 private:
     WasmModule$ main;
     WasmModule$ source;
+    u32 funcIndexOffset;
 
 public:
     void setMain(WasmModule$ main);
     void merge(WasmModule$ source);
     void resolveReferences();
+
+private:
+    void mergeFunction(WasmFunction$ func);
+    void updateInstrIndexes(WasmBlock$ block);
 };
 
 #endif /* _MERGER_HH_ */

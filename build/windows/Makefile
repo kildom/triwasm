@@ -1,7 +1,7 @@
 
 CPP=g++
 STRIP=strip
-TARGET=uvmwasm.exe
+TARGET=triwasm.exe
 CXXFLAGS=-static-libstdc++ -static-libgcc -fno-exceptions -fno-rtti -Wall
 OPTFLAGS=-O2 -g0
 DEBUGFLAGS=-O0 -g

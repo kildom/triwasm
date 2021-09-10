@@ -5,14 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "uvmwasm Debug",
+            "name": "triwasm Debug",
             "type": "cppdbg",
             "request": "launch",
             "linux": {
-                "program": "${workspaceFolder}/build/linux/debug/uvmwasm",
+                "program": "${workspaceFolder}/build/linux/debug/triwasm",
             },
             "windows": {
-                "program": "${workspaceFolder}/build/windows/debug/uvmwasm.exe",
+                "program": "${workspaceFolder}/build/windows/debug/triwasm.exe",
             },
             "args": [],
             "stopAtEntry": false,
