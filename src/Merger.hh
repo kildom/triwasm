@@ -16,7 +16,6 @@ private:
 public:
     void setMain(WasmModule$ main);
     void merge(WasmModule$ source);
-    void resolveReferences();
 
 private:
     void mergeFunction(WasmFunction$ func);

@@ -6,7 +6,7 @@
 #include "FileInputStream.hh"
 #include "WasmParser.hh"
 #include "Merger.hh"
-//#include "Reducer.hh"
+#include "Resolver.hh"
 //#include "Generator.hh"
 //#include "Linker.hh"
 
@@ -34,7 +34,9 @@ int main(int argc, char *argv[]) {
     dumpModule(ofs3, mod, DUMP_TRI_ASSEMBLY);
     ofs3.close();
 
-    merger->resolveReferences();
+    auto resolver = Resolver$::create();
+
+    resolver->resolveImports(mod);
 
     std::ofstream ofs4 ("resolved.txt", std::ofstream::out);
     dumpModule(ofs4, mod, DUMP_TRI_ASSEMBLY);

@@ -46,6 +46,7 @@ void Merger::updateInstrIndexes(WasmBlock$ block)
         case INSTR_CALL:
         case INSTR_RETURN_CALL:
         case INSTR_REF_FUNC:
+            //printf("Index updated %d -> %d\n", (int)instr->imm[0], (int)(instr->imm[0] + funcIndexOffset));
             instr->imm[0] += funcIndexOffset;
             break;
         default:
@@ -54,23 +55,6 @@ void Merger::updateInstrIndexes(WasmBlock$ block)
         if (instr->block != nullptr) {
             updateInstrIndexes(instr->block);
         }
-    }
-}
-
-
-
-void Merger::resolveReferences()
-{
-    for (auto f : main->functions)
-    {
-        if (f->kind != FUNCTION_IMPORT) {
-            continue;
-        }
-
-        auto moduleName = f->import->module;
-        auto functionName = f->import->name;
-        //TODO: resolving imports (also for globals and tables maybe) should be done in separate class
-        //TODO: fast way of finding exports (e.g. map of all exports), this will be also useful for Reducer when instructions are replaced by calls to trivmlib
     }
 }
 

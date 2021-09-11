@@ -183,6 +183,8 @@ struct WasmModule {
     WasmFunction$ startFunction;
     // functions with body only
     Array$$<WasmFunction$> definedFunctions;
+    // function exports map
+    std::map<std::string, std::map<std::string, WasmFunction$>> functionExports;
 };
 
 enum DumpFlags {
