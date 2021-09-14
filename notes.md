@@ -335,5 +335,56 @@ v86 firefox	|5,3
 jsLinux firefox |	23,2
 jsLinux chrome	| 20,4
 
-Best case is 26x slower than native - it is acceptable?
+Best case is 26x slower than native - it is acceptable? **not for C++**, because:
 
+Clang compiled on Ubuntu with `-Os -m32` running on `Tiny Core`. Copiling C/C++ hello world: `clang++ a.cpp -O? -g0`:
+```
+C++:
+ chrome -Oz:  4m 41s
+ firefox -Oz: 3m 55s
+ firefox -O0: 2m 14s
+ firefox -O1: 2m 6s
+C:
+ chrome -Oz:  10s
+ firefox -Oz: 4s
+```
+
+Clang (from wasi-sdk) must be compiled with i386 target support to be able to compile host program.
+Alternative is to include gcc into linux image, but it will take ~60MB more space.
+`libcxx` and `libcxxabi` are not reqiured, because they are not needed for C.
+
+Only solution supporting C++ is to compile clang for wasi-sdk and create virtual enviroment in a browser, e.g.:
+```
+Build All and Run.cmds
+config/
+    trivm.conf
+    Build Conf.cmds
+    output
+        trivm_host.h
+        trivm_host.c
+        trivm_guest.h
+        trivm_guest.c
+host/
+    host_main.c
+    Build Host.cmds
+    Run Host.cmds
+    output
+        host
+guest/
+    guest_main.c
+    Build Guest.cmds
+    output/
+        guest.wasm
+        guest.trivm
+tools/
+    wasi-sdk/
+        ...
+    binaryen/
+        ...
+    triwasm/
+        ...
+    cmds/
+        ...
+    trivm/
+        ...
+```
