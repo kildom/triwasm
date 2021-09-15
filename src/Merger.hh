@@ -19,7 +19,6 @@ public:
 
 private:
     void mergeFunction(WasmFunction$ func);
-    void updateInstrIndexes(WasmBlock$ block);
 };
 
 #endif /* _MERGER_HH_ */

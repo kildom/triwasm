@@ -42,10 +42,12 @@ static void dumpImm(std::ostream& out, WasmInstr$ instr, Array$$<u32> blockStack
     case INSTR_BR:
     case INSTR_BR_IF: {
         out << instr->imm[0] << " {block" << blockStack[blockStack->length() - 1 - instr->imm[0]] << "} ";
-        auto d = WasmInstrBr$$(instr->data);
-        if (d->conditional) out << "(conditional)";
-        if (d->forceForward) out << "(forward)";
-        if (d->negated) out << "(negated)";
+        auto d = WasmInstrBr$$(instr->data[0]);
+        if (d != nullptr) {
+            if (d->conditional) out << "(conditional)";
+            if (d->forceForward) out << "(forward)";
+            if (d->negated) out << "(negated)";
+        }
         break;
     }
     
@@ -53,9 +55,7 @@ static void dumpImm(std::ostream& out, WasmInstr$ instr, Array$$<u32> blockStack
         for (auto imm : instr->imm) {
             out << imm << " ";
         }
-        if (instr->immString != nullptr && instr->immString->length()) {
-            out << "\"" << instr->immString->buffer() << "\" ";
-        }
+        //TODO: detect and dump instr->data
         break;
     }
 }

@@ -3,6 +3,7 @@
 
 #include "Utils.hh"
 
+/* -- Begin of source code generated with help of "gen_instr.js" script -- */
 enum InstrOpcode {
     INSTR_UNREACHABLE = 0x00,
     INSTR_NOP = 0x01,
@@ -217,6 +218,6 @@ enum InstrOpcode {
     INSTR_TRIVM_BUILTIN = 0x7FFFFF07,
     INSTR_TRIVM_WASM_EXT = 0xFC,
 };
-
+/* -- End of source code generated with help of "gen_instr.js" script -- */
 
 #endif /* _WASM_INSTR_HH_ */

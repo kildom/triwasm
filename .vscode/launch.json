@@ -32,13 +32,14 @@
         {
             "type": "pwa-node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Generate instructions script",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/main.js",
+            "program": "${workspaceFolder}/scripts/gen_instr.js",
+            "cwd": "${workspaceFolder}/scripts",
             "linux": {
-                "runtimeExecutable": "${env:HOME}/Programs/node/bin/node"
+                "runtimeExecutable": "${env:HOME}/my/node-v14.17.3-linux-x64/bin/node"
             },
             "windows": {
                 "runtimeExecutable": "C:\\node\\node.exe"

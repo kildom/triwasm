@@ -17,7 +17,7 @@ DOLLAR_STRUCT(ConstExpr);
 DOLLAR_STRUCT(WasmGlobal);
 DOLLAR_STRUCT(WasmInstrBr);
 DOLLAR_STRUCT(WasmInstr);
-DOLLAR_STRUCT(WasmDataSegment);
+DOLLAR_STRUCT(WasmData);
 DOLLAR_STRUCT(WasmBlock);
 DOLLAR_STRUCT(WasmElement);
 DOLLAR_STRUCT(WasmModule);
@@ -96,9 +96,8 @@ struct WasmInstrBr {
 struct WasmInstr {
     u32 code;
     Array$$<u64> imm;
-    String$$ immString;
     WasmBlock$ block;
-    any$ data;
+    Array$$<any$> data;
 };
 
 struct WasmMemory
@@ -156,7 +155,7 @@ struct WasmElement
     Array$$<WasmFunction$$> functionItems;
 };
 
-struct WasmDataSegment
+struct WasmData
 {
     u32 index;
     bool active;
@@ -178,7 +177,7 @@ struct WasmModule {
     // table elements
     Array$$<WasmElement$> elements;
     // memory data
-    Array$$<WasmDataSegment$> data;
+    Array$$<WasmData$> data;
     // entry
     WasmFunction$ startFunction;
     // functions with body only

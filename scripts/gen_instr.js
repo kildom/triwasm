@@ -64,6 +64,27 @@ async function parseOds() {
     return transformed;
 }
 
+function writeOutput(destFile, origFile, content, indent) {
+    let header = indent + '/* -- Begin of source code generated with help of "gen_instr.js" script -- */';
+    let footer = indent + '/* -- End of source code generated with help of "gen_instr.js" script -- */';
+    let begin, end;
+    try {
+        orig = fs.readFileSync(origFile, 'utf-8');
+        let [a, b, c] = orig.split(header);
+        if (!b || c) throw null;
+        let [d, e, f] = orig.split(footer);
+        if (!e || f) throw null;
+        begin = a + header;
+        end = footer + e;
+    } catch (ex) {
+        begin = header;
+        end = footer;
+    }
+    while (content.endsWith('\n')) content = content.substr(0, content.length - 1);
+    fs.writeFileSync(destFile, begin + '\n' + content + '\n' + end);
+    fs.writeFileSync(destFile + '.sh', `#!/bin/sh\nA=$(readlink -f "$0")\nA=$(dirname "$A")\nmeld "$A/../${destFile}" "$A/../${origFile}"\n`, {mode: 0o755});
+}
+
 function generateOpcodes(table) {
     let out = 'enum InstrOpcode {\n'
     for (let row of table) {
@@ -71,11 +92,11 @@ function generateOpcodes(table) {
         out += `    ${row._identifier} = ${row.binaryOpcode},\n`;
     }
     out += '};\n';
-    fs.writeFileSync('output/instr.hh', out);
+    writeOutput('output/WasmInstr.hh', '../src/WasmInstr.hh', out, '');
 }
 
 function generateParser(table) {
-    let out = '    /* -- Begin of source code generated with help of "gen_instr.js" script -- */';
+    let out = '';
     for (let row of table)
         if (row.name.startsWith('trivm.'))
             row._trivm = true;
@@ -104,36 +125,34 @@ function generateParser(table) {
                 // nothing to parse
             } else if (type == 'funcidx') {
                 out += `        u32 funcidx${i} = r->readU32();\n`;
-                out += `        if (funcidx${i} >= d->functions->length())\n            FATAL("Invalid function index");\n`;
-                out += `        imm->push(funcidx${i});\n`;
+                out += `        if (funcidx${i} >= mod->functions->length())\n            FATAL("Invalid function index");\n`;
+                out += `        data->push(any$::get(mod->functions[funcidx${i}]));\n`;
             } else if (type == 'localidx') {
                 out += `        u32 localidx${i} = r->readU32();\n`;
-                out += `        if (localidx${i} >= function->locals->length() + function->type->param->length())\n            FATAL("Invalid local variable index");\n`;
+                out += `        if (localidx${i} >= function->locals->length())\n            FATAL("Invalid local variable index");\n`;
                 out += `        imm->push(localidx${i});\n`;
             } else if (type == 'globalidx') {
                 out += `        u32 globalidx${i} = r->readU32();\n`;
-                out += `        if (globalidx${i} >= d->globals->length())\n            FATAL("Invalid global variable index");\n`;
-                out += `        imm->push(globalidx${i});\n`;
+                out += `        if (globalidx${i} >= mod->globals->length())\n            FATAL("Invalid global variable index");\n`;
+                out += `        data->push(any$::get(mod->globals[globalidx${i}]));\n`;
             } else if (type == 'tableidx') {
                 out += `        u32 tableidx${i} = r->readU32();\n`;
-                out += `        if (tableidx${i} >= d->tables->length())\n            FATAL("Invalid table index");\n`;
-                out += `        imm->push(tableidx${i});\n`;
+                out += `        if (tableidx${i} >= mod->tables->length())\n            FATAL("Invalid table index");\n`;
+                out += `        data->push(any$::get(mod->tables[tableidx${i}]));\n`;
             } else if (type == 'memidx') {
                 out += `        u32 memidx${i} = r->readU32();\n`;
                 out += `        if (memidx${i} != 0)\n            FATAL("Only one memory is supported");\n`;
-                out += `        imm->push(memidx${i});\n`;
             } else if (type == 'dataidx') {
                 out += `        u32 dataidx${i} = r->readU32();\n`;
-                out += `        // dataidx validation must be done later\n`;
-                out += `        imm->push(dataidx${i});\n`;
+                out += `        imm->push(dataidx${i}); // dataidx${i} validation will be done later\n`;
             } else if (type == 'memarg') {
                 out += `        r->readU32(); // ignore align\n`;
                 out += `        u32 offset${i} = r->readU32();\n`;
                 out += `        imm->push(offset${i});\n`;
             } else if (type == 'elemidx') {
                 out += `        u32 elemidx${i} = r->readU32();\n`;
-                out += `        if (elemidx${i} >= d->elements->length()) // TODO: check if elemidx is for passive only or both\n            FATAL("Invalid table element index");\n`;
-                out += `        imm->push(elemidx${i});\n`;
+                out += `        if (elemidx${i} >= mod->elements->length())\n            FATAL("Invalid table element index");\n`;
+                out += `        data->push(any$::get(mod->elements[elemidx${i}]));\n`;
             } else {
                 console.log(JSON.stringify(row1, null, 4));
                 console.log(type);
@@ -142,8 +161,7 @@ function generateParser(table) {
         }
         out += '        break;\n    }';
     }
-     out += '\n    /* -- End of source code generated with help of "gen_instr.js" script -- */';
-    fs.writeFileSync('output/parse.cc', out);
+    writeOutput('output/WasmParser.cc', '../src/WasmParser.cc', out, '    ');
 }
 
 function generateDumper(table) {
@@ -151,7 +169,7 @@ function generateDumper(table) {
     for (let row of table) {
         out += `\n    case ${row._identifier}: return "${row.name}";`
     }
-     out += '\n    /* -- End of source code generated with help of "gen_instr.js" script -- */';
+    out += '\n    /* -- End of source code generated with help of "gen_instr.js" script -- */';
     fs.writeFileSync('output/dump.cc', out);
 }
 
@@ -169,7 +187,7 @@ function generateReducer(table) {
         tab = tab.map(x => {
             x = x.trim();
             if (x.startsWith('{')) {
-                x = x.replace(/(i64|f32|f64|grow|multimem|unreachable)/g, 'vmConfig.ext.$1')
+                x = x.replace(/(i64|f32|f64|grow|any64|unreachable)/g, 'vmConfig.ext.$1')
             }
             return x;
         });
@@ -270,7 +288,7 @@ function generateReducer(table) {
     }
     out += '\n    default:\n        break;\n';
     out += '    };\n';
-    fs.writeFileSync('output/reduce.cc', out);
+    writeOutput('output/Reducer.cc', '../src/Reducer.cc', out, '    ');
 }
 
 
@@ -293,6 +311,7 @@ function generateOutputNames(table) {
 }
 
 async function main() {
+    fs.mkdirSync('temp', { 'recursive': true });
     let table = await parseOds();
     fs.mkdirSync('output', { 'recursive': true });
     generateOpcodes(table);

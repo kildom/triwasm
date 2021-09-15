@@ -284,7 +284,7 @@ void WasmParser::parseGlobalSection()
         if (expr->kind == CONST_EXPR_I32 || expr->kind == CONST_EXPR_F32)
             printf("    const initializer %d\n", expr->i32Value);
         if (expr->kind == CONST_EXPR_I64 || expr->kind == CONST_EXPR_F64)
-            printf("    const initializer %lld\n", expr->i64Value);
+            printf("    const initializer %lld\n", (long long int)expr->i64Value);
     }
 }
 
@@ -423,7 +423,7 @@ void WasmParser::parseCodeSection() {
 void WasmParser::parseDataSection() {
     TRACE();
 
-    WasmDataSegment$$ data;
+    WasmData$$ data;
 
     // modules.html#binary-datasec
     mod->data = new$;
@@ -675,41 +675,6 @@ Array$$<WasmInstr$> WasmParser::parseExpr(bool allowElse) {
             return instrs;
         }
     }
-
-    /*switch (code) {
-                case INSTR_BLOCK:
-                case INSTR_LOOP:
-                case INSTR_IF:
-                    instr->block = new$;
-                    instr->block->instr = instr;
-                    parseCompressedBlockType(instr->block);
-                    instr->block->body = parseExpr(code == INSTR_IF);
-                    break;
-                case INSTR_ELSE:
-                    if (!allowElse)
-                        FATAL("'else' instruction not expected here");
-                    allowElse = false;
-                    break;
-                case INSTR_END:
-                    return instrs;
-                case INSTR_BR_TABLE: {
-                    auto count = r->readU32();
-                    for (u32 i = 0; i < count; i++) {
-                        instr->imm->push(r->readU32());
-                    }
-                    instr->imm->push(r->readU32());
-                    break;
-                }
-                case INSTR_SELECT_ANNOTATED: {
-                    auto count = r->readU32();
-                    for (u32 i = 0; i < count; i++) {
-                        instr->imm->push(r->byte());
-                    }
-                    break;
-                }
-                default:
-                    FATAL("internal");
-            }*/
     return instrs;
 }
 
@@ -719,6 +684,9 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
 
     instr->imm = new$;
     auto imm = instr->imm;
+
+    instr->data = new$;
+    auto data = instr->data;
 
     switch (instr->code)
     {
@@ -760,24 +728,24 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
         u32 length = r->readU32();
         for (u32 i = 0; i < length + 1; i++)
         {
-            u32 labelidx0 = r->readU32();
-            if (labelidx0 >= blockStack->length())
+            u32 labelidx = r->readU32();
+            if (labelidx >= blockStack->length())
                 FATAL("Invlaid label index");
-            instr->imm->push(labelidx0);
+            instr->imm->push(labelidx);
         }
         break;
     }
     case INSTR_CALL_INDIRECT:
     case INSTR_RETURN_CALL_INDIRECT: {
         TRACE();
-        u32 typeidx0 = r->readU32();
-        if (typeidx0 >= functionTypes->length())
+        u32 typeidx = r->readU32();
+        if (typeidx >= functionTypes->length())
             FATAL("Invalid type index");
-        imm->push(typeidx0);
-        u32 tableidx1 = r->readU32();
-        if (tableidx1 >= mod->tables->length())
+        data->push(any$::get(functionTypes[typeidx]));
+        u32 tableidx = r->readU32();
+        if (tableidx >= mod->tables->length())
             FATAL("Invalid table index");
-        imm->push(tableidx1);
+        data->push(any$::get(mod->tables[tableidx]));
         break;
     }
     case INSTR_SELECT_T: {
@@ -785,8 +753,8 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
         u32 length = r->readU32();
         for (u32 i = 0; i < length; i++)
         {
-            u32 valtype0 = valueType();
-            instr->imm->push(valtype0);
+            u32 valtype = valueType();
+            imm->push(valtype);
         }
         break;
     }
@@ -816,10 +784,10 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
     }
     case INSTR_REF_NULL: {
         TRACE();
-        u32 const0 = r->readF32();
-        if (const0 != TYPE_FUNCREF && const0 != TYPE_EXTERNREF)
+        u32 reftype = r->readF32();
+        if (reftype != TYPE_FUNCREF && reftype != TYPE_EXTERNREF)
             FATAL("Unknown type of reference");
-        imm->push(const0);
+        imm->push(reftype);
         break;
     }
     // ===== Generated parsers =====
@@ -975,7 +943,7 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
         u32 funcidx0 = r->readU32();
         if (funcidx0 >= mod->functions->length())
             FATAL("Invalid function index");
-        imm->push(funcidx0);
+        data->push(any$::get(mod->functions[funcidx0]));
         break;
     }
     case INSTR_LOCAL_GET:
@@ -994,7 +962,7 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
         u32 globalidx0 = r->readU32();
         if (globalidx0 >= mod->globals->length())
             FATAL("Invalid global variable index");
-        imm->push(globalidx0);
+        data->push(any$::get(mod->globals[globalidx0]));
         break;
     }
     case INSTR_TABLE_GET:
@@ -1006,7 +974,7 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
         u32 tableidx0 = r->readU32();
         if (tableidx0 >= mod->tables->length())
             FATAL("Invalid table index");
-        imm->push(tableidx0);
+        data->push(any$::get(mod->tables[tableidx0]));
         break;
     }
     case INSTR_I32_LOAD:
@@ -1045,25 +1013,21 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
         u32 memidx0 = r->readU32();
         if (memidx0 != 0)
             FATAL("Only one memory is supported");
-        imm->push(memidx0);
         break;
     }
     case INSTR_MEMORY_INIT: {
         TRACE();
         u32 dataidx0 = r->readU32();
-        // TODO: dataidx validation must be done later
-        imm->push(dataidx0);
+        imm->push(dataidx0); // dataidx0 validation will be done later
         u32 memidx1 = r->readU32();
         if (memidx1 != 0)
             FATAL("Only one memory is supported");
-        imm->push(memidx1);
         break;
     }
     case INSTR_DATA_DROP: {
         TRACE();
         u32 dataidx0 = r->readU32();
-        // dataidx validation must be done later
-        imm->push(dataidx0);
+        imm->push(dataidx0); // dataidx0 validation will be done later
         break;
     }
     case INSTR_MEMORY_COPY: {
@@ -1071,33 +1035,31 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
         u32 memidx0 = r->readU32();
         if (memidx0 != 0)
             FATAL("Only one memory is supported");
-        imm->push(memidx0);
         u32 memidx1 = r->readU32();
         if (memidx1 != 0)
             FATAL("Only one memory is supported");
-        imm->push(memidx1);
         break;
     }
     case INSTR_TABLE_INIT: {
         TRACE();
         u32 elemidx0 = r->readU32();
-        if (elemidx0 >= mod->elements->length()) // TODO: check if elemidx is for passive only or both
+        if (elemidx0 >= mod->elements->length())
             FATAL("Invalid table element index");
         if (mod->elements[elemidx0]->kind != WASM_ELEMENT_PASSIVE)
             FATAL("Invalid initialization of non-passive element");
-        imm->push(elemidx0);
+        data->push(any$::get(mod->elements[elemidx0]));
         u32 tableidx1 = r->readU32();
         if (tableidx1 >= mod->tables->length())
             FATAL("Invalid table index");
-        imm->push(tableidx1);
+        data->push(any$::get(mod->tables[tableidx1]));
         break;
     }
     case INSTR_ELEM_DROP: {
         TRACE();
         u32 elemidx0 = r->readU32();
-        if (elemidx0 >= mod->elements->length()) // TODO: check if elemidx is for passive only or both
+        if (elemidx0 >= mod->elements->length())
             FATAL("Invalid table element index");
-        imm->push(elemidx0);
+        data->push(any$::get(mod->elements[elemidx0]));
         break;
     }
     case INSTR_TABLE_COPY: {
@@ -1105,11 +1067,11 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
         u32 tableidx0 = r->readU32();
         if (tableidx0 >= mod->tables->length())
             FATAL("Invalid table index");
-        imm->push(tableidx0);
+        data->push(any$::get(mod->tables[tableidx0]));
         u32 tableidx1 = r->readU32();
         if (tableidx1 >= mod->tables->length())
             FATAL("Invalid table index");
-        imm->push(tableidx1);
+        data->push(any$::get(mod->tables[tableidx1]));
         break;
     }
     /* -- End of source code generated with help of "gen_instr.js" script -- */
@@ -1222,7 +1184,7 @@ u32 WasmParser::refType()
         case TYPE_EXTERNREF:
             return type;
         default:
-            FATAL("Unknown value type 0x%02X", type);
+            FATAL("Unknown reference type 0x%02X", type);
             return 0;
     }
 }

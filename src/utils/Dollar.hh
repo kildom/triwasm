@@ -307,7 +307,7 @@ int _any$Inner<T, vd>::typeIdField;
 class any$ {
 public:
     $<anyInnerBase, true, true> ptr;
-    
+
     template<typename T, bool nullable, bool vd>
     any$ &operator=(const $<T, nullable, vd>& a)
     {
@@ -316,6 +316,16 @@ public:
         p->typeId = &_any$Inner<T, vd>::typeIdField;
         ptr = p.template cast<anyInnerBase>();
         return *this;
+    }
+
+    template<typename T, bool nullable, bool vd>
+    static any$ get(const $<T, nullable, vd>& a) {
+        auto p = $<_any$Inner<T, vd>, true, true>::create();
+        p->ptr = a;
+        p->typeId = &_any$Inner<T, vd>::typeIdField;
+        return any${
+            .ptr = p.template cast<anyInnerBase>()
+        };
     }
 
     operator any$*()
