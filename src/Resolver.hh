@@ -14,7 +14,7 @@ private:
 public:
     void resolveImports(WasmModule$ mod);
     static WasmFunction$ getResolved(WasmFunction$ func);
-    static WasmFunction$ getExport(WasmModule$ mod, String$$ moduleName, String$$ exportName);
+    static WasmFunction$ getExport(WasmModule$ mod, String$$ moduleName, String$$ exportName, bool required = false);
 };
 
 #endif /* _RESOLVER_HH_ */

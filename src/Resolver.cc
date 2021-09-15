@@ -51,7 +51,7 @@ WasmFunction$ Resolver::getResolved(WasmFunction$ func)
     return func;
 }
 
-WasmFunction$ Resolver::getExport(WasmModule$ mod, String$$ moduleName, String$$ exportName)
+WasmFunction$ Resolver::getExport(WasmModule$ mod, String$$ moduleName, String$$ exportName, bool required)
 {
     if (mod->functionExports.count(moduleName->v) > 0) {
         auto& m = mod->functionExports[moduleName->v];
@@ -59,5 +59,7 @@ WasmFunction$ Resolver::getExport(WasmModule$ mod, String$$ moduleName, String$$
             return m[exportName->v];
         }
     }
+    if (required)
+        FATAL("Expected exported function '%s' from module '%s'", exportName.cStr(), moduleName.cStr());
     return nullptr;
 }

@@ -169,7 +169,7 @@ function generateReducer(table) {
         tab = tab.map(x => {
             x = x.trim();
             if (x.startsWith('{')) {
-                x = x.replace(/(i64|f32|f64|grow)/, 'vmConfig.ext.$1')
+                x = x.replace(/(i64|f32|f64|grow|multimem|unreachable)/g, 'vmConfig.ext.$1')
             }
             return x;
         });
@@ -223,6 +223,10 @@ function generateReducer(table) {
                         out += `        }\n`;
                         ind = '';
                         inIf = false;
+                    } else if (cond.startsWith('elif')) {
+                        out += `        } else if (${cond.substr(4).trim()}) {\n`;
+                        ind = '    ';
+                        inIf = true;
                     } else {
                         out += `        if (${cond}) {\n`;
                         ind = '    ';
@@ -231,18 +235,25 @@ function generateReducer(table) {
                     continue;
                 }
                 let [opcode, ...imm] = item.split(/\s+/);
-                if (imm) imm = imm.join(' ');
-                out += `        ${ind}reduced->push(WasmInstr{\n`;
-                out += `            ${ind}.code = INSTR_${opcode.trim().toUpperCase().replace(/\./g, '_')},\n`;
-                if (imm) {
-                    imm = imm.trim();
-                    if (imm.startsWith('"')) {
-                        out += `            ${ind}.immString = "__trivmlib__.${imm.substr(1)}_S,\n`;
-                    } else {
-                        out += `            ${ind}.imm = { ${imm} },\n`;
+                if (opcode.startsWith('@')) {
+                    out += `        ${ind}reduced->push(WasmInstr{\n`;
+                    out += `            ${ind}.code = INSTR_CALL,\n`;
+                    out += `            ${ind}.imm = Resolver::getExport("__trivmlib"_S, "${opcode.substr(1)}"_S, true)->index,\n`;
+                    out += `        ${ind}});\n`;
+                } else {
+                    if (imm) imm = imm.join(' ');
+                    out += `        ${ind}reduced->push(WasmInstr{\n`;
+                    out += `            ${ind}.code = INSTR_${opcode.trim().toUpperCase().replace(/\./g, '_')},\n`;
+                    if (imm) {
+                        imm = imm.trim();
+                        if (imm.startsWith('"')) {
+                            out += `            ${ind}.immString = "__trivmlib__.${imm.substr(1)}_S,\n`;
+                        } else {
+                            out += `            ${ind}.imm = { ${imm} },\n`;
+                        }
                     }
+                    out += `        ${ind}});\n`;
                 }
-                out += `        ${ind}});\n`;
             }
             if (inIf) {
                 out += `        } else {\n`;
