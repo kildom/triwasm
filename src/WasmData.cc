@@ -525,7 +525,6 @@ static const char* instrName(u32 opcode)
     case INSTR_TRIVM_EMPTY: return "trivm.empty";
     case INSTR_TRIVM_EXTS: return "trivm.exts";
     case INSTR_TRIVM_POP: return "trivm.pop";
-    case INSTR_TRIVM_DUP: return "trivm.dup";
     case INSTR_TRIVM_FUNCTION: return "trivm.function";
     /* -- End of source code generated with help of "gen_instr.js" script -- */
     }

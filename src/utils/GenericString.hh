@@ -17,6 +17,7 @@ public:
     GenericStringInner() : v() { }
     GenericStringInner(const T *str, std::size_t len) : v(str, len) { }
     GenericStringInner(std::size_t repeat, T item) : v(repeat, item) { }
+    GenericStringInner(const std::basic_string<T>& a) : v(a) { }
 
     ssize length() {
         return (ssize)v.size();

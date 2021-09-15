@@ -78,13 +78,16 @@ static u32 immBytes64(s64 value) {
 
 void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
 {
-    Array$$<u64> imm = instr->imm;
+    auto imm = instr->imm;
+    auto data = instr->data;
     /* -- Begin of source code generated with help of "gen_instr.js" script -- */
     switch(instr->code) {
     case INSTR_BLOCK:
     case INSTR_LOOP:
     case INSTR_IF: {
         TRACE();
+        if (instr->code == INSTR_IF)
+            stack->pop();
         instr->block->stackBase = stack->length() - instr->block->type->param->length();
         reduced->push(instr);
         reduceBlock(instr->block);
@@ -107,11 +110,12 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     case INSTR_END: {
         TRACE();
         auto block = blockStack[RangeEnd - 1];
-        reduced->push(WasmInstr{
+        WasmInstr$ br = WasmInstr{
             .code = INSTR_BR,
             .imm = { 0 },
-        });
-        WasmInstrBr$$(reduced[RangeEnd - 1]->data[0])->forceForward = true;
+        };
+        reduced->push(br);
+        WasmInstrBr$$(br->data[0])->forceForward = true;
         stack[Range(block->stackBase, RangeEnd - block->type->result->length())] = {};
         reduced->push(instr);
         break;
@@ -131,63 +135,70 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     }
     case INSTR_BR_IF: {
         TRACE();
-        reduced->push(WasmInstr{
+        WasmInstr$ br = WasmInstr{
             .code = INSTR_BR,
-            .imm = { 0 },
-        });
-        WasmInstrBr$$(reduced[RangeEnd - 1]->data[0])->conditional = true;
+            .imm = { imm[0] },
+        };
+        reduced->push(br);
+        WasmInstrBr$$(br->data[0])->conditional = true;
         break;
     }
     case INSTR_BR_TABLE: {
         TRACE();
         stack->pop();
+        for (int i = 0; i < imm->length(); i++) {
+            WasmInstr$ br = WasmInstr{
+                .code = INSTR_BR,
+                .imm = { imm[i] },
+            };
+            reduced->push(br);
+            if (i < imm->length() - 1) {
+                auto dataBr = WasmInstrBr$$(br->data[0]);
+                dataBr->conditional = true;
+                dataBr->negated = true;
+                reduced->push(WasmInstr{
+                    .code = INSTR_I32_SUB,
+                    .imm = { 1 },
+                });
+            }
+        }
         reduced->push(instr);
         break;
     }
     case INSTR_CALL: {
         TRACE();
-        auto callee = mod->functions[imm[0]];
-        stack->pop(callee->type->param->length());
-        for (auto t : callee->type->result) {
+        auto type = mod->functions[imm[0]]->type;
+        stack->pop(type->param->length());
+        for (auto t : type->result) {
             stack->push(t);
         }
-        if (callee->import != nullptr && callee->import->module == "__trivm_builtin__") {
-            reduced->push(WasmInstr{
-                // TODO: .code = INSTR_TRIVM_BUILTIN,
-                // TODO: .imm = { builtinFromName(callee->import->name) },
-            });
-        } else {
-            reduced->push(instr);
-        }
+        reduced->push(instr);
         break;
     }
     case INSTR_CALL_INDIRECT: {
         TRACE();
-        WasmFunctionType$ type(instr->data[0]);
+        WasmFunctionType$ type(data[0]);
         stack->pop(type->param->length());
-        reduced->push(instr);
         for (auto t : type->result) {
             stack->push(t);
         }
+        reduced->push(instr);
         break;
     }
     case INSTR_RETURN_CALL: {
         TRACE();
         FATAL("Unimplemented");
-        auto callee = mod->functions[imm[0]];
-        if (callee->import != nullptr && callee->import->module == "__trivm_builtin__") {
-            reduced->push(WasmInstr{
-                // TODO: .code = INSTR_TRIVM_BUILTIN,
-                // TODO: .imm = { builtinFromName(callee->import->name) },
-            });
-        } else {
-            reduced->push(instr);
-        }
+        WasmFunctionType$ type(data[0]);
+        stack->pop(type->param->length());
+        reduced->push(instr);
         break;
     }
     case INSTR_RETURN_CALL_INDIRECT: {
         TRACE();
         FATAL("Unimplemented");
+        WasmFunctionType$ type(data[0]);
+        stack->pop(type->param->length());
+        reduced->push(instr);
         break;
     }
     case INSTR_DROP: {
@@ -207,77 +218,165 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         auto type = stack->pop();
         std::stringstream str;
-        str << "__trivmlib__.select" << wasmTypeWords(type);
+        str << "select_" << wasmTypeWords(type);
         reduced->push(WasmInstr{
-            // TODO: .code = INSTR_TRIVM_CALL_IMPORT,
-            // TODO: .immString = String$$(str.str()),
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, String$$(str.str()), true)) },
         });
         break;
     }
     case INSTR_LOCAL_GET: {
         TRACE();
-        auto localType = function->locals[imm[0]];
-        int words = wasmTypeWords(localType);
-        for (int i = words - 1; i >= 0; i--) {
+        auto type = function->locals[imm[0]];
+        int words = wasmTypeWords(type);
+        if (words == 1) {
             reduced->push(WasmInstr{
-                .code = INSTR_LOCAL_GET,
-                .imm = { imm[0], (u64)(4 * i) },
+                .code = INSTR_TRIVM_I32_LOCAL_GET,
+                .imm = { imm[0], 0 },
+            });
+        } else if (!vmConfig.ext.any64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_LOCAL_GET,
+                .imm = { imm[0], 4 },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_LOCAL_GET,
+                .imm = { imm[0], 0 },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I64_LOCAL_GET,
+                .imm = { imm[0], 0 },
             });
         }
-        stack->push(localType);
+        stack->push(type);
         break;
     }
     case INSTR_LOCAL_SET: {
         TRACE();
-        auto localType = stack->pop();
-        int words = wasmTypeWords(localType);
-        for (int i = 0; i < words; i++) {
+        auto type = stack->pop();
+        int words = wasmTypeWords(type);
+        if (words == 1) {
             reduced->push(WasmInstr{
-                .code = INSTR_LOCAL_SET,
-                .imm = { imm[0], (u64)(4 * i) },
+                .code = INSTR_TRIVM_I32_LOCAL_SET,
+                .imm = { imm[0], 0 },
+            });
+        } else if (!vmConfig.ext.any64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_LOCAL_SET,
+                .imm = { imm[0], 0 },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_LOCAL_SET,
+                .imm = { imm[0], 4 },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I64_LOCAL_SET,
+                .imm = { imm[0], 0 },
             });
         }
         break;
     }
     case INSTR_LOCAL_TEE: {
         TRACE();
-        auto localType = function->locals[imm[0]];
-        int words = wasmTypeWords(localType);
-        for (int i = 0; i < words; i++) {
+        auto type = function->locals[imm[0]];
+        int words = wasmTypeWords(type);
+        if (words == 1) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_DUP,
-                .imm = { (u64)(4 * words - 4) },
+                .code = INSTR_TRIVM_I32_READ_STACK,
+                .imm = { 0 },
             });
-        }
-        for (int i = 0; i < words; i++) {
             reduced->push(WasmInstr{
-                .code = INSTR_LOCAL_SET,
-                .imm = { imm[0], (u64)(4 * i) },
+                .code = INSTR_TRIVM_I32_LOCAL_SET,
+                .imm = { imm[0] },
+            });
+        } else if (!vmConfig.ext.any64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_READ_STACK,
+                .imm = { 4 },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_READ_STACK,
+                .imm = { 4 },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_LOCAL_SET,
+                .imm = { imm[0], 0 },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_LOCAL_SET,
+                .imm = { imm[0], 4 },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I64_READ_STACK,
+                .imm = { 0 },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I64_LOCAL_SET,
+                .imm = { imm[0], 0 },
             });
         }
         break;
     }
     case INSTR_GLOBAL_GET: {
         TRACE();
-        auto global = mod->globals[imm[0]];
-        int words = wasmTypeWords(global->type);
-        for (int i = words - 1; i >= 0; i--) {
+        auto type = mod->globals[imm[0]]->type;
+        int words = wasmTypeWords(type);
+        if (words == 1) {
             reduced->push(WasmInstr{
-                .code = INSTR_GLOBAL_GET,
-                .imm = { imm[0], (u64)(4 * i) },
+                .code = INSTR_TRIVM_I32_GLOBAL_GET,
+                .imm = { 0 },
+                .data = data,
+            });
+        } else if (!vmConfig.ext.any64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_GLOBAL_GET,
+                .imm = { 4 },
+                .data = data,
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_GLOBAL_GET,
+                .imm = { 0 },
+                .data = data,
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I64_GLOBAL_GET,
+                .imm = { 0 },
+                .data = data,
             });
         }
-        stack->push(global->type);
+        stack->push(type);
         break;
     }
     case INSTR_GLOBAL_SET: {
         TRACE();
         auto type = stack->pop();
         int words = wasmTypeWords(type);
-        for (int i = 0; i < words; i++) {
+        if (words == 1) {
             reduced->push(WasmInstr{
-                .code = INSTR_GLOBAL_SET,
-                .imm = { imm[0], (u64)(4 * i) },
+                .code = INSTR_TRIVM_I32_GLOBAL_SET,
+                .imm = { 0 },
+                .data = data,
+            });
+        } else if (!vmConfig.ext.any64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_GLOBAL_SET,
+                .imm = { 0 },
+                .data = data,
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I32_GLOBAL_SET,
+                .imm = { 4 },
+                .data = data,
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_I64_GLOBAL_SET,
+                .imm = { 0 },
+                .data = data,
             });
         }
         break;
@@ -352,7 +451,6 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         }
         break;
     }
-    #if 1
     case INSTR_NOP:
     case INSTR_DATA_DROP:
     case INSTR_ELEM_DROP: {
@@ -1627,7 +1725,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
                 .imm = { u64(-1) },
             });
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_USHR64LL,
+                .code = INSTR_I64_SHR_U,
                 .imm = { 1 },
             });
             reduced->push(WasmInstr{
@@ -2333,7 +2431,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(3);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory.copy"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory_copy"_S, true)) },
         });
         break;
     }
@@ -2342,11 +2440,10 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(3);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory.fill"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory_fill"_S, true)) },
         });
         break;
     }
-    #endif
     default:
         FATAL("Unexpected instruction");
         break;

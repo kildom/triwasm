@@ -717,10 +717,10 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
     case INSTR_BR:
     case INSTR_BR_IF: {
         TRACE();
-        u32 labelidx0 = r->readU32();
-        if (labelidx0 >= blockStack->length())
+        u32 labelidx = r->readU32();
+        if (labelidx >= blockStack->length())
             FATAL("Invlaid label index");
-        instr->imm->push(labelidx0);
+        imm->push(labelidx);
         break;
     }
     case INSTR_BR_TABLE: {
@@ -731,7 +731,7 @@ bool WasmParser::parseInstr(WasmInstr$ instr, bool &allowElse)
             u32 labelidx = r->readU32();
             if (labelidx >= blockStack->length())
                 FATAL("Invlaid label index");
-            instr->imm->push(labelidx);
+            imm->push(labelidx);
         }
         break;
     }

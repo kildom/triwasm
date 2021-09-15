@@ -3,7 +3,7 @@ CPP=g++
 STRIP=strip
 TARGET=triwasm
 CXXFLAGS=-static-libstdc++ -static-libgcc -fno-exceptions -fno-rtti -Wall
-OPTFLAGS=-O2 -g0
+OPTFLAGS=-O2 -g0 -flto
 DEBUGFLAGS=-O0 -g
 
 include ../Makefile.common
