@@ -80,6 +80,10 @@
   * Inline simple `uvmlib` functions if they are not used many times `CALL __uvmlib__eq64  ->  READ [SP]+2; EQ; WRITE [SP]+2; READ [SP]+2; EQ; WRITE [SP]+2; AND`
   * Put second const operant into calls like `__uvmlib__xor64` and inline it, `PUSH hi ... PUSH lo; CALL __uvmlib__xor64  ->  XOR lo ; XOR hi` 
   * Put constant offset to memory load/store instructions `PUSH 32 ; ADD ; I32.LOAD [POP] ->  I32.LOAD [POP]+32`
+  * 64-bit shift instructions ignores higher word of shift count, so they can be removed `SHL64LLL -> SHL64LWL`, also for emulation: `CALL __trivmlib.i64_shl -> CALL __trivmlib.i64_shl_32`.
+
+TODOs:
+  * Check which floating point comparison operators can be replaced by `inverted_OP ; NOT` to allow further conditional branch optimization.
 
 Compilation flow:
 1. Parse wasm file and check basic integrity *WasmParser* and *WasmReader*

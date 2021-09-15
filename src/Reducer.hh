@@ -4,7 +4,6 @@
 #include "Utils.hh"
 
 #include "WasmData.hh"
-#include "WasmReader.hh"
 
 DOLLAR_CLASS(Reducer);
 

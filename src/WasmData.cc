@@ -523,13 +523,10 @@ static const char* instrName(u32 opcode)
     case INSTR_TABLE_SIZE: return "table.size";
     case INSTR_TABLE_FILL: return "table.fill";
     case INSTR_TRIVM_EMPTY: return "trivm.empty";
-    case INSTR_TRIVM_CALL_IMPORT: return "trivm.call_import";
     case INSTR_TRIVM_EXTS: return "trivm.exts";
-    case INSTR_TRIVM_EXTS64: return "trivm.exts64";
     case INSTR_TRIVM_POP: return "trivm.pop";
     case INSTR_TRIVM_DUP: return "trivm.dup";
     case INSTR_TRIVM_FUNCTION: return "trivm.function";
-    case INSTR_TRIVM_BUILTIN: return "trivm.builtin";
     /* -- End of source code generated with help of "gen_instr.js" script -- */
     }
     FATAL("Unknown instruction opcode 0x%02X", opcode);

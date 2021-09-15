@@ -13,6 +13,7 @@ struct VMConfig
         bool f64;
         bool f32;
         bool unreachable;
+        bool any64;
     } ext;
     bool verboseAsm;
     bool importAllByName;
@@ -24,6 +25,7 @@ static const VMConfig vmConfig = {
         .reduce = true,
         .i64 = false,
         .unreachable = false,
+        .any64 = false,
     },
     .verboseAsm = true,
     .importAllByName = true,

@@ -194,7 +194,7 @@ function generateReducer(table) {
         return tab.filter(x => x != '');
     }
 
-    let out = '    switch(opcode) {'
+    let out = '    switch(instr->code) {'
     for (let row of table) {
         row._reduceUnique = `${row.params}|${row.results}|${row.reduceTo}`;
         if (!row.customReduction.toLowerCase().startsWith('y') || row._trivm)
@@ -256,19 +256,14 @@ function generateReducer(table) {
                 if (opcode.startsWith('@')) {
                     out += `        ${ind}reduced->push(WasmInstr{\n`;
                     out += `            ${ind}.code = INSTR_CALL,\n`;
-                    out += `            ${ind}.imm = Resolver::getExport("__trivmlib"_S, "${opcode.substr(1)}"_S, true)->index,\n`;
+                    out += `            ${ind}.data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "${opcode.substr(1)}"_S, true)) },\n`;
                     out += `        ${ind}});\n`;
                 } else {
                     if (imm) imm = imm.join(' ');
                     out += `        ${ind}reduced->push(WasmInstr{\n`;
                     out += `            ${ind}.code = INSTR_${opcode.trim().toUpperCase().replace(/\./g, '_')},\n`;
                     if (imm) {
-                        imm = imm.trim();
-                        if (imm.startsWith('"')) {
-                            out += `            ${ind}.immString = "__trivmlib__.${imm.substr(1)}_S,\n`;
-                        } else {
-                            out += `            ${ind}.imm = { ${imm} },\n`;
-                        }
+                        out += `            ${ind}.imm = { ${imm.trim()} },\n`;
                     }
                     out += `        ${ind}});\n`;
                 }

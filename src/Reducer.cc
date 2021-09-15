@@ -5,8 +5,8 @@
 #include "WasmConsts.hh"
 #include "WasmParser.hh"
 #include "WasmInstr.hh"
+#include "Resolver.hh"
 #include "Reducer.hh"
-#include "Builtins.hh"
 #include "VMConfig.hh"
 
 
@@ -49,10 +49,37 @@ void Reducer::reduceBlock(WasmBlock$ block)
 }
 
 
+static u32 immBytes32(s32 value) {
+    if (-0x7F <= value && value <= 0x80) {
+        return 1;
+    } else if (-0x7FFF <= value && value <= 0x8000) {
+        return 2;
+    } else {
+        return 4;
+    }
+}
+
+static u32 immBytes64(s64 value) {
+    if (-0x7F <= value && value <= 0x80) {
+        return 1;
+    } else if (-0x7FFF <= value && value <= 0x8000) {
+        return 2;
+    } else if (-0x7FFFFFFFLL <= value && value <= 0x80000000LL) {
+        return 4;
+    } else if (-0x7FFFFFFFFFLL <= value && value <= 0x8000000000LL) {
+        return 5;
+    } else if (-0x7FFFFFFFFFFFLL <= value && value <= 0x800000000000LL) {
+        return 6;
+    } else {
+        return 8;
+    }
+}
+
+
 void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
 {
     Array$$<u64> imm = instr->imm;
-
+    /* -- Begin of source code generated with help of "gen_instr.js" script -- */
     switch(instr->code) {
     case INSTR_BLOCK:
     case INSTR_LOOP:
@@ -84,7 +111,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
             .code = INSTR_BR,
             .imm = { 0 },
         });
-        WasmInstrBr$$(reduced[RangeEnd - 1]->data)->forceForward = true;
+        WasmInstrBr$$(reduced[RangeEnd - 1]->data[0])->forceForward = true;
         stack[Range(block->stackBase, RangeEnd - block->type->result->length())] = {};
         reduced->push(instr);
         break;
@@ -108,7 +135,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
             .code = INSTR_BR,
             .imm = { 0 },
         });
-        WasmInstrBr$$(reduced[RangeEnd - 1]->data)->conditional = true;
+        WasmInstrBr$$(reduced[RangeEnd - 1]->data[0])->conditional = true;
         break;
     }
     case INSTR_BR_TABLE: {
@@ -126,8 +153,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         }
         if (callee->import != nullptr && callee->import->module == "__trivm_builtin__") {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_BUILTIN,
-                .imm = { builtinFromName(callee->import->name) },
+                // TODO: .code = INSTR_TRIVM_BUILTIN,
+                // TODO: .imm = { builtinFromName(callee->import->name) },
             });
         } else {
             reduced->push(instr);
@@ -136,7 +163,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     }
     case INSTR_CALL_INDIRECT: {
         TRACE();
-        auto type = mod->functionTypes[imm[0]]; // TODO: keep type as reference to object (not index)
+        WasmFunctionType$ type(instr->data[0]);
         stack->pop(type->param->length());
         reduced->push(instr);
         for (auto t : type->result) {
@@ -150,8 +177,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         auto callee = mod->functions[imm[0]];
         if (callee->import != nullptr && callee->import->module == "__trivm_builtin__") {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_BUILTIN,
-                .imm = { builtinFromName(callee->import->name) },
+                // TODO: .code = INSTR_TRIVM_BUILTIN,
+                // TODO: .imm = { builtinFromName(callee->import->name) },
             });
         } else {
             reduced->push(instr);
@@ -182,8 +209,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         std::stringstream str;
         str << "__trivmlib__.select" << wasmTypeWords(type);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = String$$(str.str()),
+            // TODO: .code = INSTR_TRIVM_CALL_IMPORT,
+            // TODO: .immString = String$$(str.str()),
         });
         break;
     }
@@ -315,8 +342,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         if (vmConfig.ext.unreachable) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.unreachable"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "unreachable"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -325,6 +352,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         }
         break;
     }
+    #if 1
     case INSTR_NOP:
     case INSTR_DATA_DROP:
     case INSTR_ELEM_DROP: {
@@ -349,14 +377,19 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     case INSTR_I64_LOAD: {
         TRACE();
         stack->pop();
-        if (!vmConfig.ext.i64) {
+        if (!vmConfig.ext.any64 && imm[0] == 0) {
+            reduced->push(WasmInstr{
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_load_0"_S, true)) },
+            });
+        } else if (!vmConfig.ext.any64) {
             reduced->push(WasmInstr{
                 .code = INSTR_I32_CONST,
                 .imm = { imm[0] },
             });
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.load64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_load"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -377,19 +410,24 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     case INSTR_F64_LOAD: {
         TRACE();
         stack->pop();
-        if (vmConfig.ext.i64) {
+        if (!vmConfig.ext.any64 && imm[0] == 0) {
             reduced->push(WasmInstr{
-                .code = INSTR_I64_LOAD,
-                .imm = { imm[0] },
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_load_0"_S, true)) },
             });
-        } else {
+        } else if (!vmConfig.ext.any64) {
             reduced->push(WasmInstr{
                 .code = INSTR_I32_CONST,
                 .imm = { imm[0] },
             });
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.load64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_load"_S, true)) },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_I64_LOAD,
+                .imm = { imm[0] },
             });
         }
         stack->push(TYPE_F64);
@@ -399,13 +437,20 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_I32_CONST,
+            .code = INSTR_I32_LOAD8_S,
             .imm = { imm[0] },
         });
-        reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.load64_s8"_S,
-        });
+        if (!vmConfig.ext.i64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_s"_S, true)) },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_SHL64WL,
+                .imm = { 0 },
+            });
+        }
         stack->push(TYPE_I64);
         break;
     }
@@ -413,12 +458,19 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_I32_CONST,
-            .imm = { 0 },
-        });
-        reduced->push(WasmInstr{
             .code = INSTR_I32_LOAD8_U,
+            .imm = { imm[0] },
         });
+        if (!vmConfig.ext.i64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_u"_S, true)) },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_LOW64WL,
+            });
+        }
         stack->push(TYPE_I64);
         break;
     }
@@ -426,13 +478,20 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_I32_CONST,
+            .code = INSTR_I32_LOAD16_S,
             .imm = { imm[0] },
         });
-        reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.load64_s16"_S,
-        });
+        if (!vmConfig.ext.i64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_s"_S, true)) },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_SHL64WL,
+                .imm = { 0 },
+            });
+        }
         stack->push(TYPE_I64);
         break;
     }
@@ -440,12 +499,19 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_I32_CONST,
-            .imm = { 0 },
-        });
-        reduced->push(WasmInstr{
             .code = INSTR_I32_LOAD16_U,
+            .imm = { imm[0] },
         });
+        if (!vmConfig.ext.i64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_u"_S, true)) },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_LOW64WL,
+            });
+        }
         stack->push(TYPE_I64);
         break;
     }
@@ -453,13 +519,20 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_I32_CONST,
+            .code = INSTR_I32_LOAD,
             .imm = { imm[0] },
         });
-        reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.load64_s32"_S,
-        });
+        if (!vmConfig.ext.i64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_s"_S, true)) },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_SHL64WL,
+                .imm = { 0 },
+            });
+        }
         stack->push(TYPE_I64);
         break;
     }
@@ -467,12 +540,19 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_I32_CONST,
-            .imm = { 0 },
-        });
-        reduced->push(WasmInstr{
             .code = INSTR_I32_LOAD,
+            .imm = { imm[0] },
         });
+        if (!vmConfig.ext.i64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_u"_S, true)) },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_LOW64WL,
+            });
+        }
         stack->push(TYPE_I64);
         break;
     }
@@ -487,10 +567,19 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     case INSTR_I64_STORE: {
         TRACE();
         stack->pop(2);
-        if (!vmConfig.ext.i64) {
+        if (!vmConfig.ext.any64 && imm[0] == 0) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.store64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_store_0"_S, true)) },
+            });
+        } else if (!vmConfig.ext.any64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_I32_CONST,
+                .imm = { imm[0] },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_store"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -502,21 +591,29 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_I32_STORE,
+            .imm = { imm[0] },
         });
         break;
     }
     case INSTR_F64_STORE: {
         TRACE();
         stack->pop(2);
-        if (vmConfig.ext.i64) {
+        if (!vmConfig.ext.any64 && imm[0] == 0) {
             reduced->push(WasmInstr{
-                .code = INSTR_I64_STORE,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_store_0"_S, true)) },
+            });
+        } else if (!vmConfig.ext.any64) {
+            reduced->push(WasmInstr{
+                .code = INSTR_I32_CONST,
+                .imm = { imm[0] },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_store"_S, true)) },
             });
         } else {
-            reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.store64"_S,
-            });
+            reduced->push(instr);
         }
         break;
     }
@@ -525,6 +622,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_I32_STORE8,
+            .imm = { imm[0] },
         });
         reduced->push(WasmInstr{
             .code = INSTR_TRIVM_POP,
@@ -536,6 +634,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_I32_STORE16,
+            .imm = { imm[0] },
         });
         reduced->push(WasmInstr{
             .code = INSTR_TRIVM_POP,
@@ -547,6 +646,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_I32_STORE,
+            .imm = { imm[0] },
         });
         reduced->push(WasmInstr{
             .code = INSTR_TRIVM_POP,
@@ -556,8 +656,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     case INSTR_MEMORY_SIZE: {
         TRACE();
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.memory_size"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory_size"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -566,8 +666,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.memory_grow"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory_grow"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -580,14 +680,18 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     }
     case INSTR_I64_CONST: {
         TRACE();
-        reduced->push(WasmInstr{
-            .code = INSTR_I32_CONST,
-            .imm = { imm[0] >> 32 },
-        });
-        reduced->push(WasmInstr{
-            .code = INSTR_I32_CONST,
-            .imm = { imm[0] & 0xFFFFFFFF },
-        });
+        if (!vmConfig.ext.any64 || immBytes32(imm[0]) + immBytes32(imm[0] >> 32) < immBytes64(imm[0])) {
+            reduced->push(WasmInstr{
+                .code = INSTR_I32_CONST,
+                .imm = { imm[0] >> 32 },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_I32_CONST,
+                .imm = { imm[0] & 0xFFFFFFFF },
+            });
+        } else {
+            reduced->push(instr);
+        }
         stack->push(TYPE_I64);
         break;
     }
@@ -602,14 +706,21 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     }
     case INSTR_F64_CONST: {
         TRACE();
-        reduced->push(WasmInstr{
-            .code = INSTR_I32_CONST,
-            .imm = { imm[0] >> 32 },
-        });
-        reduced->push(WasmInstr{
-            .code = INSTR_I32_CONST,
-            .imm = { imm[0] & 0xFFFFFFFF },
-        });
+        if (!vmConfig.ext.any64 || immBytes32(imm[0]) + immBytes32(imm[0] >> 32) < immBytes64(imm[0])) {
+            reduced->push(WasmInstr{
+                .code = INSTR_I32_CONST,
+                .imm = { imm[0] >> 32 },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_I32_CONST,
+                .imm = { imm[0] & 0xFFFFFFFF },
+            });
+        } else {
+            reduced->push(WasmInstr{
+                .code = INSTR_I64_CONST,
+                .imm = { imm[0] },
+            });
+        }
         stack->push(TYPE_F64);
         break;
     }
@@ -702,8 +813,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.eqz64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_eqz"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -716,8 +827,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.eq64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_eq"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -734,8 +845,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
             });
         } else {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.eq64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_eq"_S, true)) },
             });
         }
         reduced->push(WasmInstr{
@@ -749,8 +860,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.slt64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_lt_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -763,8 +874,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.ult64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_lt_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -777,8 +888,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.sgt64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_gt_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -791,8 +902,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.ugt64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_gt_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -809,8 +920,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
             });
         } else {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.sgt64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_gt_s"_S, true)) },
             });
         }
         reduced->push(WasmInstr{
@@ -828,8 +939,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
             });
         } else {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.ugt64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_gt_u"_S, true)) },
             });
         }
         reduced->push(WasmInstr{
@@ -847,8 +958,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
             });
         } else {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.slt64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_lt_s"_S, true)) },
             });
         }
         reduced->push(WasmInstr{
@@ -866,8 +977,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
             });
         } else {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.ult64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_lt_u"_S, true)) },
             });
         }
         reduced->push(WasmInstr{
@@ -881,8 +992,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_eq"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_eq"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -895,8 +1006,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_ne"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_ne"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -909,8 +1020,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_lt"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_lt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -923,8 +1034,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_gt"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_gt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -937,8 +1048,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_le"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_le"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -951,8 +1062,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_ge"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_ge"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -965,8 +1076,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_eq"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_eq"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -979,8 +1090,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_ne"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_ne"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -993,8 +1104,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_lt"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_lt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1007,8 +1118,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_gt"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_gt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1021,8 +1132,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_le"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_le"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1035,8 +1146,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_ge"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_ge"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1048,8 +1159,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.clz"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_clz"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -1058,8 +1169,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.ctz"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_ctz"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -1068,8 +1179,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.popcnt"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_popcnt"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -1078,8 +1189,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(2);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.rotl"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_rotl"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -1088,8 +1199,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(2);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.rotr"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_rotr"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -1098,8 +1209,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.clz64"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_clz"_S, true)) },
         });
         stack->push(TYPE_I64);
         break;
@@ -1108,8 +1219,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.ctz64"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_ctz"_S, true)) },
         });
         stack->push(TYPE_I64);
         break;
@@ -1118,8 +1229,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop();
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.popcnt64"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_popcnt"_S, true)) },
         });
         stack->push(TYPE_I64);
         break;
@@ -1129,8 +1240,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.add64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_add"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1143,8 +1254,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.sub64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_sub"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1157,8 +1268,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.mul64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_mul"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1171,8 +1282,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.sdiv64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_div_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1185,8 +1296,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.udiv64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_div_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1199,8 +1310,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.srem64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_rem_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1213,8 +1324,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.urem64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_rem_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1227,8 +1338,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.and64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_and"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1241,8 +1352,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.or64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_or"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1255,8 +1366,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.xor64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_xor"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1269,11 +1380,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_I32_WRAP_I64,
-            });
-            reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.shl64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_shl"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1286,11 +1394,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_I32_WRAP_I64,
-            });
-            reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.sshr64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_shr_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1303,11 +1408,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_I32_WRAP_I64,
-            });
-            reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.ushr64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_shr_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1319,11 +1421,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(2);
         reduced->push(WasmInstr{
-            .code = INSTR_I32_WRAP_I64,
-        });
-        reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.rotl64"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_rotl"_S, true)) },
         });
         stack->push(TYPE_I64);
         break;
@@ -1332,11 +1431,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(2);
         reduced->push(WasmInstr{
-            .code = INSTR_I32_WRAP_I64,
-        });
-        reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.rotr64"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_rotr"_S, true)) },
         });
         stack->push(TYPE_I64);
         break;
@@ -1366,8 +1462,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_ceil"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_ceil"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1380,8 +1476,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_floor"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_floor"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1394,8 +1490,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_trunc"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_trunc"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1408,8 +1504,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_nearest"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_nearest"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1422,8 +1518,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_sqrt"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_sqrt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1436,8 +1532,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_add"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_add"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1450,8 +1546,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_sub"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_sub"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1464,8 +1560,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_mul"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_mul"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1478,8 +1574,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_div"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_div"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1491,8 +1587,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(2);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.f32_min"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_min"_S, true)) },
         });
         stack->push(TYPE_F32);
         break;
@@ -1501,8 +1597,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(2);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.f32_max"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_max"_S, true)) },
         });
         stack->push(TYPE_F32);
         break;
@@ -1511,8 +1607,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(2);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.f32_copysign"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_copysign"_S, true)) },
         });
         stack->push(TYPE_F32);
         break;
@@ -1522,13 +1618,20 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_abs"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_abs"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
+                .code = INSTR_I64_CONST,
+                .imm = { u64(-1) },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_USHR64LL,
+                .imm = { 1 },
+            });
+            reduced->push(WasmInstr{
                 .code = INSTR_I64_AND,
-                .imm = { 0x7FFFFFFFFFFFFFFFuLL },
             });
         }
         stack->push(TYPE_F64);
@@ -1539,13 +1642,20 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_neg"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_neg"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
+                .code = INSTR_I32_CONST,
+                .imm = { 1 },
+            });
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_SHL64WL,
+                .imm = { 63 },
+            });
+            reduced->push(WasmInstr{
                 .code = INSTR_I64_XOR,
-                .imm = { 0x8000000000000000uLL },
             });
         }
         stack->push(TYPE_F64);
@@ -1556,8 +1666,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_ceil"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_ceil"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1570,8 +1680,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_foor"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_floor"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1584,8 +1694,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_trunc"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_trunc"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1598,8 +1708,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_nearest"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_nearest"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1612,8 +1722,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_sqrt"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_sqrt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1626,8 +1736,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_add"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_add"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1640,8 +1750,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_sub"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_sub"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1654,8 +1764,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_mul"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_mul"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1668,8 +1778,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop(2);
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_div"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_div"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1681,8 +1791,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(2);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.f64_min"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_min"_S, true)) },
         });
         stack->push(TYPE_F64);
         break;
@@ -1691,8 +1801,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(2);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.f64_max"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_max"_S, true)) },
         });
         stack->push(TYPE_F64);
         break;
@@ -1701,8 +1811,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(2);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.f64_copysign"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_copysign"_S, true)) },
         });
         stack->push(TYPE_F64);
         break;
@@ -1719,8 +1829,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_trunc_s32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_f32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1733,8 +1843,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_trunc_u32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_f32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1747,8 +1857,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_trunc_s32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_f64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1761,8 +1871,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_trunc_u32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_f64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1775,11 +1885,14 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.extend64_s"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_s"_S, true)) },
             });
         } else {
-            reduced->push(instr);
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_SHL64WL,
+                .imm = { 0 },
+            });
         }
         stack->push(TYPE_I64);
         break;
@@ -1789,11 +1902,13 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.extend64_u"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_u"_S, true)) },
             });
         } else {
-            reduced->push(instr);
+            reduced->push(WasmInstr{
+                .code = INSTR_TRIVM_LOW64WL,
+            });
         }
         stack->push(TYPE_I64);
         break;
@@ -1803,8 +1918,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_trunc_s64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_f32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1817,8 +1932,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_trunc_u64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_f32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1831,8 +1946,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_trunc_s64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_f64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1845,8 +1960,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_trunc_u64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_f64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1859,8 +1974,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_convert_s32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_convert_i32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1873,8 +1988,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_convert_u32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_convert_i32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1887,8 +2002,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_convert_s64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_convert_i64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1901,8 +2016,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_convert_u64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_convert_i64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1915,8 +2030,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32 || !vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_demote_f64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_demote_f64"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1929,8 +2044,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_convert_s32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_convert_i32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1943,8 +2058,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_convert_u32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_convert_i32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1957,8 +2072,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_convert_s64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_convert_i64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1971,8 +2086,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_convert_u64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_convert_i64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1985,8 +2100,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32 || !vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_promote_f64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_promote_f32"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2055,12 +2170,12 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.extend64_s8"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend8_s"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_EXTS64,
+                .code = INSTR_TRIVM_EXTS64LL,
                 .imm = { 56 },
             });
         }
@@ -2072,12 +2187,12 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.extend64_s16"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend16_s"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_EXTS64,
+                .code = INSTR_TRIVM_EXTS64LL,
                 .imm = { 48 },
             });
         }
@@ -2089,12 +2204,12 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.extend64_s32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend32_s"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_EXTS64,
+                .code = INSTR_TRIVM_EXTS64LL,
                 .imm = { 32 },
             });
         }
@@ -2106,8 +2221,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_truncsat_s32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_sat_f32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2120,8 +2235,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_truncsat_u32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_sat_f32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2134,8 +2249,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_truncsat_s32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_sat_f64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2148,8 +2263,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_truncsat_u32"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_sat_f64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2162,8 +2277,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_truncsat_s64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_sat_f32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2176,8 +2291,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f32_truncsat_u64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_sat_f32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2190,8 +2305,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_truncsat_s64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_sat_f64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2204,8 +2319,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         stack->pop();
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
-                .code = INSTR_TRIVM_CALL_IMPORT,
-                .immString = "__trivmlib__.f64_truncsat_u64"_S,
+                .code = INSTR_CALL,
+                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_sat_f64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2217,8 +2332,8 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(3);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.mem_copy"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory.copy"_S, true)) },
         });
         break;
     }
@@ -2226,14 +2341,16 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         TRACE();
         stack->pop(3);
         reduced->push(WasmInstr{
-            .code = INSTR_TRIVM_CALL_IMPORT,
-            .immString = "__trivmlib__.mem_fill"_S,
+            .code = INSTR_CALL,
+            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory.fill"_S, true)) },
         });
         break;
     }
+    #endif
     default:
         FATAL("Unexpected instruction");
         break;
     };
+    /* -- End of source code generated with help of "gen_instr.js" script -- */
 }
 
