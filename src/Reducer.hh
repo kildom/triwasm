@@ -16,7 +16,7 @@ private:
         Array$$<u32> stack;
         void push(u32 value);
         u32 pop();
-        void pop(u32 count);
+        void pop(ssize n);
         ssize length();
         void clear();
         void remove(ssize start);
@@ -28,8 +28,8 @@ private:
 public:
     void reduce(WasmModule$$ mod);
     void reduceFunction(WasmFunction$$ func);
-    void reduceBlock(WasmBlock$ body);
-    void reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced);
+    bool reduceBlock(WasmBlock$ body);
+    bool reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool reachable);
 };
 
 #endif /* _REDUCER_HH_ */

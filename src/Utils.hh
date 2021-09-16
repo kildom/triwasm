@@ -32,8 +32,12 @@ using ssize = std::intptr_t;
 
 #include "utils/CallTrace.hh"
 
-#define FATAL(text, ...) do { printf(text " :%s:%d\n", ##__VA_ARGS__, __FILE__, __LINE__); CallTrace::print(); exit(100); } while(0)// TODO: Macro for unrecoverable fatal error
-#define ASSERT(text, ...) do { printf(text " :%s:%d\n", ##__VA_ARGS__, __FILE__, __LINE__); CallTrace::print(); exit(101); } while(0)// TODO: Macro for unrecoverable fatal error
+static void breakPoint()
+{
+}
+
+#define FATAL(text, ...) do { printf(text " :%s:%d\n", ##__VA_ARGS__, __FILE__, __LINE__); CallTrace::print(); breakPoint(); exit(100); } while(0)// TODO: Macro for unrecoverable fatal error
+#define ASSERT(text, ...) do { printf(text " :%s:%d\n", ##__VA_ARGS__, __FILE__, __LINE__); CallTrace::print(); breakPoint(); exit(101); } while(0)// TODO: Macro for unrecoverable fatal error
 
 #include "utils/Init.hh"
 #include "utils/Dollar.hh"

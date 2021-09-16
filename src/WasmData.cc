@@ -180,7 +180,7 @@ void DataDump::dumpModule()
                 }
                 out << "    body:" << std::endl;
                 blockStack = new$;
-                dumpBlockBody("      "_S, f->block->body);
+                showBlockBody("      "_S, f->block->instr, 0);
             } else {
                 out << std::endl;
             }
@@ -358,7 +358,7 @@ void DataDump::showDataWasmInstrBr(String$$ ind, WasmInstr$ instr, u32 index)
     auto br = WasmInstrBr$$(instr->data[index]);
     if (br->conditional) out << ", conditional";
     if (br->negated) out << ", negated";
-    if (br->forceForward && instr->code == INSTR_LOOP) out << ", forward";
+    if (br->forceForward) out << ", force forward";
     if (br->skipBrInstr) out << ", skip final BR instruction";
 }
 

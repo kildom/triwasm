@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     auto reducer = Reducer$::create();
     reducer->reduce(mod);
 
-    dumpModuleToFile("reduced.txt", mod, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY);
+    dumpModuleToFile("reduced.txt", mod, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY | DUMP_AFTER_REDUCE);
 
     return 0;
 
