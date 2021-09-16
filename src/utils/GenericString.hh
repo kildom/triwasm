@@ -117,7 +117,7 @@ public:
     }
 
     GenericString$$ operator+(const T* value) const {
-        GenericString$$ a;
+        GenericString$$ a = new$;
         a->v = (*this)->v;
         a->v += value;
         return a;

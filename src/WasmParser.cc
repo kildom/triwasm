@@ -304,7 +304,9 @@ void WasmParser::parseExportSection()
                     func->kind = FUNCTION_UNUSED;
                     printf("  magic export function %d with content %s\n", index, name->buffer());
                 } else {
-                    func->exportName = name;
+                    if (func->exportNames == nullptr)
+                        func->exportNames = new$;
+                    func->exportNames->push(name);
                     func->moduleName = mod->name;
                     printf("  export function %d as %s\n", index, name->buffer());
                 }
@@ -640,7 +642,7 @@ WasmFunction$ WasmParser::parseMagicFunction(u32 index, WasmFunctionType$ type, 
             if (optParts[0] == "inline" && optParts->length() == 1) {
                 result->kind = FUNCTION_INLINE_ASSEMBLY;
             } else if (optParts[0] == "export" && optParts->length() == 2) {
-                result->exportName = optParts[1];
+                result->exportNames = { optParts[1] };
                 result->moduleName = mod->name;
             } else {
                 FATAL("Invalid assembly function option: %s", opt.cStr());

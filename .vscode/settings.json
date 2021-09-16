@@ -104,7 +104,8 @@
         "ratio": "cpp",
         "stack": "cpp",
         "cfenv": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "filesystem": "cpp"
     },
     "terminal.integrated.automationShell.windows": "cmd.exe"
 }

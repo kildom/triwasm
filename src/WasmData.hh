@@ -79,7 +79,7 @@ struct WasmFunction {
     WasmFunctionKind kind;
     WasmFunctionType$ type;
     WasmImport$ import;
-    String$$ exportName;
+    Array$$<String$$> exportNames;
     String$$ moduleName;
     Array$$<u32> locals;
     WasmBlock$ block;
@@ -90,7 +90,8 @@ struct WasmInstrBr {
     bool conditional;
     bool negated;
     bool forceForward;
-    WasmInstrBr() : conditional(false), negated(false), forceForward(false) {}
+    bool skipBrInstr;
+    WasmInstrBr() : conditional(false), negated(false), forceForward(false), skipBrInstr(false) {}
 };
 
 struct WasmInstr {
@@ -190,7 +191,10 @@ enum DumpFlags {
     DUMP_WASM_ASSEMBLY = 1,
     DUMP_TRI_ASSEMBLY = 2,
     DUMP_HEX_DATA = 4,
+    DUMP_AFTER_REDUCE = 8,
 };
+
+DEFINE_ENUM_FLAG_OPERATORS(DumpFlags);
 
 void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags);
 

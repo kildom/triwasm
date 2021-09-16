@@ -7,9 +7,16 @@
 #include "WasmParser.hh"
 #include "Merger.hh"
 #include "Resolver.hh"
-//#include "Generator.hh"
+#include "Reducer.hh"
 //#include "Linker.hh"
 
+void dumpModuleToFile(const char *name, WasmModule$ mod, DumpFlags flags)
+{
+
+        std::ofstream ofs (name, std::ofstream::out);
+        dumpModule(ofs, mod, flags);
+        ofs.close();
+}
 
 int main(int argc, char *argv[]) {
     TRACE();
@@ -18,45 +25,24 @@ int main(int argc, char *argv[]) {
     auto trivmlib = parser->parse(FileInputStream$$::create("../../lib/trivmlib.wasm").cast<WasmInputStream>(), false, "__trivmlib"_S);
     auto mod = parser->parse(FileInputStream$$::create("../../test/libbzip2-dec.wasm").cast<WasmInputStream>(), true, "__main"_S);
 
-    std::ofstream ofs1 ("trivmlib.txt", std::ofstream::out);
-    dumpModule(ofs1, trivmlib, DUMP_TRI_ASSEMBLY);
-    ofs1.close();
-
-    std::ofstream ofs2 ("mainmod.txt", std::ofstream::out);
-    dumpModule(ofs2, mod, DUMP_TRI_ASSEMBLY);
-    ofs2.close();
+    dumpModuleToFile("trivmlib.txt", trivmlib, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY);
+    dumpModuleToFile("mainmod.txt", mod, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY);
 
     auto merger = Merger$::create();
     merger->setMain(mod);
     merger->merge(trivmlib);
 
-    std::ofstream ofs3 ("merged.txt", std::ofstream::out);
-    dumpModule(ofs3, mod, DUMP_TRI_ASSEMBLY);
-    ofs3.close();
+    dumpModuleToFile("merged.txt", mod, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY);
 
     auto resolver = Resolver$::create();
-
     resolver->resolveImports(mod);
 
-    std::ofstream ofs4 ("resolved.txt", std::ofstream::out);
-    dumpModule(ofs4, mod, DUMP_TRI_ASSEMBLY);
-    ofs4.close();
+    dumpModuleToFile("resolved.txt", mod, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY);
 
-
-    /*
-    Linker$$ linker;
-    linker->link(prog);
-    
-    Reducer$$ reducer;
-    reducer->reduce(trivmlib);
-    reducer = new$;
+    auto reducer = Reducer$::create();
     reducer->reduce(mod);
 
-    //dumpProgram(prog);
-
-    Generator$$ generator = Generator$::create(std::cout);
-    generator->generate(prog);
-    */
+    dumpModuleToFile("reduced.txt", mod, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY);
 
     return 0;
 

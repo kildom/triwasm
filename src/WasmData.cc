@@ -3,18 +3,56 @@
 #include "Utils.hh"
 #include <iostream>
 #include <sstream>
+#include <cfloat>
+#include <iomanip>
 
 #include "WasmData.hh"
 #include "WasmConsts.hh"
 #include "WasmInstr.hh"
+
+class DataDump {
+public:
+    std::ostream& out;
+    WasmModule$ mod;
+    DumpFlags flags;
+    u32 blockLabelIndex;
+    Array$$<u32> blockStack;
+
+    DataDump(std::ostream& out, WasmModule$ mod, DumpFlags flags) : out(out), mod(mod), flags(flags), blockLabelIndex(1)
+    {
+        dumpModule();
+    }
+
+    void dumpModule();
+    void dumpConstInstr(String$$ ind, ConstExpr$ expr);
+    void dumpBlockBody(String$$ ind, Array$$<WasmInstr$> instrList);
+    void dumpInstr(String$$ ind, WasmInstr$ instr);
+
+    void showBlockBody(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmLabel(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmLabels(String$$ ind, WasmInstr$ instr, u32 index);
+    void showDataWasmInstrBr(String$$ ind, WasmInstr$ instr, u32 index);
+    void showDataFunction(String$$ ind, WasmInstr$ instr, u32 index);
+    void showDataFunctionType(String$$ ind, WasmInstr$ instr, u32 index);
+    void showDataTable(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmOffset(String$$ ind, WasmInstr$ instr, u32 index);
+    void showDataGlobal(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmTypes(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmLocal(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmValue(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmF32Value(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmF64Value(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmRefType(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmDataIndex(String$$ ind, WasmInstr$ instr, u32 index);
+    void showDataElement(String$$ ind, WasmInstr$ instr, u32 index);
+    void showImmBits(String$$ ind, WasmInstr$ instr, u32 index);
+};
 
 struct TypeList
 {
     Array$$<u32> list;
     bool forceBrackets;
 };
-
-static const char* instrName(u32 opcode);
 
 std::ostream& operator<<(std::ostream& out, const TypeList& list)
 {
@@ -34,86 +72,14 @@ std::ostream& operator<<(std::ostream& out, const TypeList& list)
     return out;
 }
 
-static u32 blockLabelIndex = 1;
-
-static void dumpImm(std::ostream& out, WasmInstr$ instr, Array$$<u32> blockStack) {
-    switch (instr->code)
-    {
-    case INSTR_BR:
-    case INSTR_BR_IF: {
-        out << instr->imm[0] << " {block" << blockStack[blockStack->length() - 1 - instr->imm[0]] << "} ";
-        auto d = WasmInstrBr$$(instr->data[0]);
-        if (d != nullptr) {
-            if (d->conditional) out << "(conditional)";
-            if (d->forceForward) out << "(forward)";
-            if (d->negated) out << "(negated)";
-        }
-        break;
-    }
-    
-    default:
-        for (auto imm : instr->imm) {
-            out << imm << " ";
-        }
-        //TODO: detect and dump instr->data
-        break;
-    }
-}
-
-static void dumpInstr(std::ostream& out, String$$ ind, Array$$<WasmInstr$> instrList, Array$$<u32> blockStack = Array$$<u32>())
-{
-    for (auto instr : instrList) {
-        if (instr->block != nullptr) {
-            out << ind->buffer() << instrName(instr->code) << " {block" << blockLabelIndex << "} ";
-            dumpImm(out, instr, blockStack);
-            if (instr->block->type->param->length() > 0 || instr->block->type->result->length() > 0) {
-                out << TypeList{instr->block->type->param, true} << ":" << TypeList{instr->block->type->result, false} << std::endl;
-            } else {
-                out << std::endl;
-            }
-            blockStack->push(blockLabelIndex);
-            blockLabelIndex++;
-            dumpInstr(out, ind + "  ", instr->block->body, blockStack);
-            blockStack->pop();
-        } else {
-            out << ind->buffer() << instrName(instr->code) << " ";
-            dumpImm(out, instr, blockStack);
-            out << std::endl;
-        }
-    }
-}
-
-static void dumpConstInstr(std::ostream& out, String$$ ind, ConstExpr$ expr)
-{
-    switch (expr->kind) {
-    case CONST_EXPR_UNDEFINED:
-        out << ind->buffer() << "UNDEFINED" << std::endl;
-        break;
-    case CONST_EXPR_I32:
-        out << ind->buffer() << "i32 " << expr->i32Value << std::endl;
-        break;
-    case CONST_EXPR_I64:
-        out << ind->buffer() << "i64 " << expr->i64Value << std::endl;
-        break;
-    case CONST_EXPR_F32:
-        out << ind->buffer() << "f32 " << expr->f32Value << std::endl;
-        break;
-    case CONST_EXPR_F64:
-        out << ind->buffer() << "f64 " << expr->f64Value << std::endl;
-        break;
-    case CONST_EXPR_FUNC:
-        out << ind->buffer() << "function " << expr->functionIndex << std::endl;
-        break;
-    case CONST_EXPR_NULL:
-        out << ind->buffer() << "null" << std::endl;
-        break;
-    case CONST_EXPR_GLOBAL_IMPORT:
-        out << ind->buffer() << "import global " << expr->globalIndex << std::endl;
-        break;
-    }
-}
 
 void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags)
+{
+    DataDump(out, mod, flags);
+}
+
+
+void DataDump::dumpModule()
 {
     if (mod->isMain) {
         out << "================== MAIN MODULE " << mod->name.cStr() << std::endl;
@@ -176,7 +142,7 @@ void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags)
         }
         if (g->initializer != nullptr) {
             out << ", initialization:" << std::endl;
-            dumpConstInstr(out, "    "_S, g->initializer);
+            dumpConstInstr("    "_S, g->initializer);
         } else {
             out << std::endl;
         }
@@ -185,8 +151,10 @@ void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags)
     out << "Functions: " << std::endl;
     for (auto f : mod->functions) {
         out << "  [" << f->index << "] " << TypeList{f->type->param, true} << ":" << TypeList{f->type->result, false};
-        if (f->exportName != nullptr) {
-            out << ", export as " << f->exportName.cStr();
+        if (f->exportNames != nullptr) {
+            for (auto name : f->exportNames) {
+                out << ", export as " << name.cStr();
+            }
             if (f->moduleName != nullptr) {
                 out << " from module " << f->moduleName.cStr();
             }
@@ -211,7 +179,8 @@ void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags)
                     }
                 }
                 out << "    body:" << std::endl;
-                dumpInstr(out, "      "_S, f->block->body);
+                blockStack = new$;
+                dumpBlockBody("      "_S, f->block->body);
             } else {
                 out << std::endl;
             }
@@ -270,7 +239,7 @@ void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags)
         }
         if (d->offset != nullptr) {
             out << "    offset:" << std::endl;
-            dumpConstInstr(out, "      "_S, d->offset);
+            dumpConstInstr("      "_S, d->offset);
         }
         if (d->bytes != nullptr && (flags & DUMP_HEX_DATA)) {
             std::ios::fmtflags saved(out.flags());
@@ -298,12 +267,12 @@ void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags)
         }
         if (e->offset != nullptr) {
             out << "    offset:" << std::endl;
-            dumpConstInstr(out, "      "_S, e->offset);
+            dumpConstInstr("      "_S, e->offset);
         }
         if (e->exprItems != nullptr) {
             for (auto item : e->exprItems) {
                 out << "    item:" << std::endl;
-                dumpConstInstr(out, "      "_S, item);
+                dumpConstInstr("      "_S, item);
             }
         }
         if (e->functionItems != nullptr) {
@@ -314,220 +283,854 @@ void dumpModule(std::ostream& out, WasmModule$ mod, DumpFlags flags)
     }
 }
 
-static const char* instrName(u32 opcode)
+void DataDump::dumpConstInstr(String$$ ind, ConstExpr$ expr)
 {
-    switch (opcode)
-    {
-    /* -- Begin of source code generated with help of "gen_instr.js" script -- */
-    case INSTR_UNREACHABLE: return "unreachable";
-    case INSTR_NOP: return "nop";
-    case INSTR_BLOCK: return "block";
-    case INSTR_LOOP: return "loop";
-    case INSTR_IF: return "if";
-    case INSTR_ELSE: return "else";
-    case INSTR_END: return "end";
-    case INSTR_BR: return "br";
-    case INSTR_BR_IF: return "br_if";
-    case INSTR_BR_TABLE: return "br_table";
-    case INSTR_RETURN: return "return";
-    case INSTR_CALL: return "call";
-    case INSTR_CALL_INDIRECT: return "call_indirect";
-    case INSTR_RETURN_CALL: return "return_call";
-    case INSTR_RETURN_CALL_INDIRECT: return "return_call_indirect";
-    case INSTR_DROP: return "drop";
-    case INSTR_SELECT: return "select";
-    case INSTR_SELECT_T: return "select_t";
-    case INSTR_LOCAL_GET: return "local.get";
-    case INSTR_LOCAL_SET: return "local.set";
-    case INSTR_LOCAL_TEE: return "local.tee";
-    case INSTR_GLOBAL_GET: return "global.get";
-    case INSTR_GLOBAL_SET: return "global.set";
-    case INSTR_TABLE_GET: return "table.get";
-    case INSTR_TABLE_SET: return "table.set";
-    case INSTR_I32_LOAD: return "i32.load";
-    case INSTR_I64_LOAD: return "i64.load";
-    case INSTR_F32_LOAD: return "f32.load";
-    case INSTR_F64_LOAD: return "f64.load";
-    case INSTR_I32_LOAD8_S: return "i32.load8_s";
-    case INSTR_I32_LOAD8_U: return "i32.load8_u";
-    case INSTR_I32_LOAD16_S: return "i32.load16_s";
-    case INSTR_I32_LOAD16_U: return "i32.load16_u";
-    case INSTR_I64_LOAD8_S: return "i64.load8_s";
-    case INSTR_I64_LOAD8_U: return "i64.load8_u";
-    case INSTR_I64_LOAD16_S: return "i64.load16_s";
-    case INSTR_I64_LOAD16_U: return "i64.load16_u";
-    case INSTR_I64_LOAD32_S: return "i64.load32_s";
-    case INSTR_I64_LOAD32_U: return "i64.load32_u";
-    case INSTR_I32_STORE: return "i32.store";
-    case INSTR_I64_STORE: return "i64.store";
-    case INSTR_F32_STORE: return "f32.store";
-    case INSTR_F64_STORE: return "f64.store";
-    case INSTR_I32_STORE8: return "i32.store8";
-    case INSTR_I32_STORE16: return "i32.store16";
-    case INSTR_I64_STORE8: return "i64.store8";
-    case INSTR_I64_STORE16: return "i64.store16";
-    case INSTR_I64_STORE32: return "i64.store32";
-    case INSTR_MEMORY_SIZE: return "memory.size";
-    case INSTR_MEMORY_GROW: return "memory.grow";
-    case INSTR_I32_CONST: return "i32.const";
-    case INSTR_I64_CONST: return "i64.const";
-    case INSTR_F32_CONST: return "f32.const";
-    case INSTR_F64_CONST: return "f64.const";
-    case INSTR_I32_EQZ: return "i32.eqz";
-    case INSTR_I32_EQ: return "i32.eq";
-    case INSTR_I32_NE: return "i32.ne";
-    case INSTR_I32_LT_S: return "i32.lt_s";
-    case INSTR_I32_LT_U: return "i32.lt_u";
-    case INSTR_I32_GT_S: return "i32.gt_s";
-    case INSTR_I32_GT_U: return "i32.gt_u";
-    case INSTR_I32_LE_S: return "i32.le_s";
-    case INSTR_I32_LE_U: return "i32.le_u";
-    case INSTR_I32_GE_S: return "i32.ge_s";
-    case INSTR_I32_GE_U: return "i32.ge_u";
-    case INSTR_I64_EQZ: return "i64.eqz";
-    case INSTR_I64_EQ: return "i64.eq";
-    case INSTR_I64_NE: return "i64.ne";
-    case INSTR_I64_LT_S: return "i64.lt_s";
-    case INSTR_I64_LT_U: return "i64.lt_u";
-    case INSTR_I64_GT_S: return "i64.gt_s";
-    case INSTR_I64_GT_U: return "i64.gt_u";
-    case INSTR_I64_LE_S: return "i64.le_s";
-    case INSTR_I64_LE_U: return "i64.le_u";
-    case INSTR_I64_GE_S: return "i64.ge_s";
-    case INSTR_I64_GE_U: return "i64.ge_u";
-    case INSTR_F32_EQ: return "f32.eq";
-    case INSTR_F32_NE: return "f32.ne";
-    case INSTR_F32_LT: return "f32.lt";
-    case INSTR_F32_GT: return "f32.gt";
-    case INSTR_F32_LE: return "f32.le";
-    case INSTR_F32_GE: return "f32.ge";
-    case INSTR_F64_EQ: return "f64.eq";
-    case INSTR_F64_NE: return "f64.ne";
-    case INSTR_F64_LT: return "f64.lt";
-    case INSTR_F64_GT: return "f64.gt";
-    case INSTR_F64_LE: return "f64.le";
-    case INSTR_F64_GE: return "f64.ge";
-    case INSTR_I32_CLZ: return "i32.clz";
-    case INSTR_I32_CTZ: return "i32.ctz";
-    case INSTR_I32_POPCNT: return "i32.popcnt";
-    case INSTR_I32_ADD: return "i32.add";
-    case INSTR_I32_SUB: return "i32.sub";
-    case INSTR_I32_MUL: return "i32.mul";
-    case INSTR_I32_DIV_S: return "i32.div_s";
-    case INSTR_I32_DIV_U: return "i32.div_u";
-    case INSTR_I32_REM_S: return "i32.rem_s";
-    case INSTR_I32_REM_U: return "i32.rem_u";
-    case INSTR_I32_AND: return "i32.and";
-    case INSTR_I32_OR: return "i32.or";
-    case INSTR_I32_XOR: return "i32.xor";
-    case INSTR_I32_SHL: return "i32.shl";
-    case INSTR_I32_SHR_S: return "i32.shr_s";
-    case INSTR_I32_SHR_U: return "i32.shr_u";
-    case INSTR_I32_ROTL: return "i32.rotl";
-    case INSTR_I32_ROTR: return "i32.rotr";
-    case INSTR_I64_CLZ: return "i64.clz";
-    case INSTR_I64_CTZ: return "i64.ctz";
-    case INSTR_I64_POPCNT: return "i64.popcnt";
-    case INSTR_I64_ADD: return "i64.add";
-    case INSTR_I64_SUB: return "i64.sub";
-    case INSTR_I64_MUL: return "i64.mul";
-    case INSTR_I64_DIV_S: return "i64.div_s";
-    case INSTR_I64_DIV_U: return "i64.div_u";
-    case INSTR_I64_REM_S: return "i64.rem_s";
-    case INSTR_I64_REM_U: return "i64.rem_u";
-    case INSTR_I64_AND: return "i64.and";
-    case INSTR_I64_OR: return "i64.or";
-    case INSTR_I64_XOR: return "i64.xor";
-    case INSTR_I64_SHL: return "i64.shl";
-    case INSTR_I64_SHR_S: return "i64.shr_s";
-    case INSTR_I64_SHR_U: return "i64.shr_u";
-    case INSTR_I64_ROTL: return "i64.rotl";
-    case INSTR_I64_ROTR: return "i64.rotr";
-    case INSTR_F32_ABS: return "f32.abs";
-    case INSTR_F32_NEG: return "f32.neg";
-    case INSTR_F32_CEIL: return "f32.ceil";
-    case INSTR_F32_FLOOR: return "f32.floor";
-    case INSTR_F32_TRUNC: return "f32.trunc";
-    case INSTR_F32_NEAREST: return "f32.nearest";
-    case INSTR_F32_SQRT: return "f32.sqrt";
-    case INSTR_F32_ADD: return "f32.add";
-    case INSTR_F32_SUB: return "f32.sub";
-    case INSTR_F32_MUL: return "f32.mul";
-    case INSTR_F32_DIV: return "f32.div";
-    case INSTR_F32_MIN: return "f32.min";
-    case INSTR_F32_MAX: return "f32.max";
-    case INSTR_F32_COPYSIGN: return "f32.copysign";
-    case INSTR_F64_ABS: return "f64.abs";
-    case INSTR_F64_NEG: return "f64.neg";
-    case INSTR_F64_CEIL: return "f64.ceil";
-    case INSTR_F64_FLOOR: return "f64.floor";
-    case INSTR_F64_TRUNC: return "f64.trunc";
-    case INSTR_F64_NEAREST: return "f64.nearest";
-    case INSTR_F64_SQRT: return "f64.sqrt";
-    case INSTR_F64_ADD: return "f64.add";
-    case INSTR_F64_SUB: return "f64.sub";
-    case INSTR_F64_MUL: return "f64.mul";
-    case INSTR_F64_DIV: return "f64.div";
-    case INSTR_F64_MIN: return "f64.min";
-    case INSTR_F64_MAX: return "f64.max";
-    case INSTR_F64_COPYSIGN: return "f64.copysign";
-    case INSTR_I32_WRAP_I64: return "i32.wrap_i64";
-    case INSTR_I32_TRUNC_F32_S: return "i32.trunc_f32_s";
-    case INSTR_I32_TRUNC_F32_U: return "i32.trunc_f32_u";
-    case INSTR_I32_TRUNC_F64_S: return "i32.trunc_f64_s";
-    case INSTR_I32_TRUNC_F64_U: return "i32.trunc_f64_u";
-    case INSTR_I64_EXTEND_I32_S: return "i64.extend_i32_s";
-    case INSTR_I64_EXTEND_I32_U: return "i64.extend_i32_u";
-    case INSTR_I64_TRUNC_F32_S: return "i64.trunc_f32_s";
-    case INSTR_I64_TRUNC_F32_U: return "i64.trunc_f32_u";
-    case INSTR_I64_TRUNC_F64_S: return "i64.trunc_f64_s";
-    case INSTR_I64_TRUNC_F64_U: return "i64.trunc_f64_u";
-    case INSTR_F32_CONVERT_I32_S: return "f32.convert_i32_s";
-    case INSTR_F32_CONVERT_I32_U: return "f32.convert_i32_u";
-    case INSTR_F32_CONVERT_I64_S: return "f32.convert_i64_s";
-    case INSTR_F32_CONVERT_I64_U: return "f32.convert_i64_u";
-    case INSTR_F32_DEMOTE_F64: return "f32.demote_f64";
-    case INSTR_F64_CONVERT_I32_S: return "f64.convert_i32_s";
-    case INSTR_F64_CONVERT_I32_U: return "f64.convert_i32_u";
-    case INSTR_F64_CONVERT_I64_S: return "f64.convert_i64_s";
-    case INSTR_F64_CONVERT_I64_U: return "f64.convert_i64_u";
-    case INSTR_F64_PROMOTE_F32: return "f64.promote_f32";
-    case INSTR_I32_REINTERPRET_F32: return "i32.reinterpret_f32";
-    case INSTR_I64_REINTERPRET_F64: return "i64.reinterpret_f64";
-    case INSTR_F32_REINTERPRET_I32: return "f32.reinterpret_i32";
-    case INSTR_F64_REINTERPRET_I64: return "f64.reinterpret_i64";
-    case INSTR_I32_EXTEND8_S: return "i32.extend8_s";
-    case INSTR_I32_EXTEND16_S: return "i32.extend16_s";
-    case INSTR_I64_EXTEND8_S: return "i64.extend8_s";
-    case INSTR_I64_EXTEND16_S: return "i64.extend16_s";
-    case INSTR_I64_EXTEND32_S: return "i64.extend32_s";
-    case INSTR_REF_NULL: return "ref.null";
-    case INSTR_REF_IS_NULL: return "ref.is_null";
-    case INSTR_REF_FUNC: return "ref.func";
-    case INSTR_I32_TRUNC_SAT_F32_S: return "i32.trunc_sat_f32_s";
-    case INSTR_I32_TRUNC_SAT_F32_U: return "i32.trunc_sat_f32_u";
-    case INSTR_I32_TRUNC_SAT_F64_S: return "i32.trunc_sat_f64_s";
-    case INSTR_I32_TRUNC_SAT_F64_U: return "i32.trunc_sat_f64_u";
-    case INSTR_I64_TRUNC_SAT_F32_S: return "i64.trunc_sat_f32_s";
-    case INSTR_I64_TRUNC_SAT_F32_U: return "i64.trunc_sat_f32_u";
-    case INSTR_I64_TRUNC_SAT_F64_S: return "i64.trunc_sat_f64_s";
-    case INSTR_I64_TRUNC_SAT_F64_U: return "i64.trunc_sat_f64_u";
-    case INSTR_MEMORY_INIT: return "memory.init";
-    case INSTR_DATA_DROP: return "data.drop";
-    case INSTR_MEMORY_COPY: return "memory.copy";
-    case INSTR_MEMORY_FILL: return "memory.fill";
-    case INSTR_TABLE_INIT: return "table.init";
-    case INSTR_ELEM_DROP: return "elem.drop";
-    case INSTR_TABLE_COPY: return "table.copy";
-    case INSTR_TABLE_GROW: return "table.grow";
-    case INSTR_TABLE_SIZE: return "table.size";
-    case INSTR_TABLE_FILL: return "table.fill";
-    case INSTR_TRIVM_EMPTY: return "trivm.empty";
-    case INSTR_TRIVM_EXTS: return "trivm.exts";
-    case INSTR_TRIVM_POP: return "trivm.pop";
-    case INSTR_TRIVM_FUNCTION: return "trivm.function";
-    /* -- End of source code generated with help of "gen_instr.js" script -- */
+    switch (expr->kind) {
+    case CONST_EXPR_UNDEFINED:
+        out << ind->buffer() << "UNDEFINED" << std::endl;
+        break;
+    case CONST_EXPR_I32:
+        out << ind->buffer() << "i32 " << expr->i32Value << std::endl;
+        break;
+    case CONST_EXPR_I64:
+        out << ind->buffer() << "i64 " << expr->i64Value << std::endl;
+        break;
+    case CONST_EXPR_F32:
+        out << ind->buffer() << "f32 " << expr->f32Value << std::endl;
+        break;
+    case CONST_EXPR_F64:
+        out << ind->buffer() << "f64 " << expr->f64Value << std::endl;
+        break;
+    case CONST_EXPR_FUNC:
+        out << ind->buffer() << "function " << expr->functionIndex << std::endl;
+        break;
+    case CONST_EXPR_NULL:
+        out << ind->buffer() << "null" << std::endl;
+        break;
+    case CONST_EXPR_GLOBAL_IMPORT:
+        out << ind->buffer() << "import global " << expr->globalIndex << std::endl;
+        break;
     }
-    FATAL("Unknown instruction opcode 0x%02X", opcode);
-    return "";
+}
+
+void DataDump::dumpBlockBody(String$$ ind, Array$$<WasmInstr$> instrList)
+{
+    TRACE();
+    for (auto instr : instrList) {
+        dumpInstr(ind, instr);
+    }
+}
+
+
+void DataDump::showBlockBody(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    out << ", {block" << blockLabelIndex << "}";
+    if (instr->block->type->param->length() > 0 || instr->block->type->result->length() > 0) {
+        out << ", " << TypeList{instr->block->type->param, true} << ":" << TypeList{instr->block->type->result, false};
+    }
+    out << std::endl;
+    blockStack->push(blockLabelIndex);
+    blockLabelIndex++;
+    dumpBlockBody(ind + "  ", instr->block->body);
+    blockStack->pop();
+}
+
+void DataDump::showImmLabel(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    out << ", label = {block" << blockStack[blockStack->length() - 1 - instr->imm[index]] << "} ";
+}
+
+void DataDump::showImmLabels(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    out << ", labels = [";
+    for (u32 i = index; i < instr->imm->length() - 1; i++) {
+        out << " {block" << blockStack[blockStack->length() - 1 - instr->imm[i]] << "}";
+    }
+    out << " ], default = {block" << blockStack[blockStack->length() - 1 - instr->imm[instr->imm->length() - 1]] << "}";
+}
+
+void DataDump::showDataWasmInstrBr(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    auto br = WasmInstrBr$$(instr->data[index]);
+    if (br->conditional) out << ", conditional";
+    if (br->negated) out << ", negated";
+    if (br->forceForward && instr->code == INSTR_LOOP) out << ", forward";
+    if (br->skipBrInstr) out << ", skip final BR instruction";
+}
+
+void DataDump::showDataFunction(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    auto func = WasmFunction$$(instr->data[index]);
+    out << ", funcindex = " << func->index;
+}
+
+void DataDump::showDataFunctionType(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    auto type = WasmFunctionType$$(instr->data[index]);
+    out << ", type = " << TypeList{type->param, true} << ":" << TypeList{type->result, false};
+}
+
+void DataDump::showDataTable(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    auto table = WasmTable$$(instr->data[index]);
+    out << ", tableindex = " << table->index;
+}
+
+void DataDump::showImmOffset(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    out << ", offset = " << instr->imm[index] << " (0x" << std::hex << instr->imm[index] << std::dec << ")";
+}
+
+void DataDump::showDataGlobal(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    auto global = WasmGlobal$$(instr->data[index]);
+    out << ", globalindex = " << global->index;
+}
+
+void DataDump::showImmTypes(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    out << ", types = [";
+    for (u32 i = index; i < instr->imm->length() - 1; i++) {
+        out << " " << wasmTypeName(instr->imm[i]);
+    }
+    out << " ]";
+}
+
+void DataDump::showImmLocal(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    out << ", local = " << instr->imm[index];
+}
+
+void DataDump::showImmValue(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    out << ", value = " << instr->imm[index] << " (0x" << std::hex << instr->imm[index] << std::dec << ")";
+}
+
+void DataDump::showImmF32Value(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    union
+    {
+        u32 intValue;
+        float floatValue;
+    } tmp;
+    tmp.intValue = instr->imm[index];
+    out << ", value = " << std::setprecision(FLT_DIG + 2) << tmp.floatValue << " (0x" << std::hex << tmp.intValue << std::dec << ")";
+}
+
+void DataDump::showImmF64Value(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    union
+    {
+        u64 intValue;
+        double floatValue;
+    } tmp;
+    tmp.intValue = instr->imm[index];
+    out << ", value = " << std::setprecision(DBL_DIG + 2) << tmp.floatValue << " (0x" << std::hex << tmp.intValue << std::dec << ")";
+}
+
+void DataDump::showImmRefType(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    out << ", type = " << wasmTypeName(instr->imm[index]);
+}
+
+void DataDump::showImmDataIndex(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    out << ", dataindex = " << instr->imm[index];
+}
+
+void DataDump::showDataElement(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    auto data = WasmData$$(instr->data[index]);
+    out << ", dataindex = " << data->index;
+}
+
+void DataDump::showImmBits(String$$ ind, WasmInstr$ instr, u32 index)
+{
+    TRACE();
+    out << ", bits = " << instr->imm[index];
+}
+
+static void setName(const char* &name, const char* newName)
+{
+    if (name == nullptr) {
+        name = newName;
+    }
+}
+
+void DataDump::dumpInstr(String$$ ind, WasmInstr$ instr)
+{
+    const char* name = nullptr;
+    auto imm = instr->imm;
+    auto data = instr->data;
+    bool reduced = flags & DUMP_AFTER_REDUCE;
+
+    /* -- Begin of source code generated with help of "gen_instr.js" script -- */
+    switch(instr->code) {
+    case INSTR_UNREACHABLE:
+        setName(name, "unreachable");
+    case INSTR_NOP:
+        setName(name, "nop");
+    case INSTR_ELSE:
+        setName(name, "else");
+    case INSTR_END:
+        setName(name, "end");
+    case INSTR_RETURN:
+        setName(name, "return");
+    case INSTR_DROP:
+        setName(name, "drop");
+    case INSTR_SELECT:
+        setName(name, "select");
+    case INSTR_MEMORY_SIZE:
+        setName(name, "memory.size");
+    case INSTR_MEMORY_GROW:
+        setName(name, "memory.grow");
+    case INSTR_I32_EQZ:
+        setName(name, "i32.eqz");
+    case INSTR_I32_NE:
+        setName(name, "i32.ne");
+    case INSTR_I32_LE_S:
+        setName(name, "i32.le_s");
+    case INSTR_I32_LE_U:
+        setName(name, "i32.le_u");
+    case INSTR_I32_GE_S:
+        setName(name, "i32.ge_s");
+    case INSTR_I32_GE_U:
+        setName(name, "i32.ge_u");
+    case INSTR_I64_EQZ:
+        setName(name, "i64.eqz");
+    case INSTR_I64_NE:
+        setName(name, "i64.ne");
+    case INSTR_I64_LE_S:
+        setName(name, "i64.le_s");
+    case INSTR_I64_LE_U:
+        setName(name, "i64.le_u");
+    case INSTR_I64_GE_S:
+        setName(name, "i64.ge_s");
+    case INSTR_I64_GE_U:
+        setName(name, "i64.ge_u");
+    case INSTR_I32_CLZ:
+        setName(name, "i32.clz");
+    case INSTR_I32_CTZ:
+        setName(name, "i32.ctz");
+    case INSTR_I32_POPCNT:
+        setName(name, "i32.popcnt");
+    case INSTR_I32_ROTL:
+        setName(name, "i32.rotl");
+    case INSTR_I32_ROTR:
+        setName(name, "i32.rotr");
+    case INSTR_I64_CLZ:
+        setName(name, "i64.clz");
+    case INSTR_I64_CTZ:
+        setName(name, "i64.ctz");
+    case INSTR_I64_POPCNT:
+        setName(name, "i64.popcnt");
+    case INSTR_I64_ROTL:
+        setName(name, "i64.rotl");
+    case INSTR_I64_ROTR:
+        setName(name, "i64.rotr");
+    case INSTR_F32_ABS:
+        setName(name, "f32.abs");
+    case INSTR_F32_NEG:
+        setName(name, "f32.neg");
+    case INSTR_F32_CEIL:
+        setName(name, "f32.ceil");
+    case INSTR_F32_FLOOR:
+        setName(name, "f32.floor");
+    case INSTR_F32_TRUNC:
+        setName(name, "f32.trunc");
+    case INSTR_F32_NEAREST:
+        setName(name, "f32.nearest");
+    case INSTR_F32_SQRT:
+        setName(name, "f32.sqrt");
+    case INSTR_F32_MIN:
+        setName(name, "f32.min");
+    case INSTR_F32_MAX:
+        setName(name, "f32.max");
+    case INSTR_F32_COPYSIGN:
+        setName(name, "f32.copysign");
+    case INSTR_F64_ABS:
+        setName(name, "f64.abs");
+    case INSTR_F64_NEG:
+        setName(name, "f64.neg");
+    case INSTR_F64_CEIL:
+        setName(name, "f64.ceil");
+    case INSTR_F64_FLOOR:
+        setName(name, "f64.floor");
+    case INSTR_F64_TRUNC:
+        setName(name, "f64.trunc");
+    case INSTR_F64_NEAREST:
+        setName(name, "f64.nearest");
+    case INSTR_F64_SQRT:
+        setName(name, "f64.sqrt");
+    case INSTR_F64_MIN:
+        setName(name, "f64.min");
+    case INSTR_F64_MAX:
+        setName(name, "f64.max");
+    case INSTR_F64_COPYSIGN:
+        setName(name, "f64.copysign");
+    case INSTR_I32_WRAP_I64:
+        setName(name, "i32.wrap_i64");
+    case INSTR_I32_TRUNC_F32_S:
+        setName(name, "i32.trunc_f32_s");
+    case INSTR_I32_TRUNC_F32_U:
+        setName(name, "i32.trunc_f32_u");
+    case INSTR_I32_TRUNC_F64_S:
+        setName(name, "i32.trunc_f64_s");
+    case INSTR_I32_TRUNC_F64_U:
+        setName(name, "i32.trunc_f64_u");
+    case INSTR_I64_EXTEND_I32_S:
+        setName(name, "i64.extend_i32_s");
+    case INSTR_I64_EXTEND_I32_U:
+        setName(name, "i64.extend_i32_u");
+    case INSTR_I64_TRUNC_F32_S:
+        setName(name, "i64.trunc_f32_s");
+    case INSTR_I64_TRUNC_F32_U:
+        setName(name, "i64.trunc_f32_u");
+    case INSTR_I64_TRUNC_F64_S:
+        setName(name, "i64.trunc_f64_s");
+    case INSTR_I64_TRUNC_F64_U:
+        setName(name, "i64.trunc_f64_u");
+    case INSTR_F32_CONVERT_I32_S:
+        setName(name, "f32.convert_i32_s");
+    case INSTR_F32_CONVERT_I32_U:
+        setName(name, "f32.convert_i32_u");
+    case INSTR_F32_CONVERT_I64_S:
+        setName(name, "f32.convert_i64_s");
+    case INSTR_F32_CONVERT_I64_U:
+        setName(name, "f32.convert_i64_u");
+    case INSTR_F32_DEMOTE_F64:
+        setName(name, "f32.demote_f64");
+    case INSTR_F64_CONVERT_I32_S:
+        setName(name, "f64.convert_i32_s");
+    case INSTR_F64_CONVERT_I32_U:
+        setName(name, "f64.convert_i32_u");
+    case INSTR_F64_CONVERT_I64_S:
+        setName(name, "f64.convert_i64_s");
+    case INSTR_F64_CONVERT_I64_U:
+        setName(name, "f64.convert_i64_u");
+    case INSTR_F64_PROMOTE_F32:
+        setName(name, "f64.promote_f32");
+    case INSTR_I32_REINTERPRET_F32:
+        setName(name, "i32.reinterpret_f32");
+    case INSTR_I64_REINTERPRET_F64:
+        setName(name, "i64.reinterpret_f64");
+    case INSTR_F32_REINTERPRET_I32:
+        setName(name, "f32.reinterpret_i32");
+    case INSTR_F64_REINTERPRET_I64:
+        setName(name, "f64.reinterpret_i64");
+    case INSTR_I32_EXTEND8_S:
+        setName(name, "i32.extend8_s");
+    case INSTR_I32_EXTEND16_S:
+        setName(name, "i32.extend16_s");
+    case INSTR_I64_EXTEND8_S:
+        setName(name, "i64.extend8_s");
+    case INSTR_I64_EXTEND16_S:
+        setName(name, "i64.extend16_s");
+    case INSTR_I64_EXTEND32_S:
+        setName(name, "i64.extend32_s");
+    case INSTR_I32_TRUNC_SAT_F32_S:
+        setName(name, "i32.trunc_sat_f32_s");
+    case INSTR_I32_TRUNC_SAT_F32_U:
+        setName(name, "i32.trunc_sat_f32_u");
+    case INSTR_I32_TRUNC_SAT_F64_S:
+        setName(name, "i32.trunc_sat_f64_s");
+    case INSTR_I32_TRUNC_SAT_F64_U:
+        setName(name, "i32.trunc_sat_f64_u");
+    case INSTR_I64_TRUNC_SAT_F32_S:
+        setName(name, "i64.trunc_sat_f32_s");
+    case INSTR_I64_TRUNC_SAT_F32_U:
+        setName(name, "i64.trunc_sat_f32_u");
+    case INSTR_I64_TRUNC_SAT_F64_S:
+        setName(name, "i64.trunc_sat_f64_s");
+    case INSTR_I64_TRUNC_SAT_F64_U:
+        setName(name, "i64.trunc_sat_f64_u");
+    case INSTR_MEMORY_COPY:
+        setName(name, "memory.copy");
+    case INSTR_MEMORY_FILL:
+        setName(name, "memory.fill");
+    case INSTR_TRIVM_EMPTY:
+        setName(name, "trivm.empty");
+    case INSTR_TRIVM_POP:
+        setName(name, "trivm.pop");
+    case INSTR_TRIVM_LOW64WL:
+        setName(name, "trivm.low64wl");
+    case INSTR_TRIVM_FUNCTION: {
+        setName(name, "trivm.function");
+        TRACE();
+        out << ind.cStr() << name;
+        out << std::endl;
+        break;
+    }
+    case INSTR_BLOCK:
+        setName(name, "block");
+    case INSTR_LOOP:
+        setName(name, "loop");
+    case INSTR_IF: {
+        setName(name, "if");
+        TRACE();
+        out << ind.cStr() << name;
+        showBlockBody(ind, instr, 0);
+        break;
+    }
+    case INSTR_BR: {
+        setName(name, "br");
+        TRACE();
+        out << ind.cStr() << name;
+        if (reduced) {
+            showImmLabel(ind, instr, 0);
+            if (data->length() > 0 && data[0] != nullptr)
+                showDataWasmInstrBr(ind, instr, 0);
+        } else {
+            showImmLabel(ind, instr, 0);
+        }
+        out << std::endl;
+        break;
+    }
+    case INSTR_BR_IF: {
+        setName(name, "br_if");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmLabel(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_BR_TABLE: {
+        setName(name, "br_table");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmLabels(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_CALL: {
+        setName(name, "call");
+        TRACE();
+        out << ind.cStr() << name;
+        showDataFunction(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_CALL_INDIRECT: {
+        setName(name, "call_indirect");
+        TRACE();
+        out << ind.cStr() << name;
+        showDataFunctionType(ind, instr, 0);
+        showDataTable(ind, instr, 1);
+        out << std::endl;
+        break;
+    }
+    case INSTR_RETURN_CALL:
+        setName(name, "return_call");
+    case INSTR_REF_FUNC: {
+        setName(name, "ref.func");
+        TRACE();
+        out << ind.cStr() << name;
+        showDataFunction(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_RETURN_CALL_INDIRECT: {
+        setName(name, "return_call_indirect");
+        TRACE();
+        out << ind.cStr() << name;
+        showDataFunctionType(ind, instr, 0);
+        showDataTable(ind, instr, 1);
+        out << std::endl;
+        break;
+    }
+    case INSTR_SELECT_T: {
+        setName(name, "select_t");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmTypes(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_LOCAL_GET:
+        setName(name, "local.get");
+    case INSTR_LOCAL_SET:
+        setName(name, "local.set");
+    case INSTR_LOCAL_TEE: {
+        setName(name, "local.tee");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmLocal(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_GLOBAL_GET:
+        setName(name, "global.get");
+    case INSTR_GLOBAL_SET: {
+        setName(name, "global.set");
+        TRACE();
+        out << ind.cStr() << name;
+        showDataGlobal(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_TABLE_GET:
+        setName(name, "table.get");
+    case INSTR_TABLE_SET:
+        setName(name, "table.set");
+    case INSTR_TABLE_GROW:
+        setName(name, "table.grow");
+    case INSTR_TABLE_SIZE:
+        setName(name, "table.size");
+    case INSTR_TABLE_FILL: {
+        setName(name, "table.fill");
+        TRACE();
+        out << ind.cStr() << name;
+        showDataTable(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_I32_LOAD:
+        setName(name, "i32.load");
+    case INSTR_I64_LOAD:
+        setName(name, "i64.load");
+    case INSTR_I32_LOAD8_S:
+        setName(name, "i32.load8_s");
+    case INSTR_I32_LOAD8_U:
+        setName(name, "i32.load8_u");
+    case INSTR_I32_LOAD16_S:
+        setName(name, "i32.load16_s");
+    case INSTR_I32_LOAD16_U:
+        setName(name, "i32.load16_u");
+    case INSTR_I32_STORE:
+        setName(name, "i32.store");
+    case INSTR_I64_STORE:
+        setName(name, "i64.store");
+    case INSTR_I32_STORE8:
+        setName(name, "i32.store8");
+    case INSTR_I32_STORE16: {
+        setName(name, "i32.store16");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmOffset(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_F32_LOAD:
+        setName(name, "f32.load");
+    case INSTR_F64_LOAD:
+        setName(name, "f64.load");
+    case INSTR_I64_LOAD8_S:
+        setName(name, "i64.load8_s");
+    case INSTR_I64_LOAD8_U:
+        setName(name, "i64.load8_u");
+    case INSTR_I64_LOAD16_S:
+        setName(name, "i64.load16_s");
+    case INSTR_I64_LOAD16_U:
+        setName(name, "i64.load16_u");
+    case INSTR_I64_LOAD32_S:
+        setName(name, "i64.load32_s");
+    case INSTR_I64_LOAD32_U:
+        setName(name, "i64.load32_u");
+    case INSTR_F32_STORE:
+        setName(name, "f32.store");
+    case INSTR_F64_STORE:
+        setName(name, "f64.store");
+    case INSTR_I64_STORE8:
+        setName(name, "i64.store8");
+    case INSTR_I64_STORE16:
+        setName(name, "i64.store16");
+    case INSTR_I64_STORE32: {
+        setName(name, "i64.store32");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmOffset(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_I32_CONST:
+        setName(name, "i32.const");
+    case INSTR_I64_CONST: {
+        setName(name, "i64.const");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmValue(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_F32_CONST: {
+        setName(name, "f32.const");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmF32Value(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_F64_CONST: {
+        setName(name, "f64.const");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmF64Value(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_I32_EQ:
+        setName(name, "i32.eq");
+    case INSTR_I32_LT_S:
+        setName(name, "i32.lt_s");
+    case INSTR_I32_LT_U:
+        setName(name, "i32.lt_u");
+    case INSTR_I32_GT_S:
+        setName(name, "i32.gt_s");
+    case INSTR_I32_GT_U:
+        setName(name, "i32.gt_u");
+    case INSTR_I64_EQ:
+        setName(name, "i64.eq");
+    case INSTR_I64_LT_S:
+        setName(name, "i64.lt_s");
+    case INSTR_I64_LT_U:
+        setName(name, "i64.lt_u");
+    case INSTR_I64_GT_S:
+        setName(name, "i64.gt_s");
+    case INSTR_I64_GT_U:
+        setName(name, "i64.gt_u");
+    case INSTR_F32_EQ:
+        setName(name, "f32.eq");
+    case INSTR_F32_NE:
+        setName(name, "f32.ne");
+    case INSTR_F32_LT:
+        setName(name, "f32.lt");
+    case INSTR_F32_GT:
+        setName(name, "f32.gt");
+    case INSTR_F32_LE:
+        setName(name, "f32.le");
+    case INSTR_F32_GE:
+        setName(name, "f32.ge");
+    case INSTR_F64_EQ:
+        setName(name, "f64.eq");
+    case INSTR_F64_NE:
+        setName(name, "f64.ne");
+    case INSTR_F64_LT:
+        setName(name, "f64.lt");
+    case INSTR_F64_GT:
+        setName(name, "f64.gt");
+    case INSTR_F64_LE:
+        setName(name, "f64.le");
+    case INSTR_F64_GE:
+        setName(name, "f64.ge");
+    case INSTR_I32_ADD:
+        setName(name, "i32.add");
+    case INSTR_I32_SUB:
+        setName(name, "i32.sub");
+    case INSTR_I32_MUL:
+        setName(name, "i32.mul");
+    case INSTR_I32_DIV_S:
+        setName(name, "i32.div_s");
+    case INSTR_I32_DIV_U:
+        setName(name, "i32.div_u");
+    case INSTR_I32_REM_S:
+        setName(name, "i32.rem_s");
+    case INSTR_I32_REM_U:
+        setName(name, "i32.rem_u");
+    case INSTR_I32_AND:
+        setName(name, "i32.and");
+    case INSTR_I32_OR:
+        setName(name, "i32.or");
+    case INSTR_I32_XOR:
+        setName(name, "i32.xor");
+    case INSTR_I32_SHL:
+        setName(name, "i32.shl");
+    case INSTR_I32_SHR_S:
+        setName(name, "i32.shr_s");
+    case INSTR_I32_SHR_U:
+        setName(name, "i32.shr_u");
+    case INSTR_I64_ADD:
+        setName(name, "i64.add");
+    case INSTR_I64_SUB:
+        setName(name, "i64.sub");
+    case INSTR_I64_MUL:
+        setName(name, "i64.mul");
+    case INSTR_I64_DIV_S:
+        setName(name, "i64.div_s");
+    case INSTR_I64_DIV_U:
+        setName(name, "i64.div_u");
+    case INSTR_I64_REM_S:
+        setName(name, "i64.rem_s");
+    case INSTR_I64_REM_U:
+        setName(name, "i64.rem_u");
+    case INSTR_I64_AND:
+        setName(name, "i64.and");
+    case INSTR_I64_OR:
+        setName(name, "i64.or");
+    case INSTR_I64_XOR:
+        setName(name, "i64.xor");
+    case INSTR_I64_SHL:
+        setName(name, "i64.shl");
+    case INSTR_I64_SHR_S:
+        setName(name, "i64.shr_s");
+    case INSTR_I64_SHR_U:
+        setName(name, "i64.shr_u");
+    case INSTR_F32_ADD:
+        setName(name, "f32.add");
+    case INSTR_F32_SUB:
+        setName(name, "f32.sub");
+    case INSTR_F32_MUL:
+        setName(name, "f32.mul");
+    case INSTR_F32_DIV:
+        setName(name, "f32.div");
+    case INSTR_F64_ADD:
+        setName(name, "f64.add");
+    case INSTR_F64_SUB:
+        setName(name, "f64.sub");
+    case INSTR_F64_MUL:
+        setName(name, "f64.mul");
+    case INSTR_F64_DIV: {
+        setName(name, "f64.div");
+        TRACE();
+        out << ind.cStr() << name;
+        if (reduced) {
+            if (imm->length() > 0)
+                showImmValue(ind, instr, 0);
+        } else {
+        }
+        out << std::endl;
+        break;
+    }
+    case INSTR_REF_NULL: {
+        setName(name, "ref.null");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmRefType(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_REF_IS_NULL: {
+        setName(name, "ref.is_null");
+        TRACE();
+        out << ind.cStr() << name;
+        out << std::endl;
+        break;
+    }
+    case INSTR_MEMORY_INIT: {
+        setName(name, "memory.init");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmDataIndex(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_DATA_DROP: {
+        setName(name, "data.drop");
+        TRACE();
+        out << ind.cStr() << name;
+        showImmDataIndex(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_TABLE_INIT: {
+        setName(name, "table.init");
+        TRACE();
+        out << ind.cStr() << name;
+        showDataElement(ind, instr, 0);
+        showDataTable(ind, instr, 1);
+        out << std::endl;
+        break;
+    }
+    case INSTR_ELEM_DROP: {
+        setName(name, "elem.drop");
+        TRACE();
+        out << ind.cStr() << name;
+        showDataElement(ind, instr, 0);
+        out << std::endl;
+        break;
+    }
+    case INSTR_TABLE_COPY: {
+        setName(name, "table.copy");
+        TRACE();
+        out << ind.cStr() << name;
+        showDataTable(ind, instr, 0);
+        showDataTable(ind, instr, 1);
+        out << std::endl;
+        break;
+    }
+    case INSTR_TRIVM_EXTS:
+        setName(name, "trivm.exts");
+    case INSTR_TRIVM_SHL64WL:
+        setName(name, "trivm.shl64wl");
+    case INSTR_TRIVM_EXTS64LL: {
+        setName(name, "trivm.exts64ll");
+        TRACE();
+        out << ind.cStr() << name;
+        if (reduced) {
+            showImmBits(ind, instr, 0);
+        } else {
+        }
+        out << std::endl;
+        break;
+    }
+    case INSTR_TRIVM_I32_READ_STACK:
+        setName(name, "trivm.i32.read.stack");
+    case INSTR_TRIVM_I64_READ_STACK: {
+        setName(name, "trivm.i64.read.stack");
+        TRACE();
+        out << ind.cStr() << name;
+        if (reduced) {
+            showImmOffset(ind, instr, 0);
+        } else {
+        }
+        out << std::endl;
+        break;
+    }
+    case INSTR_TRIVM_I32_LOCAL_GET:
+        setName(name, "trivm.i32.local.get");
+    case INSTR_TRIVM_I64_LOCAL_GET:
+        setName(name, "trivm.i64.local.get");
+    case INSTR_TRIVM_I32_LOCAL_SET:
+        setName(name, "trivm.i32.local.set");
+    case INSTR_TRIVM_I64_LOCAL_SET: {
+        setName(name, "trivm.i64.local.set");
+        TRACE();
+        out << ind.cStr() << name;
+        if (reduced) {
+            showImmLocal(ind, instr, 0);
+            showImmOffset(ind, instr, 1);
+        } else {
+        }
+        out << std::endl;
+        break;
+    }
+    case INSTR_TRIVM_I32_GLOBAL_GET:
+        setName(name, "trivm.i32.global.get");
+    case INSTR_TRIVM_I64_GLOBAL_GET:
+        setName(name, "trivm.i64.global.get");
+    case INSTR_TRIVM_I32_GLOBAL_SET:
+        setName(name, "trivm.i32.global.set");
+    case INSTR_TRIVM_I64_GLOBAL_SET: {
+        setName(name, "trivm.i64.global.set");
+        TRACE();
+        out << ind.cStr() << name;
+        if (reduced) {
+            showImmOffset(ind, instr, 0);
+            showDataGlobal(ind, instr, 0);
+        } else {
+        }
+        out << std::endl;
+        break;
+    }
+    default:
+        FATAL("Unknown instruction 0x%08X", instr->code);
+        break;
+    };
+    /* -- End of source code generated with help of "gen_instr.js" script -- */
 }

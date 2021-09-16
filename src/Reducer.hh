@@ -10,9 +10,20 @@ DOLLAR_CLASS(Reducer);
 class Reducer {
 private:
     WasmModule$ mod;
-    Array$$<u32> stack;
     Array$$<WasmBlock$> blockStack;
     WasmFunction$ function;
+    struct ReducerStack {
+        Array$$<u32> stack;
+        void push(u32 value);
+        u32 pop();
+        void pop(u32 count);
+        ssize length();
+        void clear();
+        void remove(ssize start);
+        void remove(ssize start, ssize end);
+    };
+
+    ReducerStack* stack;
 
 public:
     void reduce(WasmModule$$ mod);

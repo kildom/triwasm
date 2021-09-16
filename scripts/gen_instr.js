@@ -287,6 +287,94 @@ function generateReducer(table) {
 }
 
 
+function generateDataDump(table) {
+
+    function explodeParams(params) {
+        let ret = {
+            imm: [],
+            data: [],
+        }
+        list = params.trim().split(/\s*;\s*/);
+        for (let item of list) {
+            item = item.trim();
+            if (item == '')
+                continue;
+            let [kind, ...fields] = item.split(' ');
+            ret[kind] = fields.join(' ').split(/\s*,\s*/).map(x => x.trim());
+        }
+        return ret;
+    }
+
+    function showInstrData(ind, params) {
+        let out = '';
+        let p = explodeParams(params)
+        //out += `${ind}/* ${JSON.stringify(p, null, 4).replace(/\n/g, '\n' + ind)} */\n`;
+        for (let kind in p) {
+            for (let i = 0; i < p[kind].length; i++) {
+                let item = p[kind][i];
+                let addInd = '';
+                if (item.endsWith('?')) {
+                    item = item.substr(0, item.length - 1);
+                    if (kind == 'data') {
+                        out += `${ind}if (data->length() > ${i} && data[${i}] != nullptr)\n`;
+                    } else {
+                        out += `${ind}if (imm->length() > ${i})\n`;
+                    }
+                    addInd = '    ';
+                }
+                out += `${addInd}${ind}show${kind.replace(/^./, m => m.toUpperCase())}${item.replace(/^./, m => m.toUpperCase())}(ind, instr, ${i});\n`;
+            }
+        }
+        return out;
+    }
+
+    let out = '    switch(instr->code) {'
+    for (let row of table) {
+        row._dataDumpUnique = `${row.dataBeforeReduction}|${row.dataAfterReduction}`;
+        if (row._identifier == 'INSTR_TRIVM_WASM_EXT')
+            row._dataDumpDone = true;
+    }
+    for (let row of table) {
+        // Cases
+        if (row._dataDumpDone)
+            continue;
+        let lastName = null;
+        for (let row2 of table) {
+            if (row2._dataDumpDone || row2._dataDumpUnique != row._dataDumpUnique)
+                continue;
+            if (lastName !== null) {
+                out += `\n        setName(name, "${lastName}");`;
+            }
+            out += `\n    case ${row2._identifier}:`;
+            row2._dataDumpDone = true;
+            lastName = row2.name;
+        }
+        out += ` {\n        setName(name, "${lastName}");\n`;
+        out += '        TRACE();\n';
+        out += '        out << ind.cStr() << name;\n';
+
+        let before = row.dataBeforeReduction;
+        let after = row.dataAfterReduction;
+
+        if (before == after || after.trim() == '-' || row.existsAfterReduction.trim() == '' || row.existsAfterReduction.trim() == '-') {
+            out += showInstrData('        ', before);
+        } else {
+            out += '        if (reduced) {\n';
+            out += showInstrData('            ', after);
+            out += '        } else {\n';
+            out += showInstrData('            ', before);
+            out += '        }\n';
+        }
+
+        out += '        out << std::endl;\n';
+        out += '        break;\n    }';
+    }
+    out += '\n    default:\n        break;\n';
+    out += '    };\n';
+    writeOutput('output/WasmData.cc', '../src/WasmData.cc', out, '    ');
+}
+
+
 function generateOutputNames(table) {
     let out = '    switch(opcode) {'
     for (let row of table) {
@@ -314,6 +402,7 @@ async function main() {
     generateReducer(table);
     generateDumper(table);
     generateOutputNames(table);
+    generateDataDump(table);
 }
 
 main();

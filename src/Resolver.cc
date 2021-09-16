@@ -15,8 +15,10 @@ void Resolver::resolveImports(WasmModule$ mod)
 
     for (auto f : mod->functions)
     {
-        if (f->exportName != nullptr && f->moduleName != nullptr) {
-            mod->functionExports[f->moduleName->v][f->exportName->v] = f;
+        if (f->exportNames != nullptr && f->moduleName != nullptr) {
+            for (auto name : f->exportNames) {
+                mod->functionExports[f->moduleName->v][name->v] = f;
+            }
         }
     }
 

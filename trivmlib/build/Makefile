@@ -29,6 +29,7 @@ endif
 SRC=../src/i64.c \
 	../src/f32.c \
 	../src/f64.c \
+	../src/stubs.c \
 	\
 	../Berkeley-SoftFloat/f32_eq.c \
 	../Berkeley-SoftFloat/f32_lt.c \

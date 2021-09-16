@@ -101,7 +101,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
         });
         reduced->push(instr);
         auto block = blockStack[RangeEnd - 1];
-        stack[Range(block->stackBase)] = {};
+        stack->remove(block->stackBase);
         for (auto t : block->type->param) {
             stack->push(t);
         }
@@ -115,8 +115,11 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
             .imm = { 0 },
         };
         reduced->push(br);
-        WasmInstrBr$$(br->data[0])->forceForward = true;
-        stack[Range(block->stackBase, RangeEnd - block->type->result->length())] = {};
+        br->data->length(1);
+        auto brData = WasmInstrBr$$(br->data[0]);
+        brData->forceForward = true;
+        brData->skipBrInstr = true;
+        stack->remove(block->stackBase, stack->length() - block->type->result->length());
         reduced->push(instr);
         break;
     }
@@ -140,6 +143,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
             .imm = { imm[0] },
         };
         reduced->push(br);
+        br->data->length(1);
         WasmInstrBr$$(br->data[0])->conditional = true;
         break;
     }
@@ -153,6 +157,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
             };
             reduced->push(br);
             if (i < imm->length() - 1) {
+                br->data->length(1);
                 auto dataBr = WasmInstrBr$$(br->data[0]);
                 dataBr->conditional = true;
                 dataBr->negated = true;
@@ -167,7 +172,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     }
     case INSTR_CALL: {
         TRACE();
-        auto type = mod->functions[imm[0]]->type;
+        auto type = WasmFunction$(data[0])->type;
         stack->pop(type->param->length());
         for (auto t : type->result) {
             stack->push(t);
@@ -322,7 +327,7 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
     }
     case INSTR_GLOBAL_GET: {
         TRACE();
-        auto type = mod->globals[imm[0]]->type;
+        auto type = WasmGlobal$(data[0])->type;
         int words = wasmTypeWords(type);
         if (words == 1) {
             reduced->push(WasmInstr{
@@ -711,7 +716,10 @@ void Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced)
                 .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_store"_S, true)) },
             });
         } else {
-            reduced->push(instr);
+            reduced->push(WasmInstr{
+                .code = INSTR_I64_STORE,
+                .imm = { imm[0] },
+            });
         }
         break;
     }
