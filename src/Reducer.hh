@@ -12,18 +12,7 @@ private:
     WasmModule$ mod;
     Array$$<WasmBlock$> blockStack;
     WasmFunction$ function;
-    struct ReducerStack {
-        Array$$<u32> stack;
-        void push(u32 value);
-        u32 pop();
-        void pop(ssize n);
-        ssize length();
-        void clear();
-        void remove(ssize start);
-        void remove(ssize start, ssize end);
-    };
-
-    ReducerStack* stack;
+    Array$$<u32> stack;
 
 public:
     void reduce(WasmModule$$ mod);

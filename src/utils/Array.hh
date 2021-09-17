@@ -56,6 +56,14 @@ public:
         return v[index];
     }
 
+    void erase(ssize start, ssize end) {
+        v.erase(v.begin() + start, v.begin() + end);
+    }
+
+    void erase(ssize start) {
+        v.erase(v.begin() + start, v.end());
+    }
+
     void clear() {
         v.clear();
     }

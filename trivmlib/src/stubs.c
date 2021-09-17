@@ -41,14 +41,14 @@ EXPORT(f64_copysign)        u64 trivm_f64_copysign(u64 a) { return 0; }
 //EXPORT(f64_div)             u64 trivm_f64_div(u64 a, u64 b) { return 0; }
 //EXPORT(f64_eq)              u64 trivm_f64_eq(u64 a, u64 b) { return 0; }
 //EXPORT(f64_floor)           u64 trivm_f64_floor(u64 a) { return 0; }
-EXPORT(f64_ge)              u64 trivm_f64_ge(u64 a, u64 b) { return 0; }
-EXPORT(f64_gt)              u64 trivm_f64_gt(u64 a, u64 b) { return 0; }
+EXPORT(f64_ge)              u32 trivm_f64_ge(u64 a, u64 b) { return 0; }
+EXPORT(f64_gt)              u32 trivm_f64_gt(u64 a, u64 b) { return 0; }
 //EXPORT(f64_le)              u64 trivm_f64_le(u64 a, u64 b) { return 0; }
 //EXPORT(f64_lt)              u64 trivm_f64_lt(u64 a, u64 b) { return 0; }
 EXPORT(f64_max)             u64 trivm_f64_max(u64 a, u64 b) { return 0; }
 EXPORT(f64_min)             u64 trivm_f64_min(u64 a, u64 b) { return 0; }
 //EXPORT(f64_mul)             u64 trivm_f64_mul(u64 a, u64 b) { return 0; }
-EXPORT(f64_ne)              u64 trivm_f64_ne(u64 a, u64 b) { return 0; }
+EXPORT(f64_ne)              u32 trivm_f64_ne(u64 a, u64 b) { return 0; }
 //EXPORT(f64_nearest)         u64 trivm_f64_nearest(u64 a) { return 0; }
 EXPORT(f64_neg)             u64 trivm_f64_neg(u64 a) { return 0; }
 //EXPORT(f64_promote_f32)     u64 trivm_f64_promote_f32(u32 a) { return 0; }
@@ -74,19 +74,19 @@ EXPORT(i64_clz)             u64 trivm_i64_clz(u64 a) { return 0; }
 EXPORT(i64_ctz)             u64 trivm_i64_ctz(u64 a) { return 0; }
 EXPORT(i64_div_s)           u64 trivm_i64_div_s(u64 a, u64 b) { return 0; }
 EXPORT(i64_div_u)           u64 trivm_i64_div_u(u64 a, u64 b) { return 0; }
-EXPORT(i64_eq)              u64 trivm_i64_eq(u64 a, u64 b) { return 0; }
-EXPORT(i64_eqz)             u64 trivm_i64_eqz(u64 a) { return 0; }
+EXPORT(i64_eq)              u32 trivm_i64_eq(u64 a, u64 b) { return 0; }
+EXPORT(i64_eqz)             u32 trivm_i64_eqz(u64 a) { return 0; }
 EXPORT(i64_extend_i32_s)    u64 trivm_i64_extend_i32_s(s32 a) { return 0; }
 EXPORT(i64_extend_i32_u)    u64 trivm_i64_extend_i32_u(u32 a) { return 0; }
 EXPORT(i64_extend16_s)      u64 trivm_i64_extend16_s(s64 a) { return 0; }
 EXPORT(i64_extend32_s)      u64 trivm_i64_extend32_s(s64 a) { return 0; }
 EXPORT(i64_extend8_s)       u64 trivm_i64_extend8_s(s64 a) { return 0; }
-EXPORT(i64_gt_s)            u64 trivm_i64_gt_s(u64 a, u64 b) { return 0; }
-EXPORT(i64_gt_u)            u64 trivm_i64_gt_u(u64 a, u64 b) { return 0; }
+EXPORT(i64_gt_s)            u32 trivm_i64_gt_s(u64 a, u64 b) { return 0; }
+EXPORT(i64_gt_u)            u32 trivm_i64_gt_u(u64 a, u64 b) { return 0; }
 EXPORT(i64_load)            u64 trivm_i64_load(u32 a, u32 offset) { return 0; }
 EXPORT(i64_load_0)          u64 trivm_i64_load_0(u32 a) { return 0; }
-EXPORT(i64_lt_s)            u64 trivm_i64_lt_s(u64 a, u64 b) { return 0; }
-EXPORT(i64_lt_u)            u64 trivm_i64_lt_u(u64 a, u64 b) { return 0; }
+EXPORT(i64_lt_s)            u32 trivm_i64_lt_s(u64 a, u64 b) { return 0; }
+EXPORT(i64_lt_u)            u32 trivm_i64_lt_u(u64 a, u64 b) { return 0; }
 EXPORT(i64_mul)             u64 trivm_i64_mul(u64 a, u64 b) { return 0; }
 EXPORT(i64_or)              u64 trivm_i64_or(u64 a, u64 b) { return 0; }
 EXPORT(i64_popcnt)          u64 trivm_i64_popcnt(u64 a) { return 0; }
