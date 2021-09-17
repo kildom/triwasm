@@ -105,7 +105,8 @@
         "stack": "cpp",
         "cfenv": "cpp",
         "cinttypes": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "__memory": "cpp"
     },
     "terminal.integrated.automationShell.windows": "cmd.exe"
 }

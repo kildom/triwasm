@@ -8,11 +8,10 @@
 #include "Merger.hh"
 #include "Resolver.hh"
 #include "Reducer.hh"
-//#include "Linker.hh"
+#include "Generator.hh"
 
 void dumpModuleToFile(const char *name, WasmModule$ mod, DumpFlags flags)
 {
-
         std::ofstream ofs (name, std::ofstream::out);
         dumpModule(ofs, mod, flags);
         ofs.close();
@@ -43,6 +42,11 @@ int main(int argc, char *argv[]) {
     reducer->reduce(mod);
 
     dumpModuleToFile("reduced.txt", mod, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY | DUMP_AFTER_REDUCE);
+
+    std::ofstream ofs ("generated.triasm", std::ofstream::out);
+    auto generator = Generator$::create(ofs);
+    generator->generate(mod);
+    ofs.close();
 
     return 0;
 

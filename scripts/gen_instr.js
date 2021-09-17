@@ -82,7 +82,7 @@ function writeOutput(destFile, origFile, content, indent) {
     }
     while (content.endsWith('\n')) content = content.substr(0, content.length - 1);
     fs.writeFileSync(destFile, begin + '\n' + content + '\n' + end);
-    fs.writeFileSync(destFile + '.sh', `#!/bin/sh\nA=$(readlink -f "$0")\nA=$(dirname "$A")\nmeld "$A/../${destFile}" "$A/../${origFile}"\n`, {mode: 0o755});
+    fs.writeFileSync(destFile + '.sh', `#!/bin/sh\nA=$(readlink -f "$0")\nA=$(dirname "$A")\nmeld "$A/../${destFile}" "$A/../${origFile}"\n`, { mode: 0o755 });
 }
 
 function generateOpcodes(table) {
@@ -287,6 +287,47 @@ function generateReducer(table) {
 }
 
 
+function generateGenerator(table) {
+
+    let out = '    switch(instr->code) {'
+    for (let row of table) {
+        row._genUnique = row.commonGenerator;
+        if (!row.existsAfterReduction || row.existsAfterReduction == '' || row.existsAfterReduction == '-') {
+            row._genDone = true;
+        } else if (row.commonGenerator == '') {
+            out += `\n    case ${row._identifier}: {\n        TRACE();\n        break;\n    }`;
+            row._genDone = true;
+        }
+    }
+    for (let row of table) {
+        // Cases
+        if (row._genDone)
+            continue;
+        let lastName = '';
+        for (let row2 of table) {
+            if (row2._genDone || row2.commonGenerator != row.commonGenerator)
+                continue;
+            if (lastName != '') {
+                out += `\n        setName(name, "${lastName}");`;
+            }
+            out += `\n    case ${row2._identifier}:`;
+            row2._genDone = true;
+            lastName = row2.compileTo;
+        }
+        if (lastName != '') {
+            out += ` {\n        setName(name, "${lastName}");\n`;
+        } else {
+            out += ` {\n`;
+        }
+        out += '        TRACE();\n';
+        out += '        break;\n    }';
+    }
+    out += '\n    default:\n        break;\n';
+    out += '    };\n';
+    writeOutput('output/Generator.cc', '../src/Generator.cc', out, '    ');
+}
+
+
 function generateDataDump(table) {
 
     function explodeParams(params) {
@@ -403,6 +444,7 @@ async function main() {
     generateDumper(table);
     generateOutputNames(table);
     generateDataDump(table);
+    generateGenerator(table);
 }
 
 main();

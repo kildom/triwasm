@@ -11,6 +11,7 @@ DOLLAR_STRUCT(WasmTable);
 DOLLAR_STRUCT(HostFunction);
 DOLLAR_STRUCT(AssemblyFunction);
 DOLLAR_STRUCT(WasmAnnotationFunction);
+DOLLAR_STRUCT(WasmFunctionData);
 DOLLAR_STRUCT(WasmFunction);
 DOLLAR_STRUCT(WasmMemory);
 DOLLAR_STRUCT(ConstExpr);
@@ -70,9 +71,8 @@ enum WasmFunctionKind {
 };
 
 struct WasmFunctionData {
-    //TODO:
-    //Array$$<u32> localsOffsets;
-    //u32 returnAddressOffset;
+    Array$$<u32> localsOffsets;
+    u32 returnAddressOffset;
 };
 
 struct WasmFunction {

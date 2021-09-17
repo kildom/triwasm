@@ -83,6 +83,7 @@
   * 64-bit shift instructions ignores higher word of shift count, so they can be removed `SHL64LLL -> SHL64LWL`, also for emulation: `CALL __trivmlib.i64_shl -> CALL __trivmlib.i64_shl_32`.
   * Convert unary operators with const input to const value if it is more optimal: `i32.const AAA ; f32.ceil  ->  i32.const ceil(AAA)`, also for emulation `i32.const AAA ; CALL __trivmlib.f32_ceil  ->  i32.const ceil(AAA)` (this should be optimized by the compiler - check if it is true)
   * Convert pair of `i64.extend_i32_u/s` and `i64.extend8/16_s` to single instruction `EXTS64WL 56/48`
+  * If there are more returns with the same unwind values they can be merged and put at the end of function
 
 TODOs:
   * Check which floating point comparison operators can be replaced by `inverted_OP ; NOT` to allow further conditional branch optimization.
