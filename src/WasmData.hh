@@ -54,7 +54,7 @@ struct WasmBlock {
     s32 stackBase;
     u32 id;
     bool elsePresent;
-    bool reachableExit; ///< if first instruction after this block end is reachable
+    bool brTarget; ///< if first instruction after this block end is reachable
 };
 
 enum WasmFunctionKind {

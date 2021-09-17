@@ -44,22 +44,30 @@ bool Reducer::reduceBlock(WasmBlock$ block)
     TRACE();
     Array$$<WasmInstr$> reduced = new$;
     blockStack->push(block);
-    block->reachableExit = (block->instr->code == INSTR_IF && !block->elsePresent);
+    block->brTarget = false;
     static int nums = 0;
     nums++;
     int num = nums;
-    bool reachable = true;
+    bool reachableCurrent = true;
+    bool reachableElse = (block->instr->code == INSTR_IF);
+    bool reachableEnd = true;
     printf("> Enter block %d with stack %d\n", num, (int)stack->length());
     for (auto instr: block->body) {
-        if (reachable || instr->code == INSTR_END || instr->code == INSTR_ELSE) {
-            reachable = reduceInstr(instr, reduced, reachable);
-        }
+        if (instr->code == INSTR_ELSE)
+            reachableElse = reachableCurrent;
+        if (instr->code == INSTR_END)
+            reachableEnd = reachableCurrent;
+        if (reachableCurrent || instr->code == INSTR_END || instr->code == INSTR_ELSE)
+            reachableCurrent = reduceInstr(instr, reduced, reachableCurrent);
     }
     printf("< Leave block %d, with stack %d\n", num, (int)stack->length());
     blockStack->pop();
     block->body = reduced;
-    // returns false if instructions after this block are always unreachable
-    return block->reachableExit;
+    if (block->instr->code != INSTR_LOOP && block->brTarget) {
+        reachableEnd = true;
+    }
+    // returns true if instruction after this block is reachable
+    return reachableElse || reachableEnd;
 }
 
 
@@ -156,7 +164,6 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
             auto brData = WasmInstrBr$$(br->data[0]);
             brData->forceForward = true;
             brData->skipBrInstr = true;
-            block->reachableExit = true;
         }
         stack->remove(block->stackBase);
         for (auto t : block->type->result) {
@@ -170,7 +177,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         reduced->push(instr);
         auto block = blockStack[RangeEnd - (imm[0] + 1)];
         if (block->instr->code != INSTR_LOOP) {
-            block->reachableExit = true;
+            block->brTarget = true;
         }
         return false;
     }
@@ -193,7 +200,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         WasmInstrBr$$(br->data[0])->conditional = true;
         auto block = blockStack[RangeEnd - (imm[0] + 1)];
         if (block->instr->code != INSTR_LOOP) {
-            block->reachableExit = true;
+            block->brTarget = true;
         }
         break;
     }
@@ -208,7 +215,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
             reduced->push(br);
             auto block = blockStack[RangeEnd - (imm[i] + 1)];
             if (block->instr->code != INSTR_LOOP) {
-                block->reachableExit = true;
+                block->brTarget = true;
             }
             if (i < imm->length() - 1) {
                 br->data->length(1);
