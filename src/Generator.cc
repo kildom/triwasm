@@ -153,7 +153,9 @@ void Generator::generateUnwind(u32 keep, u32 skip)
 {
     verbose << ind.cStr();
 
-    if (vmConfig.ext.unwind) {
+    if (skip == 0) {
+        verbose << "// UNWIND none";
+    } else if (vmConfig.ext.unwind) {
         if (keep < 16 && skip < 16) {
             s8 value = (keep << 4) | skip;
             out << "UNWIND " << (s32)value;
@@ -206,6 +208,7 @@ void Generator::generateInstr(WasmInstr$ instr)
         TRACE();
         instr->block->id = totalBlocks++;
         instr->block->stackBase = stackSize - wasmTypesWords(instr->block->type->param);
+        verbose << ind.cStr() << "// block" << instr->block->id << "_begin:\n";
         generateBlock(instr->block);
         verbose << ind.cStr();
         out << "block" << instr->block->id << "_end:\n";
@@ -229,6 +232,7 @@ void Generator::generateInstr(WasmInstr$ instr)
         instr->block->stackBase = stackSize - wasmTypesWords(instr->block->type->param);
         verbose << ind.cStr();
         out << "BRF block" << instr->block->id << "_else\n";
+        verbose << ind.cStr() << "// block" << instr->block->id << "_begin:\n";
         generateBlock(instr->block);
         if (!instr->block->elsePresent) {
             verbose << ind.cStr();
@@ -314,6 +318,106 @@ void Generator::generateInstr(WasmInstr$ instr)
                     verbose << ind.cStr();
                     out << "BR block" << block->id << label << "\n";
                 }
+            }
+        }
+        break;
+    }
+    case INSTR_BR_TABLE: {
+        TRACE();
+        
+        struct ItemInfo {
+            int index;
+            int label;
+            bool backward;
+            bool isReturn;
+            int skip;
+            int keep;
+            const char* labelPostfix;
+            WasmBlock$ block;
+        };
+
+        bool longTable = (instr->imm->length() > 2);
+        Array$$<ItemInfo> items = new$;
+        items->length(instr->imm->length());
+        auto blockIndex = totalBlocks++;
+        int indexSub = 0;
+
+        for (int i = 0; i < instr->imm->length(); i++) {
+            auto& item = items[i];
+            item.index = i;
+            item.label = instr->imm[i];
+            item.block = blockStack[RangeEnd - (1 + item.label)];
+            item.backward = (item.block->instr->code == INSTR_LOOP);
+            item.isReturn = (item.block->instr->code == INSTR_TRIVM_FUNCTION);
+            if (item.backward) {
+                item.labelPostfix = "_begin";
+                item.keep = wasmTypesWords(item.block->type->param);
+            } else {
+                item.labelPostfix = "_end";
+                item.keep = wasmTypesWords(item.block->type->result);
+            }
+            item.skip = stackSize - (item.block->stackBase + item.keep);
+        }
+
+        stackSize--;
+
+        debug << ind.cStr() << "// BR_TABLE\n";
+
+        if (longTable)
+            out << ind.cStr() << "WRITE TMP0\n";
+
+        for (int i = 0; i < items->length() - 1; i++) {
+            auto& item = items[i];
+
+            if (item.index - indexSub == 127 && items->length() - item.index > 5) {
+                out << ind.cStr() << "READ TMP0\n";
+                out << ind.cStr() << "SUB 127\n";
+                out << ind.cStr() << "WRITE TMP0\n";
+                indexSub += 127;
+            }
+
+            if (longTable)
+                out << ind.cStr() << "READ TMP0\n";
+
+            if (indexSub == 0) {
+                out << ind.cStr() << "EQ " << item.index << "\n";
+            } else {
+                out << ind.cStr() << "EQ " << item.index - indexSub;
+                verbose << " // actual index " << item.index;
+                out << "\n";
+            }
+            if (item.skip == 0 && !item.isReturn) {
+                out << ind.cStr() << "BRT block" << item.block->id << item.labelPostfix << "\n";
+            } else {
+                out << ind.cStr() << "BRT skip" << blockIndex << "_" << item.index << "\n";
+            }
+        }
+
+        Array$$<ItemInfo> reorderedItems;
+        reorderedItems = items[Range(0, RangeEnd - 1)];
+        reorderedItems->pushFront(items[RangeEnd - 1]);
+
+        for (int i = 0; i < reorderedItems->length(); i++) {
+            auto& item = reorderedItems[i];
+
+            if (item.skip == 0 && !item.isReturn && i > 0)
+                continue;
+
+            if (i > 0)
+                out << ind.cStr() << "skip" << blockIndex << "_" << item.index << ":\n";
+
+            if (item.isReturn) {
+                if (item.block->stackBase != -1 || item.keep != 0 || item.skip != 1) {
+                    out << ind.cStr() << "READ [SP] + " << 4 * stackSize << " + " << funcData->returnAddressOffset << "\n";
+                    generateUnwind(item.keep + 1, item.skip);
+                }
+                verbose << ind.cStr();
+                out << "WRITE PC\n";
+            } else {
+                if (item.skip > 0)
+                    generateUnwind(item.keep, item.skip);
+                verbose << ind.cStr();
+                out << "BR block" << item.block->id << item.labelPostfix << "\n";
             }
         }
         break;

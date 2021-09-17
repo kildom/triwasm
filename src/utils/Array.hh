@@ -122,6 +122,8 @@ public:
         return *this;
     }
 
+    Array$& operator=(const ArrayView<T>& a);
+
     Array$& operator=(_$_New$) {
         this->createInplace();
         return *this;
@@ -237,6 +239,14 @@ public:
         return ArrayView(*this, begin + range.beginOffset, begin + range.endOffset);
     }
 
+    auto beginIter() const { 
+        return array->v.begin() + begin;
+    }
+
+    auto endIter() const {
+        return array->v.begin() + end;
+    }
+
 private:
     void update() {
         auto length = array->length();
@@ -263,6 +273,14 @@ ArrayView<T> Array$<T, nullable>::operator[](const BoundedRange &range) const {
     }
     return ArrayView<T>(*this, range.beginOffset, range.endOffset);
 }
+
+template<typename T, bool nullable>
+Array$<T, nullable>& Array$<T, nullable>::operator=(const ArrayView<T>& a) {
+    *this = new$;
+    (*this)->v.assign(a.beginIter(), a.endIter());
+    return *this;
+}
+
 
 template <typename T>
 using Array$$ = Array$<T, false>;

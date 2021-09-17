@@ -166,16 +166,9 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         }
         return false;
     }
-    case INSTR_RETURN: {
-        TRACE();
-        reduced->push(WasmInstr{
-            .code = INSTR_BR,
-            .imm = { (u64)blockStack->length() - 1 },
-        });
-        return false;
-    }
     case INSTR_BR_IF: {
         TRACE();
+        stack->pop();
         WasmInstr$ br = WasmInstr{
             .code = INSTR_BR,
             .imm = { imm[0] },
@@ -192,29 +185,28 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
     case INSTR_BR_TABLE: {
         TRACE();
         stack->pop();
-        for (int i = 0; i < imm->length(); i++) {
-            WasmInstr$ br = WasmInstr{
-                .code = INSTR_BR,
-                .imm = { imm[i] },
-            };
-            reduced->push(br);
-            auto block = blockStack[RangeEnd - (imm[i] + 1)];
+        for (auto label : instr->imm) {
+            auto block = blockStack[RangeEnd - (label + 1)];
             if (block->instr->code != INSTR_LOOP) {
                 block->brTarget = true;
             }
-            if (i < imm->length() - 1) {
-                br->data->length(1);
-                auto dataBr = WasmInstrBr$$(br->data[0]);
-                dataBr->conditional = true;
-                dataBr->negated = true;
-                if (i < imm->length() - 2) {
-                    reduced->push(WasmInstr{
-                        .code = INSTR_I32_SUB,
-                        .imm = { 1 },
-                    });
-                }
-            }
         }
+        if (instr->imm->length() == 1) {
+            reduced->push(WasmInstr{
+                .code = INSTR_BR,
+                .imm = { imm[0] },
+            });
+        } else {
+            reduced->push(instr);
+        }
+        return false;
+    }
+    case INSTR_RETURN: {
+        TRACE();
+        reduced->push(WasmInstr{
+            .code = INSTR_BR,
+            .imm = { (u64)blockStack->length() - 1 },
+        });
         return false;
     }
     case INSTR_CALL: {

@@ -84,6 +84,8 @@
   * Convert unary operators with const input to const value if it is more optimal: `i32.const AAA ; f32.ceil  ->  i32.const ceil(AAA)`, also for emulation `i32.const AAA ; CALL __trivmlib.f32_ceil  ->  i32.const ceil(AAA)` (this should be optimized by the compiler - check if it is true)
   * Convert pair of `i64.extend_i32_u/s` and `i64.extend8/16_s` to single instruction `EXTS64WL 56/48`
   * If there are more returns with the same unwind values they can be merged and put at the end of function
+  * If BR_TABLE has item exiting current `block` or `if` (after `else`) and BR_TABLE has no unwinds then such item can be moved to the end and replace with default ` ... EQ 5 ; BRT block32 ... BR block10  ->  ... ... EQ 5 ; BRF block10 ; BR block32 (last branch will be removed by triasm, because it is unconditional branch to the next instruction)`;
+  * Implement BR_TABLE with actual table of addresses and unwind parameters
 
 TODOs:
   * Check which floating point comparison operators can be replaced by `inverted_OP ; NOT` to allow further conditional branch optimization.
