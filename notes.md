@@ -86,6 +86,8 @@
   * If there are more returns with the same unwind values they can be merged and put at the end of function
   * If BR_TABLE has item exiting current `block` or `if` (after `else`) and BR_TABLE has no unwinds then such item can be moved to the end and replace with default ` ... EQ 5 ; BRT block32 ... BR block10  ->  ... ... EQ 5 ; BRF block10 ; BR block32 (last branch will be removed by triasm, because it is unconditional branch to the next instruction)`;
   * Implement BR_TABLE with actual table of addresses and unwind parameters
+  * Merge active data that are close to each other
+  * Remove repeating zeros in active data. All triVM memory will be zero-initialized, so removed blocks will be zeros.
 
 TODOs:
   * Check which floating point comparison operators can be replaced by `inverted_OP ; NOT` to allow further conditional branch optimization.

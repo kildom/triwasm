@@ -28,7 +28,8 @@ public:
     void generateInstr(WasmInstr$ instr);
     static const char* getTrivmInstr(u32 opcode);
     void generateUnwind(u32 keep, u32 skip);
-    void generateBuiltin(WasmInstr$ instr);
+    void generateActiveData(WasmData$ data);
+    void generatePassiveData(WasmData$ data);
 
 private:
     static std::ostream& wrapVerbose(std::ostream& out);
