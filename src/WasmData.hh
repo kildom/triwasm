@@ -85,6 +85,7 @@ struct WasmFunction {
     Array$$<u32> locals;
     WasmBlock$ block;
     any$ data;
+    String$$ name;
 };
 
 struct WasmInstrBr {

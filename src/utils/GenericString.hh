@@ -90,6 +90,12 @@ public:
     GenericStringView<T> operator[](const Range &range);
     GenericStringView<T> operator[](const BoundedRange &range);
 
+    GenericString$$ operator+(GenericString$$ a) {
+        auto& str1 = (*this)->v;
+        auto& str2 = a->v;
+        return GenericString$$(str1 + str2);
+    }
+
     bool operator==(const char *a) {
         if ($<GenericStringInner<T>>::_ptr == nullptr) {
             return a == nullptr;
@@ -97,6 +103,10 @@ public:
             return false;
         }
         return (*this)->v == a;
+    }
+
+    bool operator==(nullptr_t) {
+        return this->_ptr == nullptr;
     }
 
     bool operator==(GenericString$$ a) {

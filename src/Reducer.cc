@@ -211,10 +211,17 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
     }
     case INSTR_CALL: {
         TRACE();
-        auto type = WasmFunction$(data[0])->type;
+        auto callee = WasmFunction$(data[0]);
+        auto type = callee->type;
         stack->pop(type->param->length());
         for (auto t : type->result) {
             stack->push(t);
+        }
+        if (callee->kind == FUNCTION_ANNOTATION) {
+            auto annotation = String$$(callee->data);
+            if (annotation.startsWith("triasm_name:"_S)) {
+                function->name = annotation[Range(12)];
+            }
         }
         reduced->push(instr);
         break;

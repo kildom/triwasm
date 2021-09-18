@@ -23,6 +23,7 @@ private:
 public:
     Generator(std::ostream& out) : out(out), verbose(wrapVerbose(out)), debug(wrapVerbose(out)) {}
     void generate(WasmModule$ mod);
+    void generateFunctionNames();
     void generateFunction(WasmFunction$$ func);
     void generateBlock(WasmBlock$ body);
     void generateInstr(WasmInstr$ instr);

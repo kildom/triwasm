@@ -48,6 +48,8 @@ int main(int argc, char *argv[]) {
     generator->generate(mod);
     ofs.close();
 
+    dumpModuleToFile("after_gen.txt", mod, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY | DUMP_AFTER_REDUCE);
+
     return 0;
 
 }

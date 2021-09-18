@@ -1,9 +1,11 @@
+#include <set>
 #include "Utils.hh"
 #include "WasmData.hh"
 #include "FileInputStream.hh"
 #include "WasmConsts.hh"
 #include "WasmParser.hh"
 #include "WasmInstr.hh"
+#include "Resolver.hh"
 #include "Generator.hh"
 #include "VMConfig.hh"
 #include "fstream"
@@ -19,13 +21,51 @@ std::ostream& Generator::wrapVerbose(std::ostream& out) {
     }
 }
 
+void Generator::generateFunctionNames()
+{
+    std::set<std::string> taken;
+
+    for (auto func: mod->functions) {
+        if (func->name != nullptr && func->name != ""_S) {
+            if (taken.count(func->name->v) > 0)
+                FATAL("Duplicated triasm function name annotation '%s'", func->name.cStr());
+            taken.insert(func->name->v);
+        }
+    }
+
+    for (auto func: mod->functions) {
+        if (func->name == nullptr || func->name == ""_S) {
+            std::stringstream str;
+            if (func->exportNames->length() > 0) {
+                str << func->moduleName.cStr() << "." << func->exportNames[0].cStr();
+            } else if (func->import != nullptr) {
+                str << func->import->module.cStr() << "." << func->import->name.cStr();
+            } else {
+                str << "func" << func->index;
+            }
+            std::string nameBase = str.str(); // TODO: sanitize the string
+            std::string name = nameBase;
+            int counter = 1;
+            while (taken.count(name)) {
+                str.str(std::string());
+                counter++;
+                str << nameBase << "_" << counter;
+                name = str.str();
+            }
+            func->name = name;
+        }
+    }
+}
+
 void Generator::generate(WasmModule$ mod)
 {
     TRACE();
 
+    this->mod = mod;
     totalBlocks = 0;
 
-    this->mod = mod;
+    generateFunctionNames();
+
     for (auto func: mod->functions) {
         generateFunction(func);
     }
@@ -79,9 +119,9 @@ void Generator::generateFunction(WasmFunction$$ func)
         return;
 
     case FUNCTION_ASSEMBLY:
-        verbose << "\n\n// ========== Function " << func->index << " ========== //\n";
+        verbose << "\n\n// ========== Function " << func->name.cStr() << " [" << func->index << "] ========== //\n";
         verbose << "    // Assembly function\n";
-        out << "func" << func->index << ":\n";
+        out << func->name.cStr() << ":\n";
         out << String$$(function->data).cStr() << "\n";
         return;
     
@@ -93,7 +133,7 @@ void Generator::generateFunction(WasmFunction$$ func)
 
     funcData = WasmFunctionData$$(function->data);
 
-    verbose << "\n\n// ========== Function " << func->index << " ========== //\n";
+    verbose << "\n\n// ========== Function " << func->name.cStr() << " [" << func->index << "] ========== //\n";
 
     int localOffset = 0;
     int reserveBytes = 0;
@@ -127,7 +167,7 @@ void Generator::generateFunction(WasmFunction$$ func)
     }
     function->block->stackBase = -localOffset / 4;
 
-    out << "func" << func->index << ":\n";
+    out << func->name.cStr() << ":\n";
 
     if (reserveBytes > 12) {
         out << "READ SP\nSUB " << reserveBytes << "\nWRITE SP\n";
@@ -436,11 +476,65 @@ void Generator::generateInstr(WasmInstr$ instr)
     }
     case INSTR_CALL: {
         TRACE();
-        auto callee = WasmFunction$(instr->data[0]);
+        auto callee = Resolver::getResolved(WasmFunction$(instr->data[0]));
         verbose << ind.cStr();
-        out << "CALL func" << callee->index << "\n"; // TODO: use function returning name
-        stackSize -= wasmTypesWords(callee->type->param);
-        stackSize += wasmTypesWords(callee->type->result);
+        s32 stackDiff = 0;
+        if (callee->type != nullptr) {
+            stackDiff -= wasmTypesWords(callee->type->param);
+            stackDiff += wasmTypesWords(callee->type->result);
+        }
+        switch (callee->kind)
+        {
+        case FUNCTION_ASSEMBLY:
+        case FUNCTION_WASM: {
+            stackSize += stackDiff;
+            out << "CALL " << callee->name.cStr();
+            debug << " //        " << stackDiff << "  " << stackSize;
+            out << "\n";
+            break;
+        }
+        case FUNCTION_ANNOTATION: {
+            out << ".annotation \"" << String$$(callee->data).cStr() << "\"\n";
+            break;
+        }
+        case FUNCTION_IMPORT: {
+            ASSERT("Import function not resolved");
+            break;
+        }
+        case FUNCTION_HOST_BY_INDEX: {
+            stackSize += stackDiff;
+            out << "HOST " << *u32$(callee->data);
+            debug << " //        " << stackDiff << "  " << stackSize;
+            out << "\n";
+            break;
+        }
+        case FUNCTION_HOST_BY_NAME: {
+            stackSize += stackDiff;
+            out << "READ host_by_name_" << String$$(callee->data).cStr() << "\n"; // TODO: sanitize the string
+            out << ind.cStr() << "HOST";
+            debug << " //        " << stackDiff << "  " << stackSize;
+            out << "\n";
+            break;
+        }
+        case FUNCTION_INLINE_ASSEMBLY: {
+            stackSize += stackDiff;
+            verbose << "// inline assembly begin\n";
+            out << ind.cStr() << String$$(callee->data).cStr() << "\n";
+            debug << ind.cStr() << "//        " << stackDiff << "  " << stackSize << "\n";
+            verbose << ind.cStr() << "// inline assembly end\n";
+            break;
+        }
+        case FUNCTION_LINK: {
+            ASSERT("Link function not expected here");
+            break;
+        }
+        case FUNCTION_UNUSED: {
+            FATAL("Call of unusable function %s [%d]", callee->name.cStr(), callee->index);
+            break;
+        }
+        default:
+            break;
+        }
         break;
     }
     case INSTR_CALL_INDIRECT: {

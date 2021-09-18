@@ -150,7 +150,10 @@ void DataDump::dumpModule()
 
     out << "Functions: " << std::endl;
     for (auto f : mod->functions) {
-        out << "  [" << f->index << "] " << TypeList{f->type->param, true} << ":" << TypeList{f->type->result, false};
+        out << "  [" << f->index << "] ";
+        if (f->name != nullptr)
+            out << f->name.cStr() << " ";
+        out << TypeList{f->type->param, true} << ":" << TypeList{f->type->result, false};
         if (f->exportNames != nullptr) {
             for (auto name : f->exportNames) {
                 out << ", export as " << name.cStr();
