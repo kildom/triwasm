@@ -132,13 +132,13 @@ TRIVM_EXPORT_ASSEMBLY(
     select_2,
     "WRITE TMP0\n"
     "BRT __trivmlib_select_2_true\n"
-    "READ [SP]\n"
-    "WRITE [SP] + 8\n"
-    "READ [SP] + 4\n"
-    "WRITE [SP] + 12\n"
-    "__trivmlib_select_1_true:\n"
+    "WRITE [SP] + 4\n"
+    "WRITE [SP] + 4\n"
+    "BR __trivmlib_select_2_end\n"
+    "__trivmlib_select_2_true:\n"
     "POP\n"
     "POP\n"
+    "__trivmlib_select_2_end:\n"
     "READ TMP0\n"
     "RETURN\n",
     u64, (u64 a, u64 b, u32 cond));

@@ -358,9 +358,12 @@ void Generator::generateInstr(WasmInstr$ instr)
         } else {
             if (isReturn) {
                 if (block->stackBase != -1 || keep != 0 || skip != 1) {
-                    verbose << ind.cStr();
-                    out << "READ [SP] + " << 4 * stackSize << " + " << funcData->returnAddressOffset << "\n";
-                    generateUnwind(keep + 1, skip);
+                    if (stackSize != 0 || funcData->returnAddressOffset != 0) {
+                        verbose << ind.cStr();
+                        out << "READ [SP] + " << 4 * stackSize << " + " << funcData->returnAddressOffset << "\n";
+                        keep++;
+                    }
+                    generateUnwind(keep, skip);
                 }
                 verbose << ind.cStr();
                 out << "WRITE PC\n";
