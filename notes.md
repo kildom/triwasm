@@ -61,8 +61,8 @@
 * Optimization tips:
   * Put second const operant into destination instruction: `PUSH X ... SUB  ->  SUB X`
   * Put first const operant into destination instruction if they can be inverted (add, mul, and, or, xor, lt/gt): `PUSH X ... ADD  ->  ADD X` or `PUSH X ... ULT  ->  UGT X`
-  * If value comes from uvm `NOT` instruction, delete `NOT` and replace destination instruction from `BRT` to `BRF` or the opposite: `EQ ; NOT ; ... ; BRT  ->  EQ ; ... ; BRF`
-  * If value comes from uvm `NOT` instruction, and destination is also `NOT` delete both: `NOT ; ... ; NOT  ->  ...`
+  * If value comes from uvm `NOT` instructions (one or more), delete `NOT` and replace destination instruction (`BRT <-> BRF`): `EQ ; NOT ; ... ; BRT  ->  EQ ; ... ; BRF`
+  * If value comes from uvm `NOT` instruction, and destination is also `NOT` delete both: `NOT ; ... ; NOT  ->  ...` - NOT TRUE: `NOT NOT` converts any value to `[0, 1]`, so it is not the same. This can be applied to 3x`NOT` or more and converted into one or two `NOT`.
   * Combine immutable globals with the same value
   * Replace repeating 32-bit const values into immutable globals:
     * (5 bytes) `PUT x  ->  READ -offset` (2 or 3 bytes + 4 common bytes) or

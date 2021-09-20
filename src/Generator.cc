@@ -21,8 +21,31 @@ std::ostream& Generator::wrapVerbose(std::ostream& out) {
     }
 }
 
+WasmGlobal$ Generator::detectAuxStackPointer(WasmBlock$ block)
+{
+    TRACE();
+
+    WasmGlobal$ result;
+    for (auto instr: block->body) {
+        WasmGlobal$ global;
+        if (instr->code == INSTR_TRIVM_I32_GLOBAL_GET || instr->code == INSTR_GLOBAL_GET) {
+            global = WasmGlobal$(instr->data[0]);
+        } else if (instr->block != nullptr && instr->block->body != nullptr) {
+            global = detectAuxStackPointer(instr->block);
+        }
+        if (global != nullptr && global != result) {
+            if (result != nullptr)
+                FATAL("Multiple globals in software stack detector function. Software stack detection is not possible.");
+            result = global;
+        }
+    }
+    return result;
+}
+
 void Generator::generateFunctionNames()
 {
+    TRACE();
+
     std::set<std::string> taken;
 
     for (auto func: mod->functions) {
@@ -65,6 +88,10 @@ void Generator::generate(WasmModule$ mod)
     totalBlocks = 0;
 
     generateFunctionNames();
+
+    if (mod->auxStackDetector != nullptr) {
+        auxStackPointer = detectAuxStackPointer(mod->auxStackDetector->block);
+    }
 
     for (auto func: mod->functions) {
         generateFunction(func);
@@ -993,6 +1020,9 @@ void Generator::generateInstr(WasmInstr$ instr)
         u32 words = instr->code == INSTR_TRIVM_I32_GLOBAL_GET || instr->code == INSTR_TRIVM_I32_GLOBAL_SET ? 1 : 2;
         bool write = instr->code == INSTR_TRIVM_I32_GLOBAL_SET || instr->code == INSTR_TRIVM_I64_GLOBAL_SET;
         auto global = WasmGlobal$(instr->data[0]); // TODO: exported global should work as host call
+
+        std::stringstream nameStream;
+
         u32 offset = instr->imm[0];
         if (!write && words == 2) {
             offset += 4;
@@ -1000,8 +1030,16 @@ void Generator::generateInstr(WasmInstr$ instr)
         s32 stackChange = write ? -words : +words;
         stackSize += stackChange;
         
+        if (global == auxStackPointer) {
+            if (words != 1 || offset != 0)
+                FATAL("Stack pointer must be 32-bit long");
+            nameStream << "ASP";
+        } else {
+            nameStream << "global" << global->index;
+        }
+
         verbose << ind.cStr();
-        out << (write ? "WRITE global" : "READ global") << global->index;
+        out << (write ? "WRITE " : "READ ") << nameStream.str();
         if (offset != 0)
             out << " + " << offset;
         if (words == 2) {
@@ -1009,7 +1047,7 @@ void Generator::generateInstr(WasmInstr$ instr)
             verbose << ind.cStr();
             out << (write ? "WRITE64" : "READ64");
         }
-        debug << "        // global " << global->index << "  " << stackChange << " -> " << stackSize;
+        debug << "        // " << nameStream.str() << "  " << stackChange << " -> " << stackSize;
         out << "\n";
         break;
     }

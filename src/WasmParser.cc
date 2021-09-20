@@ -154,7 +154,7 @@ void WasmParser::parseImportSection()
                 func->type = functionTypes[r->readU32()];
                 func->import = import;
                 if (import->module == "__trivm_magic_function__")
-                    func = parseMagicFunction(func->index, func->type, import->name);
+                    func = parseMagicFunction(func->index, func, import->name);
                 mod->functions->push(func);
                 printf("  import %d function %s::%s\n", mod->functions[RangeEnd - 1]->index, import->name->buffer(), import->name->buffer());
                 break;
@@ -300,7 +300,7 @@ void WasmParser::parseExportSection()
             case 0x00: {
                 auto func = mod->functions[index];
                 if (name.startsWith("__trivm_magic_function__:"_S)) {
-                    mod->functions->push(parseMagicFunction(mod->functions->length(), func->type, name));
+                    mod->functions->push(parseMagicFunction(mod->functions->length(), func, name));
                     func->kind = FUNCTION_UNUSED;
                     printf("  magic export function %d with content %s\n", index, name->buffer());
                 } else {
@@ -603,16 +603,21 @@ MagicFunctionPartResult magicFunctionPart(String$$ input)
 
     MagicFunctionPartResult result;
     auto pos = input.find(':');
-    if (pos < 0)
-        FATAL("Invalid format of triVM magic function.");
+    if (pos < 0) {
+        result.part = input;
+        result.rest = ""_S;
+        return result;
+    }
     result.part = input[Range(0, pos)];
     result.rest = input[Range(pos + 1)];
     return result;
 }
 
-WasmFunction$ WasmParser::parseMagicFunction(u32 index, WasmFunctionType$ type, String$$ content)
+WasmFunction$ WasmParser::parseMagicFunction(u32 index, WasmFunction$ sourceFunction, String$$ content)
 {
     TRACE();
+
+    auto type = sourceFunction->type;
 
     if (content.startsWith("__trivm_magic_function__:"_S)) {
         content = content[Range(25)];
@@ -648,6 +653,15 @@ WasmFunction$ WasmParser::parseMagicFunction(u32 index, WasmFunctionType$ type, 
                 FATAL("Invalid assembly function option: %s", opt.cStr());
             }
         }
+    } else if (magicName == "unused") {
+        result->index = index;
+        result->kind = FUNCTION_UNUSED;
+        result->type = type;
+    } else if (magicName == "aux_stack_pointer_detector") {
+        result->index = index;
+        result->kind = FUNCTION_UNUSED;
+        result->type = type;
+        mod->auxStackDetector = sourceFunction;
     } else {
         FATAL("Unknown type of triVM magic function: %s", magicName.cStr());
     }

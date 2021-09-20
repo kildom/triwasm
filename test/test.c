@@ -1,75 +1,24 @@
 
-#define WASM_EXPORT(name) \
-    __attribute__((used)) \
-    __attribute__((export_name(#name)))
+#include <alloca.h>
 
-#define WASM_IMPORT(name) \
-    __attribute__((used)) \
-    __attribute__((import_name(#name)))
+#include "../trivmlib/src/common.h"
 
-WASM_IMPORT(imptest)
-void imptest();
+#define STACK_POINTER_GUARD() \
+    __attribute__((import_module("__trivm_magic_function__"))) \
+    __attribute__((import_name("unused"))) \
+    void aux_stack_pointer_detector_helper(void*); \
+    __attribute__((export_name("__trivm_magic_function__:aux_stack_pointer_detector"))) \
+    void aux_stack_pointer_detector() { aux_stack_pointer_detector_helper(alloca(1024)); }
 
-WASM_IMPORT(imptest2)
-void imptest2();
+STACK_POINTER_GUARD();
 
-WASM_IMPORT(imptest3)
-void imptest3(void (*f)());
+__attribute__((import_module("env")))
+__attribute__((import_name("bbbbbbb")))
+void bbbbbbb(void*, int*);
 
-WASM_IMPORT(imptestdot)
-void imptestdot(int x, ...);
-
-WASM_IMPORT(imptestmuti)
-void imptestmuti(int x, int y, int z);
-
-__attribute__((noinline))
-void sub() {
-    imptest();
+__attribute__((export_name("aaaaaaaa")))
+void aaaaaa()
+{
+    int x = 12;
+    bbbbbbb(alloca(1024), &x);
 }
-
-WASM_EXPORT(test1)
-void test1() {
-    imptestmuti(1, 2, 3);
-    imptest();
-    imptest2();
-    imptest3(sub);
-    imptestdot(1, 2, 3, 4, 5, 6);
-}
-
-WASM_EXPORT(aaaaa)
-void aaaaa(int i) {
-    do {
-        imptestmuti(i, 2, 3);
-        i--;
-    } while (i);
-}
-
-WASM_EXPORT(aaaaab)
-void aaaaab(int i) {
-    while (i) {
-        imptestmuti(i, 2, 3);
-        i--;
-    }
-}
-
-WASM_EXPORT(aaaaac)
-void aaaaac(int i) {
-    *(int*)234894 = 123;
-}
-
-
-WASM_IMPORT(retint)
-int retint();
-
-
-WASM_EXPORT(test2)
-void test2() {
-    while (1) {
-        imptest();
-        if (!retint()) continue;
-        imptest();
-        if (!retint()) break;
-        imptest();
-    }
-}
-

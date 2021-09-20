@@ -19,10 +19,12 @@ private:
     std::ostream& debug; // TODO: depend on configuration option
     String$$ ind;
     u32 totalBlocks;
+    WasmGlobal$ auxStackPointer;
 
 public:
     Generator(std::ostream& out) : out(out), verbose(wrapVerbose(out)), debug(wrapVerbose(out)) {}
     void generate(WasmModule$ mod);
+    WasmGlobal$ detectAuxStackPointer(WasmBlock$ block);
     void generateFunctionNames();
     void generateFunction(WasmFunction$$ func);
     void generateBlock(WasmBlock$ body);
