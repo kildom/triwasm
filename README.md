@@ -1,6 +1,6 @@
 <img src="doc/logo.svg" alt="" align="right" width="100" />
 
-# triWASM
+# triWasm
 
 <br clear="both" />
 
