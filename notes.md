@@ -1,4 +1,5 @@
 * General
+  * Rename `trivmlib` to triwasmlib`.
   * Add option to ignore some or all unresolved imports. Calling ignored import function will cause triVM exception.
   * Allow compilation of triVM assembly file.
   * Abiliti to watch C stack (only for clang):
