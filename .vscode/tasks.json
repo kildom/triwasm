@@ -23,7 +23,7 @@
         {
             "label": "Build Debug",
             "type": "shell",
-            "command": "make -j4 DEBUG=1",
+            "command": "make -j4 DEBUG=1 && cd ${workspaceFolder} && test/build.sh",
             "windows": {
                 "options": {
                     "cwd": "${workspaceFolder}/build/windows"
@@ -50,8 +50,8 @@
                 "options": {
                     "cwd": "${workspaceFolder}/build/wasm",
                     "env": {
-                        "WASI_SDK_ROOT": "${workspaceFolder}\\trivmlib\\build\\tools\\wasi-sdk",
-                        "BINARYEN_ROOT": "${workspaceFolder}\\trivmlib\\build\\tools\\binaryen"
+                        "WASI_SDK_ROOT": "${workspaceFolder}\\triwasmlib\\build\\tools\\wasi-sdk",
+                        "BINARYEN_ROOT": "${workspaceFolder}\\triwasmlib\\build\\tools\\binaryen"
                     }
                 }
             },
@@ -59,8 +59,8 @@
                 "options": {
                     "cwd": "${workspaceFolder}/build/wasm",
                     "env": {
-                        "WASI_SDK_ROOT": "${workspaceFolder}/trivmlib/build/tools/wasi-sdk",
-                        "BINARYEN_ROOT": "${workspaceFolder}/trivmlib/build/tools/binaryen"
+                        "WASI_SDK_ROOT": "${workspaceFolder}/triwasmlib/build/tools/wasi-sdk",
+                        "BINARYEN_ROOT": "${workspaceFolder}/triwasmlib/build/tools/binaryen"
                     }
                 }
             },

@@ -26,11 +26,12 @@ public:
     void generate(WasmModule$ mod);
     WasmGlobal$ detectAuxStackPointer(WasmBlock$ block);
     void generateFunctionNames();
+    void generatePrologue();
     void generateFunction(WasmFunction$$ func);
     void generateBlock(WasmBlock$ body);
     void generateInstr(WasmInstr$ instr);
     static const char* getTrivmInstr(u32 opcode);
-    void generateUnwind(u32 keep, u32 skip);
+    void generateUnwind(u32 keep, u32 skip, bool withRet);
     void generateActiveData(WasmData$ data);
     void generatePassiveData(WasmData$ data);
 

@@ -18,7 +18,7 @@ EXP_BINOP32(float32_t, f32_sub);
 EXP_BINOP32(float32_t, f32_mul);
 EXP_BINOP32(float32_t, f32_div);
 
-DEFINE_ANNOTATION(trivm_f32_le_name, "triasm_name:__trivmlib_f32_le");
+DEFINE_ANNOTATION(trivm_f32_le_name, "triasm_name:__triwasmlib_f32_le");
 
 EXPORT(trivm_f32_le)
 bool trivm_f32_le( float32_t a, float32_t b )
@@ -28,7 +28,7 @@ bool trivm_f32_le( float32_t a, float32_t b )
     return f32_le(a, b);
 }
 
-DEFINE_ANNOTATION(trivm_f32_lt_name, "triasm_name:__trivmlib_f32_lt");
+DEFINE_ANNOTATION(trivm_f32_lt_name, "triasm_name:__triwasmlib_f32_lt");
 
 EXPORT(trivm_f32_lt)
 bool trivm_f32_lt( float32_t a, float32_t b )
@@ -38,7 +38,7 @@ bool trivm_f32_lt( float32_t a, float32_t b )
     return f32_lt(a, b);
 }
 
-DEFINE_ANNOTATION(trivm_f32_eq_name, "triasm_name:__trivmlib_f32_eq");
+DEFINE_ANNOTATION(trivm_f32_eq_name, "triasm_name:__triwasmlib_f32_eq");
 
 EXPORT(trivm_f32_eq)
 bool trivm_f32_eq( float32_t a, float32_t b )
@@ -54,7 +54,7 @@ TRIVM_EXPORT_ASSEMBLY(
     "READ [SP] + 2\n"
     "WRITE [SP] + 3\n"
     "WRITE [SP] + 1\n"
-    "BR __trivmlib_f32_lt\n",
+    "BR __triwasmlib_f32_lt\n",
     bool, ( float32_t a, float32_t b ));
 
 TRIVM_EXPORT_ASSEMBLY(
@@ -63,12 +63,12 @@ TRIVM_EXPORT_ASSEMBLY(
     "READ [SP] + 2\n"
     "WRITE [SP] + 3\n"
     "WRITE [SP] + 1\n"
-    "BR __trivmlib_f32_le\n",
+    "BR __triwasmlib_f32_le\n",
     bool, ( float32_t a, float32_t b ));
 
 TRIVM_EXPORT_ASSEMBLY( // TODO: This function should not exist, code should be generated during reduce and optimized later: CALL eq, NOT, BRT --> CALL eq, BRF
     trivm_f32_ne,
-    "CALL __trivmlib_f32_eq\n"
+    "CALL __triwasmlib_f32_eq\n"
     "NOT\n"
     "RET\n",
     bool, ( float32_t a, float32_t b ));

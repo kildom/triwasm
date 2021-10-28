@@ -115,14 +115,63 @@ EXPORT(memory_grow)         u32 trivm_memory_grow(u32 a) { return 0; }
 EXPORT(memory_size)         u32 trivm_memory_size() { return 0; }
 EXPORT(unreachable)         void trivm_unreachable() { }
 
+TRIVM_EXPORT_ASSEMBLY(
+    unwind_shorts,
+    ".begin\n"
+    "__triwasmlib_unwind_ret16:\n"
+    "READ TMP0\n" // TODO: if (in caller) read of return address and push of unwind parameter
+    "READ TMP1\n" // are switched then caller can call __triwasmlib_unwind8 directly
+    "WRITE TMP0\n"
+    "WRITE TMP1\n"
+    ".ref __triwasmlib_unwind16\n"
+    ".end\n"
+    ".begin\n"
+    "__triwasmlib_unwind16:\n"
+    "READ [SP] + 4\n"
+    "AND 0xFFFF\n"
+    "WRITE [SP] + 4\n"
+    "BR __triwasmlib_unwind32\n"
+    ".end\n"
+    ".begin\n"
+    "__triwasmlib_unwind_ret8:\n"
+    "READ TMP0\n" // TODO: if (in caller) read of return address and push of unwind parameter
+    "READ TMP1\n" // are switched then caller can call __triwasmlib_unwind8 directly
+    "WRITE TMP0\n"
+    "WRITE TMP1\n"
+    ".ref __triwasmlib_unwind8\n"
+    ".end\n"
+    ".begin\n"
+    "__triwasmlib_unwind8:\n"
+    "READ [SP] + 4\n"
+    "AND 0xFF\n"
+    "WRITE [SP] + 4\n"
+    ".ref __triwasmlib_unwind32\n"
+    ".end\n"
+    ".begin\n"
+    "__triwasmlib_unwind32:\n"
+    "DUP\n"
+    "READ [SP] + 8\n"
+    "DUP\n"
+    "AND 0xF\n"
+    "WRITE [SP] + 8\n"
+    "USHR 4\n"
+    "WRITE [SP] + 8\n"
+    ".ref __triwasmlib_unwind\n"
+    ".end\n"
+    ".begin\n"
+    "__triwasmlib_unwind:\n"
+    ".end\n"
+    "",
+    void, ()
+);
 
 TRIVM_EXPORT_ASSEMBLY(
     select_1,
     "WRITE TMP0\n" 
-    "BRT __trivmlib_select_1_true\n"
+    "BRT __triwasmlib_select_1_true\n"
     "DUP\n"
     "WRITE [SP] + 4\n"
-    "__trivmlib_select_1_true:\n"
+    "__triwasmlib_select_1_true:\n"
     "POP\n"
     "READ TMP0\n"
     "RETURN\n",
@@ -131,14 +180,14 @@ TRIVM_EXPORT_ASSEMBLY(
 TRIVM_EXPORT_ASSEMBLY(
     select_2,
     "WRITE TMP0\n"
-    "BRT __trivmlib_select_2_true\n"
+    "BRT __triwasmlib_select_2_true\n"
     "WRITE [SP] + 4\n"
     "WRITE [SP] + 4\n"
-    "BR __trivmlib_select_2_end\n"
-    "__trivmlib_select_2_true:\n"
+    "BR __triwasmlib_select_2_end\n"
+    "__triwasmlib_select_2_true:\n"
     "POP\n"
     "POP\n"
-    "__trivmlib_select_2_end:\n"
+    "__triwasmlib_select_2_end:\n"
     "READ TMP0\n"
     "RETURN\n",
     u64, (u64 a, u64 b, u32 cond));

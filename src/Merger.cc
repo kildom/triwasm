@@ -38,7 +38,7 @@ void Merger::mergeFunction(WasmFunction$ func)
         1. All modules except __main cannot have any memory, table or global
         2. Each module has a unique name:
             Main is: __trivm_main,
-            trivmlib is __trivm_trivmlib,
+            triwasmlib is __trivm_triwasmlib,
             any user provided is named by user or __trivm_modN by default
 
     Procedure:

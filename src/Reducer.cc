@@ -101,7 +101,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (vmConfig.ext.unreachable) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "unreachable"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "unreachable"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -272,7 +272,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         str << "select_" << wasmTypeWords(type);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, String$$(str.str()), true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, String$$(str.str()), true)) },
         });
         break;
     }
@@ -515,7 +515,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.any64 && imm[0] == 0) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_load_0"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_load_0"_S, true)) },
             });
         } else if (!vmConfig.ext.any64) {
             reduced->push(WasmInstr{
@@ -524,7 +524,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
             });
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_load"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_load"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -548,7 +548,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.any64 && imm[0] == 0) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_load_0"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_load_0"_S, true)) },
             });
         } else if (!vmConfig.ext.any64) {
             reduced->push(WasmInstr{
@@ -557,7 +557,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
             });
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_load"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_load"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -578,7 +578,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend_i32_s"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -599,7 +599,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend_i32_u"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -619,7 +619,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend_i32_s"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -640,7 +640,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend_i32_u"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -660,7 +660,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend_i32_s"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -681,7 +681,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend_i32_u"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -705,7 +705,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.any64 && imm[0] == 0) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_store_0"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_store_0"_S, true)) },
             });
         } else if (!vmConfig.ext.any64) {
             reduced->push(WasmInstr{
@@ -714,7 +714,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
             });
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_store"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_store"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -736,7 +736,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.any64 && imm[0] == 0) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_store_0"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_store_0"_S, true)) },
             });
         } else if (!vmConfig.ext.any64) {
             reduced->push(WasmInstr{
@@ -745,7 +745,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
             });
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_store"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_store"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -795,7 +795,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         TRACE();
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory_size"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "memory_size"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -805,7 +805,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop();
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory_grow"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "memory_grow"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -952,7 +952,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_eqz"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_eqz"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -966,7 +966,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_eq"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_eq"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -984,7 +984,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         } else {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_eq"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_eq"_S, true)) },
             });
         }
         reduced->push(WasmInstr{
@@ -999,7 +999,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_lt_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_lt_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1013,7 +1013,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_lt_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_lt_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1027,7 +1027,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_gt_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_gt_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1041,7 +1041,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_gt_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_gt_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1059,7 +1059,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         } else {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_gt_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_gt_s"_S, true)) },
             });
         }
         reduced->push(WasmInstr{
@@ -1078,7 +1078,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         } else {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_gt_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_gt_u"_S, true)) },
             });
         }
         reduced->push(WasmInstr{
@@ -1097,7 +1097,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         } else {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_lt_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_lt_s"_S, true)) },
             });
         }
         reduced->push(WasmInstr{
@@ -1116,7 +1116,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         } else {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_lt_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_lt_u"_S, true)) },
             });
         }
         reduced->push(WasmInstr{
@@ -1131,7 +1131,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_eq"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_eq"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1145,7 +1145,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_ne"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_ne"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1159,7 +1159,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_lt"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_lt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1173,7 +1173,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_gt"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_gt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1187,7 +1187,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_le"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_le"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1201,7 +1201,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_ge"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_ge"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1215,7 +1215,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_eq"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_eq"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1229,7 +1229,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_ne"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_ne"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1243,7 +1243,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_lt"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_lt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1257,7 +1257,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_gt"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_gt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1271,7 +1271,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_le"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_le"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1285,7 +1285,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_ge"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_ge"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1298,7 +1298,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop();
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_clz"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_clz"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -1308,7 +1308,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop();
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_ctz"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_ctz"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -1318,7 +1318,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop();
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_popcnt"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_popcnt"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -1328,7 +1328,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_rotl"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_rotl"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -1338,7 +1338,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_rotr"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_rotr"_S, true)) },
         });
         stack->push(TYPE_I32);
         break;
@@ -1348,7 +1348,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop();
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_clz"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_clz"_S, true)) },
         });
         stack->push(TYPE_I64);
         break;
@@ -1358,7 +1358,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop();
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_ctz"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_ctz"_S, true)) },
         });
         stack->push(TYPE_I64);
         break;
@@ -1368,7 +1368,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop();
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_popcnt"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_popcnt"_S, true)) },
         });
         stack->push(TYPE_I64);
         break;
@@ -1379,7 +1379,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_add"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_add"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1393,7 +1393,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_sub"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_sub"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1407,7 +1407,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_mul"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_mul"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1421,7 +1421,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_div_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_div_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1435,7 +1435,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_div_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_div_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1449,7 +1449,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_rem_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_rem_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1463,7 +1463,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_rem_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_rem_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1477,7 +1477,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_and"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_and"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1491,7 +1491,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_or"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_or"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1505,7 +1505,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_xor"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_xor"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1519,7 +1519,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_shl"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_shl"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1533,7 +1533,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_shr_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_shr_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1547,7 +1547,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_shr_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_shr_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1560,7 +1560,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_rotl"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_rotl"_S, true)) },
         });
         stack->push(TYPE_I64);
         break;
@@ -1570,7 +1570,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_rotr"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_rotr"_S, true)) },
         });
         stack->push(TYPE_I64);
         break;
@@ -1601,7 +1601,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_ceil"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_ceil"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1615,7 +1615,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_floor"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_floor"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1629,7 +1629,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_trunc"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_trunc"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1643,7 +1643,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_nearest"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_nearest"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1657,7 +1657,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_sqrt"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_sqrt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1671,7 +1671,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_add"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_add"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1685,7 +1685,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_sub"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_sub"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1699,7 +1699,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_mul"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_mul"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1713,7 +1713,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_div"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_div"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1726,7 +1726,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_min"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_min"_S, true)) },
         });
         stack->push(TYPE_F32);
         break;
@@ -1736,7 +1736,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_max"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_max"_S, true)) },
         });
         stack->push(TYPE_F32);
         break;
@@ -1746,7 +1746,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_copysign"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_copysign"_S, true)) },
         });
         stack->push(TYPE_F32);
         break;
@@ -1757,7 +1757,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_abs"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_abs"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -1781,7 +1781,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_neg"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_neg"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -1805,7 +1805,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_ceil"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_ceil"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1819,7 +1819,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_floor"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_floor"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1833,7 +1833,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_trunc"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_trunc"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1847,7 +1847,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_nearest"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_nearest"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1861,7 +1861,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_sqrt"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_sqrt"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1875,7 +1875,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_add"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_add"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1889,7 +1889,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_sub"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_sub"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1903,7 +1903,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_mul"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_mul"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1917,7 +1917,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_div"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_div"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1930,7 +1930,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_min"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_min"_S, true)) },
         });
         stack->push(TYPE_F64);
         break;
@@ -1940,7 +1940,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_max"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_max"_S, true)) },
         });
         stack->push(TYPE_F64);
         break;
@@ -1950,7 +1950,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(2);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_copysign"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_copysign"_S, true)) },
         });
         stack->push(TYPE_F64);
         break;
@@ -1968,7 +1968,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_f32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_trunc_f32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1982,7 +1982,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_f32_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_trunc_f32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -1996,7 +1996,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_f64_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_trunc_f64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2010,7 +2010,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_f64_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_trunc_f64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2024,7 +2024,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend_i32_s"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -2041,7 +2041,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend_i32_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend_i32_u"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -2057,7 +2057,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_f32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_trunc_f32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2071,7 +2071,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_f32_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_trunc_f32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2085,7 +2085,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_f64_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_trunc_f64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2099,7 +2099,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_f64_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_trunc_f64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2113,7 +2113,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_convert_i32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_convert_i32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2127,7 +2127,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_convert_i32_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_convert_i32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2141,7 +2141,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_convert_i64_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_convert_i64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2155,7 +2155,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_convert_i64_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_convert_i64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2169,7 +2169,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32 || !vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f32_demote_f64"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f32_demote_f64"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2183,7 +2183,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_convert_i32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_convert_i32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2197,7 +2197,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_convert_i32_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_convert_i32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2211,7 +2211,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_convert_i64_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_convert_i64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2225,7 +2225,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_convert_i64_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_convert_i64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2239,7 +2239,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32 || !vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "f64_promote_f32"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "f64_promote_f32"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2309,7 +2309,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend8_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend8_s"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -2326,7 +2326,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend16_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend16_s"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -2343,7 +2343,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.i64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_extend32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_extend32_s"_S, true)) },
             });
         } else {
             reduced->push(WasmInstr{
@@ -2360,7 +2360,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_sat_f32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_trunc_sat_f32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2374,7 +2374,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_sat_f32_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_trunc_sat_f32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2388,7 +2388,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_sat_f64_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_trunc_sat_f64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2402,7 +2402,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i32_trunc_sat_f64_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i32_trunc_sat_f64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2416,7 +2416,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_sat_f32_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_trunc_sat_f32_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2430,7 +2430,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f32) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_sat_f32_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_trunc_sat_f32_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2444,7 +2444,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_sat_f64_s"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_trunc_sat_f64_s"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2458,7 +2458,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         if (!vmConfig.ext.f64) {
             reduced->push(WasmInstr{
                 .code = INSTR_CALL,
-                .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "i64_trunc_sat_f64_u"_S, true)) },
+                .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "i64_trunc_sat_f64_u"_S, true)) },
             });
         } else {
             reduced->push(instr);
@@ -2471,7 +2471,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(3);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory_copy"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "memory_copy"_S, true)) },
         });
         break;
     }
@@ -2480,7 +2480,7 @@ bool Reducer::reduceInstr(WasmInstr$ instr, Array$$<WasmInstr$> reduced, bool re
         stack->pop(3);
         reduced->push(WasmInstr{
             .code = INSTR_CALL,
-            .data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "memory_fill"_S, true)) },
+            .data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "memory_fill"_S, true)) },
         });
         break;
     }

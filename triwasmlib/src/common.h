@@ -20,7 +20,7 @@ __attribute__((import_name("assembly:inline:" code)))
 #define TRIVM_EXPORT_ASSEMBLY(name, code, ret_type, params) \
 __attribute__((used)) \
 __attribute__((export_name("__trivm_magic_function__:assembly:export=" #name ":" code))) \
-ret_type __trivmlib_tmp_assembly2_##name params { __builtin_unreachable(); }
+ret_type __triwasmlib_tmp_assembly2_##name params { __builtin_unreachable(); }
 
 /* TODO: In case TRIVM_EXPORT_ASSEMBLY have to be called locally
 __attribute__((used)) \
@@ -32,7 +32,7 @@ ret_type c_name params;
 #define TRIVM_EXPORT_INLINE_ASSEMBLY(name, code, ret_type, params) \
 __attribute__((used)) \
 __attribute__((export_name("__trivm_magic_function__:assembly:inline,export=" #name ":" code))) \
-ret_type __trivmlib_tmp_assembly2_##name params { __builtin_unreachable(); }
+ret_type __triwasmlib_tmp_assembly2_##name params { __builtin_unreachable(); }
 
 #define DEFINE_ANNOTATION(name, text) \
 __attribute__((used)) \

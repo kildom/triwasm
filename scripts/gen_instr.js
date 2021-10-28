@@ -256,7 +256,7 @@ function generateReducer(table) {
                 if (opcode.startsWith('@')) {
                     out += `        ${ind}reduced->push(WasmInstr{\n`;
                     out += `            ${ind}.code = INSTR_CALL,\n`;
-                    out += `            ${ind}.data = { any$::get(Resolver::getExport(mod, "__trivmlib"_S, "${opcode.substr(1)}"_S, true)) },\n`;
+                    out += `            ${ind}.data = { any$::get(Resolver::getExport(mod, "__triwasmlib"_S, "${opcode.substr(1)}"_S, true)) },\n`;
                     out += `        ${ind}});\n`;
                 } else {
                     if (imm) imm = imm.join(' ');

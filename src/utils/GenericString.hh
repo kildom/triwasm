@@ -105,8 +105,16 @@ public:
         return (*this)->v == a;
     }
 
+    bool operator!=(const char *a) {
+        return !operator==(a);
+    }
+
     bool operator==(nullptr_t) {
         return this->_ptr == nullptr;
+    }
+
+    bool operator!=(nullptr_t) {
+        return this->_ptr != nullptr;
     }
 
     bool operator==(GenericString$$ a) {
@@ -116,6 +124,10 @@ public:
             return false;
         }
         return (*this)->v == a->v;
+    }
+
+    bool operator!=(GenericString$$ a) {
+        return !operator==(a);
     }
 
     auto begin() {
@@ -169,6 +181,10 @@ public:
 
     const char* cStr() {
         return (*this)->v.c_str();
+    }
+
+    std::string& str() {
+        return (*this)->v;
     }
 
 };

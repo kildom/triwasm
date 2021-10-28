@@ -1,0 +1,79 @@
+
+// Prologue
+
+.trampoline exception
+
+// TODO: simple entry if there is no exports and no control entry
+//       there is no need for export table, because only startup is used
+entry:
+PUSH program_memory_base
+WRITE PMB
+PUSH return_to_host
+READ TMP0
+MUL (export_table_end - export_table_begin) / export_table_count
+READ [POP] + export_table_begin + program_memory_base
+AND (((1 << ((export_table_end - export_table_begin) / export_table_count * 8 - 1)) - 1) << 1) + 1
+WRITE PC
+return_to_host:
+EXT -1
+
+startup:
+// save return address
+WRITE TMP0
+// save old stack pointer
+READ SP
+WRITE TMP1
+// set new stack pointer
+PUSH trivm_initial_stack_pointer  // TODO: if wasm module does not have memory (or it is unused), default stack pointer should be used
+WRITE SP
+// clear old stack in a safe way (will not corrupt new stack even if overlapping with old one)
+READ TMP1
+PUSH 0
+WRITE [POP] - 4
+READ TMP1
+PUSH 0
+WRITE [POP] - 8
+// setup stack boundaries if needed
+.begin
+trivm_stack_boundary_low_set:
+PUSH trivm_stack_boundary_low
+WRITE SBL
+.end
+.begin
+trivm_stack_boundary_high_set:
+PUSH trivm_stack_boundary_high
+WRITE SBH
+.end
+// setup auxiliary memory base
+PUSH trivm_auxiliary_memory_base // TODO: if wasm module does not have memory, skip auxiliary memory base setup 
+WRITE AMB
+// setup auxiliary stack pointer
+.begin
+trivm_auxiliary_stack_pointer_set:
+PUSH trivm_auxiliary_stack_pointer
+WRITE ASP
+.end
+.begin
+trivm_auxiliary_stack_boundary_low_set:
+PUSH trivm_auxiliary_stack_boundary_low
+WRITE ASBL
+.end
+.begin
+trivm_auxiliary_stack_boundary_high_set:
+PUSH trivm_auxiliary_stack_boundary_high
+WRITE ASBH
+.end
+
+
+//...
+
+/*
+
+Memory organization:
+- exported globals are just after the registers (including non-mutable)
+- mutable globals are after exported globals
+- non-mutable globals are at the end of program memory
+- imported globals are read by call to host function index -1 and written by index -2
+- detected stack global is in ASP register
+
+*/

@@ -1,7 +1,7 @@
 
 #include <alloca.h>
 
-#include "../trivmlib/src/common.h"
+#include "../triwasmlib/src/common.h"
 
 #define STACK_POINTER_GUARD() \
     __attribute__((import_module("__trivm_magic_function__"))) \
@@ -12,13 +12,51 @@
 
 STACK_POINTER_GUARD();
 
-__attribute__((import_module("env")))
-__attribute__((import_name("bbbbbbb")))
-void bbbbbbb(void*, int*);
+const char *str = "1234";
 
-__attribute__((export_name("aaaaaaaa")))
-void aaaaaa()
+EXPORT(test)
+void startup()
 {
-    int x = 12;
-    bbbbbbb(alloca(1024), &x);
+    static const char* volatile x;
+    x = str;
 }
+
+
+EXPORT(some)
+void tttttt()
+{
+    static const char* volatile x;
+    x = str +2;
+}
+
+typedef int (*func)();
+
+EXPORT(test2)
+void aaaa(func f)
+{
+    static const char* volatile x;
+    x = str + f();
+}
+
+
+EXPORT(test4)
+func bbb()
+{
+    return (void*)0;
+}
+
+static int fx() { return 12; }
+
+EXPORT(test5)
+func test5()
+{
+    return fx;
+}
+
+
+EXPORT(test6)
+void test6(int* p)
+{
+    *p = 123;
+}
+

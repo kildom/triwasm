@@ -5,6 +5,12 @@
 #include "Utils.hh"
 
 
+enum UnresolvedExportKind {
+    UNRESOLVED_EXPORT_FORBIDDEN,
+    UNRESOLVED_EXPORT_IGNORE,
+    UNRESOLVED_EXPORT_BY_NAME,
+};
+
 struct VMConfig
 {
     struct {
@@ -19,11 +25,14 @@ struct VMConfig
     bool verboseAsm;
     bool importAllByName;
     std::map<std::string, u32> imports;
+    bool namedExports;
+    UnresolvedExportKind unresolvedExports;
+    std::map<std::string, u32> exports;
 };
 
-static const VMConfig vmConfig = {
+static VMConfig vmConfig = {
     .ext = {
-        .unwind = true,
+        .unwind = false,
         .i64 = true,
         .f64 = false,
         .f32 = false,
@@ -33,6 +42,9 @@ static const VMConfig vmConfig = {
     },
     .verboseAsm = true,
     .importAllByName = true,
+    .namedExports = true,
+    .unresolvedExports = UNRESOLVED_EXPORT_BY_NAME,
+    .exports = {{"test", 0}, {"some", 2}},
 };
 
 

@@ -93,6 +93,8 @@ void Generator::generate(WasmModule$ mod)
         auxStackPointer = detectAuxStackPointer(mod->auxStackDetector->block);
     }
 
+    generatePrologue();
+
     for (auto func: mod->functions) {
         generateFunction(func);
     }
@@ -103,12 +105,108 @@ void Generator::generate(WasmModule$ mod)
     for (auto data: mod->data)
         if (data->active && data->offset->kind != CONST_EXPR_GLOBAL_IMPORT)
             generateActiveData(data);
+    out << ".begin\n";
+    out << "active_data_end_marker:\n";
     out << ".word 0\n";
+    out << ".end\n";
 
     verbose << "\n\n// ========== Passive Data ========== //\n";
     for (auto data: mod->data)
         if (!data->active || data->offset->kind == CONST_EXPR_GLOBAL_IMPORT)
             generatePassiveData(data);
+}
+
+void Generator::generatePrologue()
+{
+    Array$$<WasmFunction$$> indexedExports = new$;
+    std::map<std::string, WasmFunction$$> namedExports;
+
+    for (auto func : mod->functions) {
+        if (func->moduleName != "__main"_S) {
+            continue;
+        }
+        for (auto name : func->exportNames) {
+            if (vmConfig.exports.count(name.str()) > 0) {
+                u32 index = vmConfig.exports[name.str()];
+                indexedExports->grow(index);
+                indexedExports[index] = func;
+            } else if (vmConfig.unresolvedExports == UNRESOLVED_EXPORT_FORBIDDEN) {
+                FATAL("Unresolved export %s", name.cStr());
+            } else if (vmConfig.unresolvedExports == UNRESOLVED_EXPORT_IGNORE) {
+                // do nothing
+            } else {
+                namedExports[name.str()] = func;
+            }
+        }
+    }
+
+    verbose << "// entry handler\n";
+    out << ".addr 0\n";
+    out << "BR_SHORT entry\n";
+
+    if (vmConfig.namedExports) {
+        verbose << "// exception handler\n";
+        out << ".addr 3\n";
+        out << "BR_SHORT exception\n";
+        verbose << "// named exports\n";
+        out << ".addr 6\n";
+        out << ".hword " << (2 + indexedExports->length()) << "\n";
+        ssize index = 0;
+        for (auto& item : namedExports) {
+            out << ".word named_export_name_" << index;
+            verbose << " // " << item.first;
+            out << "\n";
+            index++;
+        }
+        out << ".word 0\n";
+    } else {
+        verbose << "// exception handler\n";
+        out << ".addr 3\n";
+        out << "BR exception\n";
+    }
+
+    verbose << "// export table\n";
+    out << "export_table_count = " << (2 + indexedExports->length() + namedExports.size()) << "\n";
+    out << "export_table_begin:\n";
+    out << ".any startup, control, ";
+
+    for (ssize i = 0; i < indexedExports->length(); i++) {
+        if (indexedExports[i] == nullptr) {
+            out << "0, ";
+        } else {
+            out << indexedExports[i]->name.str() << ", ";
+        }
+    }
+
+    if (vmConfig.namedExports) {
+        for (auto& item : namedExports) {
+            out << item.second->name.str() << ", ";
+        }
+    }
+
+    out << "\nexport_table_end:\n";
+
+    FILE* f = fopen("../../lib/prologue.triasm", "r"); // TODO: better file handling
+    char buf[1024];
+    while (!feof(f)) {
+        int n = fread((void*)buf, 1, sizeof(buf) - 1, f);
+        if (n <= 0) break;
+        buf[n] = 0;
+        out << buf;
+    }
+    fclose(f);
+
+    out << "\n";
+    
+    if (vmConfig.namedExports) {
+        ssize index = 0;
+        for (auto& item : namedExports) {
+            out << "named_export_name_" << index << ":\n";
+            out << ".cstr \"" << item.first << "\"\n";
+            index++;
+        }
+    }
+
 }
 
 void Generator::generateFunction(WasmFunction$$ func)
@@ -148,8 +246,10 @@ void Generator::generateFunction(WasmFunction$$ func)
     case FUNCTION_ASSEMBLY:
         verbose << "\n\n// ========== Function " << func->name.cStr() << " [" << func->index << "] ========== //\n";
         verbose << "    // Assembly function\n";
+        out << ".begin\n";
         out << func->name.cStr() << ":\n";
         out << String$$(function->data).cStr() << "\n";
+        out << ".end\n";
         return;
     
     case FUNCTION_IMPORT:
@@ -194,6 +294,8 @@ void Generator::generateFunction(WasmFunction$$ func)
     }
     function->block->stackBase = -localOffset / 4;
 
+    out << ".begin\n";
+
     out << func->name.cStr() << ":\n";
 
     if (reserveBytes > 12) {
@@ -206,6 +308,8 @@ void Generator::generateFunction(WasmFunction$$ func)
     
     function->block->id = totalBlocks++;
     generateBlock(function->block);
+
+    out << ".end\n";
 }
 
 void Generator::generateBlock(WasmBlock$ block)
@@ -228,50 +332,74 @@ static inline void setName(const char* &name, const char* newName)
     }
 }
 
-void Generator::generateUnwind(u32 keep, u32 skip)
+void Generator::generateUnwind(u32 keep, u32 skip, bool withRet)
 {
     verbose << ind.cStr();
 
+    const char* instrName = withRet ? "UNWINDRET " : "UNWIND ";
+    const char* funcName = withRet ? "BR __triwasmlib_unwind_ret" : "CALL __triwasmlib_unwind";
+
     if (skip == 0) {
         verbose << "// UNWIND none";
-    } else if (vmConfig.ext.unwind) {
-        if (keep < 16 && skip < 16) {
-            s8 value = (keep << 4) | skip;
-            out << "UNWIND " << (s32)value;
-        } else if (keep < 256 && skip < 256) {
-            s16 value = (keep << 8) | skip;
-            out << "UNWIND " << (s32)value;
-        } else if (keep < 65536 && skip < 65536) {
-            u32 value = (keep << 16) | skip;
-            out << "UNWIND " << value;
-        } else {
-            out << "PUSH " << keep << "\n";
+        if (withRet) {
+            out << "\n";
             verbose << ind.cStr();
-            out << "PUSH " << skip << "\n";
-            verbose << ind.cStr();
-            out << "CALL __trivmlib_unwind";
+            out << "WRITE PC";
         }
-    } else if (keep < 16 && skip < 16) {
-        s8 value = (keep << 4) | skip;
-        out << "PUSH " << (s32)value;
+    } else if (keep == 0 && (skip == 1 || (skip == 2 && !withRet))) {
+        out << "READ TMP0";
+        if (skip == 2) {
+            out << "\n";
+            verbose << ind.cStr();
+            out << "READ TMP0";
+        }
+        if (withRet) {
+            out << "\n";
+            verbose << ind.cStr();
+            out << "WRITE PC";
+        }
+    } else if (keep == 1 && (skip == 1 || (skip == 2 && !withRet))) {
+        out << "WRITE [SP]";
+        if (skip == 2) {
+            out << "\n";
+            verbose << ind.cStr();
+            out << "WRITE [SP]";
+        }
+        if (withRet) {
+            out << "\n";
+            verbose << ind.cStr();
+            out << "WRITE PC";
+        }
+    } else if (keep == 2 && skip == 2 && !withRet) {
+        out << "WRITE [SP] + 4\n";
         verbose << ind.cStr();
-        out << "CALL __trivmlib_unwind8";
-    } else if (keep < 256 && skip < 256) {
-        s16 value = (keep << 8) | skip;
-        out << "PUSH " << (s32)value;
-        verbose << ind.cStr();
-        out << "CALL __trivmlib_unwind16";
-    } else if (keep < 65536 && skip < 65536) {
-        u32 value = (keep << 16) | skip;
-        out << "PUSH " << value;
-        verbose << ind.cStr();
-        out << "CALL __trivmlib_unwind32";
+        out << "WRITE [SP] + 4";
+    } else if (keep < 16 && skip < 0x10000000) {
+        s32 value;
+        u32 bits;
+        if (skip < 0x10) {
+            value = (s8)((skip << 4) | keep);
+            bits = 8;
+        } else if (skip < 0x1000) {
+            value = (s16)((skip << 4) | keep);
+            bits = 16;
+        } else {
+            value = (skip << 4) | keep;
+            bits = 32;
+        }
+        if (vmConfig.ext.unwind) {
+            out << instrName << value;
+        } else {
+            out << "PUSH " << value << "\n";
+            verbose << ind.cStr();
+            out << funcName << bits;
+        }
     } else {
         out << "PUSH " << keep << "\n";
         verbose << ind.cStr();
         out << "PUSH " << skip << "\n";
         verbose << ind.cStr();
-        out << "CALL __trivmlib_unwind";
+        out << funcName;
     }
     debug << "        // keep " << keep << ", skip " << skip;
     out << "\n";
@@ -367,15 +495,16 @@ void Generator::generateInstr(WasmInstr$ instr)
                 auto index = totalBlocks++;
                 out << "BR" << (negated ? "T" : "F") << " skip" << index << "\n";
                 if (isReturn) {
-                    if (block->stackBase != -1 || keep != 0 || skip != 1) {
+                    if (block->stackBase == -1 && keep == 0 && skip == 1) {
+                        verbose << ind.cStr();
+                        out << "WRITE PC\n";
+                    } else {
                         verbose << ind.cStr();
                         out << "READ [SP] + " << 4 * stackSize << " + " << funcData->returnAddressOffset << "\n";
-                        generateUnwind(keep + 1, skip);
+                        generateUnwind(keep + 1, skip, true);
                     }
-                    verbose << ind.cStr();
-                    out << "WRITE PC\n";
                 } else {
-                    generateUnwind(keep, skip);
+                    generateUnwind(keep, skip, false);
                     verbose << ind.cStr();
                     out << "BR block" << block->id << label << "\n";
                 }
@@ -384,18 +513,27 @@ void Generator::generateInstr(WasmInstr$ instr)
             }
         } else {
             if (isReturn) {
-                if (block->stackBase != -1 || keep != 0 || skip != 1) {
-                    if (stackSize != 0 || funcData->returnAddressOffset != 0) {
+                if (block->stackBase == -2 && keep == 1 && skip == 2) {
+                    // no need to unwind: just put result where paremeter was
+                    verbose << ind.cStr();
+                    out << "WRITE [SP] + 4\n";
+                    verbose << ind.cStr();
+                    out << "WRITE PC\n";
+                } else if (block->stackBase == -1 && keep == 0 && skip == 1) {
+                    // noting to unwind: returning from top level of void(void) function
+                    verbose << ind.cStr();
+                    out << "WRITE PC\n";
+                } else {
+                    if (stackSize == 0 && funcData->returnAddressOffset == 0) {
+                        skip--;
+                    } else {
                         verbose << ind.cStr();
                         out << "READ [SP] + " << 4 * stackSize << " + " << funcData->returnAddressOffset << "\n";
-                        keep++;
                     }
-                    generateUnwind(keep, skip);
+                    generateUnwind(keep + 1, skip, true);
                 }
-                verbose << ind.cStr();
-                out << "WRITE PC\n";
             } else {
-                generateUnwind(keep, skip);
+                generateUnwind(keep, skip, false);
                 if (!skipBrInstr) {
                     verbose << ind.cStr();
                     out << "BR block" << block->id << label << "\n";
@@ -489,15 +627,16 @@ void Generator::generateInstr(WasmInstr$ instr)
                 out << ind.cStr() << "skip" << blockIndex << "_" << item.index << ":\n";
 
             if (item.isReturn) {
-                if (item.block->stackBase != -1 || item.keep != 0 || item.skip != 1) {
+                if (item.block->stackBase == -1 && item.keep == 0 && item.skip == 1) {
+                    verbose << ind.cStr();
+                    out << "WRITE PC\n";
+                } else {
                     out << ind.cStr() << "READ [SP] + " << 4 * stackSize << " + " << funcData->returnAddressOffset << "\n";
-                    generateUnwind(item.keep + 1, item.skip);
+                    generateUnwind(item.keep + 1, item.skip, true);
                 }
-                verbose << ind.cStr();
-                out << "WRITE PC\n";
             } else {
                 if (item.skip > 0)
-                    generateUnwind(item.keep, item.skip);
+                    generateUnwind(item.keep, item.skip, false);
                 verbose << ind.cStr();
                 out << "BR block" << item.block->id << item.labelPostfix << "\n";
             }
@@ -575,9 +714,9 @@ void Generator::generateInstr(WasmInstr$ instr)
         out << "PUSH table" << table->index << "\n";
         verbose << ind.cStr();
         if (vmConfig.ext.nativeCallbacks) {
-            out << "CALL __trivmlib_call_indirect_with_native\n";
+            out << "CALL __triwasmlib_call_indirect_with_native\n";
         } else {
-            out << "CALL __trivmlib_call_indirect\n";
+            out << "CALL __triwasmlib_call_indirect\n";
         }
         stackSize--;
         stackSize -= wasmTypesWords(type->param);
@@ -1086,6 +1225,7 @@ void Generator::generateActiveData(WasmData$ data)
     }
 
     verbose << "// Fixed active data index " << data->index << "\n";
+    out << ".ref active_data_initializer\n";
     out << ".word " << offset << " + auxillary_memory_base\n";
     out << ".word " << data->bytes->length() << "\n";
 
@@ -1100,8 +1240,9 @@ void Generator::generatePassiveData(WasmData$ data)
     } else {
         verbose << "// Passive data index " << data->index << "\n";
     }
+    out << ".begin\n";
     out << "data" << data->index << ":\n";
     out << ".word " << data->bytes->length() << "\n";
-
     generateBytes(out, data->bytes);
+    out << ".end\n";
 }

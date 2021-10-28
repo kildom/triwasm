@@ -21,15 +21,16 @@ int main(int argc, char *argv[]) {
     TRACE();
 
     auto parser = WasmParser$$::create();
-    auto trivmlib = parser->parse(FileInputStream$$::create("../../lib/trivmlib.wasm").cast<WasmInputStream>(), false, "__trivmlib"_S);
-    auto mod = parser->parse(FileInputStream$$::create("../../test/libbzip2-dec.wasm").cast<WasmInputStream>(), true, "__main"_S);
+    auto triwasmlib = parser->parse(FileInputStream$$::create("../../lib/triwasmlib.wasm").cast<WasmInputStream>(), false, "__triwasmlib"_S);
+    //auto mod = parser->parse(FileInputStream$$::create("../../test/libbzip2-dec.wasm").cast<WasmInputStream>(), true, "__main"_S);
+    auto mod = parser->parse(FileInputStream$$::create("../../test/test.wasm").cast<WasmInputStream>(), true, "__main"_S);
 
-    dumpModuleToFile("trivmlib.txt", trivmlib, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY);
+    dumpModuleToFile("triwasmlib.txt", triwasmlib, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY);
     dumpModuleToFile("mainmod.txt", mod, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY);
 
     auto merger = Merger$::create();
     merger->setMain(mod);
-    merger->merge(trivmlib);
+    merger->merge(triwasmlib);
 
     dumpModuleToFile("merged.txt", mod, DUMP_TRI_ASSEMBLY | DUMP_WASM_ASSEMBLY);
 

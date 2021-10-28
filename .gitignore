@@ -1,8 +1,10 @@
 /build/*/debug
 /build/*/release
-/trivmlib/build/tools
-/trivmlib/build/obj
+/triwasmlib/build/tools
+/triwasmlib/build/obj
 /scripts/temp
 /scripts/output
 package-lock.json
 node_modules
+/.vscode/settings.json
+/lib/triwasmlib.wasm

@@ -80,23 +80,23 @@ SRC=../src/i64.c \
 	../Berkeley-SoftFloat/f64_to_f32.c \
 	../Berkeley-SoftFloat/f32_to_f64.c \
 
-all: ../../lib/trivmlib.wasm
+all: ../../lib/triwasmlib.wasm
 
-wat: all obj/trivmlib.wat
+wat: all obj/triwasmlib.wat
 
-obj/trivmlib.wat: obj/trivmlib.wasm
+obj/triwasmlib.wat: obj/triwasmlib.wasm
 	$(WASM_DIS) -o $@ $<
 
 cleanobj:
 	rm -Rf obj
 
 clean: cleanobj
-	rm ../../lib/trivmlib.wasm
+	rm ../../lib/triwasmlib.wasm
 
-../../lib/trivmlib.wasm: obj/trivmlib.wasm
-	cp obj/trivmlib.wasm ../../lib/trivmlib.wasm
+../../lib/triwasmlib.wasm: obj/triwasmlib.wasm
+	cp obj/triwasmlib.wasm ../../lib/triwasmlib.wasm
 
-obj/trivmlib.wasm: $(SRC) ../src/*.h ../Berkeley-SoftFloat/include/*.h ../Berkeley-SoftFloat/$(SF_SPEC)/*.h Makefile
+obj/triwasmlib.wasm: $(SRC) ../src/*.h ../Berkeley-SoftFloat/include/*.h ../Berkeley-SoftFloat/$(SF_SPEC)/*.h Makefile
 	mkdir -p obj
 	# TODO: -mtail-call 
 	$(CLANG) $(CFLAGS) -o $@-no-opt $(SRC)

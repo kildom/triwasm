@@ -60,8 +60,8 @@ uint64_t __trivm_buildin__get_temp64();
 #define __trivm_buildin__get_inl_param2() (*(volatile uint32_t*)0xFFFFFFF2)
 #define __trivm_buildin__get_inl_param3() (*(volatile uint32_t*)0xFFFFFFF3)
 
-EXPORT(__trivmlib__sub64)
-uint64_t __trivmlib__sub64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
+EXPORT(__triwasmlib__sub64)
+uint64_t __triwasmlib__sub64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
 {
     uint32_t carry = 0;
     if (al < bl) {
@@ -72,8 +72,8 @@ uint64_t __trivmlib__sub64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     return __trivm_buildin__make64(ah, al);
 }
 
-EXPORT(__trivmlib__add64)
-uint64_t __trivmlib__add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
+EXPORT(__triwasmlib__add64)
+uint64_t __triwasmlib__add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
 {
     uint32_t carry = 0;
     if (al > ~bl) {
@@ -84,8 +84,8 @@ uint64_t __trivmlib__add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     return __trivm_buildin__make64(ah, al);
 }
 
-EXPORT(__trivmlib__f32_min)
-float __trivmlib__f32_min(float a, float b)
+EXPORT(__triwasmlib__f32_min)
+float __triwasmlib__f32_min(float a, float b)
 {
     if (__trivm_buildin__ext_f32()) {
         // Call of __trivm_buildin__ext_f32 function should be replaced by const,
@@ -114,16 +114,16 @@ uint64_t mul32_64(uint32_t a, uint32_t b) {
     return r;
 }
 
-EXPORT(__trivmlib__mul64)
-uint64_t __trivmlib__mul64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al) {
+EXPORT(__triwasmlib__mul64)
+uint64_t __triwasmlib__mul64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al) {
     uint64_t r = mul32_64(al, bl);
     r += mul32_64(al, bh) << 32;
     r += mul32_64(ah, bl) << 32;
     return r;
 }
 
-EXPORT(__trivmlib__udiv64)
-uint64_t __trivmlib__udiv64(uint64_t b, uint64_t a)
+EXPORT(__triwasmlib__udiv64)
+uint64_t __triwasmlib__udiv64(uint64_t b, uint64_t a)
 {
     uint32_t zeros = __builtin_clzll(b);
     b <<= zeros;
@@ -141,15 +141,15 @@ uint64_t __trivmlib__udiv64(uint64_t b, uint64_t a)
     return result;
 }
 
-EXPORT(__trivmlib__umod64)
-uint64_t __trivmlib__umod64(uint64_t b, uint64_t a)
+EXPORT(__triwasmlib__umod64)
+uint64_t __triwasmlib__umod64(uint64_t b, uint64_t a)
 {
-    __trivmlib__udiv64(b, a);
+    __triwasmlib__udiv64(b, a);
     return __trivm_buildin__get_temp64();
 }
 
-EXPORT(__trivmlib__clz)
-uint32_t __trivmlib__clz(uint32_t a)
+EXPORT(__triwasmlib__clz)
+uint32_t __triwasmlib__clz(uint32_t a)
 {
     uint32_t result = 0;
     if (a == 0)
@@ -161,8 +161,8 @@ uint32_t __trivmlib__clz(uint32_t a)
     return result;
 }
 
-EXPORT(__trivmlib__clz_ver2)
-uint32_t __trivmlib__clz_ver2(uint32_t a)
+EXPORT(__triwasmlib__clz_ver2)
+uint32_t __triwasmlib__clz_ver2(uint32_t a)
 {
     uint32_t mask = 0xFFFF0000;
     uint32_t len = 16;
@@ -180,20 +180,20 @@ uint32_t __trivmlib__clz_ver2(uint32_t a)
     return pos;
 }
 
-EXPORT(__trivmlib__clz64)
-uint64_t __trivmlib__clz64(uint32_t hi, uint32_t lo)
+EXPORT(__triwasmlib__clz64)
+uint64_t __triwasmlib__clz64(uint32_t hi, uint32_t lo)
 {
     return __trivm_buildin__make64(0, hi != 0 ? __builtin_clz(hi) : __builtin_clz(lo) + 32);
 }
 
-EXPORT(__trivmlib__clz64_32)
-uint32_t __trivmlib__clz64_32(uint32_t hi, uint32_t lo)
+EXPORT(__triwasmlib__clz64_32)
+uint32_t __triwasmlib__clz64_32(uint32_t hi, uint32_t lo)
 {
     return hi != 0 ? __builtin_clz(hi) : __builtin_clz(lo) + 32;
 }
 
-EXPORT(__trivmlib__neg64)
-uint64_t __trivmlib__neg64(uint32_t hi, uint32_t lo)
+EXPORT(__triwasmlib__neg64)
+uint64_t __triwasmlib__neg64(uint32_t hi, uint32_t lo)
 {
     uint32_t carry = 0;
     if (0 < lo) {
@@ -204,24 +204,24 @@ uint64_t __trivmlib__neg64(uint32_t hi, uint32_t lo)
     return __trivm_buildin__make64(hi, lo);
 }
 
-EXPORT(__trivmlib__ult64)
-uint32_t __trivmlib__ult64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
+EXPORT(__triwasmlib__ult64)
+uint32_t __triwasmlib__ult64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
 {
     if (ah == bh)
         return al < bl;
     return ah < bh;
 }
 
-EXPORT(__trivmlib__ugt64)
-uint32_t __trivmlib__ugt64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
+EXPORT(__triwasmlib__ugt64)
+uint32_t __triwasmlib__ugt64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
 {
     if (ah == bh)
         return al > bl;
     return ah > bh;
 }
 
-EXPORT(__trivmlib__shl64_32)
-uint64_t __trivmlib__shl64_32(uint32_t shift, uint32_t ah, uint32_t al)
+EXPORT(__triwasmlib__shl64_32)
+uint64_t __triwasmlib__shl64_32(uint32_t shift, uint32_t ah, uint32_t al)
 {
     shift &= 0x3F;
     if (shift == 0) {
@@ -236,8 +236,8 @@ uint64_t __trivmlib__shl64_32(uint32_t shift, uint32_t ah, uint32_t al)
     }
 }
 
-EXPORT(__trivmlib__sshr64_32)
-uint64_t __trivmlib__sshr64_32(uint32_t shift, uint32_t ah, uint32_t al)
+EXPORT(__triwasmlib__sshr64_32)
+uint64_t __triwasmlib__sshr64_32(uint32_t shift, uint32_t ah, uint32_t al)
 {
     shift &= 0x3F;
     if (shift == 0) {
@@ -253,8 +253,8 @@ uint64_t __trivmlib__sshr64_32(uint32_t shift, uint32_t ah, uint32_t al)
     }
 }
 
-EXPORT(__trivmlib__ushr64_32)
-uint64_t __trivmlib__ushr64_32(uint32_t shift, uint32_t ah, uint32_t al)
+EXPORT(__triwasmlib__ushr64_32)
+uint64_t __triwasmlib__ushr64_32(uint32_t shift, uint32_t ah, uint32_t al)
 {
     shift &= 0x3F;
     if (shift == 0) {
@@ -270,10 +270,10 @@ uint64_t __trivmlib__ushr64_32(uint32_t shift, uint32_t ah, uint32_t al)
 }
 
 
-EXPORT(__trivmlib__shl64)
-uint64_t __trivmlib__shl64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
+EXPORT(__triwasmlib__shl64)
+uint64_t __triwasmlib__shl64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
 {
-    return __trivmlib__shl64_32(bl, ah, al);
+    return __triwasmlib__shl64_32(bl, ah, al);
 }
 
 
