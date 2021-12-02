@@ -2,6 +2,8 @@
 
 # triWasm
 
+[![Tests](https://github.com/kildom/triwasm/actions/workflows/main.yml/badge.svg)](https://github.com/kildom/triwasm/actions/workflows/main.yml)
+
 <br clear="both" />
 
 WebAssembly compiler for [triVM](https://github.com/kildom/uvm) - an embeddable, portable and minimalistic virtual machine.
