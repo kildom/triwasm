@@ -2,7 +2,7 @@
 CPP=g++
 TARGET = unitTests.exe
 OUTDIR = build
-CXXFLAGS = -Wall -O0 -g -DDEBUG=1 -pthread -std=c++14
+CXXFLAGS = -Wall -O0 -g -DDEBUG=1 -pthread -std=c++14 -Wno-unused-variable -m32
 CXXFLAGS += -I../gtest/googletest
 CXXFLAGS += -I../gtest/googletest/include
 CXXFLAGS += -I../gtest/googlemock
@@ -12,10 +12,14 @@ CXXFLAGS += -I../../cppUtils
 OBJ := $(patsubst ./%.cpp,$(OUTDIR)/obj/%.o,$(wildcard ./*.cpp))
 OBJ += $(patsubst ./cppUtils/%.cpp,$(OUTDIR)/obj/cppUtils/%.o,$(wildcard ./cppUtils/*.cpp))
 
+ifneq ($(TEST_FILTER),)
+  RUN_FLAGS := --gtest_filter=$(TEST_FILTER)
+endif
+
 all: $(OUTDIR)/$(TARGET)
 
 run: $(OUTDIR)/$(TARGET)
-	$(OUTDIR)/$(TARGET)
+	$(OUTDIR)/$(TARGET) $(RUN_FLAGS)
 
 clean:
 	rm -Rf $(OUTDIR)

@@ -8,6 +8,21 @@
 #undef FATAL
 #define FATAL(text, ...) testFatal(text)
 
+#if 0
+#define DBG(text, ...) printf(text "\n", ##__VA_ARGS__)
+#define HEAD(text, ...) printf("\x1b[34m" text "\x1b[0m\n", ##__VA_ARGS__)
+#define WARNING(text, ...) printf("\x1b[33m" text "\x1b[0m\n", ##__VA_ARGS__)
+#define ERROR(text, ...) printf("\x1b[31m" text "\x1b[0m\n", ##__VA_ARGS__)
+#else
+#define DBG(text, ...) do { } while (0)
+#define HEAD(text, ...) do { } while (0)
+#define WARNING(text, ...) do { } while (0)
+#define ERROR(text, ...) do { } while (0)
+#endif
+
+#define DBG_NEW test_new
+#define DBG_DELETE test_delete
+
 static const char* expectFatal = NULL;
 
 struct ExpectFatalHere {
@@ -21,20 +36,46 @@ static void testFatal(const char* text) {
     std::string fatalText(text);
     if (expectFatal) {
         std::string expectedText(expectFatal);
+        if (fatalText == expectedText) {
+            WARNING("EXPECTED FATAL: %s", text);
+        } else {
+            ERROR("DIFFERENT FATAL: %s", text);
+        }
         EXPECT_EQ(fatalText, expectedText);
         throw ExpectedFatal();
     } else {
         std::string expectedText;
+        ERROR("UNEXPECTED FATAL: %s", text);
         EXPECT_EQ(fatalText, expectedText);
         throw UnexpectedFatal();
     }
 }
+
+std::set<uintptr_t> allocated;
+
+void* test_new(size_t size) {
+    void* ptr = malloc(size);
+    allocated.insert((uintptr_t)ptr);
+    DBG("    malloc %p,   size %d", ptr, (int)size);
+    return ptr;
+}
+
+void test_delete(void* ptr) {
+    DBG("    free %p", ptr);
+    if (allocated.find((uintptr_t)ptr) == allocated.end()) {
+        FATAL("Deleting invalid pointer.");
+    }
+    allocated.erase((uintptr_t)ptr);
+    return free(ptr);
+}
+
 
 #include "dollar.hh"
 
 DOLLAR_STRUCT(TestSimple);
 DOLLAR_STRUCT(TestObject);
 DOLLAR_STRUCT(TestObject2);
+DOLLAR_STRUCT(NoDefConstr);
 
 struct TestObject {
     int value;
@@ -50,47 +91,274 @@ struct TestObject2 {
     TestObject2() : x(-2) { }
 };
 
+struct NoDefConstr {
+    int value;
+    NoDefConstr(int x) : value(x) { }
+};
+
 #define EXPECT_FATAL_BEGIN(text) try { ExpectFatalHere _ex_3434_(text);
 #define EXPECT_FATAL_END EXPECT_TRUE(false) << "Expected fatal error did not happen!"; } catch (ExpectedFatal) {};
 
-TEST(dollar, constructor_default)
-{
-    TestObject$$ a$$;
-    TestObject$ a$;
-    TestObject$N a$N;
+class dollar : public ::testing::Test {
+protected:
+    void SetUp() override {
+        allocated.empty();
+    }
+    void TearDown() override {
+        for (auto ptr : allocated) {
+            DBG("Not deleted pointer %p", (void*)ptr);
+        }
+        EXPECT_EQ(allocated.size(), 0u) << "Memory leak detected!";
+    }
+};
 
-    EXPECT_EQ(a$$._ptr, nullptr);
-    EXPECT_EQ(a$._ptr, nullptr);
-    EXPECT_EQ(a$N._ptr, nullptr);
+TEST_F(dollar, constructor_default)
+{
+    TestObject$$ a;
+    TestObject$ b;
+    TestObject$N c;
+
+    EXPECT_EQ(a._ptr, nullptr);
+    EXPECT_EQ(b._ptr, nullptr);
+    EXPECT_EQ(c._ptr, nullptr);
 }
 
-TEST(dollar, null_access)
+TEST_F(dollar, constructor_copy)
 {
-    TestObject$$ a$$;
-    a$$->value = 123;
+    TestObject$$ init$$ = TestObject();
+    TestObject$ init$ = TestObject();
+    TestObject$N init$N = TestObject();
 
-    EXPECT_FATAL_BEGIN("Dereferencing uninitialized nonnull dollar reference.") {
-        TestObject$ a$;
-        a$->value = 123;
+#define TC(suffix) \
+    { \
+        TestObject$$ uninit; \
+        HEAD("Copy constructor of " #suffix " from uninitialized $$"); \
+        TestObject##suffix a = uninit; \
+        EXPECT_EQ(a._ptr, uninit._ptr); \
+        EXPECT_NE(a._ptr, nullptr); \
+        EXPECT_EQ(a._ptr->counter, 2u); \
+        HEAD("End of scope"); \
+    } \
+    { \
+        TestObject$ uninit; \
+        HEAD("Copy constructor of " #suffix " from uninitialized $"); \
+        EXPECT_FATAL_BEGIN("Accessing uninitialized nonnull reference.") { \
+            TestObject##suffix a = uninit; \
+        } EXPECT_FATAL_END; \
+        HEAD("End of scope"); \
+    } \
+    TC2(suffix, $$); \
+    TC2(suffix, $); \
+    TC2(suffix, $N);
+
+#define TC2(suffix, suffix2) \
+    { \
+        HEAD("Copy constructor of " #suffix " from initialized " #suffix2); \
+        TestObject##suffix a = init##suffix2; \
+        EXPECT_EQ(a._ptr, init##suffix2._ptr); \
+        EXPECT_EQ(a._ptr->counter, 2u); \
+        HEAD("End of scope"); \
+    } \
+
+    TC($$);
+    TC($);
+    TC($N);
+
+#undef TC
+#undef TC2
+
+    {
+        TestObject$N null;
+        HEAD("Copy constructor of $$ from null");
+        EXPECT_FATAL_BEGIN("Assigning null to instance reference.") {
+            TestObject$$ a = null;
+        } EXPECT_FATAL_END;
+        HEAD("End of scope");
+    }
+
+    {
+        TestObject$N null;
+        HEAD("Copy constructor of $ from null");
+        EXPECT_FATAL_BEGIN("Assigning null to nonnull reference.") {
+            TestObject$ a = null;
+        } EXPECT_FATAL_END;
+        HEAD("End of scope");
+    }
+
+    {
+        TestObject$N null;
+        HEAD("Copy constructor of $N from null");
+        TestObject$N a = null;
+        EXPECT_EQ(a._ptr, nullptr);
+        HEAD("End of scope");
+    }
+
+    HEAD("End of test");
+}
+
+void *temporary;
+
+TestObject$$ getTemporary$$() {
+    TestObject$$ a = TestObject();
+    temporary = a._ptr;
+    return a;
+}
+
+TestObject$ getTemporary$() {
+    TestObject$ a = TestObject();
+    temporary = a._ptr;
+    return a;
+}
+
+TestObject$N getTemporary$N() {
+    TestObject$N a = TestObject();
+    temporary = a._ptr;
+    return a;
+}
+
+TestObject$$ getUninit$$() {
+    return TestObject$$();
+}
+
+TestObject$ getUninit$() {
+    return TestObject$();
+}
+
+TestObject$N getUninit$N() {
+    return TestObject$N();
+}
+
+TEST_F(dollar, constructor_move)
+{
+    {
+        HEAD("Move constructor of $$ from uninitialized $$");
+        TestObject$$ a(std::move(getUninit$$()));
+        EXPECT_EQ(a._ptr, nullptr);
+        HEAD("End of scope");
+    }
+
+    {
+        HEAD("Move constructor of $$ from uninitialized $");
+        EXPECT_FATAL_BEGIN("Accessing uninitialized nonnull reference.") {
+            TestObject$$ a(std::move(getUninit$()));
+        } EXPECT_FATAL_END;
+        HEAD("End of scope");
+    }
+
+    {
+        HEAD("Move constructor of $$ from null $N");
+        EXPECT_FATAL_BEGIN("Constructing instance reference from null reference.") {
+            TestObject$$ a(std::move(getUninit$N()));
+        } EXPECT_FATAL_END;
+        HEAD("End of scope");
+    }
+
+    {
+        HEAD("Move constructor of $ from uninitialized $$");
+        TestObject$ a(std::move(getUninit$$()));
+        EXPECT_NE(a._ptr, nullptr);
+        EXPECT_EQ(a._ptr->counter, 1u);
+        HEAD("End of scope");
+    }
+
+    {
+        HEAD("Move constructor of $ from uninitialized $");
+        TestObject$ a(std::move(getUninit$()));
+        EXPECT_EQ(a._ptr, nullptr);
+        HEAD("End of scope");
+    }
+
+    {
+        HEAD("Move constructor of $ from null $N");
+        EXPECT_FATAL_BEGIN("Constructing nonnull reference from null reference.") {
+            TestObject$ a(std::move(getUninit$N()));
+        } EXPECT_FATAL_END;
+        HEAD("End of scope");
+    }
+
+    {
+        HEAD("Move constructor of $N from uninitialized $$");
+        TestObject$N a(std::move(getUninit$$()));
+        EXPECT_NE(a._ptr, nullptr);
+        EXPECT_EQ(a._ptr->counter, 1u);
+        HEAD("End of scope");
+    }
+
+    {
+        HEAD("Move constructor of $N from uninitialized $");
+        EXPECT_FATAL_BEGIN("Accessing uninitialized nonnull reference.") {
+            TestObject$N a(std::move(getUninit$()));
+        } EXPECT_FATAL_END;
+        HEAD("End of scope");
+    }
+
+    {
+        HEAD("Move constructor of $N from null $N");
+        TestObject$N a(std::move(getUninit$N()));
+        EXPECT_EQ(a._ptr, nullptr);
+        HEAD("End of scope");
+    }
+
+#define TC2(suffix, suffix2) \
+    { \
+        HEAD("Move constructor of " #suffix " from initialized " #suffix2); \
+        TestObject##suffix a(std::move(getTemporary##suffix2())); \
+        EXPECT_EQ((void*)a._ptr, temporary); \
+        EXPECT_EQ(a._ptr->counter, 1u); \
+        HEAD("End of scope"); \
+    } \
+
+#define TC(suffix) \
+    TC2(suffix, $$); \
+    TC2(suffix, $); \
+    TC2(suffix, $N); \
+
+    TC($$);
+    TC($);
+    TC($N);
+
+    HEAD("End of test");
+}
+
+TEST_F(dollar, null_access)
+{
+    TestObject$$ a;
+    a->value = 123;
+    TestObject$$ b;
+    (*b).value = 123;
+
+    EXPECT_FATAL_BEGIN("Dereferencing uninitialized nonnull reference.") {
+        TestObject$ c;
+        c->value = 123;
     } EXPECT_FATAL_END;
 
-    EXPECT_FATAL_BEGIN("Dereferencing uninitialized nonnull dollar reference.") {
-        TestObject$ a$;
-        (*a$).value = 123;
+    EXPECT_FATAL_BEGIN("Dereferencing uninitialized nonnull reference.") {
+        TestObject$ c;
+        (*c).value = 123;
     } EXPECT_FATAL_END;
 
-    EXPECT_FATAL_BEGIN("Dereferencing null nullable dollar reference.") {
-        TestObject$N a$N;
-        a$N->value = 123;
+    EXPECT_FATAL_BEGIN("Dereferencing null reference.") {
+        TestObject$N c;
+        c->value = 123;
     } EXPECT_FATAL_END;
 
-    EXPECT_FATAL_BEGIN("Dereferencing null nullable dollar reference.") {
-        TestObject$N a$N;
-        (*a$N).value = 123;
+    EXPECT_FATAL_BEGIN("Dereferencing null reference.") {
+        TestObject$N c;
+        (*c).value = 123;
+    } EXPECT_FATAL_END;
+
+    EXPECT_FATAL_BEGIN("Default constructible class needed for instance reference implicit initialization.") {
+        NoDefConstr$$ c;
+        c->value = 123;
+    } EXPECT_FATAL_END;
+
+    EXPECT_FATAL_BEGIN("Default constructible class needed for instance reference implicit initialization.") {
+        NoDefConstr$$ c;
+        (*c).value = 123;
     } EXPECT_FATAL_END;
 }
 
-TEST(dollar, operator_equal_null)
+TEST_F(dollar, operator_equal_null)
 {
     TestObject$N a;
     EXPECT_TRUE(a == nullptr);
@@ -104,7 +372,7 @@ TEST(dollar, operator_equal_null)
     EXPECT_TRUE(nullptr != a);
 }
 
-TEST(dollar, operator_equal)
+TEST_F(dollar, operator_equal)
 {
     TestObject$$ obj1 = TestObject();
     TestObject$$ obj2 = TestObject();
@@ -125,9 +393,41 @@ TEST(dollar, operator_equal)
         EXPECT_FALSE(d != e);
     }
 
+    {
+        TestObject$ a;
+        TestObject$ b;
+        EXPECT_TRUE(a != b);
+        EXPECT_FALSE(a == b);
+        b = obj1;
+        EXPECT_TRUE(a != b);
+        EXPECT_FALSE(a == b);
+        a = obj2;
+        EXPECT_TRUE(a != b);
+        EXPECT_FALSE(a == b);
+        b = obj2;
+        EXPECT_TRUE(a == b);
+        EXPECT_FALSE(a != b);
+    }
+
+    {
+        TestObject$N a;
+        TestObject$N b;
+        EXPECT_TRUE(a == b);
+        EXPECT_FALSE(a != b);
+        b = obj1;
+        EXPECT_TRUE(a != b);
+        EXPECT_FALSE(a == b);
+        a = obj2;
+        EXPECT_TRUE(a != b);
+        EXPECT_FALSE(a == b);
+        b = obj2;
+        EXPECT_TRUE(a == b);
+        EXPECT_FALSE(a != b);
+    }
+
 }
 
-TEST(dollar, constructorDefault2) {
+TEST_F(dollar, constructorDefault2) {
 
     TestObject$$ a$$;
     TestObject$ a$;
@@ -210,8 +510,8 @@ class Arr {
     }
 };
 
-TEST(dollar, any) {
-
+TEST_F(dollar, any) {
+/*
     Arr arr;
 
     auto e = arr[12];
@@ -236,7 +536,7 @@ TEST(dollar, any) {
     SHOW(78 |R| 12);
     SHOW(78 |R|| 12);
     SHOW(78 ||R| 12);
-    SHOW(78 ||R|| 12);
+    SHOW(78 ||R|| 12);*/
 
     /*
     auto view = arr[RR|| 12];
