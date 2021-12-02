@@ -2,7 +2,7 @@
 CPP=g++
 TARGET = unitTests.exe
 OUTDIR = build
-CXXFLAGS = -Wall -O0 -g -DDEBUG=1 -pthread -std=c++14 -Wno-unused-variable -m32
+CXXFLAGS = -Wall -O0 -g -DDEBUG=1 -pthread -std=c++14 -Wno-unused-variable
 CXXFLAGS += -I../gtest/googletest
 CXXFLAGS += -I../gtest/googletest/include
 CXXFLAGS += -I../gtest/googlemock
