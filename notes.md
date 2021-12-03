@@ -123,6 +123,15 @@ Buildins
   * i64 emulation: `__uvmlibbuildin__add64`, `__uvmlibbuildin__udiv64`, ...
   * floating point emulation
 
+Memory map
+----------
+
+| General areas | Detailed | 
+|-----|-----|
+| Registers |
+| Exported globals |
+| ... TODO ... |
+
 uVM instructions
 ----------------
 
