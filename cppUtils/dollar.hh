@@ -99,7 +99,7 @@ struct _dollarDefaultCreate<T, false>
 {
     typedef _$_Inner<T, std::has_virtual_destructor<T>::value> Inner;
     static Inner* create() {
-        FATAL("Default constructible class needed for instance reference implicit initialization.");
+        FATAL("Default constructible class needed for reference implicit initialization.");
         return nullptr;
     }
 };
@@ -113,6 +113,10 @@ struct _dollarDefaultCreate<T, true>
     }
 };
 
+class _$_new_t { };
+
+static _$_new_t new$;
+
 template<typename T, DollarRefType refType>
 class $ {
 public:
@@ -120,8 +124,13 @@ public:
     typedef _$_Inner<T, std::has_virtual_destructor<T>::value> Inner;
     static const DollarRefType REF_TYPE = refType;
     mutable Inner *_ptr;
+
     $() : _ptr(nullptr) {
         DBG("$ ##constr(): %p->%p", this, _ptr);
+    }
+
+    $(_$_new_t) : _ptr(_dollarDefaultCreate<T>::create()) {
+        DBG("$ ##constr(new$): %p->%p", this, _ptr);
     }
 
     template<DollarRefType refType2>
@@ -183,6 +192,11 @@ public:
         DBG("$ create %p->%p", this, _ptr);
     }
 
+    $(T&& a) : _ptr(new Inner(std::move(a))) {
+        DBG("$ ##constr(const T &) %p->%p", this, _ptr);
+        DBG("$ create %p->%p", this, _ptr);
+    }
+
     template<class T2, typename std::enable_if<std::is_same<T2, Inner>{}, bool>::type = true>
     $(T2* a) : _ptr(a) {
         DBG("$ ##constr(Inner *) %p->%p", this, _ptr);
@@ -202,6 +216,16 @@ public:
     ~$() {
         DBG("$ ##destr %p->%p", this, _ptr);
         unref();
+    }
+
+    $& operator=(_$_new_t) {
+        DBG("$ ##assign(new$) %p->%p", this, _ptr);
+        if (_ptr != nullptr && refType == DOLLAR_INSTANCE) {
+            FATAL("Overriding instance reference.");
+        }
+        unref();
+        _ptr = _dollarDefaultCreate<T>::create();
+        return *this;
     }
 
     $& operator=(typename _DollarRefTypeSelect<refType, _DollarDummyClass, _DollarDummyClass, nullptr_t>::type) {
@@ -251,6 +275,11 @@ public:
     template<DollarRefType refType2>
     $& moveAssign($<T, refType2>&& a)
     {
+        DBG("$ ##assign($ &&) %p->%p", this, _ptr);
+        if (_ptr != nullptr && _ptr != a._ptr && refType == DOLLAR_INSTANCE) {
+            FATAL("Overriding instance reference.");
+        }
+        unref();
         _ptr = a._ptr;
         a._ptr = nullptr;
         if (_ptr == nullptr && refType != refType2) {
@@ -420,8 +449,6 @@ public:
         }
         return castCommon<T2>((T2*)&_ptr->data);
     }
-
-private:
 
     template<typename T2>
     $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> castCommon(T2* p) {

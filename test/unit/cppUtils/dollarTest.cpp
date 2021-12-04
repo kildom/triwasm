@@ -51,10 +51,14 @@ static void testFatal(const char* text) {
     }
 }
 
-std::set<uintptr_t> allocated;
+static std::set<uintptr_t> allocated;
+static uintptr_t allocBuffer[4 * 1024 * 1024];
+static uintptr_t* allocPtr;
 
 void* test_new(size_t size) {
-    void* ptr = malloc(size);
+    void* ptr = (void*)allocPtr;
+    allocPtr += (size + sizeof(uintptr_t) - 1) / sizeof(uintptr_t);
+    EXPECT_TRUE((uint8_t*)allocPtr <= (uint8_t*)allocBuffer + sizeof(allocBuffer));
     allocated.insert((uintptr_t)ptr);
     DBG("    malloc %p,   size %d", ptr, (int)size);
     return ptr;
@@ -66,7 +70,6 @@ void test_delete(void* ptr) {
         FATAL("Deleting invalid pointer.");
     }
     allocated.erase((uintptr_t)ptr);
-    return free(ptr);
 }
 
 
@@ -102,7 +105,8 @@ struct NoDefConstr {
 class dollar : public ::testing::Test {
 protected:
     void SetUp() override {
-        allocated.empty();
+        allocated.clear();
+        allocPtr = allocBuffer;
     }
     void TearDown() override {
         for (auto ptr : allocated) {
@@ -318,6 +322,304 @@ TEST_F(dollar, constructor_move)
     TC($N);
 
     HEAD("End of test");
+
+#undef TC2
+#undef TC
+}
+
+TEST_F(dollar, constructor_object)
+{
+    {
+        TestSimple obj1 = {.value = 123};
+        TestSimple obj2 = {.value = 456};
+        TestSimple obj3 = {.value = 789};
+        TestSimple$$ a(obj1);
+        TestSimple$ b(obj2);
+        TestSimple$N c(obj3);
+        EXPECT_EQ(a->value, 123);
+        EXPECT_EQ(b->value, 456);
+        EXPECT_EQ(c->value, 789);
+    }
+    {
+        TestSimple obj1 = {.value = 123};
+        TestSimple obj2 = {.value = 456};
+        TestSimple obj3 = {.value = 789};
+        TestSimple$$ a(std::move(obj1));
+        TestSimple$ b(std::move(obj2));
+        TestSimple$N c(std::move(obj3));
+        EXPECT_EQ(a->value, 123);
+        EXPECT_EQ(b->value, 456);
+        EXPECT_EQ(c->value, 789);
+    }
+}
+
+TEST_F(dollar, constructor_new)
+{
+#define TC(prefix) \
+    { \
+        TestObject##prefix a(new$); \
+        EXPECT_NE(a._ptr, nullptr); \
+        EXPECT_EQ(a->value, -1); \
+    }
+
+#define TC2(prefix) \
+    EXPECT_FATAL_BEGIN("Default constructible class needed for reference implicit initialization.") { \
+        NoDefConstr##prefix a(new$); \
+    } EXPECT_FATAL_END;
+
+    TC($$);
+    TC($);
+    TC($N);
+
+    TC2($$);
+    TC2($);
+    TC2($N);
+
+#undef TC
+#undef TC2
+}
+
+TEST_F(dollar, assign_null)
+{
+    TestObject$N a;
+    a = TestObject();
+    EXPECT_NE(a._ptr, nullptr);
+    a = nullptr;
+    EXPECT_EQ(a._ptr, nullptr);
+}
+
+TEST_F(dollar, assign_copy)
+{
+
+#define TC_EQ(prefixA, prefixB, initA, initB) \
+    { \
+        TestObject##prefixA a; \
+        TestObject##prefixB b; \
+        if (initA) a = TestObject(); \
+        if (initB) b = TestObject(); \
+        a = b; \
+        EXPECT_EQ(a._ptr, b._ptr); \
+        EXPECT_NE(a._ptr, nullptr); \
+    }
+
+#define TC_FATAL(prefixA, prefixB, initA, initB, text) \
+    { \
+        TestObject##prefixA a; \
+        TestObject##prefixB b; \
+        if (initA) a = TestObject(); \
+        if (initB) b = TestObject(); \
+        EXPECT_FATAL_BEGIN(text) { \
+            a = b; \
+        } EXPECT_FATAL_END; \
+    }
+
+#define TC_NULL(prefixA, prefixB, initA, initB) \
+    { \
+        TestObject##prefixA a; \
+        TestObject##prefixB b; \
+        if (initA) a = TestObject(); \
+        if (initB) b = TestObject(); \
+        a = b; \
+        EXPECT_EQ(a._ptr, nullptr); \
+        EXPECT_EQ(b._ptr, nullptr); \
+    }
+
+    TC_EQ   ($$, $$, 0, 0);
+    TC_EQ   ($$, $$, 0, 1);
+    TC_FATAL($$, $$, 1, 0, "Overriding instance reference.");
+    TC_FATAL($$, $$, 1, 1, "Overriding instance reference.");
+
+    TC_EQ($, $$, 0, 0);
+    TC_EQ($, $$, 0, 1);
+    TC_EQ($, $$, 1, 0);
+    TC_EQ($, $$, 1, 1);
+
+    TC_EQ($N, $$, 0, 0);
+    TC_EQ($N, $$, 0, 1);
+    TC_EQ($N, $$, 1, 0);
+    TC_EQ($N, $$, 1, 1);
+
+    TC_FATAL($$, $, 0, 0, "Accessing uninitialized nonnull reference.");
+    TC_EQ   ($$, $, 0, 1);
+    TC_FATAL($$, $, 1, 0, "Accessing uninitialized nonnull reference.");
+    TC_FATAL($$, $, 1, 1, "Overriding instance reference.");
+
+    TC_FATAL($, $, 0, 0, "Accessing uninitialized nonnull reference.");
+    TC_EQ   ($, $, 0, 1);
+    TC_FATAL($, $, 1, 0, "Accessing uninitialized nonnull reference.");
+    TC_EQ   ($, $, 1, 1);
+
+    TC_FATAL($N, $, 0, 0, "Accessing uninitialized nonnull reference.");
+    TC_EQ   ($N, $, 0, 1);
+    TC_FATAL($N, $, 1, 0, "Accessing uninitialized nonnull reference.");
+    TC_EQ   ($N, $, 1, 1);
+
+    TC_FATAL($$, $N, 0, 0, "Assigning null to instance reference.");
+    TC_EQ   ($$, $N, 0, 1);
+    TC_FATAL($$, $N, 1, 0, "Overriding instance reference.");
+    TC_FATAL($$, $N, 1, 1, "Overriding instance reference.");
+
+    TC_FATAL($, $N, 0, 0, "Assigning null to nonnull reference.");
+    TC_EQ   ($, $N, 0, 1);
+    TC_FATAL($, $N, 1, 0, "Assigning null to nonnull reference.");
+    TC_EQ   ($, $N, 1, 1);
+
+    TC_NULL($N, $N, 0, 0);
+    TC_EQ  ($N, $N, 0, 1);
+    TC_NULL($N, $N, 1, 0);
+    TC_EQ  ($N, $N, 1, 1);
+
+#undef TC_EQ
+#undef TC_FATAL
+#undef TC_NULL
+}
+
+TEST_F(dollar, assign_move)
+{
+
+#define TC_MOVE(prefixA, prefixB, initA, initB) \
+    { \
+        TestObject##prefixA a; \
+        TestObject##prefixB b; \
+        if (initA) a = TestObject(); \
+        if (initB) b = TestObject(); \
+        auto prev = b._ptr; \
+        HEAD("Move assign " #prefixA " (init=" #initA ") = " #prefixB " (init=" #initB ")"); \
+        a = std::move(b); \
+        EXPECT_EQ(a._ptr, prev); \
+        EXPECT_EQ(b._ptr, nullptr); \
+    }
+
+#define TC_NEW(prefixA, prefixB, initA, initB) \
+    { \
+        TestObject##prefixA a; \
+        TestObject##prefixB b; \
+        if (initA) a = TestObject(); \
+        if (initB) b = TestObject(); \
+        auto prev = b._ptr; \
+        HEAD("Move assign " #prefixA " (init=" #initA ") = " #prefixB " (init=" #initB ")"); \
+        a = std::move(b); \
+        EXPECT_NE(a._ptr, prev); \
+        EXPECT_NE(a._ptr, nullptr); \
+        EXPECT_EQ(b._ptr, nullptr); \
+    }
+
+#define TC_FATAL(prefixA, prefixB, initA, initB, text) \
+    { \
+        TestObject##prefixA a; \
+        TestObject##prefixB b; \
+        if (initA) a = TestObject(); \
+        if (initB) b = TestObject(); \
+        EXPECT_FATAL_BEGIN(text) { \
+            HEAD("Move assign " #prefixA " (init=" #initA ") = " #prefixB " (init=" #initB ")"); \
+            a = std::move(b); \
+        } EXPECT_FATAL_END; \
+    }
+
+    TC_MOVE ($$, $$, 0, 0);
+    TC_MOVE ($$, $$, 0, 1);
+    TC_FATAL($$, $$, 1, 0, "Overriding instance reference.");
+    TC_FATAL($$, $$, 1, 1, "Overriding instance reference.");
+
+    TC_NEW ($, $$, 0, 0);
+    TC_MOVE($, $$, 0, 1);
+    TC_NEW ($, $$, 1, 0);
+    TC_MOVE($, $$, 1, 1);
+
+    TC_NEW ($N, $$, 0, 0);
+    TC_MOVE($N, $$, 0, 1);
+    TC_NEW ($N, $$, 1, 0);
+    TC_MOVE($N, $$, 1, 1);
+
+    TC_FATAL($$, $, 0, 0, "Accessing uninitialized nonnull reference.");
+    TC_MOVE ($$, $, 0, 1);
+    TC_FATAL($$, $, 1, 0, "Overriding instance reference.");
+    TC_FATAL($$, $, 1, 1, "Overriding instance reference.");
+
+    TC_MOVE($, $, 0, 0);
+    TC_MOVE($, $, 0, 1);
+    TC_MOVE($, $, 1, 0);
+    TC_MOVE($, $, 1, 1);
+
+    TC_FATAL($N, $, 0, 0, "Accessing uninitialized nonnull reference.");
+    TC_MOVE ($N, $, 0, 1);
+    TC_FATAL($N, $, 1, 0, "Accessing uninitialized nonnull reference.");
+    TC_MOVE ($N, $, 1, 1);
+
+    TC_FATAL($$, $N, 0, 0, "Assigning null reference to instance reference.");
+    TC_MOVE ($$, $N, 0, 1);
+    TC_FATAL($$, $N, 1, 0, "Overriding instance reference.");
+    TC_FATAL($$, $N, 1, 1, "Overriding instance reference.");
+
+    TC_FATAL($, $N, 0, 0, "Assigning null reference to nonnull reference.");
+    TC_MOVE ($, $N, 0, 1);
+    TC_FATAL($, $N, 1, 0, "Assigning null reference to nonnull reference.");
+    TC_MOVE ($, $N, 1, 1);
+
+    TC_MOVE($N, $N, 0, 0);
+    TC_MOVE($N, $N, 0, 1);
+    TC_MOVE($N, $N, 1, 0);
+    TC_MOVE($N, $N, 1, 1);
+
+#undef TC_EQ
+#undef TC_FATAL
+#undef TC_NULL
+}
+
+TEST_F(dollar, assign_object)
+{
+    {
+        TestSimple obj1{.value = 123};
+        TestSimple obj2{.value = 456};
+        TestSimple obj3{.value = 789};
+        TestSimple$$ a;
+        TestSimple$ b;
+        TestSimple$N c;
+        a = obj1;
+        b = obj2;
+        c = obj3;
+        EXPECT_EQ(a->value, 123);
+        EXPECT_EQ(b->value, 456);
+        EXPECT_EQ(c->value, 789);
+    }
+    {
+        TestSimple obj1{.value = 123};
+        TestSimple obj2{.value = 456};
+        TestSimple obj3{.value = 789};
+        TestSimple$$ a;
+        TestSimple$ b;
+        TestSimple$N c;
+        a = std::move(obj1);
+        b = std::move(obj2);
+        c = std::move(obj3);
+        EXPECT_EQ(a->value, 123);
+        EXPECT_EQ(b->value, 456);
+        EXPECT_EQ(c->value, 789);
+    }
+}
+
+TEST_F(dollar, access)
+{
+    TestObject$ obj1 = TestObject();
+    obj1->value = 123;
+
+    {
+        TestObject$$ a = obj1;
+        EXPECT_EQ(&obj1->value, &a->value);
+        EXPECT_EQ(&(*obj1).value, &(*a).value);
+    }
+
+    {
+        TestObject$ a = obj1;
+        EXPECT_EQ(&obj1->value, &a->value);
+        EXPECT_EQ(&(*obj1).value, &(*a).value);
+    }
+
+    {
+        TestObject$N a = obj1;
+        EXPECT_EQ(&obj1->value, &a->value);
+        EXPECT_EQ(&(*obj1).value, &(*a).value);
+    }
 }
 
 TEST_F(dollar, null_access)
@@ -347,15 +649,96 @@ TEST_F(dollar, null_access)
         (*c).value = 123;
     } EXPECT_FATAL_END;
 
-    EXPECT_FATAL_BEGIN("Default constructible class needed for instance reference implicit initialization.") {
+    EXPECT_FATAL_BEGIN("Default constructible class needed for reference implicit initialization.") {
         NoDefConstr$$ c;
         c->value = 123;
     } EXPECT_FATAL_END;
 
-    EXPECT_FATAL_BEGIN("Default constructible class needed for instance reference implicit initialization.") {
+    EXPECT_FATAL_BEGIN("Default constructible class needed for reference implicit initialization.") {
         NoDefConstr$$ c;
         (*c).value = 123;
     } EXPECT_FATAL_END;
+}
+
+TEST_F(dollar, create)
+{
+#define TC(prefix) \
+    { \
+        NoDefConstr##prefix b; \
+        b.createInplace(123); \
+        EXPECT_NE(b._ptr, nullptr); \
+        EXPECT_EQ(b->value, 123); \
+        NoDefConstr##prefix c; \
+        c = NoDefConstr##prefix::create(456); \
+        EXPECT_NE(c._ptr, nullptr); \
+        EXPECT_EQ(c->value, 456); \
+        TestObject##prefix d; \
+        d = new$; \
+        EXPECT_NE(d._ptr, nullptr); \
+        EXPECT_EQ(d->value, -1); \
+        NoDefConstr##prefix e; \
+        EXPECT_FATAL_BEGIN("Default constructible class needed for reference implicit initialization.") { \
+            e = new$; \
+        } EXPECT_FATAL_END; \
+    }
+
+    TC($$);
+    TC($);
+    TC($N);
+
+    {
+        NoDefConstr$$ b = NoDefConstr(1);
+        EXPECT_FATAL_BEGIN("Overriding instance reference.") {
+            HEAD("createInplace of $$");
+            b.createInplace(123);
+        } EXPECT_FATAL_END;
+        NoDefConstr$$ c = NoDefConstr(2);
+        EXPECT_FATAL_BEGIN("Overriding instance reference.") {
+            HEAD("create of $$");
+            c = NoDefConstr$$::create(456);
+        } EXPECT_FATAL_END;
+        HEAD("new of $$");
+        TestObject$$ d = TestObject();
+        EXPECT_FATAL_BEGIN("Overriding instance reference.") {
+            d = new$;
+        } EXPECT_FATAL_END;
+        NoDefConstr$$ e = NoDefConstr(3);
+        EXPECT_FATAL_BEGIN("Overriding instance reference.") {
+            e = new$;
+        } EXPECT_FATAL_END;
+    }
+
+#define TC2(prefix) \
+    { \
+        NoDefConstr##prefix b = NoDefConstr(1); \
+        auto prev = b._ptr; \
+        b.createInplace(123); \
+        EXPECT_NE(b._ptr, nullptr); \
+        EXPECT_NE(b._ptr, prev); \
+        EXPECT_EQ(b->value, 123); \
+        NoDefConstr##prefix c = NoDefConstr(2); \
+        prev = c._ptr; \
+        c = NoDefConstr##prefix::create(456); \
+        EXPECT_NE(c._ptr, nullptr); \
+        EXPECT_NE(c._ptr, prev); \
+        EXPECT_EQ(c->value, 456); \
+        TestObject##prefix d = TestObject(); \
+        auto prev2 = d._ptr; \
+        d = new$; \
+        EXPECT_NE(d._ptr, nullptr); \
+        EXPECT_NE(d._ptr, prev2); \
+        EXPECT_EQ(d->value, -1); \
+        NoDefConstr##prefix e = NoDefConstr(3); \
+        EXPECT_FATAL_BEGIN("Default constructible class needed for reference implicit initialization.") { \
+            e = new$; \
+        } EXPECT_FATAL_END; \
+    }
+
+    TC2($);
+    TC2($N);
+
+#undef TC
+#undef TC2
 }
 
 TEST_F(dollar, operator_equal_null)
@@ -426,188 +809,3 @@ TEST_F(dollar, operator_equal)
     }
 
 }
-
-TEST_F(dollar, constructorDefault2) {
-
-    TestObject$$ a$$;
-    TestObject$ a$;
-    TestObject$N a$N;
-
-    EXPECT_EQ(a$$._ptr, nullptr);
-    EXPECT_EQ(a$._ptr, nullptr);
-    EXPECT_EQ(a$N._ptr, nullptr);
-
-    TestSimple$$ a = TestSimple{.value = 123};
-    EXPECT_EQ(a._ptr->data.value, 123);
-
-    /*EXPECT_TRUE(nullptr == a$N);
-    EXPECT_FALSE(a$N != nullptr);
-    a$N = TestObject();
-    EXPECT_FALSE(a$N == nullptr);*/
-}
-
-class aaa {
-
-};
-
-typedef ssize_t ssize;
-
-class Range {
-public:
-    ssize from;
-    ssize to;
-    Range(ssize from, ssize to) : from(from), to(to) { }
-    Range bound(ssize length) const { return Range(*this); }
-};
-
-struct RangeFull       {                       Range bound(ssize length) const { return Range(0, length); } };
-struct RangeLeftBegin  { ssize to;             Range bound(ssize length) const { return Range(0, to); } };
-struct RangeLeftEnd    { ssize to;             Range bound(ssize length) const { return Range(0, length - to); } };
-struct RangeRightBegin { ssize from;           Range bound(ssize length) const { return Range(from, length); } };
-struct RangeRightEnd   { ssize from;           Range bound(ssize length) const { return Range(length - from, length); } };
-struct RangeBeginEnd   { ssize from; ssize to; Range bound(ssize length) const { return Range(from, length - to); } };
-struct RangeEndBegin   { ssize from; ssize to; Range bound(ssize length) const { return Range(length - from, to); } };
-struct RangeEndEnd     { ssize from; ssize to; Range bound(ssize length) const { return Range(length - from, length - to); } };
-
-static const RangeFull R;
-
-static inline RangeLeftBegin  operator|  (RangeFull, ssize to)            { return RangeLeftBegin{ .to = to }; }
-static inline RangeLeftEnd    operator|| (RangeFull, ssize to)            { return RangeLeftEnd{ .to = to }; }
-static inline RangeRightBegin operator|  (ssize from, RangeFull)          { return RangeRightBegin{ .from = from }; }
-static inline RangeRightEnd   operator|| (ssize from, RangeFull)          { return RangeRightEnd{ .from = from }; }
-static inline Range           operator|  (RangeRightBegin from, ssize to) { return Range(from.from, to); }
-static inline RangeBeginEnd   operator|| (RangeRightBegin from, ssize to) { return RangeBeginEnd{ .from = from.from, .to = to }; }
-static inline RangeEndBegin   operator|| (ssize from, RangeLeftBegin to)  { return RangeEndBegin{ .from = from, .to = to.to }; }
-static inline RangeEndEnd     operator|| (RangeRightEnd from, ssize to)   { return RangeEndEnd{ .from = from.from, .to = to }; }
-
-class Arr {
-    public:
-
-    Range operator[](const Range& r) {
-        return r;
-    }
-
-    Range operator[](ssize index) {
-        return Range(index, index + 1);
-    }
-
-    template<class T>
-    std::enable_if_t<std::is_class<T>::value, Range> operator[](const T& r) {
-        return operator[](r.bound(100));
-    }
-
-    Range operator()(const Range& r) {
-        return r;
-    }
-
-    Range operator()(ssize index) {
-        return Range(index, index + 1);
-    }
-
-    template<class T>
-    std::enable_if_t<std::is_class<T>::value, Range> operator()(const T& r) {
-        return operator()(r.bound(100));
-    }
-};
-
-TEST_F(dollar, any) {
-/*
-    Arr arr;
-
-    auto e = arr[12];
-    std::cout << e.from << ":" << e.to << "\n";
-
-    e = arr[3 |R| 4];
-    std::cout << e.from << ":" << e.to << "\n";
-
-    e = arr[R|| 1];
-    std::cout << e.from << ":" << e.to << "\n";
-
-    e = arr(R|| 1);
-    std::cout << e.from << ":" << e.to << "\n";
-
-#define SHOW(x) do { std::cout << #x << "           " << typeid(decltype(x)).name() << "            "; auto a = (x).bound(100); std::cout << a.from << ":" << a.to << "\n"; } while(0)
-
-    SHOW(R);
-    SHOW(R| 12);
-    SHOW(R|| 34);
-    SHOW(56 |R);
-    SHOW(56 ||R);
-    SHOW(78 |R| 12);
-    SHOW(78 |R|| 12);
-    SHOW(78 ||R| 12);
-    SHOW(78 ||R|| 12);*/
-
-    /*
-    auto view = arr[RR|| 12];
-
-    auto before_last_or_last_if_one_element = arr[RR|| 2][0];
-
-    auto last_element = arr[E| 1];
-
-    arr(E| 0) = 12; // push to the end
-    arr.push(12);
-    arr.std();
-
-    arr[R| 5].remove(); // remove first 5 elements
-    arr[RR| 5].remove(); // remove first 5 elements or all if array is smaller than 5
-
-    arr[0 ||R] = other_array; // append other_array to the end of arr
-
-    Python   C++
-    [:]      [R]
-    [x:]     [x |R]
-    [:x]     [R| x]
-    [x:y]    [x |R| y]
-    [-x:]    [x ||R]
-    [:-x]    [R|| x]
-    [x:-y]   [x |R|| y]
-    ...
-
-    TODO: x |RR| y - RelaxedRange will never cause index out of bounds fault, but it will adjust to what is available.
-
-    tab[3 |R] = 1;       // 3 | RangeFull -> RangeRightBegin
-    tab[3 |R| 7] = 0;    // ..., RangeRightBegin | 7 -> RangeBeginBegin
-    tab[R| 7] = 2;       // RangeFull | 7 -> RangeLeftBegin
-    tab[3 |R|| 7] = 9;   // ..., RangeRightBegin || 7 -> RangeBeginEnd
-    tab[3 ||R|| 1] = 8;
-    tab[R|| 7] = 4;
-    tab[R] = 9;
-    */
-}
-/*
-
-A) INSTANCE
-    any access to reference or referenced object will cause initialization if needed
-    use case: fields of structure that are initially owned by the structure
-              local variables initially owned by the function
-B) NOT NULL REFERENCE
-    can be null only after construction, any access to reference or referenced object
-    will cause fatal error if null
-    use case: fields of structure that cannot be null, but are not owned by the structure
-              parameters that cannot be null
-              local variables referencing non-optional data
-C) NULLABLE REFERENCE
-    can be null, any access to referenced object will cause fatal error if null
-    use case: optional references in fields, parameters and local variables
-
-    |        A           |        B          |        C          |
-A=  |  init ^ if needed  |  fatal if ^ null  |  fatal if ^ null  |
-B=  |  init ^ if needed  |  fatal if ^ null  |  fatal if ^ null  |
-C=  |  init ^ if needed  |  fatal if ^ null  |  assign always    |
-
-TestObject$$     - A
-TestObject$      - B
-TestObject$N     - C
-
-any$$ - works with exception: this is not possible "any$$ a, b=null; a = b;", so it will cause fatal error
-        in other cases type is known, so works as expected.
-any$  - works as expected
-any$N - works as expected
-
-       |        any$$       |        any$       |      any$N        |
-any$$  |  fatal if ^ null   |  fatal if ^ null  |  fatal if ^ null  |
-any$   |  fatal if ^ null   |  fatal if ^ null  |  fatal if ^ null  |
-any$N  |  fatal if ^ null   |  fatal if ^ null  |  assign always    |
-
-*/
