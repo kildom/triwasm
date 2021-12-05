@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <utility>
+#include <cstddef>
 
 #include "trace.hh"
 
@@ -32,6 +33,51 @@ enum DollarRefType {
     typedef $<struct Struct, DOLLAR_INSTANCE> Struct##$$; \
     typedef $<struct Struct, DOLLAR_NULLABLE> Struct##$N
 
+struct _DollarTypeIdList {
+    _DollarTypeIdList *parent;
+    bool virtualDestructor;
+};
+
+template<typename T>
+struct _DollarTypeIdHelper {
+    static _DollarTypeIdList typeIdEntry;
+    static uintptr_t getId() {
+        return (uintptr_t)&typeIdEntry;
+    }
+    static bool isChildOf(uintptr_t id) {
+        _DollarTypeIdList* entry = (_DollarTypeIdList*)id;
+        do {
+            if (&typeIdEntry == entry) {
+                return true;
+            }
+            entry = entry->parent;
+        } while (entry != nullptr);
+        return false;
+    }
+};
+
+static bool _dollarTypeIdHasVirtualDestructor(uintptr_t id) {
+    return ((_DollarTypeIdList*)id)->virtualDestructor;
+}
+
+template<typename T>
+_DollarTypeIdList _DollarTypeIdHelper<T>::typeIdEntry = {
+    .parent = nullptr,
+    .virtualDestructor = std::has_virtual_destructor<T>::value,
+};
+
+#define _DOLLAR_INHERIT3(Base, Derived, cnt, line) \
+    static struct _Auto_init_##cnt##_##line { \
+        _Auto_init_##cnt##_##line() { \
+            _DollarTypeIdHelper<Derived>::typeIdEntry.parent = &_DollarTypeIdHelper<Base>::typeIdEntry; \
+            if (!std::is_base_of<Base, Derived>::value) { \
+                FATAL(#Base " is not base of " #Derived "."); \
+            } \
+        } \
+    } _auto_init_##cnt##_##line;
+#define _DOLLAR_INHERIT2(Base, Derived, cnt, line) _DOLLAR_INHERIT3(Base, Derived, cnt, line)
+#define DOLLAR_INHERIT(Base, Derived) _DOLLAR_INHERIT2(Base, Derived, __COUNTER__, __LINE__)
+
 template<DollarRefType refType = DOLLAR_NOT_NULL>
 class any$;
 
@@ -41,9 +87,10 @@ struct _$_Inner;
 template<typename T>
 struct _$_Inner<T, false> {
     size_t counter;
+    uintptr_t typeId;
     T data;
     template<typename... Args>
-    _$_Inner(Args&&... args) : counter(1), data(std::forward<Args>(args)...) { }
+    _$_Inner(Args&&... args) : counter(1), typeId(_DollarTypeIdHelper<T>::getId()), data(std::forward<Args>(args)...) { }
 #ifdef DBG_NEW
     void* operator new(size_t size) {
         return DBG_NEW(size);
@@ -57,9 +104,10 @@ struct _$_Inner<T, false> {
 template<typename T>
 struct _$_Inner<T, true> {
     size_t counter;
+    uintptr_t typeId;
     T data;
     template<typename... Args>
-    _$_Inner(Args&&... args) : counter(1), data(std::forward<Args>(args)...) { }
+    _$_Inner(Args&&... args) : counter(1), typeId(_DollarTypeIdHelper<T>::getId()), data(std::forward<Args>(args)...) { }
     virtual ~_$_Inner() { }
 #ifdef DBG_NEW
     void* operator new(size_t size) {
@@ -71,7 +119,27 @@ struct _$_Inner<T, true> {
 #endif
 };
 
-struct _DollarDummyClass { };
+struct _DollarEmptyClass { };
+struct _DollarVirtDestrClass { ~_DollarVirtDestrClass() { } };
+
+namespace _tmp {
+    static _$_Inner<_DollarEmptyClass, false> A;
+    static _$_Inner<_DollarVirtDestrClass, true> B;
+    static struct Init {
+        Init() {
+            printf("A %p %p.\n", (uint8_t*)&A, (uint8_t*)&A.counter);
+            printf("B %p %p.\n", (uint8_t*)&B, (uint8_t*)&B.counter);
+            if ((uint8_t*)&A != (uint8_t*)&A.counter) {
+                printf("Unsupported platform or compiler %p %p.\n", (uint8_t*)&A, (uint8_t*)&A.counter);
+                FATAL("Unsupported platform or compiler.");
+            }
+            if ((uint8_t*)&B != (uint8_t*)&B.counter) {
+                printf("Unsupported platform or compiler %p %p.\n", (uint8_t*)&B, (uint8_t*)&B.counter);
+                FATAL("Unsupported platform or compiler.");
+            }
+        }
+    } initx;
+};
 
 template <DollarRefType refType, class InstanceCls, class NotNullCls, class NullableCls>
 struct _DollarRefTypeSelect;
@@ -228,7 +296,7 @@ public:
         return *this;
     }
 
-    $& operator=(typename _DollarRefTypeSelect<refType, _DollarDummyClass, _DollarDummyClass, nullptr_t>::type) {
+    $& operator=(typename _DollarRefTypeSelect<refType, _DollarEmptyClass, _DollarEmptyClass, nullptr_t>::type) {
         DBG("$ ##assign(nullptr) %p->%p", this, _ptr);
         unref();
         _ptr = nullptr;
@@ -452,6 +520,7 @@ public:
 
     template<typename T2>
     $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> castCommon(T2* p) {
+        // TODO: Prevent from casting between virtual destructor and non-virtual destructor 
         typedef $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> RetType;
         typedef _$_Inner<T2, std::has_virtual_destructor<T2>::value> Inner2;
         if ((void*)p != (void*)&_ptr->data) {
@@ -480,6 +549,7 @@ public:
     }
 
 };
+
 
 /*
 struct anyInnerBase {
