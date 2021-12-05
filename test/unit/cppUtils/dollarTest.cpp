@@ -809,3 +809,55 @@ TEST_F(dollar, operator_equal)
     }
 
 }
+
+DOLLAR_STRUCT(Parent);
+DOLLAR_STRUCT(SecondParent);
+DOLLAR_STRUCT(Child);
+DOLLAR_STRUCT(ChildOfTwo);
+struct Parent { int x; };
+struct SecondParent { int z; };
+struct Child : public Parent { int y; };
+struct ChildOfTwo : public Parent, SecondParent { int y; };
+
+TEST_F(dollar, cast)
+{
+#define TC(prefix) \
+    { \
+        Child##prefix x = new$; \
+        Parent$N p = x.cast<Parent>(); \
+        EXPECT_EQ((void*)x._ptr, (void*)p._ptr); \
+    } \
+    { \
+        ChildOfTwo##prefix x = new$; \
+        Parent$N p = x.cast<Parent>(); \
+        EXPECT_EQ((void*)x._ptr, (void*)p._ptr); \
+        EXPECT_FATAL_BEGIN("Casting to non-first parent.") { \
+            SecondParent$N p2 = x.cast<SecondParent>(); \
+        } EXPECT_FATAL_END; \
+    }
+
+    TC($$);
+    TC($);
+    TC($N);
+
+    {
+        Child$$ x;
+        Parent$N p = x.cast<Parent>();
+        EXPECT_NE(x._ptr, nullptr);
+        EXPECT_EQ((void*)x._ptr, (void*)p._ptr);
+    }
+
+    {
+        Child$ x;
+        EXPECT_FATAL_BEGIN("Accessing uninitialized nonnull reference.") {
+            Parent$N p = x.cast<Parent>();
+        } EXPECT_FATAL_END;
+    }
+
+    {
+        Child$N x;
+        Parent$N p = x.cast<Parent>();
+        EXPECT_EQ(x._ptr, nullptr);
+        EXPECT_EQ(p._ptr, nullptr);
+    }
+}

@@ -423,7 +423,7 @@ public:
         typedef $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> RetType;
         if (_ptr == nullptr) {
             if (refType == DOLLAR_NULLABLE) {
-                return RetType(nullptr);
+                return RetType();
             } else if (refType == DOLLAR_INSTANCE) {
                 _ptr = _dollarDefaultCreate<T>::create();
                 DBG("$ implicit init: %p->%p", this, _ptr);
