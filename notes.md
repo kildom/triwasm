@@ -415,56 +415,56 @@ tools/
 ```
 trivm-sdk
 │
-├─► bin
+├─📁 bin
 │   │
-│   ├─► triwasm
-│   ├─► tricc
-│   ├─► triconf
-│   └─► triasm
+│   ├─📄 triwasm
+│   ├─📄 tricc
+│   ├─📄 triconf
+│   └─📄 triasm
 │
-├─► src
+├─📁 src
 │   │
-│   ├─► trivm.c
-│   └─► trivm.h
+│   ├─📄 trivm.c
+│   └─📄 trivm.h
 │
-├─► data
+├─📁 data
 │   │
-│   ├─► triwasmlib
+│   ├─📁 triwasmlib
 │   │   │
-│   │   ├─► startup.triasm
-│   │   └─► triwasmlib.wasm
+│   │   ├─📄 startup.triasm
+│   │   └─📄 triwasmlib.wasm
 │   │
-│   ├─► wasi-sdk
+│   ├─📁 wasi-sdk
 │   │   │
-│   │   ├─► README.txt
-│   │   └─► ...
+│   │   ├─📄 README.txt
+│   │   └─📄 ...
 │   │
-│   ├─► electron
+│   ├─📁 electron
 │   │   │
-│   │   ├─► README.txt
-│   │   └─► ...
+│   │   ├─📄 README.txt
+│   │   └─📄 ...
 │   │
-│   └─► triconf.app
+│   └─📄 triconf.app
 │
-├─► samples
+├─📁 samples
 │   │
-│   ├─► hello_world
+│   ├─📁 hello_world
 │   │   │
-│   │   ├─► host
+│   │   ├─📁 host
 │   │   │   │
-│   │   │   ├─► Makefile
-│   │   │   ├─► trivm_conf.h
-│   │   │   └─► main.c
+│   │   │   ├─📄 Makefile
+│   │   │   ├─📄 trivm_conf.h
+│   │   │   └─📄 main.c
 │   │   │
-│   │   ├─► guest
+│   │   ├─📁 guest
 │   │   │   │
-│   │   │   ├─► Makefile
-│   │   │   └─► main.c
+│   │   │   ├─📄 Makefile
+│   │   │   └─📄 main.c
 │   │   │
-│   │   └─► README.txt
+│   │   └─📄 README.txt
 │   │
-│   └─► ...
+│   └─📁 ...
 │
-├─► LICENSE.txt
-└─► README.txt
+├─📄 LICENSE.txt
+└─📄 README.txt
 ```
