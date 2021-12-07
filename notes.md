@@ -409,3 +409,62 @@ tools/
     trivm/
         ...
 ```
+
+## Content of the SDK
+
+```
+trivm-sdk
+│
+├─► bin
+│   │
+│   ├─► triwasm
+│   ├─► tricc
+│   ├─► triconf
+│   └─► triasm
+│
+├─► src
+│   │
+│   ├─► trivm.c
+│   └─► trivm.h
+│
+├─► data
+│   │
+│   ├─► triwasmlib
+│   │   │
+│   │   ├─► startup.triasm
+│   │   └─► triwasmlib.wasm
+│   │
+│   ├─► wasi-sdk
+│   │   │
+│   │   ├─► README.txt
+│   │   └─► ...
+│   │
+│   ├─► electron
+│   │   │
+│   │   ├─► README.txt
+│   │   └─► ...
+│   │
+│   └─► triconf.app
+│
+├─► samples
+│   │
+│   ├─► hello_world
+│   │   │
+│   │   ├─► host
+│   │   │   │
+│   │   │   ├─► Makefile
+│   │   │   ├─► trivm_conf.h
+│   │   │   └─► main.c
+│   │   │
+│   │   ├─► guest
+│   │   │   │
+│   │   │   ├─► Makefile
+│   │   │   └─► main.c
+│   │   │
+│   │   └─► README.txt
+│   │
+│   └─► ...
+│
+├─► LICENSE.txt
+└─► README.txt
+```
