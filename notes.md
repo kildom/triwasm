@@ -104,13 +104,13 @@ Size and speed comparition (e.g. for some compression library):
 * x86_64: Intel Core i7 ...
 * Cortex-M33: ARM Cortex-M33 at 160MHz on nRF5340 application core
 
-| Configuration | Relative speed (x86_64) | Code size (x86_64) | Relative speed (Cortex-M33) | Code size (Cortex-M33) |
-|-----|-----|---|---|---|
-| Native | 100% | 123K (100%)
-| Core | 4.5% | 139K (110%)
-| Core + Reduce | 5.1% | 138K (110%)
-| Core + Reduce + Int64 | 5.9% | 127K (104%)
-| Core + Reduce + Int64 + all faults | 5.3% | 127K (104%)
+| Configuration | VM size (Cortex-M33) | Relative speed (Cortex-M33) | Code size (Cortex-M33) | VM size (x86_64) | Relative speed (x86_64) | Code size (x86_64) |
+|-----|---|---|---|---|---|---|
+| Native | - | 100% | 123K (100%)
+| Core | 0.92KB |4.5% | 139K (110%)
+| Core + Reduce | 0.96KB | 5.1% | 138K (110%)
+| Core + Reduce + Int64 | 1.4KB | 5.9% | 127K (104%)
+| Core + Reduce + Int64 + all faults | 2.2KB | 5.3% | 127K (104%)
 
 uVM instructions
 ----------------
