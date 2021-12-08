@@ -59,39 +59,7 @@
   * float
   * double
 
-* Optimization tips:
-  * Put second const operant into destination instruction: `PUSH X ... SUB  ->  SUB X`
-  * Put first const operant into destination instruction if they can be inverted (add, mul, and, or, xor, lt/gt): `PUSH X ... ADD  ->  ADD X` or `PUSH X ... ULT  ->  UGT X`
-  * If value comes from uvm `NOT` instructions (one or more), delete `NOT` and replace destination instruction (`BRT <-> BRF`): `EQ ; NOT ; ... ; BRT  ->  EQ ; ... ; BRF`
-  * If value comes from uvm `NOT` instruction, and destination is also `NOT` delete both: `NOT ; ... ; NOT  ->  ...` - NOT TRUE: `NOT NOT` converts any value to `[0, 1]`, so it is not the same. This can be applied to 3x`NOT` or more and converted into one or two `NOT`.
-  * Combine immutable globals with the same value
-  * Replace repeating 32-bit const values into immutable globals:
-    * (5 bytes) `PUT x  ->  READ -offset` (2 or 3 bytes + 4 common bytes) or
-    * (5 bytes) `ADD x  ->  READ -offset ; ADD` (3 or 4 bytes + 4 common bytes)
-    * It should be calculated if this optimization is gaining anything
-  * Replace short immutable globals into inline consts: (2-3 bytes + 4 common) `READ -offset  ->  PUSH x` (2-3 bytes)
-  * Replace `PUT X:i32` (5 byte) with `PUT X:i8 ; U/SSHR n` (4 bytes) if possible
-  * Order globals (both mutable and immutable) by the number of uses, so the most common instructions will be shortest.
-  * Merge locals that does not overlap. This may not be optimized by wasm-opt, because they are different types.
-  * Use TMP registers for the mostly used locals that not need to be kept during calls.
-  * Reduce shift count operant in i64 shift operations to 32-bit
-  * Put constant address into memory access instruction (4 - 8 bytes) `PUSH X ... READ [LPM] + [POP] + offset  ->  READ offset_combined` (3 - 5 bytes)
-  * Remove unused stack entries (may appear after i64 optimizations). Back-track stack entries that are not used and delete or modify instruction that put it there. `i64.const 1 ... i32.wrap_i64; call __uvmlib__shl64  ->  i32.const 1 ... call __uvmlib__shl64`
-  * Use param as local if they are not overlapping, especially if param is moved to local and never touched again, then moving part may be removed
-  * Inline simple `uvmlib` functions if they are not used many times `CALL __uvmlib__eq64  ->  READ [SP]+2; EQ; WRITE [SP]+2; READ [SP]+2; EQ; WRITE [SP]+2; AND`
-  * Put second const operant into calls like `__uvmlib__xor64` and inline it, `PUSH hi ... PUSH lo; CALL __uvmlib__xor64  ->  XOR lo ; XOR hi` 
-  * Put constant offset to memory load/store instructions `PUSH 32 ; ADD ; I32.LOAD [POP] ->  I32.LOAD [POP]+32`
-  * 64-bit shift instructions ignores higher word of shift count, so they can be removed `SHL64LLL -> SHL64LWL`, also for emulation: `CALL __triwasmlib.i64_shl -> CALL __triwasmlib.i64_shl_32`.
-  * Convert unary operators with const input to const value if it is more optimal: `i32.const AAA ; f32.ceil  ->  i32.const ceil(AAA)`, also for emulation `i32.const AAA ; CALL __triwasmlib.f32_ceil  ->  i32.const ceil(AAA)` (this should be optimized by the compiler - check if it is true)
-  * Convert pair of `i64.extend_i32_u/s` and `i64.extend8/16_s` to single instruction `EXTS64WL 56/48`
-  * If there are more returns with the same unwind values they can be merged and put at the end of function
-  * If BR_TABLE has item exiting current `block` or `if` (after `else`) and BR_TABLE has no unwinds then such item can be moved to the end and replace with default ` ... EQ 5 ; BRT block32 ... BR block10  ->  ... ... EQ 5 ; BRF block10 ; BR block32 (last branch will be removed by triasm, because it is unconditional branch to the next instruction)`;
-  * Implement BR_TABLE with actual table of addresses and unwind parameters
-  * Merge active data that are close to each other
-  * Remove repeating zeros in active data. All triVM memory will be zero-initialized, so removed blocks will be zeros.
-
-TODOs:
-  * Check which floating point comparison operators can be replaced by `inverted_OP ; NOT` to allow further conditional branch optimization.
+* Optimization tips: https://github.com/kildom/triwasm/issues/6
 
 Compilation flow:
 1. Parse wasm file and check basic integrity *WasmParser* and *WasmReader*
