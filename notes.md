@@ -1,5 +1,11 @@
 * General
-  * Rename `triwasmlib` to `triwasmlib`.
+  * Move `SP` register from visible registers and make separate instructions for it: `READSP` and `WRITESP`:
+    * Benefits (only if memory alignment enabled):
+      * No need to check SP after each `WRITE`, `WRITE64` and `REDUCE` instructions (faster execution and smaller footprint).
+      * VM pointer checking done by the interface don't need to check lower boudary (before, `SP` had to be protectd from accidental host write).
+      * One more `TMP3` register that is accesible with 1-byte instructions.
+    * Cost:
+      * Two additional core instruction will increase footprint and reduce unused opcodes for the future.
   * Add option to ignore some or all unresolved imports. Calling ignored import function will cause triVM exception.
   * Allow compilation of triVM assembly file.
   * Abiliti to watch C stack (only for clang):
@@ -74,7 +80,6 @@ Compilation flow:
 6. Add used buildins and startup code, data, immutable globals, bindings, e.t.c. *UVMAsmLinker*
 7. Compile triVM code to final representation *UVMAsmBinGenerator* or *UVMAsmTextGenerator*
 
-
 Buildins
 --------
 
@@ -91,14 +96,21 @@ Buildins
   * i64 emulation: `__uvmlibbuildin__add64`, `__uvmlibbuildin__udiv64`, ...
   * floating point emulation
 
-Memory map
-----------
+Somewhere in the README
+-----------------------
 
-| General areas | Detailed | 
-|-----|-----|
-| Registers |
-| Exported globals |
-| ... TODO ... |
+Size and speed comparition (e.g. for some compression library):
+
+* x86_64: Intel Core i7 ...
+* Cortex-M33: ARM Cortex-M33 at 160MHz on nRF5340 application core
+
+| Configuration | Relative speed (x86_64) | Code size (x86_64) | Relative speed (Cortex-M33) | Code size (Cortex-M33) |
+|-----|-----|---|---|---|
+| Native | 100% | 123K (100%)
+| Core | 4.5% | 139K (110%)
+| Core + Reduce | 5.1% | 138K (110%)
+| Core + Reduce + Int64 | 5.9% | 127K (104%)
+| Core + Reduce + Int64 + all faults | 5.3% | 127K (104%)
 
 uVM instructions
 ----------------
