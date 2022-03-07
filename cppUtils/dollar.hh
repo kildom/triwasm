@@ -66,13 +66,12 @@ private:
     }
 };
 
-static inline bool _dollarTypeIdIsPolymorphic(uintptr_t id) {
-    return ((_DollarTypeIdList*)id)->polymorphic;
-}
+struct DollarDummyBaseClass { };
+
 
 template<typename T>
 _DollarTypeIdList _DollarTypeIdHelper<T>::typeIdEntry = {
-    .parent = nullptr,
+    .parent = std::is_same<T, DollarDummyBaseClass>::value ? nullptr : &_DollarTypeIdHelper<DollarDummyBaseClass>::typeIdEntry,
     .polymorphic = std::is_polymorphic<T>::value,
 };
 
@@ -87,9 +86,6 @@ _DollarTypeIdList _DollarTypeIdHelper<T>::typeIdEntry = {
     } _auto_init_##cnt##_##line;
 #define _DOLLAR_INHERIT2(Base, Derived, cnt, line) _DOLLAR_INHERIT3(Base, Derived, cnt, line)
 #define DOLLAR_INHERIT(Base, Derived) _DOLLAR_INHERIT2(Base, Derived, __COUNTER__, __LINE__)
-
-template<DollarRefType refType = DOLLAR_NOT_NULL>
-class any$;
 
 #if _DOLLAR_POLYMORPHIC_PLACE_HOLDER_USED
 
@@ -119,14 +115,10 @@ struct _$_InnerTypeInfo {
 
 #endif
 
-template<typename T>
-struct _$_Inner {
+struct _$_InnerBase {
     size_t counter;
-    _$_InnerTypeInfo<T, std::is_polymorphic<T>::value> typeInfo;
-    T data;
-    template<typename... Args>
-    _$_Inner(Args&&... args) : counter(1), data(std::forward<Args>(args)...) { }
-    virtual ~_$_Inner() { }
+    _$_InnerBase() : counter(1) { }
+    virtual ~_$_InnerBase() { }
 #ifdef DBG_NEW
     void* operator new(size_t size) {
         return DBG_NEW(size);
@@ -135,6 +127,14 @@ struct _$_Inner {
         DBG_DELETE(ptr);
     }
 #endif
+};
+
+template<typename T>
+struct _$_Inner : public _$_InnerBase {
+    _$_InnerTypeInfo<T, std::is_polymorphic<T>::value> typeInfo;
+    T data;
+    template<typename... Args>
+    _$_Inner(Args&&... args) : data(std::forward<Args>(args)...) { }
 };
 
 struct _DollarEmptyClass { int _x; };
@@ -189,7 +189,7 @@ public:
     typedef T Type;
     typedef _$_Inner<T> Inner;
     static const DollarRefType REF_TYPE = refType;
-    mutable Inner *_ptr;
+    mutable _$_InnerBase *_ptr;
 
     $() : _ptr(nullptr) {
         DBG("$ ##constr(): %p->%p", this, _ptr);
@@ -403,7 +403,7 @@ public:
                 FATAL("Dereferencing null reference.");
             }
         }
-        return &_ptr->data;
+        return &((Inner*)_ptr)->data;
     }
 
     T& operator*() const {
@@ -417,7 +417,7 @@ public:
                 FATAL("Dereferencing null reference.");
             }
         }
-        return _ptr->data;
+        return ((Inner*)_ptr)->data;
     }
 
     template<class T2, typename std::enable_if<std::is_same<T2, nullptr_t>{} && (refType == DOLLAR_NULLABLE), bool>::type = true>
@@ -503,8 +503,30 @@ public:
         }
     };
 
-    template<typename T2, bool unsafe = false>
+    template <typename T2, bool convertible>
+    struct _CastMethodSelect;
+
+    template <typename T2>
+    struct _CastMethodSelect<T2, false> {
+        static $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> cast($* src) {
+            return src->_dynamicCast<T2>();
+        }
+    };
+
+    template <typename T2>
+    struct _CastMethodSelect<T2, true> {
+        static $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> cast($* src) {
+            return src->_staticCast<T2>();
+        }
+    };
+
+    template<typename T2>
     $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> cast() {
+        return _CastMethodSelect<T2, std::is_convertible<T, T2>::value>::cast(this);
+    }
+
+    template<typename T2, bool unsafe = false>
+    $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> _staticCast() {
         typedef $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> RetType;
         typedef _$_Inner<T2> Inner2;
 
@@ -519,9 +541,9 @@ public:
             }
         }
         
-        T2* p = _CastCondUnsafe<T2, unsafe>::cast(&_ptr->data);
+        T2* p = _CastCondUnsafe<T2, unsafe>::cast(&((Inner*)_ptr)->data);
 
-        intptr_t offset = (u8*)&_ptr->data - (u8*)_ptr;
+        intptr_t offset = (u8*)&((Inner*)_ptr)->data - (u8*)_ptr;
         Inner2* inner = (Inner2*)((u8*)p - offset);
         if ((void*)&inner->counter != (void*)&_ptr->counter) {
             FATAL("Casting to non-first parent or unsupported platform or compiler.");
@@ -536,17 +558,21 @@ public:
         if (_ptr == nullptr) {
             id = _DollarTypeIdHelper<T>::getId();
         } else {
-            id = _ptr->typeInfo.typeId;
+            id = ((Inner*)_ptr)->typeInfo.typeId;
         }
         return _DollarTypeIdHelper<T2>::isBaseOf(id);
     }
 
     template<typename T2>
-    $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> dynamicCast() {
+    $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> _dynamicCast() {
         if (!canCast<T2>()) {
             FATAL("Cannot do dynamic casting.");
         }
-        return cast<T2, true>();
+        return _staticCast<T2, true>();
+    }
+
+    $<DollarDummyBaseClass, refType> any() {
+        return _staticCast<DollarDummyBaseClass, true>();
     }
 
     Inner* getInner() const
@@ -559,99 +585,13 @@ public:
                 FATAL("Accessing uninitialized nonnull reference.");
             }
         }
-        return _ptr;
+        return (Inner*)_ptr;
     }
 
 };
 
-
-/*
-struct anyInnerBase {
-    char* typeId;
-    virtual ~anyInnerBase() { }
-};
-
-template<typename T, bool vd>
-struct _any$Inner : public anyInnerBase {
-    $<T, DOLLAR_NULLABLE, vd> ptr;
-    static char typeIdField;
-};
-
-template<typename T, bool vd>
-char _any$Inner<T, vd>::typeIdField;
-
-
-template<DollarRefType refType>
-class any$ {
-public:
-    static const DollarRefType ptrRefType = refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL;
-    typedef $<anyInnerBase, ptrRefType, true> PtrType;
-    PtrType ptr;
-
-    template<typename T, DollarRefType refType2, bool vd>
-    any$ &operator=(const $<T, refType2, vd>& a)
-    {
-        *a;
-        if (refType == DOLLAR_INSTANCE && ptr._ptr != nullptr) {
-            FATAL("Overriding instance reference.");
-        }
-        if (refType != DOLLAR_NOT_NULL && a._ptr == nullptr) {
-            FATAL("Assigning NULL to non-NULL reference type.");
-        }
-        if (ptr._ptr != nullptr && ptr._ptr->counter == 1 && ptr._ptr->data.typeId == &_any$Inner<T, vd>::typeIdField) {
-            auto p = ptr.template cast<_any$Inner<T, vd>>();
-            p->ptr = a;
-        } else {
-            auto p = $<_any$Inner<T, vd>, ptrRefType, true>::create();
-            p->ptr = a; // TODO: put it into constructor
-            p->typeId = &_any$Inner<T, vd>::typeIdField;
-            ptr = p.template cast<anyInnerBase>();
-        }
-        return *this;
-    }
-    
-    template<typename T, bool nullable, bool vd>
-    static any$ get(const $<T, nullable, vd>& a) {
-        auto p = $<_any$Inner<T, vd>, true, true>::create();
-        p->ptr = a;
-        p->typeId = &_any$Inner<T, vd>::typeIdField;
-        return any${
-            .ptr = p.template cast<anyInnerBase>()
-        };
-    }
-
-    operator any$*()
-    {
-        return this;
-    }
-};
-
-using any$$ = any$<DOLLAR_INSTANCE>;
-using any$N = any$<DOLLAR_NULLABLE>;
-
-
-template<typename T, bool nullable, bool vd>
-$<T, nullable, vd>::$(any$ * anyPtr) {
-    auto &any = *anyPtr;
-    if (any.ptr == nullptr) {
-        _ptr = nullptr;
-        if (!nullable) {
-            createInplace();
-            auto p = $<_any$Inner<T, vd>, true, true>::create();
-            p->ptr = *this;
-            p->typeId = &_any$Inner<T, vd>::typeIdField;
-            any.ptr = p.template cast<anyInnerBase>();
-        }
-    } else if (any.ptr->typeId == &_any$Inner<T, vd>::typeIdField) {
-        auto p = any.ptr.castUnsafe<_any$Inner<T, vd>>();
-        _ptr = p->ptr._ptr;
-        if (_ptr)
-            _ptr->counter++;
-    } else {
-        ASSERT("Expected different type");
-    }
-}
-*/
+typedef $<DollarDummyBaseClass, DOLLAR_NOT_NULL> any$;
+typedef $<DollarDummyBaseClass, DOLLAR_NULLABLE> any$N;
 
 #ifndef SKIP_PLATFORM_CHECKUPS // TODO: move to .cc file if available
 

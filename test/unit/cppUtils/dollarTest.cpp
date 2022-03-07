@@ -887,30 +887,30 @@ TEST_F(dollar, dynamicCast)
             EXPECT_TRUE(xg.canCast<Parent>()); \
             EXPECT_TRUE(xc.canCast<Parent>()); \
             EXPECT_TRUE(xp.canCast<Parent>()); \
-            Parent##prefix g = xg.dynamicCast<Parent>(); \
-            Parent##prefix c = xc.dynamicCast<Parent>(); \
-            Parent##prefix p = xp.dynamicCast<Parent>(); \
+            Parent##prefix g = xg.cast<Parent>(); \
+            Parent##prefix c = xc.cast<Parent>(); \
+            Parent##prefix p = xp.cast<Parent>(); \
         } \
         { \
             EXPECT_TRUE(xg.canCast<Child>()); \
             EXPECT_TRUE(xc.canCast<Child>()); \
             EXPECT_FALSE(xp.canCast<Child>()); \
-            Child##prefix g = xg.dynamicCast<Child>(); \
-            Child##prefix c = xc.dynamicCast<Child>(); \
+            Child##prefix g = xg.cast<Child>(); \
+            Child##prefix c = xc.cast<Child>(); \
             EXPECT_FATAL_BEGIN("Cannot do dynamic casting.") { \
-                Child##prefix p = xp.dynamicCast<Child>(); \
+                Child##prefix p = xp.cast<Child>(); \
             } EXPECT_FATAL_END; \
         } \
         { \
             EXPECT_TRUE(xg.canCast<Grandchild>()); \
             EXPECT_FALSE(xc.canCast<Grandchild>()); \
             EXPECT_FALSE(xp.canCast<Grandchild>()); \
-            Grandchild##prefix g = xg.dynamicCast<Grandchild>(); \
+            Grandchild##prefix g = xg.cast<Grandchild>(); \
             EXPECT_FATAL_BEGIN("Cannot do dynamic casting.") { \
-                Grandchild##prefix c = xc.dynamicCast<Grandchild>(); \
+                Grandchild##prefix c = xc.cast<Grandchild>(); \
             } EXPECT_FATAL_END; \
             EXPECT_FATAL_BEGIN("Cannot do dynamic casting.") { \
-                Grandchild##prefix p = xp.dynamicCast<Grandchild>(); \
+                Grandchild##prefix p = xp.cast<Grandchild>(); \
             } EXPECT_FATAL_END; \
         } \
     }
@@ -918,4 +918,44 @@ TEST_F(dollar, dynamicCast)
     TC($$);
     TC($);
     TC($N);
+
+#undef TC
+}
+
+TEST_F(dollar, any)
+{
+#define TC(prefix) \
+    { \
+        any##prefix x = Grandchild$::create().any(); \
+        EXPECT_TRUE(x.canCast<Grandchild>()); \
+        EXPECT_TRUE(x.canCast<Child>()); \
+        EXPECT_TRUE(x.canCast<Parent>()); \
+        EXPECT_FALSE(x.canCast<ChildOfTwo>()); \
+        Grandchild##prefix xGrandchild = x.cast<Grandchild>(); \
+        Child##prefix xChild = x.cast<Child>(); \
+        Parent##prefix xParent = x.cast<Parent>(); \
+        EXPECT_FATAL_BEGIN("Cannot do dynamic casting.") { \
+            ChildOfTwo##prefix xChildOfTwo = x.cast<ChildOfTwo>(); \
+        } EXPECT_FATAL_END; \
+    } \
+    { \
+        any##prefix x = Child$::create().any(); \
+        EXPECT_FALSE(x.canCast<Grandchild>()); \
+        EXPECT_TRUE(x.canCast<Child>()); \
+        EXPECT_TRUE(x.canCast<Parent>()); \
+        EXPECT_FALSE(x.canCast<ChildOfTwo>()); \
+        EXPECT_FATAL_BEGIN("Cannot do dynamic casting.") { \
+            Grandchild##prefix xGrandchild = x.cast<Grandchild>(); \
+        } EXPECT_FATAL_END; \
+        Child##prefix xChild = x.cast<Child>(); \
+        Parent##prefix xParent = x.cast<Parent>(); \
+        EXPECT_FATAL_BEGIN("Cannot do dynamic casting.") { \
+            ChildOfTwo##prefix xChildOfTwo = x.cast<ChildOfTwo>(); \
+        } EXPECT_FATAL_END; \
+    }
+
+    TC($);
+    TC($N);
+
+#undef TC
 }
