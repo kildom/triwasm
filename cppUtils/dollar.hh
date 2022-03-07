@@ -12,6 +12,9 @@
 #define DBG(...) do { } while (0)
 #endif
 
+#define _DOLLAR_POLYMORPHIC_PLACE_HOLDER_USED 1
+#define _DOLLAR_POLYMORPHIC_PLACE_HOLDER_SIZE (sizeof(void*))
+
 enum DollarRefType {
     DOLLAR_INSTANCE = 0,
     DOLLAR_NOT_NULL = 1,
@@ -35,7 +38,7 @@ enum DollarRefType {
 
 struct _DollarTypeIdList {
     _DollarTypeIdList *parent;
-    bool virtualDestructor;
+    bool polymorphic;
 };
 
 template<typename T>
@@ -45,25 +48,32 @@ struct _DollarTypeIdHelper {
         return (uintptr_t)&typeIdEntry;
     }
     static bool isChildOf(uintptr_t id) {
-        _DollarTypeIdList* entry = (_DollarTypeIdList*)id;
+        return isBaseOf(&typeIdEntry, (_DollarTypeIdList*)id);
+    }
+    static bool isBaseOf(uintptr_t id) {
+        return isBaseOf((_DollarTypeIdList*)id, &typeIdEntry);
+    }
+
+private:
+    static bool isBaseOf(_DollarTypeIdList* derived, _DollarTypeIdList* base) {
         do {
-            if (&typeIdEntry == entry) {
+            if (base == derived) {
                 return true;
             }
-            entry = entry->parent;
-        } while (entry != nullptr);
+            derived = derived->parent;
+        } while (derived != nullptr);
         return false;
     }
 };
 
-static bool _dollarTypeIdHasVirtualDestructor(uintptr_t id) {
-    return ((_DollarTypeIdList*)id)->virtualDestructor;
+static inline bool _dollarTypeIdIsPolymorphic(uintptr_t id) {
+    return ((_DollarTypeIdList*)id)->polymorphic;
 }
 
 template<typename T>
 _DollarTypeIdList _DollarTypeIdHelper<T>::typeIdEntry = {
     .parent = nullptr,
-    .virtualDestructor = std::has_virtual_destructor<T>::value,
+    .polymorphic = std::is_polymorphic<T>::value,
 };
 
 #define _DOLLAR_INHERIT3(Base, Derived, cnt, line) \
@@ -81,33 +91,41 @@ _DollarTypeIdList _DollarTypeIdHelper<T>::typeIdEntry = {
 template<DollarRefType refType = DOLLAR_NOT_NULL>
 class any$;
 
-template<typename T, bool vd>
-struct _$_Inner;
+#if _DOLLAR_POLYMORPHIC_PLACE_HOLDER_USED
+
+template<typename T, bool polymophic>
+struct _$_InnerTypeInfo;
 
 template<typename T>
-struct _$_Inner<T, false> {
-    size_t counter;
+struct _$_InnerTypeInfo<T, false> {
     uintptr_t typeId;
-    T data;
-    template<typename... Args>
-    _$_Inner(Args&&... args) : counter(1), typeId(_DollarTypeIdHelper<T>::getId()), data(std::forward<Args>(args)...) { }
-#ifdef DBG_NEW
-    void* operator new(size_t size) {
-        return DBG_NEW(size);
-    }
-    void operator delete(void* ptr) {
-        DBG_DELETE(ptr);
-    }
-#endif
+    uint8_t polymophicPlaceHolder[_DOLLAR_POLYMORPHIC_PLACE_HOLDER_SIZE];
+    _$_InnerTypeInfo() : typeId(_DollarTypeIdHelper<T>::getId()) {}
 };
 
 template<typename T>
-struct _$_Inner<T, true> {
-    size_t counter;
+struct _$_InnerTypeInfo<T, true> {
     uintptr_t typeId;
+    _$_InnerTypeInfo() : typeId(_DollarTypeIdHelper<T>::getId()) {}
+};
+
+#else
+
+template<typename T, bool polymophic>
+struct _$_InnerTypeInfo {
+    uintptr_t typeId;
+    _$_InnerTypeInfo() : typeId(_DollarTypeIdHelper<T>::getId()) {}
+};
+
+#endif
+
+template<typename T>
+struct _$_Inner {
+    size_t counter;
+    _$_InnerTypeInfo<T, std::is_polymorphic<T>::value> typeInfo;
     T data;
     template<typename... Args>
-    _$_Inner(Args&&... args) : counter(1), typeId(_DollarTypeIdHelper<T>::getId()), data(std::forward<Args>(args)...) { }
+    _$_Inner(Args&&... args) : counter(1), data(std::forward<Args>(args)...) { }
     virtual ~_$_Inner() { }
 #ifdef DBG_NEW
     void* operator new(size_t size) {
@@ -119,27 +137,7 @@ struct _$_Inner<T, true> {
 #endif
 };
 
-struct _DollarEmptyClass { };
-struct _DollarVirtDestrClass { ~_DollarVirtDestrClass() { } };
-
-namespace _tmp {
-    static _$_Inner<_DollarEmptyClass, false> A;
-    static _$_Inner<_DollarVirtDestrClass, true> B;
-    static struct Init {
-        Init() {
-            printf("A %p %p.\n", (uint8_t*)&A, (uint8_t*)&A.counter);
-            printf("B %p %p.\n", (uint8_t*)&B, (uint8_t*)&B.counter);
-            if ((uint8_t*)&A != (uint8_t*)&A.counter) {
-                printf("Unsupported platform or compiler %p %p.\n", (uint8_t*)&A, (uint8_t*)&A.counter);
-                FATAL("Unsupported platform or compiler.");
-            }
-            if ((uint8_t*)&B != (uint8_t*)&B.counter) {
-                printf("Unsupported platform or compiler %p %p.\n", (uint8_t*)&B, (uint8_t*)&B.counter);
-                FATAL("Unsupported platform or compiler.");
-            }
-        }
-    } initx;
-};
+struct _DollarEmptyClass { int _x; };
 
 template <DollarRefType refType, class InstanceCls, class NotNullCls, class NullableCls>
 struct _DollarRefTypeSelect;
@@ -160,12 +158,12 @@ struct _DollarRefTypeSelect<DOLLAR_NULLABLE, InstanceCls, NotNullCls, NullableCl
 };
 
 template<typename T, bool def = std::is_default_constructible<T>::value>
-struct _dollarDefaultCreate;
+struct _dollarDefaultCreate; // TODO: move internal definition to separate namespace instead of _ prefix
 
 template<typename T>
 struct _dollarDefaultCreate<T, false>
 {
-    typedef _$_Inner<T, std::has_virtual_destructor<T>::value> Inner;
+    typedef _$_Inner<T> Inner;
     static Inner* create() {
         FATAL("Default constructible class needed for reference implicit initialization.");
         return nullptr;
@@ -175,7 +173,7 @@ struct _dollarDefaultCreate<T, false>
 template<typename T>
 struct _dollarDefaultCreate<T, true>
 {
-    typedef _$_Inner<T, std::has_virtual_destructor<T>::value> Inner;
+    typedef _$_Inner<T> Inner;
     static Inner* create() {
         return new Inner();
     }
@@ -189,7 +187,7 @@ template<typename T, DollarRefType refType>
 class $ {
 public:
     typedef T Type;
-    typedef _$_Inner<T, std::has_virtual_destructor<T>::value> Inner;
+    typedef _$_Inner<T> Inner;
     static const DollarRefType REF_TYPE = refType;
     mutable Inner *_ptr;
 
@@ -486,9 +484,30 @@ public:
         _ptr = new Inner(std::forward<Args>(args)...);
     }
 
-    template<typename T2>
+    template <typename ToType, bool unsafe>
+    struct _CastCondUnsafe;
+
+    template <typename ToType>
+    struct _CastCondUnsafe<ToType, false> {
+        template <typename FromType>
+        static ToType* cast(FromType* p) {
+            return p;
+        }
+    };
+
+    template <typename ToType>
+    struct _CastCondUnsafe<ToType, true> {
+        template <typename FromType>
+        static ToType* cast(FromType* p) {
+            return (ToType*)p;
+        }
+    };
+
+    template<typename T2, bool unsafe = false>
     $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> cast() {
         typedef $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> RetType;
+        typedef _$_Inner<T2> Inner2;
+
         if (_ptr == nullptr) {
             if (refType == DOLLAR_NULLABLE) {
                 return RetType();
@@ -499,40 +518,35 @@ public:
                 FATAL("Accessing uninitialized nonnull reference.");
             }
         }
-        return castCommon<T2>(&_ptr->data);
-    }
+        
+        T2* p = _CastCondUnsafe<T2, unsafe>::cast(&_ptr->data);
 
-    template<typename T2>
-    $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> castUnsafe() {
-        typedef $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> RetType;
-        if (_ptr == nullptr) {
-            if (refType == DOLLAR_NULLABLE) {
-                return RetType(nullptr);
-            } else if (refType == DOLLAR_INSTANCE) {
-                _ptr = _dollarDefaultCreate<T>::create();
-                DBG("$ implicit init: %p->%p", this, _ptr);
-            } else {
-                FATAL("Accessing uninitialized nonnull reference.");
-            }
-        }
-        return castCommon<T2>((T2*)&_ptr->data);
-    }
-
-    template<typename T2>
-    $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> castCommon(T2* p) {
-        // TODO: Prevent from casting between virtual destructor and non-virtual destructor 
-        typedef $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> RetType;
-        typedef _$_Inner<T2, std::has_virtual_destructor<T2>::value> Inner2;
-        if ((void*)p != (void*)&_ptr->data) {
-            FATAL("Casting to non-first parent.");
-        }
         intptr_t offset = (u8*)&_ptr->data - (u8*)_ptr;
         Inner2* inner = (Inner2*)((u8*)p - offset);
         if ((void*)&inner->counter != (void*)&_ptr->counter) {
-            FATAL("Unsupported platform or compiler.");
+            FATAL("Casting to non-first parent or unsupported platform or compiler.");
         }
         inner->counter++;
         return RetType(inner);
+    }
+
+    template<typename T2>
+    bool canCast() {
+        uintptr_t id;
+        if (_ptr == nullptr) {
+            id = _DollarTypeIdHelper<T>::getId();
+        } else {
+            id = _ptr->typeInfo.typeId;
+        }
+        return _DollarTypeIdHelper<T2>::isBaseOf(id);
+    }
+
+    template<typename T2>
+    $<T2, refType == DOLLAR_NULLABLE ? DOLLAR_NULLABLE : DOLLAR_NOT_NULL> dynamicCast() {
+        if (!canCast<T2>()) {
+            FATAL("Cannot do dynamic casting.");
+        }
+        return cast<T2, true>();
     }
 
     Inner* getInner() const
@@ -638,5 +652,109 @@ $<T, nullable, vd>::$(any$ * anyPtr) {
     }
 }
 */
+
+#ifndef SKIP_PLATFORM_CHECKUPS // TODO: move to .cc file if available
+
+namespace _dollar_checkups {
+    struct Simple { int _x; };
+    struct Polymorphic { virtual void _f1() { } };
+    struct PolymorphicChild : public Simple { virtual void _f2() { } };
+    static _$_Inner<Simple> A;
+    static _$_Inner<Polymorphic> B;
+    static _$_Inner<PolymorphicChild> C;
+    static struct Init {
+        template<int virtFuncNo, bool virtDestr, class Parent>
+        struct Test;
+
+        template<class Parent>
+        struct Test<0, false, Parent> : public Parent {
+            typedef Parent P; int _x;
+        };
+
+        template<class Parent>
+        struct Test<0, true, Parent> : public Parent {
+            typedef Parent P; int _x;
+            virtual ~Test() { };
+        };
+
+        template<class Parent>
+        struct Test<1, false, Parent> : public Parent {
+            typedef Parent P; int _x;
+            virtual void _f1() { };
+        };
+
+        template<class Parent>
+        struct Test<1, true, Parent> : public Parent {
+            typedef Parent P; int _x;
+            virtual void _f2() { }; virtual ~Test() { };
+        };
+
+        template<class Parent>
+        struct Test<2, false, Parent> : public Parent {
+            typedef Parent P; int _x;
+            virtual void _f3() { }; virtual void _f4() { };
+        };
+
+        template<class Parent>
+        struct Test<2, true, Parent> : public Parent {
+            typedef Parent P; int _x;
+            virtual void _f5() { }; virtual void _f6() { }; virtual ~Test() { };
+        };
+
+
+        template<class T1, class T2>
+        bool ptrNotEq(T1* a, T2* b) {
+            return (u8*)(void*)a != (u8*)(void*)b;
+        }
+
+        template<class T>
+        void test() {
+            typedef typename T::P Parent;
+            _$_Inner<T> inst;
+            _$_Inner<Parent>* parent = (_$_Inner<Parent>*)(u8*)(void*)&inst;
+            if (ptrNotEq(&inst, parent)
+                || ptrNotEq(&inst.counter, &parent->counter)
+                || ptrNotEq(&inst.typeInfo.typeId, &parent->typeInfo.typeId)) {
+                FATAL("Unsupported platform or compiler.");
+            }
+            if (ptrNotEq(&parent->data, (Parent*)&inst.data)) {
+                FATAL("Unsupported platform or compiler or invalid _DOLLAR_POLYMORPHIC_PLACE_HOLDER definitions.");
+            }
+        }
+
+        template<class T>
+        void testWithParent() {
+            test<Test<0, false, T>>();
+            test<Test<1, false, T>>();
+            test<Test<2, false, T>>();
+            test<Test<0, true, T>>();
+            test<Test<1, true, T>>();
+            test<Test<2, true, T>>();
+        }
+
+        template<class T>
+        void testWithParent2() {
+            testWithParent<T>();
+            testWithParent<Test<0, false, T>>();
+            testWithParent<Test<1, false, T>>();
+            testWithParent<Test<2, false, T>>();
+            testWithParent<Test<0, true, T>>();
+            testWithParent<Test<1, true, T>>();
+            testWithParent<Test<2, true, T>>();
+        }
+
+        Init() {
+            testWithParent2<_DollarEmptyClass>();
+            testWithParent2<Test<0, false, _DollarEmptyClass>>();
+            testWithParent2<Test<1, false, _DollarEmptyClass>>();
+            testWithParent2<Test<2, false, _DollarEmptyClass>>();
+            testWithParent2<Test<0, true, _DollarEmptyClass>>();
+            testWithParent2<Test<1, true, _DollarEmptyClass>>();
+            testWithParent2<Test<2, true, _DollarEmptyClass>>();
+        }
+    } checksOnInit;
+};
+
+#endif // SKIP_PLATFORM_CHECKUPS
 
 #endif /* _DOLLAR_HH_ */

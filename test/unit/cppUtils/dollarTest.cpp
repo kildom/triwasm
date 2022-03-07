@@ -23,6 +23,7 @@
 #define DBG_NEW test_new
 #define DBG_DELETE test_delete
 
+static bool testRunning = false;
 static const char* expectFatal = NULL;
 
 struct ExpectFatalHere {
@@ -34,7 +35,10 @@ struct UnexpectedFatal {};
 
 static void testFatal(const char* text) {
     std::string fatalText(text);
-    if (expectFatal) {
+    if (!testRunning) {
+        printf("Unexpected FATAL outside test: %s\n", text);
+        exit(99);
+    } else if (expectFatal) {
         std::string expectedText(expectFatal);
         if (fatalText == expectedText) {
             WARNING("EXPECTED FATAL: %s", text);
@@ -105,6 +109,7 @@ struct NoDefConstr {
 class dollar : public ::testing::Test {
 protected:
     void SetUp() override {
+        testRunning = true;
         allocated.clear();
         allocPtr = allocBuffer;
     }
@@ -113,6 +118,7 @@ protected:
             DBG("Not deleted pointer %p", (void*)ptr);
         }
         EXPECT_EQ(allocated.size(), 0u) << "Memory leak detected!";
+        testRunning = false;
     }
 };
 
@@ -813,11 +819,16 @@ TEST_F(dollar, operator_equal)
 DOLLAR_STRUCT(Parent);
 DOLLAR_STRUCT(SecondParent);
 DOLLAR_STRUCT(Child);
+DOLLAR_STRUCT(Grandchild);
 DOLLAR_STRUCT(ChildOfTwo);
 struct Parent { int x; };
 struct SecondParent { int z; };
 struct Child : public Parent { int y; };
+DOLLAR_INHERIT(Parent, Child);
+struct Grandchild : public Child { int z; };
+DOLLAR_INHERIT(Child, Grandchild);
 struct ChildOfTwo : public Parent, SecondParent { int y; };
+DOLLAR_INHERIT(Parent, ChildOfTwo);
 
 TEST_F(dollar, cast)
 {
@@ -831,7 +842,7 @@ TEST_F(dollar, cast)
         ChildOfTwo##prefix x = new$; \
         Parent$N p = x.cast<Parent>(); \
         EXPECT_EQ((void*)x._ptr, (void*)p._ptr); \
-        EXPECT_FATAL_BEGIN("Casting to non-first parent.") { \
+        EXPECT_FATAL_BEGIN("Casting to non-first parent or unsupported platform or compiler.") { \
             SecondParent$N p2 = x.cast<SecondParent>(); \
         } EXPECT_FATAL_END; \
     }
@@ -860,4 +871,51 @@ TEST_F(dollar, cast)
         EXPECT_EQ(x._ptr, nullptr);
         EXPECT_EQ(p._ptr, nullptr);
     }
+
+#undef TC
+}
+
+
+TEST_F(dollar, dynamicCast)
+{
+#define TC(prefix) \
+    { \
+        Parent##prefix xg = Grandchild$::create().cast<Parent>(); \
+        Parent##prefix xc = Child$::create().cast<Parent>(); \
+        Parent##prefix xp = new$; \
+        { \
+            EXPECT_TRUE(xg.canCast<Parent>()); \
+            EXPECT_TRUE(xc.canCast<Parent>()); \
+            EXPECT_TRUE(xp.canCast<Parent>()); \
+            Parent##prefix g = xg.dynamicCast<Parent>(); \
+            Parent##prefix c = xc.dynamicCast<Parent>(); \
+            Parent##prefix p = xp.dynamicCast<Parent>(); \
+        } \
+        { \
+            EXPECT_TRUE(xg.canCast<Child>()); \
+            EXPECT_TRUE(xc.canCast<Child>()); \
+            EXPECT_FALSE(xp.canCast<Child>()); \
+            Child##prefix g = xg.dynamicCast<Child>(); \
+            Child##prefix c = xc.dynamicCast<Child>(); \
+            EXPECT_FATAL_BEGIN("Cannot do dynamic casting.") { \
+                Child##prefix p = xp.dynamicCast<Child>(); \
+            } EXPECT_FATAL_END; \
+        } \
+        { \
+            EXPECT_TRUE(xg.canCast<Grandchild>()); \
+            EXPECT_FALSE(xc.canCast<Grandchild>()); \
+            EXPECT_FALSE(xp.canCast<Grandchild>()); \
+            Grandchild##prefix g = xg.dynamicCast<Grandchild>(); \
+            EXPECT_FATAL_BEGIN("Cannot do dynamic casting.") { \
+                Grandchild##prefix c = xc.dynamicCast<Grandchild>(); \
+            } EXPECT_FATAL_END; \
+            EXPECT_FATAL_BEGIN("Cannot do dynamic casting.") { \
+                Grandchild##prefix p = xp.dynamicCast<Grandchild>(); \
+            } EXPECT_FATAL_END; \
+        } \
+    }
+
+    TC($$);
+    TC($);
+    TC($N);
 }
