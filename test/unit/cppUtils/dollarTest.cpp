@@ -959,3 +959,440 @@ TEST_F(dollar, any)
 
 #undef TC
 }
+
+
+#include "range.hh"
+
+template<typename T>
+class ArrayView;
+
+template<typename T, DollarRefType refType = DOLLAR_NOT_NULL>
+class Array$ : public $<std::vector<T>, refType> {
+public:
+    using $<std::vector<T>, refType>::$;
+
+    template<class UnboundedRange>
+    std::enable_if_t<std::is_class<UnboundedRange>::value, ArrayView<T>> operator[](const UnboundedRange& r) {
+        return operator[](r.bound((*this)->size()));
+    }
+
+    template<class UnboundedRange>
+    std::enable_if_t<std::is_class<UnboundedRange>::value, ArrayView<T>> operator()(const UnboundedRange& r) {
+        return operator()(r.bound((*this)->size()));
+    }
+
+    T& operator[](ssize_t index) {
+        if (index < 0 || index >= (ssize_t)(*this)->size()) {
+            FATAL("Index out of bounds.");
+        }
+        return (**this)[index];
+    }
+
+    T& operator()(ssize_t index) {
+        if (index < 0) {
+            FATAL("Index out of bounds.");
+        }
+        if (index >= (ssize_t)(*this)->size()) {
+            (*this)->resize(index + 1);
+        }
+        return (**this)[index];
+    }
+
+    ArrayView<T> operator[](const Range& r) {
+        if (r.to < r.from || r.from < 0 || r.to > (ssize_t)(*this)->size()) {
+            FATAL("Invalid range");
+        }
+        return ArrayView<T>{
+            .array = *this,
+            .from = r.from,
+            .to = r.to,
+        };
+    }
+
+    ArrayView<T> operator()(const Range& r) {
+        if (r.to < r.from || r.from < 0) {
+            FATAL("Invalid range");
+        }
+        if (r.to > (ssize_t)(*this)->size()) {
+            (*this)->resize(r.to);
+        }
+        return ArrayView<T>{
+            .array = *this,
+            .from = r.from,
+            .to = r.to,
+        };
+    }
+
+    ArrayView<T> operator[](const RelaxedRange& r) {
+        ssize_t from = r.from;
+        ssize_t to = r.to;
+        ssize_t size = (*this)->size();
+        if (from < 0) {
+            from = 0;
+        }
+        if (to < from) {
+            to = from;
+        }
+        if (to > size) {
+            to = size;
+            if (from > size) {
+                from = size;
+            }
+        }
+        return ArrayView<T>{
+            .array = *this,
+            .from = from,
+            .to = to,
+        };
+    }
+
+    ArrayView<T> operator()(const RelaxedRange& r) {
+        ssize_t from = r.from;
+        ssize_t to = r.to;
+        ssize_t size = (*this)->size();
+        if (from < 0) {
+            from = 0;
+        }
+        if (to < from) {
+            to = from;
+        }
+        if (to > size) {
+            (*this)->resize(to);
+        }
+        return ArrayView<T>{
+            .array = *this,
+            .from = from,
+            .to = to,
+        };
+    }
+
+    void clear() {
+        (*this)->clear();
+    }
+
+    ssize_t length() const {
+        return (*this)->size();
+    }
+
+    void length(ssize_t newLength) {
+        if (newLength < 0) {
+            FATAL("Invalid length.");
+        }
+        return (*this)->resize(newLength);
+    }
+
+    auto& back(ssize_t index) {
+        return operator[]((ssize_t)(*this)->size() - index - 1);
+    }
+
+    bool empty() {
+        return (*this)->empty();
+    }
+
+    auto operator()() {
+        struct Wrapper {
+            Array$& arr;
+            void operator=(const T& item) {
+                arr->push_back(item);
+            }
+        };
+        return Wrapper{ .arr = *this };
+    }
+
+    auto begin() {
+        return (*this)->begin();
+    }
+
+    auto end() {
+        return (*this)->end();
+    }
+
+    auto reverseIterate() {
+        struct Wrapper {
+            Array$& arr;
+            auto begin() {
+                return arr->rbegin();
+            }
+            auto end() {
+                return arr->rend();
+            }
+        };
+        return Wrapper{ .arr = *this };
+    }
+
+    auto indexIterate() {
+        struct Wrapper {
+            struct Iterator {
+                ssize_t index;
+                bool operator!=(const Iterator& b) const { return index != b.index; }
+                void operator++() { index++; }
+                ssize_t operator*() { return index; }
+            };
+            Array$& arr;
+            auto begin() { return Iterator{ .index = 0 }; }
+            auto end() { return Iterator{ .index = (ssize_t)arr->size() }; }
+        };
+        return Wrapper{ .arr = *this };
+    }
+};
+
+template<typename T>
+class ArrayView {
+public:
+    Array$<T> array;
+    ssize_t from;
+    ssize_t to;
+
+    std::vector<T>& checkRange() const
+    {
+        if (to > array.length()) {
+            FATAL("Outdated range");
+        }
+        return *array;
+    }
+
+    template<class UnboundedRange>
+    std::enable_if_t<std::is_class<UnboundedRange>::value, ArrayView> operator[](const UnboundedRange& r) {
+        return operator[](r.bound((*this)->size()));
+    }
+
+    template<class UnboundedRange>
+    std::enable_if_t<std::is_class<UnboundedRange>::value, ArrayView> operator()(const UnboundedRange& r) {
+        return operator()(r.bound((*this)->size()));
+    }
+
+    T& operator[](ssize_t index) {
+        auto& v = checkRange();
+        index += from;
+        if (index < from || index >= to) {
+            FATAL("Index out of bounds.");
+        }
+        return v[index];
+    }
+
+    T& operator()(ssize_t index) {
+        auto& v = checkRange();
+        index += from;
+        if (index < from) {
+            FATAL("Index out of bounds.");
+        }
+        if (index >= to) {
+            length(index + 1 - from);
+        }
+        return v[index];
+    }
+
+    ArrayView operator[](const Range& r) {
+        ssize_t absFrom = r.from + from;
+        ssize_t absTo = r.to + from;
+        if (absTo < absFrom || absFrom < from || absTo > to) {
+            FATAL("Invalid range");
+        }
+        return ArrayView{
+            .array = array,
+            .from = absFrom,
+            .to = absTo,
+        };
+    }
+
+    ArrayView operator()(const Range& r) {
+        ssize_t absFrom = r.from + from;
+        ssize_t absTo = r.to + from;
+        if (absTo < absFrom || absFrom < from) {
+            FATAL("Invalid range");
+        }
+        if (absTo > to) {
+            length(absTo - from);
+        }
+        return ArrayView{
+            .array = array,
+            .from = absFrom,
+            .to = absTo,
+        };
+    }
+
+    ArrayView<T> operator[](const RelaxedRange& r) {
+        ssize_t absFrom = r.from + from;
+        ssize_t absTo = r.to + from;
+        if (absFrom < from) {
+            absFrom = from;
+        }
+        if (absTo < absFrom) {
+            absTo = absFrom;
+        }
+        if (absTo > to) {
+            absTo = to;
+            if (absFrom > to) {
+                absFrom = to;
+            }
+        }
+        return ArrayView<T>{
+            .array = array,
+            .from = absFrom,
+            .to = absTo,
+        };
+    }
+
+    ArrayView<T> operator()(const RelaxedRange& r) {
+        ssize_t absFrom = r.from;
+        ssize_t absTo = r.to;
+        if (absFrom < from) {
+            absFrom = from;
+        }
+        if (absTo < absFrom) {
+            absTo = absFrom;
+        }
+        if (absTo > to) {
+            length(absTo - from);
+        }
+        return ArrayView<T>{
+            .array = array,
+            .from = absFrom,
+            .to = absTo,
+        };
+    }
+
+    void clear() {
+        auto& v = checkRange();
+        v.erase(v.begin() + from, v.begin() + to);
+        to = from;
+    }
+
+    ssize_t length() {
+        return to - from;
+    }
+
+    void length(ssize_t newLength) {
+        if (newLength < 0) {
+            FATAL("Invalid length.");
+        }
+        auto& v = checkRange();
+        ssize_t oldLength = to - from;
+        if (newLength <= oldLength) {
+            v.erase(v.begin() + from + newLength, v.begin() + to);
+        } else {
+            v.insert(v.begin() + to, newLength - oldLength, T());
+        }
+        to = from + newLength;
+    }
+
+    auto& back(ssize_t index) {
+        return operator[](to - index - 1);
+    }
+
+    bool empty() {
+        return to <= from;
+    }
+
+    auto operator()() {
+        struct Wrapper {
+            ArrayView& view;
+            void operator=(const T& item) {
+                auto& v = view.checkRange();
+                v.insert(v.begin() + view.to, item);
+                view.to++;
+            }
+        };
+        return Wrapper{ .view = *this };
+    }
+
+    auto begin() {
+        auto& v = checkRange();
+        return v.begin() + from;
+    }
+
+    auto end() {
+        auto& v = checkRange();
+        return v.begin() + to;
+    }
+
+    auto reverseIterate() {
+        struct Wrapper {
+            typename std::vector<T>::reverse_iterator rbegin;
+            typename std::vector<T>::reverse_iterator rend;
+            auto& begin() {
+                return rbegin;
+            }
+            auto& end() {
+                return rend;
+            }
+        };
+        auto& v = checkRange();
+        return Wrapper{ .rbegin = v.rbegin() + (v.size() - to), .rend = v.rbegin() + (v.size() - from) };
+    }
+
+    auto indexIterate() {
+        struct Wrapper {
+            struct Iterator {
+                ssize_t index;
+                bool operator!=(const Iterator& b) const { return index != b.index; }
+                void operator++() { index++; }
+                ssize_t operator*() { return index; }
+            };
+            ArrayView& view;
+            auto begin() { return Iterator{ .index = 0 }; }
+            auto end() { return Iterator{ .index = view.to - view.from }; }
+        };
+        return Wrapper{ .view = *this };
+    }
+
+    void operator=(const ArrayView& src) {
+        copyArray(src.checkRange(), src.from, src.to);
+    }
+
+    void operator=(Array$<T> src) {
+        copyArray(*src, 0, src.length());
+    }
+
+    void copyArray(const std::vector<T>& src, ssize_t srcFrom, ssize_t srcTo) {
+        if (&*array == &src) {
+            FATAL("TODO: implement");
+        }
+        std::vector<T>& v = checkRange();
+        ssize_t size = to - from;
+        ssize_t srcSize = srcTo - srcFrom;
+        if (size < srcSize) {
+            std::copy(src.cbegin() + srcFrom, src.cbegin() + srcFrom + size, v.begin() + from);
+            v.insert(v.begin() + to, src.cbegin() + srcFrom + size, src.cbegin() + srcFrom + srcSize);
+        } else {
+            std::copy(src.cbegin() + srcFrom, src.cbegin() + srcFrom + srcSize, v.begin() + from);
+            v.erase(v.begin() + from + srcSize, v.begin() + to);
+        }
+    }
+
+};
+
+template<typename T>
+using Array$$ = Array$<T, DOLLAR_INSTANCE>;
+
+template<typename T>
+using Array$N = Array$<T, DOLLAR_NULLABLE>;
+
+template<typename T>
+void showArray(Array$<T> arr) {
+    for (auto x: arr) {
+        std::cout << x << " ";
+    }
+    std::cout << "\n";
+}
+
+template<typename T>
+void showArray(ArrayView<T> arr) {
+    for (auto x: arr) {
+        std::cout << x << " ";
+    }
+    std::cout << "\n";
+}
+
+TEST_F(dollar, aaa)
+{
+    Array$<int> a = std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8};
+    Array$<int> c = std::vector<int>{10, 11, 12, 13, 14, 15, 16, 17, 18};
+    Array$<int> b;
+    b = a;
+    EXPECT_EQ(a[0], 0);
+    showArray(a);
+    a[3 |R|| 2] = c[3 |R| 4];
+    showArray(a);
+    printf("OK %d %d %d\n", a[2], b[1], a.back(2));
+}

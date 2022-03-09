@@ -1,6 +1,4 @@
-# cppUtils
-
-## Dollar Reference
+# Dollar Reference
 
 Special kind of reference that makes code more secure by:
 - removing access to unallocated data (using refrence counting)
@@ -46,3 +44,31 @@ Use cases:
 | Access on uninitialized/NULL state | Default constructor executed | Fault | Fault |
 | Assign of NULL reference | Fault | Fault | OK |
 | Assign of Not-NULL reference | OK on Uninitialized state<br>Fault otherwise | OK | OK |
+
+
+# Range
+
+...
+# Array$\<T>
+
+Array of elements of type `T`.
+Build on top of `std::vector<T>`.
+Provides more safety access because of index checks on each access.
+
+## Accessing elements
+
+Two operators allows access to specific element:
+* `[]` - normal array operator. Causes `FAIL` if index is out of bounds.
+* `()` - array access operator that is able to add new elements if they does not exists. Causes `FAIL` if index is negative.
+
+```c++
+Array$$<int> arr1;
+std::cout << arr1[0] // FAIL - index out of bounds
+std::cout << arr1(0) // OK - it will add new element (using default constructor) and print it
+
+Array$$<int> arr2;
+arr2[0] = 1; // FAIL - index out of bounds
+arr2(0) = 1; // OK - array size will be increased
+arr2(arr2.length()) = 99; // OK - this will add new element at the end
+arr2() = 99; // OK - this is shortcut of above expression
+```
