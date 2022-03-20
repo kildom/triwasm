@@ -971,6 +971,18 @@ class Array$ : public $<std::vector<T>, refType> {
 public:
     using $<std::vector<T>, refType>::$;
 
+    template<DollarRefType refType2>
+    Array$(const $<std::vector<T>, refType2> &a) : $<std::vector<T>, refType>(a) { }
+
+    template<DollarRefType refType2>
+    Array$($<std::vector<T>, refType2> &&a) : $<std::vector<T>, refType>(a) { }
+
+    template<DollarRefType refType2>
+    void operator=(const $<std::vector<T>, refType2> &a) { $<std::vector<T>, refType>::operator=(a); }
+
+    template<DollarRefType refType2>
+    void operator=($<std::vector<T>, refType2> &&a) { $<std::vector<T>, refType>::operator=(a); }
+
     template<class UnboundedRange>
     std::enable_if_t<std::is_class<UnboundedRange>::value, ArrayView<T>> operator[](const UnboundedRange& r) {
         return operator[](r.bound((*this)->size()));
@@ -1344,19 +1356,40 @@ public:
         copyArray(*src, 0, src.length());
     }
 
-    void copyArray(const std::vector<T>& src, ssize_t srcFrom, ssize_t srcTo) {
-        if (&*array == &src) {
-            FATAL("TODO: implement");
-        }
+    void copyArray(const std::vector<T>& src, ssize_t srcFrom, ssize_t srcTo)
+    {
         std::vector<T>& v = checkRange();
         ssize_t size = to - from;
         ssize_t srcSize = srcTo - srcFrom;
-        if (size < srcSize) {
-            std::copy(src.cbegin() + srcFrom, src.cbegin() + srcFrom + size, v.begin() + from);
-            v.insert(v.begin() + to, src.cbegin() + srcFrom + size, src.cbegin() + srcFrom + srcSize);
-        } else {
-            std::copy(src.cbegin() + srcFrom, src.cbegin() + srcFrom + srcSize, v.begin() + from);
-            v.erase(v.begin() + from + srcSize, v.begin() + to);
+        if (&v == &src)
+        {
+            ssize_t minSize = std::min(size, srcSize);
+            if (from == srcFrom) {
+                // Nothing to copy - already in place
+            } else if (from < srcFrom) {
+                std::copy(v.cbegin() + srcFrom, v.cbegin() + srcFrom + minSize, v.begin() + from);
+            } else {
+                std::copy(v.crend() - srcFrom - minSize, v.crend() - srcFrom, v.rend() - from - minSize);
+            }
+
+            if (size >= srcSize) {
+                v.erase(v.begin() + from + srcSize, v.begin() + to);
+            } else {
+                FATAL("TODO: implement");
+            }
+        }
+        else
+        {
+            if (size < srcSize)
+            {
+                std::copy(src.cbegin() + srcFrom, src.cbegin() + srcFrom + size, v.begin() + from);
+                v.insert(v.begin() + to, src.cbegin() + srcFrom + size, src.cbegin() + srcFrom + srcSize);
+            }
+            else
+            {
+                std::copy(src.cbegin() + srcFrom, src.cbegin() + srcFrom + srcSize, v.begin() + from);
+                v.erase(v.begin() + from + srcSize, v.begin() + to);
+            }
         }
     }
 
@@ -1369,15 +1402,10 @@ template<typename T>
 using Array$N = Array$<T, DOLLAR_NULLABLE>;
 
 template<typename T>
-void showArray(Array$<T> arr) {
-    for (auto x: arr) {
-        std::cout << x << " ";
-    }
-    std::cout << "\n";
-}
+using Array = std::vector<T>;
 
 template<typename T>
-void showArray(ArrayView<T> arr) {
+void showArray(T arr) {
     for (auto x: arr) {
         std::cout << x << " ";
     }
@@ -1388,11 +1416,19 @@ TEST_F(dollar, aaa)
 {
     Array$<int> a = std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8};
     Array$<int> c = std::vector<int>{10, 11, 12, 13, 14, 15, 16, 17, 18};
-    Array$<int> b;
-    b = a;
-    EXPECT_EQ(a[0], 0);
+    Array$<int> b = new$;
     showArray(a);
-    a[3 |R|| 2] = c[3 |R| 4];
-    showArray(a);
+
+    any$ any = a.any();
+    printf("%d\n", any.canCast<Array<int>>());
+    printf("%d\n", any.canCast<Array<long>>());
+
+    Array$$<long> xx;
+    xx = any.cast<Array<long>>();
+
+    b[R] = a;
+    b[2 |R| 7] = b[6 |R| 8];
+    std::cout << "---------\n"; showArray(a); showArray(b);
+
     printf("OK %d %d %d\n", a[2], b[1], a.back(2));
 }
