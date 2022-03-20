@@ -1,12 +1,11 @@
 #ifndef _DOLLAR_HH_
 #define _DOLLAR_HH_
 
-#include <stdint.h>
-#include <stddef.h>
 #include <utility>
-#include <cstddef>
 
 #include "trace.hh"
+#include "types.hh"
+
 
 #ifndef DBG
 #define DBG(...) do { } while (0)
@@ -116,11 +115,11 @@ struct _$_InnerTypeInfo {
 #endif
 
 struct _$_InnerBase {
-    size_t counter;
+    usize counter;
     _$_InnerBase() : counter(1) { }
     virtual ~_$_InnerBase() { }
 #ifdef DBG_NEW
-    void* operator new(size_t size) {
+    void* operator new(usize size) {
         return DBG_NEW(size);
     }
     void operator delete(void* ptr) {
@@ -697,4 +696,4 @@ namespace _dollar_checkups {
 
 #endif // SKIP_PLATFORM_CHECKUPS
 
-#endif /* _DOLLAR_HH_ */
+#endif // _DOLLAR_HH_
