@@ -1,3 +1,5 @@
+# Copyright (C) 2023 Dominik Kilian
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 CLANG=tools/wasi-sdk/bin/clang --sysroot=tools/wasi-sdk/share/wasi-sysroot
 WASM_OPT=tools/binaryen/bin/wasm-opt
@@ -91,10 +93,14 @@ cleanobj:
 	rm -Rf obj
 
 clean: cleanobj
-	rm ../../lib/triwasmlib.wasm
+	rm -R ../../lib/*
 
 ../../lib/triwasmlib.wasm: obj/triwasmlib.wasm
 	cp obj/triwasmlib.wasm ../../lib/triwasmlib.wasm
+	cp ../src/triasm/* ../../lib/
+	mkdir -p ../../lib/licenses
+	cp ../src/COPYING ../../lib/licenses/triwasmlib.txt
+	cp ../Berkeley-SoftFloat/COPYING.txt ../../lib/licenses/Berkeley-SoftFloat.txt
 
 obj/triwasmlib.wasm: $(SRC) ../src/*.h ../Berkeley-SoftFloat/include/*.h ../Berkeley-SoftFloat/$(SF_SPEC)/*.h Makefile
 	mkdir -p obj

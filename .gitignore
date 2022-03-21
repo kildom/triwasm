@@ -7,5 +7,4 @@
 package-lock.json
 node_modules
 /.vscode/settings.json
-/lib/triwasmlib.wasm
 /test/unit/build/*
