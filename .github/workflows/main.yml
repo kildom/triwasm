@@ -16,3 +16,7 @@ jobs:
         run: |
           cd test/unit
           make run
+      - name: Check compilation errors
+        run: |
+          cd test/unit
+          node test_build_errors.js
