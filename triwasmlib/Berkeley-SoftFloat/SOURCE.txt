@@ -1,6 +1,0 @@
-
-Source code contained in this directory comes from a Release 3e of the Berkeley
-SoftFloat library (http://www.jhauser.us/arithmetic/SoftFloat.html).
-See COPYING.txt for copyright details.
-
-Small modifications were made to port it to triWASM.

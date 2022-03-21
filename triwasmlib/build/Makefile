@@ -13,8 +13,8 @@ CFLAGS=\
 	-Wl,--no-entry -nostartfiles -Wl,--import-memory -msign-ext -mexec-model=reactor \
 	-flto -Oz -g0 \
 	-I../src \
-	-I../Berkeley-SoftFloat/include \
-	-I../Berkeley-SoftFloat/$(SF_SPEC) \
+	-I../Berkeley-SoftFloat/source/include \
+	-I../Berkeley-SoftFloat/source/$(SF_SPEC) \
 	-DINLINE_LEVEL=10000 \
 	-DSF_ROUNDING_MODE=$(SF_ROUNDING_MODE) \
 	-DSF_DETECT_TININESS=$(SF_DETECT_TININESS)
@@ -33,54 +33,54 @@ SRC=../src/i64.c \
 	../src/f64.c \
 	../src/stubs.c \
 	\
-	../Berkeley-SoftFloat/f32_eq.c \
-	../Berkeley-SoftFloat/f32_lt.c \
-	../Berkeley-SoftFloat/f32_le.c \
-	../Berkeley-SoftFloat/f32_add.c \
-	../Berkeley-SoftFloat/f32_sub.c \
-	../Berkeley-SoftFloat/f32_mul.c \
-	../Berkeley-SoftFloat/f32_div.c \
-	../Berkeley-SoftFloat/f32_roundToInt.c \
-	../Berkeley-SoftFloat/s_addMagsF32.c \
-	../Berkeley-SoftFloat/s_subMagsF32.c \
-	../Berkeley-SoftFloat/s_normSubnormalF32Sig.c \
-	../Berkeley-SoftFloat/s_shiftRightJam32.c \
-	../Berkeley-SoftFloat/s_shortShiftRightJam64.c \
-	../Berkeley-SoftFloat/s_roundPackToF32.c \
-	../Berkeley-SoftFloat/s_normRoundPackToF32.c \
-	../Berkeley-SoftFloat/s_approxRecip32_1.c \
-	../Berkeley-SoftFloat/s_approxRecip_1Ks.c \
-	../Berkeley-SoftFloat/$(SF_SPEC)/s_propagateNaNF32UI.c \
-	../Berkeley-SoftFloat/f64_eq.c \
-	../Berkeley-SoftFloat/f64_lt.c \
-	../Berkeley-SoftFloat/f64_le.c \
-	../Berkeley-SoftFloat/f64_add.c \
-	../Berkeley-SoftFloat/f64_sub.c \
-	../Berkeley-SoftFloat/f64_mul.c \
-	../Berkeley-SoftFloat/f64_div.c \
-	../Berkeley-SoftFloat/f64_roundToInt.c \
-	../Berkeley-SoftFloat/s_addMagsF64.c \
-	../Berkeley-SoftFloat/s_subMagsF64.c \
-	../Berkeley-SoftFloat/s_normSubnormalF64Sig.c \
-	../Berkeley-SoftFloat/s_shiftRightJam64.c \
-	../Berkeley-SoftFloat/s_roundPackToF64.c \
-	../Berkeley-SoftFloat/s_normRoundPackToF64.c \
-	../Berkeley-SoftFloat/s_mul64To128M.c \
-	../Berkeley-SoftFloat/$(SF_SPEC)/s_propagateNaNF64UI.c \
-	../Berkeley-SoftFloat/$(SF_SPEC)/s_f64UIToCommonNaN.c \
-	../Berkeley-SoftFloat/$(SF_SPEC)/s_commonNaNToF32UI.c \
-	../Berkeley-SoftFloat/$(SF_SPEC)/s_f32UIToCommonNaN.c \
-	../Berkeley-SoftFloat/$(SF_SPEC)/s_commonNaNToF64UI.c \
-	../Berkeley-SoftFloat/i32_to_f32.c \
-	../Berkeley-SoftFloat/ui32_to_f32.c \
-	../Berkeley-SoftFloat/i64_to_f32.c \
-	../Berkeley-SoftFloat/ui64_to_f32.c \
-	../Berkeley-SoftFloat/i32_to_f64.c \
-	../Berkeley-SoftFloat/ui32_to_f64.c \
-	../Berkeley-SoftFloat/i64_to_f64.c \
-	../Berkeley-SoftFloat/ui64_to_f64.c \
-	../Berkeley-SoftFloat/f64_to_f32.c \
-	../Berkeley-SoftFloat/f32_to_f64.c \
+	../Berkeley-SoftFloat/source/f32_eq.c \
+	../Berkeley-SoftFloat/source/f32_lt.c \
+	../Berkeley-SoftFloat/source/f32_le.c \
+	../Berkeley-SoftFloat/source/f32_add.c \
+	../Berkeley-SoftFloat/source/f32_sub.c \
+	../Berkeley-SoftFloat/source/f32_mul.c \
+	../Berkeley-SoftFloat/source/f32_div.c \
+	../Berkeley-SoftFloat/source/f32_roundToInt.c \
+	../Berkeley-SoftFloat/source/s_addMagsF32.c \
+	../Berkeley-SoftFloat/source/s_subMagsF32.c \
+	../Berkeley-SoftFloat/source/s_normSubnormalF32Sig.c \
+	../Berkeley-SoftFloat/source/s_shiftRightJam32.c \
+	../Berkeley-SoftFloat/source/s_shortShiftRightJam64.c \
+	../Berkeley-SoftFloat/source/s_roundPackToF32.c \
+	../Berkeley-SoftFloat/source/s_normRoundPackToF32.c \
+	../Berkeley-SoftFloat/source/s_approxRecip32_1.c \
+	../Berkeley-SoftFloat/source/s_approxRecip_1Ks.c \
+	../Berkeley-SoftFloat/source/$(SF_SPEC)/s_propagateNaNF32UI.c \
+	../Berkeley-SoftFloat/source/f64_eq.c \
+	../Berkeley-SoftFloat/source/f64_lt.c \
+	../Berkeley-SoftFloat/source/f64_le.c \
+	../Berkeley-SoftFloat/source/f64_add.c \
+	../Berkeley-SoftFloat/source/f64_sub.c \
+	../Berkeley-SoftFloat/source/f64_mul.c \
+	../Berkeley-SoftFloat/source/f64_div.c \
+	../Berkeley-SoftFloat/source/f64_roundToInt.c \
+	../Berkeley-SoftFloat/source/s_addMagsF64.c \
+	../Berkeley-SoftFloat/source/s_subMagsF64.c \
+	../Berkeley-SoftFloat/source/s_normSubnormalF64Sig.c \
+	../Berkeley-SoftFloat/source/s_shiftRightJam64.c \
+	../Berkeley-SoftFloat/source/s_roundPackToF64.c \
+	../Berkeley-SoftFloat/source/s_normRoundPackToF64.c \
+	../Berkeley-SoftFloat/source/s_mul64To128M.c \
+	../Berkeley-SoftFloat/source/$(SF_SPEC)/s_propagateNaNF64UI.c \
+	../Berkeley-SoftFloat/source/$(SF_SPEC)/s_f64UIToCommonNaN.c \
+	../Berkeley-SoftFloat/source/$(SF_SPEC)/s_commonNaNToF32UI.c \
+	../Berkeley-SoftFloat/source/$(SF_SPEC)/s_f32UIToCommonNaN.c \
+	../Berkeley-SoftFloat/source/$(SF_SPEC)/s_commonNaNToF64UI.c \
+	../Berkeley-SoftFloat/source/i32_to_f32.c \
+	../Berkeley-SoftFloat/source/ui32_to_f32.c \
+	../Berkeley-SoftFloat/source/i64_to_f32.c \
+	../Berkeley-SoftFloat/source/ui64_to_f32.c \
+	../Berkeley-SoftFloat/source/i32_to_f64.c \
+	../Berkeley-SoftFloat/source/ui32_to_f64.c \
+	../Berkeley-SoftFloat/source/i64_to_f64.c \
+	../Berkeley-SoftFloat/source/ui64_to_f64.c \
+	../Berkeley-SoftFloat/source/f64_to_f32.c \
+	../Berkeley-SoftFloat/source/f32_to_f64.c \
 
 all: ../../lib/triwasmlib.wasm
 
@@ -102,7 +102,7 @@ clean: cleanobj
 	cp ../src/COPYING ../../lib/licenses/triwasmlib.txt
 	cp ../Berkeley-SoftFloat/COPYING.txt ../../lib/licenses/Berkeley-SoftFloat.txt
 
-obj/triwasmlib.wasm: $(SRC) ../src/*.h ../Berkeley-SoftFloat/include/*.h ../Berkeley-SoftFloat/$(SF_SPEC)/*.h Makefile
+obj/triwasmlib.wasm: $(SRC) ../src/*.h ../Berkeley-SoftFloat/source/include/*.h ../Berkeley-SoftFloat/source/$(SF_SPEC)/*.h Makefile
 	mkdir -p obj
 	# TODO: -mtail-call 
 	$(CLANG) $(CFLAGS) -o $@-no-opt $(SRC)
