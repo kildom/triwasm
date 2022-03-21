@@ -50,7 +50,7 @@ typedef uintptr_t usize;
  * / and /=    unset flags      flags that are set on left side except those from right side
  * ^ and ^=    invert flags     flags from left side inverted by flags from the right side
  * ~           invert all flags all flags are inverted (including undefined ones)
- * !           is empty         true if no flag is set
+ * !           is empty         true if no flag is set (including undefined ones)
  * IN          is flag set      true if any flag is set on both sides
  */
 #define DEFINE_ENUM_FLAGS(T) \
@@ -64,7 +64,7 @@ typedef uintptr_t usize;
     inline T operator ^ (T a, T b) { return T(((std::underlying_type_t<T>)a) ^ ((std::underlying_type_t<T>)b)); } \
     inline void operator ^= (T &a, T b) { ((std::underlying_type_t<T> &)a) ^= ((std::underlying_type_t<T>)b); } \
     inline bool operator ! (T a) { return (std::underlying_type_t<T>)a == (std::underlying_type_t<T>)0; } \
-    inline bool operator IN (T a, T b) { return (((std::underlying_type_t<T>)a) & ((std::underlying_type_t<T>)b)) != 0; }
+    inline bool operator IN (T a, T b) { return (((std::underlying_type_t<T>)a) & ((std::underlying_type_t<T>)b)) != (std::underlying_type_t<T>)0; }
 
 template<typename T>
 constexpr T bit(T index)

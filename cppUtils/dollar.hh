@@ -115,7 +115,7 @@ struct _$_InnerTypeInfo {
 #endif
 
 struct _$_InnerBase {
-    usize counter;
+    ssize counter;
     _$_InnerBase() : counter(1) { }
     virtual ~_$_InnerBase() { }
 #ifdef DBG_NEW
@@ -269,11 +269,16 @@ public:
 
     void unref() {
         if (_ptr) {
-            _ptr->counter--;
-            DBG("$ -- %p->%p   %d", this, _ptr, (int)_ptr->counter);
-            if (_ptr->counter == 0) {
-                DBG("$ delete %p->%p", this, _ptr);
-                delete _ptr;
+            if (_ptr->counter > 0) {
+                _ptr->counter--;
+                DBG("$ -- %p->%p   %d", this, _ptr, (int)_ptr->counter);
+                if (_ptr->counter == 0) {
+                    DBG("$ delete %p->%p", this, _ptr);
+                    delete _ptr;
+                    _ptr = nullptr;
+                }
+            } else {
+                FATAL("Memory corruption. Reference counter below zero.");
             }
         }
     }
@@ -283,25 +288,23 @@ public:
         unref();
     }
 
-    $& operator=(_$_new_t) {
+    void operator=(_$_new_t) {
         DBG("$ ##assign(new$) %p->%p", this, _ptr);
         if (_ptr != nullptr && refType == DOLLAR_INSTANCE) {
             FATAL("Overriding instance reference.");
         }
         unref();
         _ptr = _dollarDefaultCreate<T>::create();
-        return *this;
     }
 
-    $& operator=(typename _DollarRefTypeSelect<refType, _DollarEmptyClass, _DollarEmptyClass, nullptr_t>::type) {
+    void operator=(typename _DollarRefTypeSelect<refType, _DollarEmptyClass, _DollarEmptyClass, nullptr_t>::type) {
         DBG("$ ##assign(nullptr) %p->%p", this, _ptr);
         unref();
         _ptr = nullptr;
-        return *this;
     }
 
     template<DollarRefType refType2>
-    $& copyAssign(const $<T, refType2>& a) {
+    void copyAssign(const $<T, refType2>& a) {
         DBG("$ ##assign(const $ &) %p->%p", this, _ptr);
         auto newPtr = a.getInner();
         DBG("$ newPtr %p", newPtr);
@@ -323,18 +326,16 @@ public:
 
         unref();
         _ptr = newPtr;
-
-        return *this;
     }
 
-    $& operator=(const $& a) {
-        return copyAssign(a);
+    void operator=(const $& a) {
+        copyAssign(a);
     }
 
     template<DollarRefType refType2>
-    $& operator=(const $<T, refType2>& a)
+    void operator=(const $<T, refType2>& a)
     {
-        return copyAssign(a);
+        copyAssign(a);
     }
 
     template<DollarRefType refType2>
@@ -591,109 +592,5 @@ public:
 
 typedef $<DollarDummyBaseClass, DOLLAR_NOT_NULL> any$;
 typedef $<DollarDummyBaseClass, DOLLAR_NULLABLE> any$N;
-
-#ifndef SKIP_PLATFORM_CHECKUPS // TODO: move to .cc file if available
-
-namespace _dollar_checkups {
-    struct Simple { int _x; };
-    struct Polymorphic { virtual void _f1() { } };
-    struct PolymorphicChild : public Simple { virtual void _f2() { } };
-    static _$_Inner<Simple> A;
-    static _$_Inner<Polymorphic> B;
-    static _$_Inner<PolymorphicChild> C;
-    static struct Init {
-        template<int virtFuncNo, bool virtDestr, class Parent>
-        struct Test;
-
-        template<class Parent>
-        struct Test<0, false, Parent> : public Parent {
-            typedef Parent P; int _x;
-        };
-
-        template<class Parent>
-        struct Test<0, true, Parent> : public Parent {
-            typedef Parent P; int _x;
-            virtual ~Test() { };
-        };
-
-        template<class Parent>
-        struct Test<1, false, Parent> : public Parent {
-            typedef Parent P; int _x;
-            virtual void _f1() { };
-        };
-
-        template<class Parent>
-        struct Test<1, true, Parent> : public Parent {
-            typedef Parent P; int _x;
-            virtual void _f2() { }; virtual ~Test() { };
-        };
-
-        template<class Parent>
-        struct Test<2, false, Parent> : public Parent {
-            typedef Parent P; int _x;
-            virtual void _f3() { }; virtual void _f4() { };
-        };
-
-        template<class Parent>
-        struct Test<2, true, Parent> : public Parent {
-            typedef Parent P; int _x;
-            virtual void _f5() { }; virtual void _f6() { }; virtual ~Test() { };
-        };
-
-
-        template<class T1, class T2>
-        bool ptrNotEq(T1* a, T2* b) {
-            return (u8*)(void*)a != (u8*)(void*)b;
-        }
-
-        template<class T>
-        void test() {
-            typedef typename T::P Parent;
-            _$_Inner<T> inst;
-            _$_Inner<Parent>* parent = (_$_Inner<Parent>*)(u8*)(void*)&inst;
-            if (ptrNotEq(&inst, parent)
-                || ptrNotEq(&inst.counter, &parent->counter)
-                || ptrNotEq(&inst.typeInfo.typeId, &parent->typeInfo.typeId)) {
-                FATAL("Unsupported platform or compiler.");
-            }
-            if (ptrNotEq(&parent->data, (Parent*)&inst.data)) {
-                FATAL("Unsupported platform or compiler or invalid _DOLLAR_POLYMORPHIC_PLACE_HOLDER definitions.");
-            }
-        }
-
-        template<class T>
-        void testWithParent() {
-            test<Test<0, false, T>>();
-            test<Test<1, false, T>>();
-            test<Test<2, false, T>>();
-            test<Test<0, true, T>>();
-            test<Test<1, true, T>>();
-            test<Test<2, true, T>>();
-        }
-
-        template<class T>
-        void testWithParent2() {
-            testWithParent<T>();
-            testWithParent<Test<0, false, T>>();
-            testWithParent<Test<1, false, T>>();
-            testWithParent<Test<2, false, T>>();
-            testWithParent<Test<0, true, T>>();
-            testWithParent<Test<1, true, T>>();
-            testWithParent<Test<2, true, T>>();
-        }
-
-        Init() {
-            testWithParent2<_DollarEmptyClass>();
-            testWithParent2<Test<0, false, _DollarEmptyClass>>();
-            testWithParent2<Test<1, false, _DollarEmptyClass>>();
-            testWithParent2<Test<2, false, _DollarEmptyClass>>();
-            testWithParent2<Test<0, true, _DollarEmptyClass>>();
-            testWithParent2<Test<1, true, _DollarEmptyClass>>();
-            testWithParent2<Test<2, true, _DollarEmptyClass>>();
-        }
-    } checksOnInit;
-};
-
-#endif // SKIP_PLATFORM_CHECKUPS
 
 #endif // _DOLLAR_HH_

@@ -16,6 +16,10 @@ ifneq ($(TEST_FILTER),)
   RUN_FLAGS := --gtest_filter=$(TEST_FILTER)
 endif
 
+ifneq ($(TEST_BUILD_ERROR),)
+  CXXFLAGS += -D$(TEST_BUILD_ERROR)=1
+endif
+
 all: $(OUTDIR)/$(TARGET)
 
 run: $(OUTDIR)/$(TARGET)

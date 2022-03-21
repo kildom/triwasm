@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "trace.hh"
 #include "types.hh"
 #include "dollar.hh"
 #include "range.hh"
@@ -14,6 +15,7 @@ template<typename T, DollarRefType refType = DOLLAR_NOT_NULL>
 class Array$ : public $<std::vector<T>, refType> {
 public:
     using $<std::vector<T>, refType>::$;
+    using $<std::vector<T>, refType>::operator=;
 
     template<DollarRefType refType2>
     Array$(const $<std::vector<T>, refType2> &a) : $<std::vector<T>, refType>(a) { }

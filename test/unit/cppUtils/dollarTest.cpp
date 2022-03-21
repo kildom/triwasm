@@ -1,81 +1,7 @@
 
 #include "gtest/gtest.h"
 
-#include "trace.hh"
-
-#define private public
-#define protected public
-#undef FATAL
-#define FATAL(text, ...) testFatal(text)
-
-#if 0
-#define DBG(text, ...) printf(text "\n", ##__VA_ARGS__)
-#define HEAD(text, ...) printf("\x1b[34m" text "\x1b[0m\n", ##__VA_ARGS__)
-#define WARNING(text, ...) printf("\x1b[33m" text "\x1b[0m\n", ##__VA_ARGS__)
-#define ERROR(text, ...) printf("\x1b[31m" text "\x1b[0m\n", ##__VA_ARGS__)
-#else
-#define DBG(text, ...) do { } while (0)
-#define HEAD(text, ...) do { } while (0)
-#define WARNING(text, ...) do { } while (0)
-#define ERROR(text, ...) do { } while (0)
-#endif
-
-#define DBG_NEW test_new
-#define DBG_DELETE test_delete
-
-static bool testRunning = false;
-static const char* expectFatal = NULL;
-
-struct ExpectFatalHere {
-    ExpectFatalHere(const char *text) { expectFatal = text; }
-    ~ExpectFatalHere() { expectFatal = NULL; }
-};
-struct ExpectedFatal {};
-struct UnexpectedFatal {};
-
-static void testFatal(const char* text) {
-    std::string fatalText(text);
-    if (!testRunning) {
-        printf("Unexpected FATAL outside test: %s\n", text);
-        exit(99);
-    } else if (expectFatal) {
-        std::string expectedText(expectFatal);
-        if (fatalText == expectedText) {
-            WARNING("EXPECTED FATAL: %s", text);
-        } else {
-            ERROR("DIFFERENT FATAL: %s", text);
-        }
-        EXPECT_EQ(fatalText, expectedText);
-        throw ExpectedFatal();
-    } else {
-        std::string expectedText;
-        ERROR("UNEXPECTED FATAL: %s", text);
-        EXPECT_EQ(fatalText, expectedText);
-        throw UnexpectedFatal();
-    }
-}
-
-static std::set<uintptr_t> allocated;
-static uintptr_t allocBuffer[4 * 1024 * 1024];
-static uintptr_t* allocPtr;
-
-void* test_new(usize size) {
-    void* ptr = (void*)allocPtr;
-    allocPtr += (size + sizeof(uintptr_t) - 1) / sizeof(uintptr_t);
-    EXPECT_TRUE((uint8_t*)allocPtr <= (uint8_t*)allocBuffer + sizeof(allocBuffer));
-    allocated.insert((uintptr_t)ptr);
-    DBG("    malloc %p,   size %d", ptr, (int)size);
-    return ptr;
-}
-
-void test_delete(void* ptr) {
-    DBG("    free %p", ptr);
-    if (allocated.find((uintptr_t)ptr) == allocated.end()) {
-        FATAL("Deleting invalid pointer.");
-    }
-    allocated.erase((uintptr_t)ptr);
-}
-
+#include "testCommon.h"
 
 #include "dollar.hh"
 
@@ -103,24 +29,7 @@ struct NoDefConstr {
     NoDefConstr(int x) : value(x) { }
 };
 
-#define EXPECT_FATAL_BEGIN(text) try { ExpectFatalHere _ex_3434_(text);
-#define EXPECT_FATAL_END EXPECT_TRUE(false) << "Expected fatal error did not happen!"; } catch (ExpectedFatal) {};
-
-class dollar : public ::testing::Test {
-protected:
-    void SetUp() override {
-        testRunning = true;
-        allocated.clear();
-        allocPtr = allocBuffer;
-    }
-    void TearDown() override {
-        for (auto ptr : allocated) {
-            DBG("Not deleted pointer %p", (void*)ptr);
-        }
-        EXPECT_EQ(allocated.size(), 0u) << "Memory leak detected!";
-        testRunning = false;
-    }
-};
+class dollar : public TestBase { };
 
 TEST_F(dollar, constructor_default)
 {
@@ -960,32 +869,6 @@ TEST_F(dollar, any)
 #undef TC
 }
 
+// TODO: Add test cases that will fail in compilation time
 
-template<typename T>
-void showArray(T arr) {
-    for (auto x: arr) {
-        std::cout << x << " ";
-    }
-    std::cout << "\n";
-}
-
-TEST_F(dollar, aaa)
-{
-    Array$<int> a = std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8};
-    Array$<int> c = std::vector<int>{10, 11, 12, 13, 14, 15, 16, 17, 18};
-    Array$<int> b = new$;
-    showArray(a);
-
-    any$ any = a.any();
-    printf("%d\n", any.canCast<Array<int>>());
-    printf("%d\n", any.canCast<Array<long>>());
-
-    Array$$<long> xx;
-    xx = any.cast<Array<long>>();
-
-    b[R] = a;
-    b[2 |R| 7] = b[6 |R| 8];
-    std::cout << "---------\n"; showArray(a); showArray(b);
-
-    printf("OK %d %d %d\n", a[2], b[1], a.back(2));
-}
+#include "dollar.cc"
