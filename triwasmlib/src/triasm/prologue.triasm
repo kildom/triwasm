@@ -1,6 +1,12 @@
 // Copyright (C) 2023 Dominik Kilian
 // SPDX-License-Identifier: 0BSD
 
+.annotation license:triwasmlib
+// TODO: Add to triwasm and triasm tools `--allow-licenses` argument that allows inclusion
+// of the code covered by specific license. `triwasmlib` is always allowed. Special value `all`
+// allows all licenses. Example: --allow-licenses=Berkeley-SoftFloat
+// `--show-licenses` will show list of declared and used licenses.
+
 // Prologue
 
 .trampoline exception
