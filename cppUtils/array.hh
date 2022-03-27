@@ -132,14 +132,25 @@ public:
         return (*this)->size();
     }
 
-    void length(ssize newLength) {
+    template <typename T2 = T, std::enable_if_t<std::is_default_constructible<T2>::value, bool> = true>
+    void length(ssize newLength, char _x = 0) {
         if (newLength < 0) {
             FATAL("Invalid length.");
         }
-        return (*this)->resize(newLength);
+        (*this)->resize(newLength);
     }
 
-    auto& back(ssize index) {
+    template <typename T2 = T, std::enable_if_t<!std::is_default_constructible<T2>::value, bool> = true>
+    void length(ssize newLength, long _x = 0) {
+        if (newLength < 0) {
+            FATAL("Invalid length.");
+        } else if (newLength > (ssize)(*this)->size()) {
+            FATAL("Cannot construct non-default-constructible elements.");
+        }
+        (*this)->erase((*this)->begin() + newLength, (*this)->end());
+    }
+
+    auto& back(ssize index = 0) {
         return operator[]((ssize)(*this)->size() - index - 1);
     }
 
