@@ -11,7 +11,7 @@ jobs:
       - name: Build unit tests
         run: |
           cd test/unit
-          make
+          make -j`nproc`
       - name: Run unit tests
         run: |
           cd test/unit
