@@ -9,6 +9,9 @@
 #include "range.hh"
 
 template<typename T>
+using Array = std::vector<T>;
+
+template<typename T>
 class ArrayView;
 
 template<typename T, DollarRefType refType = DOLLAR_NOT_NULL>
@@ -58,7 +61,7 @@ public:
 
     ArrayView<T> operator[](const Range& r) {
         if (r.to < r.from || r.from < 0 || r.to > (ssize)(*this)->size()) {
-            FATAL("Invalid range");
+            FATAL("Invalid range.");
         }
         return ArrayView<T>{
             .array = *this,
@@ -69,7 +72,7 @@ public:
 
     ArrayView<T> operator()(const Range& r) {
         if (r.to < r.from || r.from < 0) {
-            FATAL("Invalid range");
+            FATAL("Invalid range.");
         }
         if (r.to > (ssize)(*this)->size()) {
             (*this)->resize(r.to);
@@ -150,8 +153,32 @@ public:
         (*this)->erase((*this)->begin() + newLength, (*this)->end());
     }
 
-    auto& back(ssize index = 0) {
+    auto& back(ssize index) {
         return operator[]((ssize)(*this)->size() - index - 1);
+    }
+
+    auto& back() {
+        if ((*this)->empty()) {
+            FATAL("Cannot get value from empty array.");
+        }
+        return (*this)->back();
+    }
+
+    auto pop() {
+        if ((*this)->empty()) {
+            FATAL("Cannot pop from empty array.");
+        }
+        auto last = (*this)->back();
+        (*this)->pop_back();
+        return last;
+    }
+
+    void pop(ssize count) {
+        length((ssize)(*this)->size() - count);
+    }
+
+    void push(const T& value) {
+        (*this)->push_back(value);
     }
 
     bool empty() {
@@ -168,11 +195,11 @@ public:
         return Wrapper{ .arr = *this };
     }
 
-    auto begin() {
+    auto begin() const {
         return (*this)->begin();
     }
 
-    auto end() {
+    auto end() const {
         return (*this)->end();
     }
 
@@ -208,6 +235,7 @@ public:
 template<typename T>
 class ArrayView {
 public:
+    typedef Array<T> Type;
     Array$<T> array;
     ssize from;
     ssize to;
@@ -255,7 +283,7 @@ public:
         ssize absFrom = r.from + from;
         ssize absTo = r.to + from;
         if (absTo < absFrom || absFrom < from || absTo > to) {
-            FATAL("Invalid range");
+            FATAL("Invalid range.");
         }
         return ArrayView{
             .array = array,
@@ -268,7 +296,7 @@ public:
         ssize absFrom = r.from + from;
         ssize absTo = r.to + from;
         if (absTo < absFrom || absFrom < from) {
-            FATAL("Invalid range");
+            FATAL("Invalid range.");
         }
         if (absTo > to) {
             length(absTo - from);
@@ -365,12 +393,12 @@ public:
         return Wrapper{ .view = *this };
     }
 
-    auto begin() {
+    auto begin() const {
         auto& v = checkRange();
         return v.begin() + from;
     }
 
-    auto end() {
+    auto end() const {
         auto& v = checkRange();
         return v.begin() + to;
     }
@@ -457,8 +485,5 @@ using Array$$ = Array$<T, DOLLAR_INSTANCE>;
 
 template<typename T>
 using Array$N = Array$<T, DOLLAR_NULLABLE>;
-
-template<typename T>
-using Array = std::vector<T>;
 
 #endif // _ARRAY_HH_

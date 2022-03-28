@@ -10,16 +10,8 @@
 
 class array : public TestBase { };
 
-template<typename T>
-void showArray(T arr) {
-    for (auto x: arr) {
-        std::cout << x << " ";
-    }
-    std::cout << "\n";
-}
-
 struct NoDefConstr{
-    NoDefConstr(int, int) {}
+    NoDefConstr(int a, int b) : x(a + b) {}
     int x;
 };
 
@@ -72,10 +64,6 @@ TEST_F(array, elementAccess)
     arr() = 10;
     EXPECT_EQ(5, arr.length());
     EXPECT_EQ(10, arr(4));
-    EXPECT_FALSE(arr.empty());
-    arr.clear();
-    EXPECT_TRUE(arr.empty());
-    EXPECT_EQ(0, arr.length());
     arr = Array<int>{ 1, 2, 3, };
     EXPECT_EQ(3, arr.back());
     EXPECT_EQ(3, arr.back(0));
@@ -86,6 +74,45 @@ TEST_F(array, elementAccess)
     } EXPECT_FATAL_END;
     EXPECT_FATAL_BEGIN("Index out of bounds.") {
         std::cout << arr.back(-1);
+    } EXPECT_FATAL_END;
+
+    Array$$<NoDefConstr> ndc;
+    #if BUILD_ERROR_NO_DEF_CONSTR_ROUND
+    ndc(0).x = 123;
+    #endif
+    ndc() = NoDefConstr(100, 23);
+    EXPECT_EQ(123, ndc[0].x);
+}
+
+TEST_F(array, changeLength)
+{
+    Array$<int> arr = Array<int>{ 1, 2, 3, };
+    arr.length(4);
+    EXPECT_EQ(4, arr.length());
+    EXPECT_EQ(0, arr[3]);
+    arr() = 9;
+    EXPECT_EQ(5, arr.length());
+    EXPECT_EQ(9, arr[4]);
+    arr.length(7);
+    EXPECT_EQ(7, arr.length());
+    EXPECT_EQ(0, arr[5]);
+    EXPECT_EQ(0, arr[6]);
+    arr.length(2);
+    EXPECT_EQ(2, arr.length());
+    EXPECT_EQ(2, arr[1]);
+    EXPECT_FALSE(arr.empty());
+    arr.clear();
+    EXPECT_TRUE(arr.empty());
+    EXPECT_EQ(0, arr.length());
+
+    Array$$<NoDefConstr> ndc;
+    ndc() = NoDefConstr(1, 2);
+    ndc() = NoDefConstr(3, 4);
+    EXPECT_EQ(2, ndc.length());
+    EXPECT_EQ(3, ndc[0].x);
+    EXPECT_EQ(7, ndc[1].x);
+    EXPECT_FATAL_BEGIN("Cannot construct non-default-constructible elements.") {
+        ndc.length(5);
     } EXPECT_FATAL_END;
 }
 
@@ -106,33 +133,42 @@ TEST_F(array, iterators)
     }
 }
 
-TEST_F(array, aaa)
-{
-    Array$$<NoDefConstr> ndc;
-    #if BUILD_ERROR_NO_DEF_CONSTR_ROUND
-    ndc(0).x = 123;
-    #endif
-    ndc() = NoDefConstr(0, 0);
-    ndc[0].x = 123;
-    ndc.length(0);
-    EXPECT_FATAL_BEGIN("Cannot construct non-default-constructible elements.") {
-        ndc.length(1);
+TEST_F(array, casting) {
+    typedef int int_alias;
+    Array$<int> a = Array<int>{ 1, 2, 3, };
+    EXPECT_TRUE(a.canCast<Array<int_alias>>());
+    EXPECT_FALSE(a.canCast<Array<char>>());
+
+    any$ any;
+    any = a.any();
+
+    EXPECT_TRUE(any.canCast<Array<int>>());
+    EXPECT_TRUE(any.canCast<Array<int_alias>>());
+    EXPECT_FALSE(any.canCast<Array<char>>());
+
+    Array$$<int> a_int = any.cast<Array<int>>();
+    Array$$<int_alias> a_int_alias = any.cast<Array<int_alias>>();
+    EXPECT_FATAL_BEGIN("Cannot do dynamic casting.") {
+        Array$$<char> a_char = any.cast<Array<char>>();
     } EXPECT_FATAL_END;
-    Array$<int> a = Array<int>{0, 1, 2, 3, 4, 5, 6, 7, 8};
-    Array$<int> c = Array<int>{10, 11, 12, 13, 14, 15, 16, 17, 18};
-    Array$<int> b = new$;
-    showArray(a);
+}
 
-    any$ any = a.any();
-    printf("%d\n", any.canCast<Array<int>>());
-    printf("%d\n", any.canCast<Array<long>>());
-
-    Array$$<int> xx;
-    xx = any.cast<Array<int>>();
-
-    b[R] = a;
-    b[2 |R| 7] = b[6 |R| 8];
-    std::cout << "---------\n"; showArray(a); showArray(b);
-
-    printf("OK %d %d %d\n", a[2], b[1], a.back(2));
+TEST_F(array, stack) {
+    Array$<int> stack = Array<int>{ 1, 2, 3, };
+    EXPECT_EQ(3, stack.back());
+    EXPECT_EQ(3, stack.pop());
+    EXPECT_EQ(2, stack.length());
+    stack.push(99);
+    EXPECT_EQ(99, stack.back());
+    EXPECT_EQ(3, stack.length());
+    EXPECT_FATAL_BEGIN("Invalid length.") {
+        stack.pop(4);
+    } EXPECT_FATAL_END;
+    stack.pop(3);
+    EXPECT_FATAL_BEGIN("Cannot pop from empty array.") {
+        stack.pop();
+    } EXPECT_FATAL_END;
+    EXPECT_FATAL_BEGIN("Cannot get value from empty array.") {
+        stack.back();
+    } EXPECT_FATAL_END;
 }
