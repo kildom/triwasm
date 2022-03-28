@@ -16,6 +16,12 @@ jobs:
         run: |
           cd test/unit
           make run
+  unitTestBuidErrors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Check compilation errors
         run: |
           cd test/unit
