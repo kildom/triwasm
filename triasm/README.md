@@ -33,6 +33,7 @@ directives:
   .ref exp - reference label(s) (e.g. to prevent from discarding block)
   .trampoline exp - generate JUMP trampoline to specific address,
   .minimal_table
+  .annotation "key:value" !!! special case - string literal
 
 assign:
   label:
