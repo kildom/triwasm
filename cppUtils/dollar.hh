@@ -593,4 +593,15 @@ public:
 typedef $<DollarDummyBaseClass, DOLLAR_NOT_NULL> any$;
 typedef $<DollarDummyBaseClass, DOLLAR_NULLABLE> any$N;
 
+/* TODO: Methods for C interface:
+MyClass$$ obj;
+
+void *c_ptr = obj.exportRawPointer();
+... 
+MyClass$ temp = MyClass$::importRawPointer(c_ptr, / * takeOwnership = * / false);
+...
+MyClass$::importRawPointer(c_ptr, true);
+
+*/
+
 #endif // _DOLLAR_HH_
