@@ -1,9 +1,9 @@
-/*
 
-The author disclaims copyright to this source code.
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-*/
-
+/* BEGIN LEMON TOKENS */
 #define LEMON_QUESTION                         1
 #define LEMON_BIT_OR                           2
 #define LEMON_BIT_AND                          3
@@ -26,3 +26,19 @@ The author disclaims copyright to this source code.
 #define LEMON_SCLOSE                          20
 #define LEMON_OPEN                            21
 #define LEMON_CLOSE                           22
+/* END LEMON TOKENS */
+
+typedef struct Lemon_tag Lemon;
+typedef struct LemonToken_tag LemonToken;
+typedef struct LemonProg_tag LemonProg;
+typedef struct LemonCommand_tag LemonCommand;
+typedef struct LemonArgs_tag LemonArgs;
+typedef struct LemonExpr_tag LemonExpr;
+
+void *LemonParseAlloc(void* (*mallocCallback)(size_t));
+void LemonParseFree(void *parser, void (*freeCallback)(void*));
+void LemonParse(void *parser, int tokenCode, LemonToken* tokenValue, Lemon* lemonState);
+
+#ifdef __cplusplus
+}
+#endif

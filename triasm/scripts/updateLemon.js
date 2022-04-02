@@ -53,15 +53,15 @@ async function update() {
     console.log(`Latest sha: ${latest}`);
     let lemonSrc = await getURL(lemon.replace('$$$', latest));
     let lemparSrc = await getURL(lempar.replace('$$$', latest));
-    let lemonDst = fs.readFileSync('lemon.c', 'utf-8');
-    let lemparDst = fs.readFileSync('lempar.c', 'utf-8');
+    let lemonDst = fs.readFileSync(`${__dirname}/../lemon/lemon.c`, 'utf-8');
+    let lemparDst = fs.readFileSync(`${__dirname}/../lemon/lempar.c`, 'utf-8');
     if (lemonSrc == lemonDst && lemparSrc == lemparDst) {
         console.log('The lemon is up to date.');
         process.exit(0);
     }
     console.log('The lemon is changed.');
-    fs.writeFileSync('lemon.c', lemonSrc);
-    fs.writeFileSync('lempar.c', lemparSrc);
+    fs.writeFileSync(`${__dirname}/../lemon/lemon.c`, lemonSrc);
+    fs.writeFileSync(`${__dirname}/../lemon/lempar.c`, lemparSrc);
     process.exit(1);
 }
 

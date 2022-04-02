@@ -8,5 +8,5 @@ package-lock.json
 node_modules
 /.vscode/settings.json
 /test/unit/build/*
-/triasm/lemon/lemonParser.out
+/triasm/lemon/triasmParser.out
 /triasm/lemon/lemon.exe
