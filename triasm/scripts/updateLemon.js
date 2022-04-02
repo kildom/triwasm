@@ -1,9 +1,3 @@
-/*
-
-The author disclaims copyright to this source code.
-
-*/
-
 const https = require('https');
 const fs = require('fs');
 
@@ -55,6 +49,11 @@ async function update() {
     let lemparSrc = await getURL(lempar.replace('$$$', latest));
     let lemonDst = fs.readFileSync(`${__dirname}/../lemon/lemon.c`, 'utf-8');
     let lemparDst = fs.readFileSync(`${__dirname}/../lemon/lempar.c`, 'utf-8');
+    if (lemonSrc.indexOf('The author of this program disclaims copyright.') < 0
+        || lemparDst.indexOf('The author disclaims copyright to this source code.') < 0) {
+        console.log('The lemon license may be changed!');
+        process.exit(2);
+    }
     if (lemonSrc == lemonDst && lemparSrc == lemparDst) {
         console.log('The lemon is up to date.');
         process.exit(0);

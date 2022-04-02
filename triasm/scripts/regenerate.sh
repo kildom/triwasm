@@ -1,7 +1,4 @@
 #!/bin/bash
-#
-# The author disclaims copyright to this source code.
-#
 
 set -e
 
