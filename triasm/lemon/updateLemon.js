@@ -1,3 +1,9 @@
+/*
+
+The author disclaims copyright to this source code.
+
+*/
+
 const https = require('https');
 const fs = require('fs');
 

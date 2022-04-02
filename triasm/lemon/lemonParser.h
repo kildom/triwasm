@@ -1,3 +1,9 @@
+/*
+
+The author disclaims copyright to this source code.
+
+*/
+
 #define LEMON_QUESTION                         1
 #define LEMON_BIT_OR                           2
 #define LEMON_BIT_AND                          3

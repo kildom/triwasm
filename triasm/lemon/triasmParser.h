@@ -1,4 +1,8 @@
+/*
 
+The author disclaims copyright to this source code.
+
+*/
 
 #ifdef __cplusplus
 extern "C" {

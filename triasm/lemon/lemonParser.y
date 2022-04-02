@@ -1,3 +1,9 @@
+/*
+
+The author disclaims copyright to this source code.
+
+*/
+
 %include { #include "triasmParser.h" }
 
 %nonassoc QUESTION.

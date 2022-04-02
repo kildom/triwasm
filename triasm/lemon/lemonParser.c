@@ -25,8 +25,9 @@
 ** input grammar file:
 */
 /************ Begin %include sections from the grammar ************************/
+#line 7 "lemonParser.y"
  #include "triasmParser.h" 
-#line 30 "lemonParser.c"
+#line 31 "lemonParser.c"
 /**************** End of %include directives **********************************/
 /* These constants specify the various numeric values for terminal symbols.
 ***************** Begin token definitions *************************************/
@@ -689,53 +690,53 @@ static void yy_destructor(
     case 21: /* OPEN */
     case 22: /* CLOSE */
 {
-#line 17 "lemonParser.y"
+#line 23 "lemonParser.y"
  lemonTokenFree((yypminor->yy0)); 
-#line 694 "lemonParser.c"
+#line 695 "lemonParser.c"
 }
       break;
     case 23: /* start */
 {
-#line 20 "lemonParser.y"
+#line 26 "lemonParser.y"
  
-#line 701 "lemonParser.c"
+#line 702 "lemonParser.c"
 }
       break;
     case 24: /* prog */
 {
-#line 24 "lemonParser.y"
+#line 30 "lemonParser.y"
  lemonProgFree((yypminor->yy62)); 
-#line 708 "lemonParser.c"
+#line 709 "lemonParser.c"
 }
       break;
     case 25: /* line */
     case 26: /* command */
 {
-#line 29 "lemonParser.y"
+#line 35 "lemonParser.y"
  lemonCommandFree((yypminor->yy53)); 
-#line 716 "lemonParser.c"
+#line 717 "lemonParser.c"
 }
       break;
     case 27: /* instr */
     case 29: /* id */
 {
-#line 54 "lemonParser.y"
+#line 60 "lemonParser.y"
  lemonTokenFree((yypminor->yy54)); 
-#line 724 "lemonParser.c"
+#line 725 "lemonParser.c"
 }
       break;
     case 28: /* args */
 {
-#line 42 "lemonParser.y"
+#line 48 "lemonParser.y"
  lemonArgsFree((yypminor->yy29)); 
-#line 731 "lemonParser.c"
+#line 732 "lemonParser.c"
 }
       break;
     case 30: /* expr */
 {
-#line 59 "lemonParser.y"
+#line 65 "lemonParser.y"
  lemonExprFree((yypminor->yy7)); 
-#line 738 "lemonParser.c"
+#line 739 "lemonParser.c"
 }
       break;
 /********* End destructor definitions *****************************************/
@@ -953,9 +954,9 @@ static void yyStackOverflow(yyParser *yypParser){
    /* Here code is inserted which will execute if the parser
    ** stack every overflows */
 /******** Begin %stack_overflow code ******************************************/
-#line 14 "lemonParser.y"
+#line 20 "lemonParser.y"
  lemonStackOverflow(lemonState); 
-#line 958 "lemonParser.c"
+#line 959 "lemonParser.c"
 /******** End %stack_overflow code ********************************************/
    LemonParseARG_STORE /* Suppress warning about unused %extra_argument var */
    LemonParseCTX_STORE
@@ -1138,80 +1139,80 @@ static YYACTIONTYPE yy_reduce(
 /********** Begin reduce actions **********************************************/
         YYMINORTYPE yylhsminor;
       case 0: /* start ::= prog */
-#line 21 "lemonParser.y"
+#line 27 "lemonParser.y"
 { (void)yylhsminor.yy17; lemonResult(yymsp[0].minor.yy62); }
-#line 1143 "lemonParser.c"
+#line 1144 "lemonParser.c"
   yymsp[0].minor.yy17 = yylhsminor.yy17;
         break;
       case 1: /* prog ::= prog line */
-#line 25 "lemonParser.y"
+#line 31 "lemonParser.y"
 { yylhsminor.yy62 = yymsp[-1].minor.yy62; if (yymsp[0].minor.yy53 != NULL) lemonProgAppend(yymsp[-1].minor.yy62, yymsp[0].minor.yy53); }
-#line 1149 "lemonParser.c"
+#line 1150 "lemonParser.c"
   yymsp[-1].minor.yy62 = yylhsminor.yy62;
         break;
       case 2: /* prog ::= */
-#line 26 "lemonParser.y"
+#line 32 "lemonParser.y"
 { yymsp[1].minor.yy62 = lemonProgCreate(lemonState); }
-#line 1155 "lemonParser.c"
+#line 1156 "lemonParser.c"
         break;
       case 3: /* line ::= command EOL */
 {  yy_destructor(yypParser,26,&yymsp[-1].minor);
-#line 30 "lemonParser.y"
+#line 36 "lemonParser.y"
 { yymsp[-1].minor.yy53 = A; }
-#line 1161 "lemonParser.c"
+#line 1162 "lemonParser.c"
   yy_destructor(yypParser,9,&yymsp[0].minor);
 }
         break;
       case 4: /* line ::= EOL */
 {  yy_destructor(yypParser,9,&yymsp[0].minor);
-#line 31 "lemonParser.y"
+#line 37 "lemonParser.y"
 { yymsp[0].minor.yy53 = NULL; }
-#line 1169 "lemonParser.c"
+#line 1170 "lemonParser.c"
 }
         break;
       case 5: /* command ::= instr */
-#line 35 "lemonParser.y"
+#line 41 "lemonParser.y"
 { yylhsminor.yy53 = lemonInstrCreate(yymsp[0].minor.yy54, NULL, NULL); }
-#line 1175 "lemonParser.c"
+#line 1176 "lemonParser.c"
   yymsp[0].minor.yy53 = yylhsminor.yy53;
         break;
       case 6: /* command ::= instr args */
-#line 36 "lemonParser.y"
+#line 42 "lemonParser.y"
 { yylhsminor.yy53 = lemonInstrCreate(yymsp[-1].minor.yy54, yymsp[0].minor.yy29, NULL); }
-#line 1181 "lemonParser.c"
+#line 1182 "lemonParser.c"
   yymsp[-1].minor.yy53 = yylhsminor.yy53;
         break;
       case 7: /* command ::= instr STRING */
-#line 37 "lemonParser.y"
+#line 43 "lemonParser.y"
 { yylhsminor.yy53 = lemonInstrCreate(yymsp[-1].minor.yy54, NULL, yymsp[0].minor.yy0); }
-#line 1187 "lemonParser.c"
+#line 1188 "lemonParser.c"
   yymsp[-1].minor.yy53 = yylhsminor.yy53;
         break;
       case 8: /* command ::= id COLON */
-#line 38 "lemonParser.y"
+#line 44 "lemonParser.y"
 { yylhsminor.yy53 = lemonLabelCreate(yymsp[-1].minor.yy54); }
-#line 1193 "lemonParser.c"
+#line 1194 "lemonParser.c"
   yy_destructor(yypParser,11,&yymsp[0].minor);
   yymsp[-1].minor.yy53 = yylhsminor.yy53;
         break;
       case 9: /* command ::= id ASSIGN expr */
-#line 39 "lemonParser.y"
+#line 45 "lemonParser.y"
 { yylhsminor.yy53 = lemonAssignCreate(yymsp[-2].minor.yy54, yymsp[0].minor.yy7); }
-#line 1200 "lemonParser.c"
+#line 1201 "lemonParser.c"
   yy_destructor(yypParser,12,&yymsp[-1].minor);
   yymsp[-2].minor.yy53 = yylhsminor.yy53;
         break;
       case 10: /* args ::= args COMMA expr */
-#line 43 "lemonParser.y"
+#line 49 "lemonParser.y"
 { yylhsminor.yy29 = yymsp[-2].minor.yy29; lemonArgsAppend(yymsp[-2].minor.yy29, yymsp[0].minor.yy7); }
-#line 1207 "lemonParser.c"
+#line 1208 "lemonParser.c"
   yy_destructor(yypParser,13,&yymsp[-1].minor);
   yymsp[-2].minor.yy29 = yylhsminor.yy29;
         break;
       case 11: /* args ::= expr */
-#line 44 "lemonParser.y"
+#line 50 "lemonParser.y"
 { yylhsminor.yy29 = lemonArgsCreate(lemonState); lemonArgsAppend(yylhsminor.yy29, yymsp[0].minor.yy7); }
-#line 1214 "lemonParser.c"
+#line 1215 "lemonParser.c"
   yymsp[0].minor.yy29 = yylhsminor.yy29;
         break;
       case 12: /* id ::= IDENTIFIER */
@@ -1220,109 +1221,109 @@ static YYACTIONTYPE yy_reduce(
       case 15: /* id ::= BASE */ yytestcase(yyruleno==15);
       case 16: /* instr ::= INSTRUCTION */ yytestcase(yyruleno==16);
       case 17: /* instr ::= DIRECTIVE */ yytestcase(yyruleno==17);
-#line 48 "lemonParser.y"
+#line 54 "lemonParser.y"
 { yylhsminor.yy54 = yymsp[0].minor.yy0; }
-#line 1225 "lemonParser.c"
+#line 1226 "lemonParser.c"
   yymsp[0].minor.yy54 = yylhsminor.yy54;
         break;
       case 18: /* expr ::= NUMBER */
-#line 60 "lemonParser.y"
+#line 66 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprNumber(yymsp[0].minor.yy0); }
-#line 1231 "lemonParser.c"
+#line 1232 "lemonParser.c"
   yymsp[0].minor.yy7 = yylhsminor.yy7;
         break;
       case 19: /* expr ::= id */
-#line 61 "lemonParser.y"
+#line 67 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprIdentifier(yymsp[0].minor.yy54); }
-#line 1237 "lemonParser.c"
+#line 1238 "lemonParser.c"
   yymsp[0].minor.yy7 = yylhsminor.yy7;
         break;
       case 20: /* expr ::= SOPEN BASE SCLOSE */
 {  yy_destructor(yypParser,19,&yymsp[-2].minor);
-#line 62 "lemonParser.y"
+#line 68 "lemonParser.y"
 { yymsp[-2].minor.yy7 = lemonExprBase(yymsp[-1].minor.yy0); }
-#line 1244 "lemonParser.c"
+#line 1245 "lemonParser.c"
   yy_destructor(yypParser,20,&yymsp[0].minor);
 }
         break;
       case 21: /* expr ::= OPEN expr CLOSE */
 {  yy_destructor(yypParser,21,&yymsp[-2].minor);
-#line 63 "lemonParser.y"
+#line 69 "lemonParser.y"
 { yymsp[-2].minor.yy7 = yymsp[-1].minor.yy7; }
-#line 1252 "lemonParser.c"
+#line 1253 "lemonParser.c"
   yy_destructor(yypParser,22,&yymsp[0].minor);
 }
         break;
       case 22: /* expr ::= expr PLUS expr */
-#line 64 "lemonParser.y"
+#line 70 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprBinOp('+', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1259 "lemonParser.c"
+#line 1260 "lemonParser.c"
   yy_destructor(yypParser,7,&yymsp[-1].minor);
   yymsp[-2].minor.yy7 = yylhsminor.yy7;
         break;
       case 23: /* expr ::= expr MINUS expr */
-#line 65 "lemonParser.y"
+#line 71 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprBinOp('-', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1266 "lemonParser.c"
+#line 1267 "lemonParser.c"
   yy_destructor(yypParser,8,&yymsp[-1].minor);
   yymsp[-2].minor.yy7 = yylhsminor.yy7;
         break;
       case 24: /* expr ::= MINUS expr */
 {  yy_destructor(yypParser,8,&yymsp[-1].minor);
-#line 66 "lemonParser.y"
+#line 72 "lemonParser.y"
 { yymsp[-1].minor.yy7 = lemonExprUnOp('-', yymsp[0].minor.yy7); }
-#line 1274 "lemonParser.c"
+#line 1275 "lemonParser.c"
 }
         break;
       case 25: /* expr ::= expr MUL expr */
-#line 67 "lemonParser.y"
+#line 73 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprBinOp('*', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1280 "lemonParser.c"
+#line 1281 "lemonParser.c"
   yy_destructor(yypParser,4,&yymsp[-1].minor);
   yymsp[-2].minor.yy7 = yylhsminor.yy7;
         break;
       case 26: /* expr ::= expr DIV expr */
-#line 68 "lemonParser.y"
+#line 74 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprBinOp('/', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1287 "lemonParser.c"
+#line 1288 "lemonParser.c"
   yy_destructor(yypParser,5,&yymsp[-1].minor);
   yymsp[-2].minor.yy7 = yylhsminor.yy7;
         break;
       case 27: /* expr ::= expr MOD expr */
-#line 69 "lemonParser.y"
+#line 75 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprBinOp('%', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1294 "lemonParser.c"
+#line 1295 "lemonParser.c"
   yy_destructor(yypParser,6,&yymsp[-1].minor);
   yymsp[-2].minor.yy7 = yylhsminor.yy7;
         break;
       case 28: /* expr ::= id OPEN args CLOSE */
-#line 70 "lemonParser.y"
+#line 76 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprCall(yymsp[-3].minor.yy54, yymsp[-1].minor.yy29); }
-#line 1301 "lemonParser.c"
+#line 1302 "lemonParser.c"
   yy_destructor(yypParser,21,&yymsp[-2].minor);
   yy_destructor(yypParser,22,&yymsp[0].minor);
   yymsp[-3].minor.yy7 = yylhsminor.yy7;
         break;
       case 29: /* expr ::= id OPEN CLOSE */
-#line 71 "lemonParser.y"
+#line 77 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprCall(yymsp[-2].minor.yy54, lemonArgsCreate(lemonState)); }
-#line 1309 "lemonParser.c"
+#line 1310 "lemonParser.c"
   yy_destructor(yypParser,21,&yymsp[-1].minor);
   yy_destructor(yypParser,22,&yymsp[0].minor);
   yymsp[-2].minor.yy7 = yylhsminor.yy7;
         break;
       case 30: /* expr ::= expr QUESTION expr COLON expr */
-#line 72 "lemonParser.y"
+#line 78 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprTriOp(yymsp[-4].minor.yy7, yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1317 "lemonParser.c"
+#line 1318 "lemonParser.c"
   yy_destructor(yypParser,1,&yymsp[-3].minor);
   yy_destructor(yypParser,11,&yymsp[-1].minor);
   yymsp[-4].minor.yy7 = yylhsminor.yy7;
         break;
       case 31: /* expr ::= expr BIT_AND expr */
-#line 73 "lemonParser.y"
+#line 79 "lemonParser.y"
 { yylhsminor.yy7 = lemonExprBinOp('&', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1325 "lemonParser.c"
+#line 1326 "lemonParser.c"
   yy_destructor(yypParser,3,&yymsp[-1].minor);
   yymsp[-2].minor.yy7 = yylhsminor.yy7;
         break;
@@ -1368,9 +1369,9 @@ static void yy_parse_failed(
   /* Here code is inserted which will be executed whenever the
   ** parser fails */
 /************ Begin %parse_failure code ***************************************/
-#line 15 "lemonParser.y"
+#line 21 "lemonParser.y"
  lemonFailure(lemonState); 
-#line 1373 "lemonParser.c"
+#line 1374 "lemonParser.c"
 /************ End %parse_failure code *****************************************/
   LemonParseARG_STORE /* Suppress warning about unused %extra_argument variable */
   LemonParseCTX_STORE
@@ -1389,9 +1390,9 @@ static void yy_syntax_error(
   LemonParseCTX_FETCH
 #define TOKEN yyminor
 /************ Begin %syntax_error code ****************************************/
-#line 13 "lemonParser.y"
+#line 19 "lemonParser.y"
  lemonError(TOKEN); 
-#line 1394 "lemonParser.c"
+#line 1395 "lemonParser.c"
 /************ End %syntax_error code ******************************************/
   LemonParseARG_STORE /* Suppress warning about unused %extra_argument variable */
   LemonParseCTX_STORE
