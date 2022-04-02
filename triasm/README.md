@@ -26,15 +26,18 @@ expression:
     float_add, float_sub, ...
 
 directives:
-  .begin .end - discardable block
-  .data32 .data16 .data8 .data64 .dataf32 .dataf64 exp, exp, exp, ...
+  .begin - begin block
+  .begin optional - begin block that can be removed if nothing is referencing labels defined in it
+  .local name, name, ... - declare variables local to top-most block
+  .end - block end
+  .data32 .data16 .data8 .data64 exp, exp, exp, ...
   .addr exp - force specific address
   .align exp - force alignment
   .ref exp - reference label(s) (e.g. to prevent from discarding block)
   .trampoline exp - generate JUMP trampoline to specific address,
   .minimal_table
   .annotation "key:value" !!! special case - string literal
-
+  
 assign:
   label:
   identifier = exp
