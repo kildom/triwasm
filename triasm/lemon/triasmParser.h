@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "triasmLemon.h"
+#include "lemonParser.h"
 
 typedef struct Lemon_tag Lemon;
 typedef struct LemonToken_tag LemonToken;
