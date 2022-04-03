@@ -25,7 +25,7 @@
 ** input grammar file:
 */
 /************ Begin %include sections from the grammar ************************/
-#line 7 "src/triasmParser.y"
+#line 2 "src/triasmParser.y"
  #include "triasmParser.h" 
 #line 31 "lemon/triasmParser.c"
 /**************** End of %include directives **********************************/
@@ -41,9 +41,9 @@
 #define LEMON_PLUS                            7
 #define LEMON_MINUS                           8
 #define LEMON_EOL                             9
-#define LEMON_STRING                         10
-#define LEMON_COLON                          11
-#define LEMON_ASSIGN                         12
+#define LEMON_COLON                          10
+#define LEMON_ASSIGN                         11
+#define LEMON_STRING                         12
 #define LEMON_COMMA                          13
 #define LEMON_IDENTIFIER                     14
 #define LEMON_INSTRUCTION                    15
@@ -113,18 +113,18 @@
 #endif
 /************* Begin control #defines *****************************************/
 #define YYCODETYPE unsigned char
-#define YYNOCODE 31
+#define YYNOCODE 32
 #define YYACTIONTYPE unsigned char
 #define LemonParseTOKENTYPE  LemonToken* 
 typedef union {
   int yyinit;
   LemonParseTOKENTYPE yy0;
-  LemonExpr* yy7;
-  void* yy17;
-  LemonArgs* yy29;
-  LemonCommand* yy53;
-  LemonToken* yy54;
-  LemonProg* yy62;
+  LemonArgs* yy11;
+  LemonToken* yy19;
+  LemonCommand* yy33;
+  LemonExpr* yy41;
+  LemonProg* yy54;
+  void* yy57;
 } YYMINORTYPE;
 #ifndef YYSTACKDEPTH
 #define YYSTACKDEPTH 2000
@@ -139,18 +139,18 @@ typedef union {
 #define LemonParseCTX_PARAM ,lemonState 
 #define LemonParseCTX_FETCH  Lemon* lemonState =yypParser->lemonState ;
 #define LemonParseCTX_STORE yypParser->lemonState =lemonState ;
-#define YYNSTATE             52
-#define YYNRULE              32
-#define YYNRULE_WITH_ACTION  32
+#define YYNSTATE             54
+#define YYNRULE              34
+#define YYNRULE_WITH_ACTION  34
 #define YYNTOKEN             23
-#define YY_MAX_SHIFT         51
-#define YY_MIN_SHIFTREDUCE   52
-#define YY_MAX_SHIFTREDUCE   83
-#define YY_ERROR_ACTION      84
-#define YY_ACCEPT_ACTION     85
-#define YY_NO_ACTION         86
-#define YY_MIN_REDUCE        87
-#define YY_MAX_REDUCE        118
+#define YY_MAX_SHIFT         53
+#define YY_MIN_SHIFTREDUCE   54
+#define YY_MAX_SHIFTREDUCE   87
+#define YY_ERROR_ACTION      88
+#define YY_ACCEPT_ACTION     89
+#define YY_NO_ACTION         90
+#define YY_MIN_REDUCE        91
+#define YY_MAX_REDUCE        124
 /************* End control #defines *******************************************/
 #define YY_NLOOKAHEAD ((int)(sizeof(yy_lookahead)/sizeof(yy_lookahead[0])))
 
@@ -217,153 +217,121 @@ typedef union {
 **  yy_default[]       Default action for each state.
 **
 *********** Begin parsing tables **********************************************/
-#define YY_ACTTAB_COUNT (570)
+#define YY_ACTTAB_COUNT (410)
 static const YYACTIONTYPE yy_action[] = {
- /*     0 */    86,  102,   86,  102,  102,  102,  102,  102,  102,  102,
- /*    10 */    86,  102,  102,  102,   43,   51,    2,   86,   44,   85,
- /*    20 */     1,  102,  102,   99,   95,   99,   99,   99,   99,   99,
- /*    30 */    99,   99,   89,   99,   99,   99,   46,   21,   36,   21,
- /*    40 */    38,   89,   94,   99,   99,   33,   89,   89,   89,   89,
- /*    50 */    21,   27,  104,  104,  104,  101,  101,   49,  104,  104,
- /*    60 */   104,  104,  104,  104,   42,  104,   86,  103,  103,  103,
- /*    70 */   100,  100,   86,  103,  103,  103,  103,  103,  103,  117,
- /*    80 */   103,    6,   11,   10,    9,   14,   13,  117,    5,  117,
- /*    90 */    86,  117,   21,   28,   17,   23,   22,   16,   35,   50,
- /*   100 */   117,   12,  106,   86,  106,  106,  106,  106,  106,  106,
- /*   110 */   106,   86,  106,   86,  106,   45,   21,   36,   21,   20,
- /*   120 */    47,    4,    3,  106,  101,   86,  101,  101,  101,  101,
- /*   130 */   101,  101,  101,   86,  101,   86,  101,   21,   39,   21,
- /*   140 */    29,   86,   21,   30,  101,  101,  100,   86,  100,  100,
- /*   150 */   100,  100,  100,  100,  100,   86,  100,   86,  100,   21,
- /*   160 */    31,   21,   40,   86,   21,   26,  100,  100,  109,   86,
- /*   170 */   109,  109,  109,  109,  109,  109,  109,   86,  109,   15,
- /*   180 */   109,   21,   24,   21,   37,   86,   93,   86,   34,  109,
- /*   190 */    15,  116,   86,  116,  116,  116,  116,  116,  116,  116,
- /*   200 */    86,  116,   86,  116,   86,   86,   86,   86,   86,   86,
- /*   210 */    86,   86,  116,   86,  110,   86,  110,  110,  110,  110,
- /*   220 */   110,  110,  110,   86,  110,   86,  110,   86,   86,   86,
- /*   230 */    86,   86,   86,   86,   86,  110,   86,  111,   86,  111,
- /*   240 */   111,  111,  111,  111,  111,  111,   86,  111,   86,  111,
- /*   250 */    86,   86,   86,   86,   86,   86,   86,   86,  111,   86,
- /*   260 */   118,   86,  118,   11,   10,    9,   14,   13,  118,   86,
- /*   270 */   118,   86,  118,   86,   86,   86,   86,   86,   86,   86,
- /*   280 */    86,  118,   86,  114,   86,  114,  114,  114,  114,   14,
- /*   290 */    13,  114,   86,  114,   86,  114,   86,   86,   86,   86,
- /*   300 */    86,   86,   86,   86,  114,   86,  113,   86,  113,  113,
- /*   310 */   113,  113,   14,   13,  113,   86,  113,   86,  113,   86,
- /*   320 */    86,   86,   86,   86,   86,   86,   86,  113,   86,  112,
- /*   330 */    86,  112,  112,  112,  112,   14,   13,  112,   86,  112,
- /*   340 */    86,  112,   86,   86,   86,   86,   86,   86,   86,   86,
- /*   350 */   112,   86,  108,   86,  108,  108,  108,  108,  108,  108,
- /*   360 */   108,   86,  108,   86,  108,   86,   86,   86,   86,   86,
- /*   370 */    86,   86,   86,  108,   86,  107,   86,  107,  107,  107,
- /*   380 */   107,  107,  107,  107,   86,  107,   86,  107,   86,   86,
- /*   390 */    86,   86,   86,   86,   86,   86,  107,   86,  115,   86,
- /*   400 */   115,  115,  115,  115,  115,  115,  115,   86,  115,   86,
- /*   410 */   115,   86,   86,   86,   86,   86,   86,   86,   86,  115,
- /*   420 */    86,  105,   86,  105,  105,  105,  105,  105,  105,  105,
- /*   430 */    86,  105,   86,  105,   86,   86,   86,    5,   92,   48,
- /*   440 */    86,   86,  105,   17,   23,   22,   16,   35,   50,    8,
- /*   450 */    12,    6,   11,   10,    9,   14,   13,   98,   86,   86,
- /*   460 */    86,   98,   86,   86,   86,   86,   86,   86,   86,   86,
- /*   470 */    98,   86,    8,   86,    6,   11,   10,    9,   14,   13,
- /*   480 */    97,    5,   86,   86,   97,   86,   86,   17,   23,   22,
- /*   490 */    16,   35,   50,   97,   12,   25,    8,   86,    6,   11,
- /*   500 */    10,    9,   14,   13,   96,    8,   86,    6,   11,   10,
- /*   510 */     9,   14,   13,   86,    8,    7,    6,   11,   10,    9,
- /*   520 */    14,   13,   87,   86,   86,   86,   86,   86,   86,   86,
- /*   530 */    86,   41,   91,   86,   86,   32,   17,   19,   18,   16,
- /*   540 */    86,   91,   90,   86,   86,   86,   91,   91,   91,   91,
- /*   550 */    86,   90,   88,   86,   86,   86,   90,   90,   90,   90,
- /*   560 */    86,   88,   86,   86,   86,   86,   88,   88,   88,   88,
+ /*     0 */    90,  108,   90,  108,  108,  108,  108,  108,  108,  108,
+ /*    10 */   108,  108,    8,  108,    6,   11,   10,    9,   14,   13,
+ /*    20 */   100,  108,  108,  105,   33,  105,  105,  105,  105,  105,
+ /*    30 */   105,  105,  105,  105,   51,  105,   49,   47,   21,   36,
+ /*    40 */    43,   53,    1,  105,  105,   44,   48,   99,   21,   36,
+ /*    50 */    89,    2,  110,  110,  107,  107,  110,   42,  110,  110,
+ /*    60 */   110,  110,  110,  110,   90,  110,   90,  109,  109,  106,
+ /*    70 */   106,  109,   90,  109,  109,  109,  109,  109,  109,  123,
+ /*    80 */   109,    6,   11,   10,    9,   14,   13,  123,  123,   90,
+ /*    90 */   112,  123,  112,  112,  112,  112,  112,  112,  112,  112,
+ /*   100 */   123,    8,  112,    6,   11,   10,    9,   14,   13,  104,
+ /*   110 */     3,  112,  107,  104,  107,  107,  107,  107,  107,  107,
+ /*   120 */   107,  107,  104,    8,  107,    6,   11,   10,    9,   14,
+ /*   130 */    13,  103,  107,  107,  106,  103,  106,  106,  106,  106,
+ /*   140 */   106,  106,  106,  106,  103,    8,  106,    6,   11,   10,
+ /*   150 */     9,   14,   13,   90,  106,  106,  115,   90,  115,  115,
+ /*   160 */   115,  115,  115,  115,  115,  115,   32,  122,  115,  122,
+ /*   170 */   122,  122,  122,  122,  122,  122,  122,  115,  116,  122,
+ /*   180 */   116,  116,  116,  116,  116,  116,  116,  116,  122,  117,
+ /*   190 */   116,  117,  117,  117,  117,  117,  117,  117,  117,  116,
+ /*   200 */   124,  117,  124,   11,   10,    9,   14,   13,  124,  124,
+ /*   210 */   117,  120,  124,  120,  120,  120,  120,   14,   13,  120,
+ /*   220 */   120,  124,  119,  120,  119,  119,  119,  119,   14,   13,
+ /*   230 */   119,  119,  120,  118,  119,  118,  118,  118,  118,   14,
+ /*   240 */    13,  118,  118,  119,  114,  118,  114,  114,  114,  114,
+ /*   250 */   114,  114,  114,  114,  118,  113,  114,  113,  113,  113,
+ /*   260 */   113,  113,  113,  113,  113,  114,  121,  113,  121,  121,
+ /*   270 */   121,  121,  121,  121,  121,  121,  113,  111,  121,  111,
+ /*   280 */   111,  111,  111,  111,  111,  111,  111,  121,   90,  111,
+ /*   290 */    21,   38,  102,    5,   96,  102,   90,   45,  111,   17,
+ /*   300 */    23,   22,   16,   35,   52,   90,   12,    5,   21,   27,
+ /*   310 */    21,   28,   90,   17,   23,   22,   16,   35,   52,   97,
+ /*   320 */    12,   25,    5,   15,   21,   20,   50,    4,   17,   23,
+ /*   330 */    22,   16,   35,   52,    8,   12,    6,   11,   10,    9,
+ /*   340 */    14,   13,   93,    7,   90,   21,   39,   21,   29,   21,
+ /*   350 */    30,   93,   91,   21,   31,   90,   93,   93,   93,   93,
+ /*   360 */   101,   41,   95,  101,   21,   40,   17,   19,   18,   16,
+ /*   370 */    90,   95,   94,   21,   26,   90,   95,   95,   95,   95,
+ /*   380 */    90,   94,   92,   21,   24,   90,   94,   94,   94,   94,
+ /*   390 */    90,   92,   98,   21,   37,   46,   92,   92,   92,   92,
+ /*   400 */    15,   90,   90,   90,   90,   90,   90,   90,   90,   34,
 };
 static const YYCODETYPE yy_lookahead[] = {
- /*     0 */    31,    1,   31,    3,    4,    5,    6,    7,    8,    9,
- /*    10 */    31,   11,   12,   13,   25,   26,   27,   31,   29,   23,
- /*    20 */    24,   21,   22,    1,    9,    3,    4,    5,    6,    7,
- /*    30 */     8,    9,    0,   11,   12,   13,   28,   29,   30,   29,
- /*    40 */    30,    9,    9,   21,   22,   20,   14,   15,   16,   17,
- /*    50 */    29,   30,    8,    9,   10,   11,   12,   17,   14,   15,
- /*    60 */    16,   17,   18,   19,    9,   21,   31,    8,    9,   10,
- /*    70 */    11,   12,   31,   14,   15,   16,   17,   18,   19,    1,
- /*    80 */    21,    3,    4,    5,    6,    7,    8,    9,    8,   11,
- /*    90 */    31,   13,   29,   30,   14,   15,   16,   17,   18,   19,
- /*   100 */    22,   21,    1,   31,    3,    4,    5,    6,    7,    8,
- /*   110 */     9,   31,   11,   31,   13,   28,   29,   30,   29,   30,
- /*   120 */    11,   12,   21,   22,    1,   31,    3,    4,    5,    6,
- /*   130 */     7,    8,    9,   31,   11,   31,   13,   29,   30,   29,
- /*   140 */    30,   31,   29,   30,   21,   22,    1,   31,    3,    4,
- /*   150 */     5,    6,    7,    8,    9,   31,   11,   31,   13,   29,
- /*   160 */    30,   29,   30,   31,   29,   30,   21,   22,    1,   31,
- /*   170 */     3,    4,    5,    6,    7,    8,    9,   31,   11,   13,
- /*   180 */    13,   29,   30,   29,   30,   31,    9,   31,   22,   22,
- /*   190 */    13,    1,   31,    3,    4,    5,    6,    7,    8,    9,
- /*   200 */    31,   11,   31,   13,   31,   31,   31,   31,   31,   31,
- /*   210 */    31,   31,   22,   31,    1,   31,    3,    4,    5,    6,
- /*   220 */     7,    8,    9,   31,   11,   31,   13,   31,   31,   31,
- /*   230 */    31,   31,   31,   31,   31,   22,   31,    1,   31,    3,
- /*   240 */     4,    5,    6,    7,    8,    9,   31,   11,   31,   13,
- /*   250 */    31,   31,   31,   31,   31,   31,   31,   31,   22,   31,
- /*   260 */     1,   31,    3,    4,    5,    6,    7,    8,    9,   31,
- /*   270 */    11,   31,   13,   31,   31,   31,   31,   31,   31,   31,
- /*   280 */    31,   22,   31,    1,   31,    3,    4,    5,    6,    7,
- /*   290 */     8,    9,   31,   11,   31,   13,   31,   31,   31,   31,
- /*   300 */    31,   31,   31,   31,   22,   31,    1,   31,    3,    4,
- /*   310 */     5,    6,    7,    8,    9,   31,   11,   31,   13,   31,
- /*   320 */    31,   31,   31,   31,   31,   31,   31,   22,   31,    1,
- /*   330 */    31,    3,    4,    5,    6,    7,    8,    9,   31,   11,
- /*   340 */    31,   13,   31,   31,   31,   31,   31,   31,   31,   31,
- /*   350 */    22,   31,    1,   31,    3,    4,    5,    6,    7,    8,
- /*   360 */     9,   31,   11,   31,   13,   31,   31,   31,   31,   31,
- /*   370 */    31,   31,   31,   22,   31,    1,   31,    3,    4,    5,
- /*   380 */     6,    7,    8,    9,   31,   11,   31,   13,   31,   31,
- /*   390 */    31,   31,   31,   31,   31,   31,   22,   31,    1,   31,
- /*   400 */     3,    4,    5,    6,    7,    8,    9,   31,   11,   31,
- /*   410 */    13,   31,   31,   31,   31,   31,   31,   31,   31,   22,
- /*   420 */    31,    1,   31,    3,    4,    5,    6,    7,    8,    9,
- /*   430 */    31,   11,   31,   13,   31,   31,   31,    8,    9,   10,
- /*   440 */    31,   31,   22,   14,   15,   16,   17,   18,   19,    1,
- /*   450 */    21,    3,    4,    5,    6,    7,    8,    9,   31,   31,
- /*   460 */    31,   13,   31,   31,   31,   31,   31,   31,   31,   31,
- /*   470 */    22,   31,    1,   31,    3,    4,    5,    6,    7,    8,
- /*   480 */     9,    8,   31,   31,   13,   31,   31,   14,   15,   16,
- /*   490 */    17,   18,   19,   22,   21,   22,    1,   31,    3,    4,
- /*   500 */     5,    6,    7,    8,    9,    1,   31,    3,    4,    5,
- /*   510 */     6,    7,    8,   31,    1,   11,    3,    4,    5,    6,
- /*   520 */     7,    8,    0,   31,   31,   31,   31,   31,   31,   31,
- /*   530 */    31,    9,    0,   31,   31,   22,   14,   15,   16,   17,
- /*   540 */    31,    9,    0,   31,   31,   31,   14,   15,   16,   17,
- /*   550 */    31,    9,    0,   31,   31,   31,   14,   15,   16,   17,
- /*   560 */    31,    9,   31,   31,   31,   31,   14,   15,   16,   17,
- /*   570 */    31,   31,   31,   31,   31,   31,   23,   23,   23,   23,
- /*   580 */    23,   23,   23,   23,   23,   23,   23,   23,   23,   23,
- /*   590 */    23,   23,   23,
+ /*     0 */    32,    1,   32,    3,    4,    5,    6,    7,    8,    9,
+ /*    10 */    10,   11,    1,   13,    3,    4,    5,    6,    7,    8,
+ /*    20 */     9,   21,   22,    1,   20,    3,    4,    5,    6,    7,
+ /*    30 */     8,    9,   10,   11,   17,   13,   28,   29,   30,   31,
+ /*    40 */    25,   26,   27,   21,   22,   30,   28,    9,   30,   31,
+ /*    50 */    23,   24,    8,    9,   10,   11,   12,    9,   14,   15,
+ /*    60 */    16,   17,   18,   19,   32,   21,   32,    8,    9,   10,
+ /*    70 */    11,   12,   32,   14,   15,   16,   17,   18,   19,    1,
+ /*    80 */    21,    3,    4,    5,    6,    7,    8,    9,   10,   32,
+ /*    90 */     1,   13,    3,    4,    5,    6,    7,    8,    9,   10,
+ /*   100 */    22,    1,   13,    3,    4,    5,    6,    7,    8,    9,
+ /*   110 */    21,   22,    1,   13,    3,    4,    5,    6,    7,    8,
+ /*   120 */     9,   10,   22,    1,   13,    3,    4,    5,    6,    7,
+ /*   130 */     8,    9,   21,   22,    1,   13,    3,    4,    5,    6,
+ /*   140 */     7,    8,    9,   10,   22,    1,   13,    3,    4,    5,
+ /*   150 */     6,    7,    8,   32,   21,   22,    1,   32,    3,    4,
+ /*   160 */     5,    6,    7,    8,    9,   10,   22,    1,   13,    3,
+ /*   170 */     4,    5,    6,    7,    8,    9,   10,   22,    1,   13,
+ /*   180 */     3,    4,    5,    6,    7,    8,    9,   10,   22,    1,
+ /*   190 */    13,    3,    4,    5,    6,    7,    8,    9,   10,   22,
+ /*   200 */     1,   13,    3,    4,    5,    6,    7,    8,    9,   10,
+ /*   210 */    22,    1,   13,    3,    4,    5,    6,    7,    8,    9,
+ /*   220 */    10,   22,    1,   13,    3,    4,    5,    6,    7,    8,
+ /*   230 */     9,   10,   22,    1,   13,    3,    4,    5,    6,    7,
+ /*   240 */     8,    9,   10,   22,    1,   13,    3,    4,    5,    6,
+ /*   250 */     7,    8,    9,   10,   22,    1,   13,    3,    4,    5,
+ /*   260 */     6,    7,    8,    9,   10,   22,    1,   13,    3,    4,
+ /*   270 */     5,    6,    7,    8,    9,   10,   22,    1,   13,    3,
+ /*   280 */     4,    5,    6,    7,    8,    9,   10,   22,   32,   13,
+ /*   290 */    30,   31,    9,    8,    9,   12,   32,   12,   22,   14,
+ /*   300 */    15,   16,   17,   18,   19,   32,   21,    8,   30,   31,
+ /*   310 */    30,   31,   32,   14,   15,   16,   17,   18,   19,    9,
+ /*   320 */    21,   22,    8,   13,   30,   31,   10,   11,   14,   15,
+ /*   330 */    16,   17,   18,   19,    1,   21,    3,    4,    5,    6,
+ /*   340 */     7,    8,    0,   10,   32,   30,   31,   30,   31,   30,
+ /*   350 */    31,    9,    0,   30,   31,   32,   14,   15,   16,   17,
+ /*   360 */     9,    9,    0,   12,   30,   31,   14,   15,   16,   17,
+ /*   370 */    32,    9,    0,   30,   31,   32,   14,   15,   16,   17,
+ /*   380 */    32,    9,    0,   30,   31,   32,   14,   15,   16,   17,
+ /*   390 */    32,    9,    9,   30,   31,   12,   14,   15,   16,   17,
+ /*   400 */    13,   32,   32,   32,   32,   32,   32,   32,   32,   22,
+ /*   410 */    32,   32,   32,   32,   32,   32,   32,   32,   32,   32,
+ /*   420 */    32,   32,   32,   32,   23,   23,   23,   23,   23,   23,
+ /*   430 */    23,   23,   23,
 };
-#define YY_SHIFT_COUNT    (51)
+#define YY_SHIFT_COUNT    (53)
 #define YY_SHIFT_MIN      (0)
-#define YY_SHIFT_MAX      (552)
+#define YY_SHIFT_MAX      (387)
 static const unsigned short int yy_shift_ofst[] = {
- /*     0 */    32,  522,  429,  473,   80,   80,   80,   80,   80,   80,
- /*    10 */    80,   80,   80,   80,   80,   80,    0,   22,   44,   59,
- /*    20 */    78,  101,  123,  145,  167,  190,  213,  236,  259,  282,
- /*    30 */   305,  328,  351,  374,  397,  420,  448,  471,  495,  504,
- /*    40 */   513,  532,  542,  552,  109,  166,  177,   15,   33,   25,
- /*    50 */    40,   55,
+ /*     0 */   342,  285,  352,  299,  314,  314,  314,  314,  314,  314,
+ /*    10 */   314,  314,  314,  314,  314,  314,    0,   22,   44,   59,
+ /*    20 */    78,   89,  111,  133,  155,  166,  177,  188,  199,  210,
+ /*    30 */   221,  232,  243,  254,  265,  276,  100,  122,   11,  333,
+ /*    40 */   144,  362,  372,  382,  316,  283,  351,  383,  387,  310,
+ /*    50 */    38,    4,   17,   48,
 };
 #define YY_REDUCE_COUNT (15)
-#define YY_REDUCE_MIN   (-11)
-#define YY_REDUCE_MAX   (154)
+#define YY_REDUCE_MIN   (0)
+#define YY_REDUCE_MAX   (363)
 static const short yy_reduce_ofst[] = {
- /*     0 */    -4,  -11,    8,   87,   10,   21,   63,   89,  108,  110,
- /*    10 */   113,  130,  132,  135,  152,  154,
+ /*     0 */    27,    8,   15,   18,  260,  278,  280,  294,  315,  317,
+ /*    10 */   319,  323,  334,  343,  353,  363,
 };
 static const YYACTIONTYPE yy_default[] = {
- /*     0 */    84,   84,   84,   84,   84,   84,   84,   84,   84,   84,
- /*    10 */    84,   84,   84,   84,   84,   84,   84,   84,   84,   84,
- /*    20 */    84,   84,   84,   84,   84,   84,   84,   84,   84,   84,
- /*    30 */    84,   84,   84,   84,   84,   84,   84,   84,   84,   84,
- /*    40 */    84,   84,   84,   84,   84,   84,   84,   84,   84,   84,
- /*    50 */    84,   84,
+ /*     0 */    88,   88,   88,   88,   88,   88,   88,   88,   88,   88,
+ /*    10 */    88,   88,   88,   88,   88,   88,   88,   88,   88,   88,
+ /*    20 */    88,   88,   88,   88,   88,   88,   88,   88,   88,   88,
+ /*    30 */    88,   88,   88,   88,   88,   88,   88,   88,   88,   88,
+ /*    40 */    88,   88,   88,   88,   88,   88,   88,   88,   88,   88,
+ /*    50 */    88,   88,   88,   88,
 };
 /********** End of lemon-generated parsing tables *****************************/
 
@@ -481,9 +449,9 @@ static const char *const yyTokenName[] = {
   /*    7 */ "PLUS",
   /*    8 */ "MINUS",
   /*    9 */ "EOL",
-  /*   10 */ "STRING",
-  /*   11 */ "COLON",
-  /*   12 */ "ASSIGN",
+  /*   10 */ "COLON",
+  /*   11 */ "ASSIGN",
+  /*   12 */ "STRING",
   /*   13 */ "COMMA",
   /*   14 */ "IDENTIFIER",
   /*   15 */ "INSTRUCTION",
@@ -500,8 +468,9 @@ static const char *const yyTokenName[] = {
   /*   26 */ "command",
   /*   27 */ "instr",
   /*   28 */ "args",
-  /*   29 */ "id",
-  /*   30 */ "expr",
+  /*   29 */ "strings",
+  /*   30 */ "id",
+  /*   31 */ "expr",
 };
 #endif /* defined(YYCOVERAGE) || !defined(NDEBUG) */
 
@@ -516,31 +485,33 @@ static const char *const yyRuleName[] = {
  /*   4 */ "line ::= EOL",
  /*   5 */ "command ::= instr",
  /*   6 */ "command ::= instr args",
- /*   7 */ "command ::= instr STRING",
+ /*   7 */ "command ::= instr strings",
  /*   8 */ "command ::= id COLON",
  /*   9 */ "command ::= id ASSIGN expr",
- /*  10 */ "args ::= args COMMA expr",
- /*  11 */ "args ::= expr",
- /*  12 */ "id ::= IDENTIFIER",
- /*  13 */ "id ::= INSTRUCTION",
- /*  14 */ "id ::= DIRECTIVE",
- /*  15 */ "id ::= BASE",
- /*  16 */ "instr ::= INSTRUCTION",
- /*  17 */ "instr ::= DIRECTIVE",
- /*  18 */ "expr ::= NUMBER",
- /*  19 */ "expr ::= id",
- /*  20 */ "expr ::= SOPEN BASE SCLOSE",
- /*  21 */ "expr ::= OPEN expr CLOSE",
- /*  22 */ "expr ::= expr PLUS expr",
- /*  23 */ "expr ::= expr MINUS expr",
- /*  24 */ "expr ::= MINUS expr",
- /*  25 */ "expr ::= expr MUL expr",
- /*  26 */ "expr ::= expr DIV expr",
- /*  27 */ "expr ::= expr MOD expr",
- /*  28 */ "expr ::= id OPEN args CLOSE",
- /*  29 */ "expr ::= id OPEN CLOSE",
- /*  30 */ "expr ::= expr QUESTION expr COLON expr",
- /*  31 */ "expr ::= expr BIT_AND expr",
+ /*  10 */ "strings ::= strings STRING",
+ /*  11 */ "strings ::= STRING",
+ /*  12 */ "args ::= args COMMA expr",
+ /*  13 */ "args ::= expr",
+ /*  14 */ "id ::= IDENTIFIER",
+ /*  15 */ "id ::= INSTRUCTION",
+ /*  16 */ "id ::= DIRECTIVE",
+ /*  17 */ "id ::= BASE",
+ /*  18 */ "instr ::= INSTRUCTION",
+ /*  19 */ "instr ::= DIRECTIVE",
+ /*  20 */ "expr ::= NUMBER",
+ /*  21 */ "expr ::= id",
+ /*  22 */ "expr ::= SOPEN BASE SCLOSE",
+ /*  23 */ "expr ::= OPEN expr CLOSE",
+ /*  24 */ "expr ::= expr PLUS expr",
+ /*  25 */ "expr ::= expr MINUS expr",
+ /*  26 */ "expr ::= MINUS expr",
+ /*  27 */ "expr ::= expr MUL expr",
+ /*  28 */ "expr ::= expr DIV expr",
+ /*  29 */ "expr ::= expr MOD expr",
+ /*  30 */ "expr ::= id OPEN args CLOSE",
+ /*  31 */ "expr ::= id OPEN CLOSE",
+ /*  32 */ "expr ::= expr QUESTION expr COLON expr",
+ /*  33 */ "expr ::= expr BIT_AND expr",
 };
 #endif /* NDEBUG */
 
@@ -676,9 +647,9 @@ static void yy_destructor(
     case 7: /* PLUS */
     case 8: /* MINUS */
     case 9: /* EOL */
-    case 10: /* STRING */
-    case 11: /* COLON */
-    case 12: /* ASSIGN */
+    case 10: /* COLON */
+    case 11: /* ASSIGN */
+    case 12: /* STRING */
     case 13: /* COMMA */
     case 14: /* IDENTIFIER */
     case 15: /* INSTRUCTION */
@@ -690,53 +661,54 @@ static void yy_destructor(
     case 21: /* OPEN */
     case 22: /* CLOSE */
 {
-#line 23 "src/triasmParser.y"
+#line 18 "src/triasmParser.y"
  lemonTokenFree((yypminor->yy0)); 
-#line 695 "lemon/triasmParser.c"
+#line 666 "lemon/triasmParser.c"
 }
       break;
     case 23: /* start */
 {
-#line 26 "src/triasmParser.y"
+#line 21 "src/triasmParser.y"
  
-#line 702 "lemon/triasmParser.c"
+#line 673 "lemon/triasmParser.c"
 }
       break;
     case 24: /* prog */
 {
-#line 30 "src/triasmParser.y"
- lemonProgFree((yypminor->yy62)); 
-#line 709 "lemon/triasmParser.c"
+#line 25 "src/triasmParser.y"
+ lemonProgFree((yypminor->yy54)); 
+#line 680 "lemon/triasmParser.c"
 }
       break;
     case 25: /* line */
     case 26: /* command */
 {
-#line 35 "src/triasmParser.y"
- lemonCommandFree((yypminor->yy53)); 
-#line 717 "lemon/triasmParser.c"
+#line 30 "src/triasmParser.y"
+ lemonCommandFree((yypminor->yy33)); 
+#line 688 "lemon/triasmParser.c"
 }
       break;
     case 27: /* instr */
-    case 29: /* id */
+    case 29: /* strings */
+    case 30: /* id */
 {
 #line 60 "src/triasmParser.y"
- lemonTokenFree((yypminor->yy54)); 
-#line 725 "lemon/triasmParser.c"
+ lemonTokenFree((yypminor->yy19)); 
+#line 697 "lemon/triasmParser.c"
 }
       break;
     case 28: /* args */
 {
 #line 48 "src/triasmParser.y"
- lemonArgsFree((yypminor->yy29)); 
-#line 732 "lemon/triasmParser.c"
+ lemonArgsFree((yypminor->yy11)); 
+#line 704 "lemon/triasmParser.c"
 }
       break;
-    case 30: /* expr */
+    case 31: /* expr */
 {
 #line 65 "src/triasmParser.y"
- lemonExprFree((yypminor->yy7)); 
-#line 739 "lemon/triasmParser.c"
+ lemonExprFree((yypminor->yy41)); 
+#line 711 "lemon/triasmParser.c"
 }
       break;
 /********* End destructor definitions *****************************************/
@@ -954,9 +926,9 @@ static void yyStackOverflow(yyParser *yypParser){
    /* Here code is inserted which will execute if the parser
    ** stack every overflows */
 /******** Begin %stack_overflow code ******************************************/
-#line 20 "src/triasmParser.y"
+#line 15 "src/triasmParser.y"
  lemonStackOverflow(lemonState); 
-#line 959 "lemon/triasmParser.c"
+#line 931 "lemon/triasmParser.c"
 /******** End %stack_overflow code ********************************************/
    LemonParseARG_STORE /* Suppress warning about unused %extra_argument var */
    LemonParseCTX_STORE
@@ -1035,31 +1007,33 @@ static const YYCODETYPE yyRuleInfoLhs[] = {
     25,  /* (4) line ::= EOL */
     26,  /* (5) command ::= instr */
     26,  /* (6) command ::= instr args */
-    26,  /* (7) command ::= instr STRING */
+    26,  /* (7) command ::= instr strings */
     26,  /* (8) command ::= id COLON */
     26,  /* (9) command ::= id ASSIGN expr */
-    28,  /* (10) args ::= args COMMA expr */
-    28,  /* (11) args ::= expr */
-    29,  /* (12) id ::= IDENTIFIER */
-    29,  /* (13) id ::= INSTRUCTION */
-    29,  /* (14) id ::= DIRECTIVE */
-    29,  /* (15) id ::= BASE */
-    27,  /* (16) instr ::= INSTRUCTION */
-    27,  /* (17) instr ::= DIRECTIVE */
-    30,  /* (18) expr ::= NUMBER */
-    30,  /* (19) expr ::= id */
-    30,  /* (20) expr ::= SOPEN BASE SCLOSE */
-    30,  /* (21) expr ::= OPEN expr CLOSE */
-    30,  /* (22) expr ::= expr PLUS expr */
-    30,  /* (23) expr ::= expr MINUS expr */
-    30,  /* (24) expr ::= MINUS expr */
-    30,  /* (25) expr ::= expr MUL expr */
-    30,  /* (26) expr ::= expr DIV expr */
-    30,  /* (27) expr ::= expr MOD expr */
-    30,  /* (28) expr ::= id OPEN args CLOSE */
-    30,  /* (29) expr ::= id OPEN CLOSE */
-    30,  /* (30) expr ::= expr QUESTION expr COLON expr */
-    30,  /* (31) expr ::= expr BIT_AND expr */
+    29,  /* (10) strings ::= strings STRING */
+    29,  /* (11) strings ::= STRING */
+    28,  /* (12) args ::= args COMMA expr */
+    28,  /* (13) args ::= expr */
+    30,  /* (14) id ::= IDENTIFIER */
+    30,  /* (15) id ::= INSTRUCTION */
+    30,  /* (16) id ::= DIRECTIVE */
+    30,  /* (17) id ::= BASE */
+    27,  /* (18) instr ::= INSTRUCTION */
+    27,  /* (19) instr ::= DIRECTIVE */
+    31,  /* (20) expr ::= NUMBER */
+    31,  /* (21) expr ::= id */
+    31,  /* (22) expr ::= SOPEN BASE SCLOSE */
+    31,  /* (23) expr ::= OPEN expr CLOSE */
+    31,  /* (24) expr ::= expr PLUS expr */
+    31,  /* (25) expr ::= expr MINUS expr */
+    31,  /* (26) expr ::= MINUS expr */
+    31,  /* (27) expr ::= expr MUL expr */
+    31,  /* (28) expr ::= expr DIV expr */
+    31,  /* (29) expr ::= expr MOD expr */
+    31,  /* (30) expr ::= id OPEN args CLOSE */
+    31,  /* (31) expr ::= id OPEN CLOSE */
+    31,  /* (32) expr ::= expr QUESTION expr COLON expr */
+    31,  /* (33) expr ::= expr BIT_AND expr */
 };
 
 /* For rule J, yyRuleInfoNRhs[J] contains the negative of the number
@@ -1072,31 +1046,33 @@ static const signed char yyRuleInfoNRhs[] = {
    -1,  /* (4) line ::= EOL */
    -1,  /* (5) command ::= instr */
    -2,  /* (6) command ::= instr args */
-   -2,  /* (7) command ::= instr STRING */
+   -2,  /* (7) command ::= instr strings */
    -2,  /* (8) command ::= id COLON */
    -3,  /* (9) command ::= id ASSIGN expr */
-   -3,  /* (10) args ::= args COMMA expr */
-   -1,  /* (11) args ::= expr */
-   -1,  /* (12) id ::= IDENTIFIER */
-   -1,  /* (13) id ::= INSTRUCTION */
-   -1,  /* (14) id ::= DIRECTIVE */
-   -1,  /* (15) id ::= BASE */
-   -1,  /* (16) instr ::= INSTRUCTION */
-   -1,  /* (17) instr ::= DIRECTIVE */
-   -1,  /* (18) expr ::= NUMBER */
-   -1,  /* (19) expr ::= id */
-   -3,  /* (20) expr ::= SOPEN BASE SCLOSE */
-   -3,  /* (21) expr ::= OPEN expr CLOSE */
-   -3,  /* (22) expr ::= expr PLUS expr */
-   -3,  /* (23) expr ::= expr MINUS expr */
-   -2,  /* (24) expr ::= MINUS expr */
-   -3,  /* (25) expr ::= expr MUL expr */
-   -3,  /* (26) expr ::= expr DIV expr */
-   -3,  /* (27) expr ::= expr MOD expr */
-   -4,  /* (28) expr ::= id OPEN args CLOSE */
-   -3,  /* (29) expr ::= id OPEN CLOSE */
-   -5,  /* (30) expr ::= expr QUESTION expr COLON expr */
-   -3,  /* (31) expr ::= expr BIT_AND expr */
+   -2,  /* (10) strings ::= strings STRING */
+   -1,  /* (11) strings ::= STRING */
+   -3,  /* (12) args ::= args COMMA expr */
+   -1,  /* (13) args ::= expr */
+   -1,  /* (14) id ::= IDENTIFIER */
+   -1,  /* (15) id ::= INSTRUCTION */
+   -1,  /* (16) id ::= DIRECTIVE */
+   -1,  /* (17) id ::= BASE */
+   -1,  /* (18) instr ::= INSTRUCTION */
+   -1,  /* (19) instr ::= DIRECTIVE */
+   -1,  /* (20) expr ::= NUMBER */
+   -1,  /* (21) expr ::= id */
+   -3,  /* (22) expr ::= SOPEN BASE SCLOSE */
+   -3,  /* (23) expr ::= OPEN expr CLOSE */
+   -3,  /* (24) expr ::= expr PLUS expr */
+   -3,  /* (25) expr ::= expr MINUS expr */
+   -2,  /* (26) expr ::= MINUS expr */
+   -3,  /* (27) expr ::= expr MUL expr */
+   -3,  /* (28) expr ::= expr DIV expr */
+   -3,  /* (29) expr ::= expr MOD expr */
+   -4,  /* (30) expr ::= id OPEN args CLOSE */
+   -3,  /* (31) expr ::= id OPEN CLOSE */
+   -5,  /* (32) expr ::= expr QUESTION expr COLON expr */
+   -3,  /* (33) expr ::= expr BIT_AND expr */
 };
 
 static void yy_accept(yyParser*);  /* Forward Declaration */
@@ -1139,193 +1115,200 @@ static YYACTIONTYPE yy_reduce(
 /********** Begin reduce actions **********************************************/
         YYMINORTYPE yylhsminor;
       case 0: /* start ::= prog */
-#line 27 "src/triasmParser.y"
-{ (void)yylhsminor.yy17; lemonResult(yymsp[0].minor.yy62); }
-#line 1144 "lemon/triasmParser.c"
-  yymsp[0].minor.yy17 = yylhsminor.yy17;
+#line 22 "src/triasmParser.y"
+{ (void)yylhsminor.yy57; lemonResult(yymsp[0].minor.yy54); }
+#line 1120 "lemon/triasmParser.c"
+  yymsp[0].minor.yy57 = yylhsminor.yy57;
         break;
       case 1: /* prog ::= prog line */
-#line 31 "src/triasmParser.y"
-{ yylhsminor.yy62 = yymsp[-1].minor.yy62; if (yymsp[0].minor.yy53 != NULL) lemonProgAppend(yymsp[-1].minor.yy62, yymsp[0].minor.yy53); }
-#line 1150 "lemon/triasmParser.c"
-  yymsp[-1].minor.yy62 = yylhsminor.yy62;
+#line 26 "src/triasmParser.y"
+{ yylhsminor.yy54 = yymsp[-1].minor.yy54; if (yymsp[0].minor.yy33 != NULL) lemonProgAppend(yymsp[-1].minor.yy54, yymsp[0].minor.yy33); }
+#line 1126 "lemon/triasmParser.c"
+  yymsp[-1].minor.yy54 = yylhsminor.yy54;
         break;
       case 2: /* prog ::= */
-#line 32 "src/triasmParser.y"
-{ yymsp[1].minor.yy62 = lemonProgCreate(lemonState); }
-#line 1156 "lemon/triasmParser.c"
+#line 27 "src/triasmParser.y"
+{ yymsp[1].minor.yy54 = lemonProgCreate(lemonState); }
+#line 1132 "lemon/triasmParser.c"
         break;
       case 3: /* line ::= command EOL */
 {  yy_destructor(yypParser,26,&yymsp[-1].minor);
-#line 36 "src/triasmParser.y"
-{ yymsp[-1].minor.yy53 = A; }
-#line 1162 "lemon/triasmParser.c"
+#line 31 "src/triasmParser.y"
+{ yymsp[-1].minor.yy33 = A; }
+#line 1138 "lemon/triasmParser.c"
   yy_destructor(yypParser,9,&yymsp[0].minor);
 }
         break;
       case 4: /* line ::= EOL */
 {  yy_destructor(yypParser,9,&yymsp[0].minor);
-#line 37 "src/triasmParser.y"
-{ yymsp[0].minor.yy53 = NULL; }
-#line 1170 "lemon/triasmParser.c"
+#line 32 "src/triasmParser.y"
+{ yymsp[0].minor.yy33 = NULL; }
+#line 1146 "lemon/triasmParser.c"
 }
         break;
       case 5: /* command ::= instr */
-#line 41 "src/triasmParser.y"
-{ yylhsminor.yy53 = lemonInstrCreate(yymsp[0].minor.yy54, NULL, NULL); }
-#line 1176 "lemon/triasmParser.c"
-  yymsp[0].minor.yy53 = yylhsminor.yy53;
+#line 36 "src/triasmParser.y"
+{ yylhsminor.yy33 = lemonInstrCreate(yymsp[0].minor.yy19, NULL, NULL); }
+#line 1152 "lemon/triasmParser.c"
+  yymsp[0].minor.yy33 = yylhsminor.yy33;
         break;
       case 6: /* command ::= instr args */
-#line 42 "src/triasmParser.y"
-{ yylhsminor.yy53 = lemonInstrCreate(yymsp[-1].minor.yy54, yymsp[0].minor.yy29, NULL); }
-#line 1182 "lemon/triasmParser.c"
-  yymsp[-1].minor.yy53 = yylhsminor.yy53;
+#line 37 "src/triasmParser.y"
+{ yylhsminor.yy33 = lemonInstrCreate(yymsp[-1].minor.yy19, yymsp[0].minor.yy11, NULL); }
+#line 1158 "lemon/triasmParser.c"
+  yymsp[-1].minor.yy33 = yylhsminor.yy33;
         break;
-      case 7: /* command ::= instr STRING */
-#line 43 "src/triasmParser.y"
-{ yylhsminor.yy53 = lemonInstrCreate(yymsp[-1].minor.yy54, NULL, yymsp[0].minor.yy0); }
-#line 1188 "lemon/triasmParser.c"
-  yymsp[-1].minor.yy53 = yylhsminor.yy53;
+      case 7: /* command ::= instr strings */
+#line 38 "src/triasmParser.y"
+{ yylhsminor.yy33 = lemonInstrCreate(yymsp[-1].minor.yy19, NULL, yymsp[0].minor.yy19); }
+#line 1164 "lemon/triasmParser.c"
+  yymsp[-1].minor.yy33 = yylhsminor.yy33;
         break;
       case 8: /* command ::= id COLON */
-#line 44 "src/triasmParser.y"
-{ yylhsminor.yy53 = lemonLabelCreate(yymsp[-1].minor.yy54); }
-#line 1194 "lemon/triasmParser.c"
-  yy_destructor(yypParser,11,&yymsp[0].minor);
-  yymsp[-1].minor.yy53 = yylhsminor.yy53;
+#line 39 "src/triasmParser.y"
+{ yylhsminor.yy33 = lemonLabelCreate(yymsp[-1].minor.yy19); }
+#line 1170 "lemon/triasmParser.c"
+  yy_destructor(yypParser,10,&yymsp[0].minor);
+  yymsp[-1].minor.yy33 = yylhsminor.yy33;
         break;
       case 9: /* command ::= id ASSIGN expr */
+#line 40 "src/triasmParser.y"
+{ yylhsminor.yy33 = lemonAssignCreate(yymsp[-2].minor.yy19, yymsp[0].minor.yy41); }
+#line 1177 "lemon/triasmParser.c"
+  yy_destructor(yypParser,11,&yymsp[-1].minor);
+  yymsp[-2].minor.yy33 = yylhsminor.yy33;
+        break;
+      case 10: /* strings ::= strings STRING */
+#line 44 "src/triasmParser.y"
+{ yylhsminor.yy19 = yymsp[-1].minor.yy19; lemonStringAppend(yymsp[-1].minor.yy19, yymsp[0].minor.yy0); }
+#line 1184 "lemon/triasmParser.c"
+  yymsp[-1].minor.yy19 = yylhsminor.yy19;
+        break;
+      case 11: /* strings ::= STRING */
+      case 14: /* id ::= IDENTIFIER */ yytestcase(yyruleno==14);
+      case 15: /* id ::= INSTRUCTION */ yytestcase(yyruleno==15);
+      case 16: /* id ::= DIRECTIVE */ yytestcase(yyruleno==16);
+      case 17: /* id ::= BASE */ yytestcase(yyruleno==17);
+      case 18: /* instr ::= INSTRUCTION */ yytestcase(yyruleno==18);
+      case 19: /* instr ::= DIRECTIVE */ yytestcase(yyruleno==19);
 #line 45 "src/triasmParser.y"
-{ yylhsminor.yy53 = lemonAssignCreate(yymsp[-2].minor.yy54, yymsp[0].minor.yy7); }
-#line 1201 "lemon/triasmParser.c"
-  yy_destructor(yypParser,12,&yymsp[-1].minor);
-  yymsp[-2].minor.yy53 = yylhsminor.yy53;
+{ yylhsminor.yy19 = yymsp[0].minor.yy0; }
+#line 1196 "lemon/triasmParser.c"
+  yymsp[0].minor.yy19 = yylhsminor.yy19;
         break;
-      case 10: /* args ::= args COMMA expr */
+      case 12: /* args ::= args COMMA expr */
 #line 49 "src/triasmParser.y"
-{ yylhsminor.yy29 = yymsp[-2].minor.yy29; lemonArgsAppend(yymsp[-2].minor.yy29, yymsp[0].minor.yy7); }
-#line 1208 "lemon/triasmParser.c"
+{ yylhsminor.yy11 = yymsp[-2].minor.yy11; lemonArgsAppend(yymsp[-2].minor.yy11, yymsp[0].minor.yy41); }
+#line 1202 "lemon/triasmParser.c"
   yy_destructor(yypParser,13,&yymsp[-1].minor);
-  yymsp[-2].minor.yy29 = yylhsminor.yy29;
+  yymsp[-2].minor.yy11 = yylhsminor.yy11;
         break;
-      case 11: /* args ::= expr */
+      case 13: /* args ::= expr */
 #line 50 "src/triasmParser.y"
-{ yylhsminor.yy29 = lemonArgsCreate(lemonState); lemonArgsAppend(yylhsminor.yy29, yymsp[0].minor.yy7); }
-#line 1215 "lemon/triasmParser.c"
-  yymsp[0].minor.yy29 = yylhsminor.yy29;
+{ yylhsminor.yy11 = lemonArgsCreate(lemonState); lemonArgsAppend(yylhsminor.yy11, yymsp[0].minor.yy41); }
+#line 1209 "lemon/triasmParser.c"
+  yymsp[0].minor.yy11 = yylhsminor.yy11;
         break;
-      case 12: /* id ::= IDENTIFIER */
-      case 13: /* id ::= INSTRUCTION */ yytestcase(yyruleno==13);
-      case 14: /* id ::= DIRECTIVE */ yytestcase(yyruleno==14);
-      case 15: /* id ::= BASE */ yytestcase(yyruleno==15);
-      case 16: /* instr ::= INSTRUCTION */ yytestcase(yyruleno==16);
-      case 17: /* instr ::= DIRECTIVE */ yytestcase(yyruleno==17);
-#line 54 "src/triasmParser.y"
-{ yylhsminor.yy54 = yymsp[0].minor.yy0; }
-#line 1226 "lemon/triasmParser.c"
-  yymsp[0].minor.yy54 = yylhsminor.yy54;
-        break;
-      case 18: /* expr ::= NUMBER */
+      case 20: /* expr ::= NUMBER */
 #line 66 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprNumber(yymsp[0].minor.yy0); }
-#line 1232 "lemon/triasmParser.c"
-  yymsp[0].minor.yy7 = yylhsminor.yy7;
+{ yylhsminor.yy41 = lemonExprNumber(yymsp[0].minor.yy0); }
+#line 1215 "lemon/triasmParser.c"
+  yymsp[0].minor.yy41 = yylhsminor.yy41;
         break;
-      case 19: /* expr ::= id */
+      case 21: /* expr ::= id */
 #line 67 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprIdentifier(yymsp[0].minor.yy54); }
-#line 1238 "lemon/triasmParser.c"
-  yymsp[0].minor.yy7 = yylhsminor.yy7;
+{ yylhsminor.yy41 = lemonExprIdentifier(yymsp[0].minor.yy19); }
+#line 1221 "lemon/triasmParser.c"
+  yymsp[0].minor.yy41 = yylhsminor.yy41;
         break;
-      case 20: /* expr ::= SOPEN BASE SCLOSE */
+      case 22: /* expr ::= SOPEN BASE SCLOSE */
 {  yy_destructor(yypParser,19,&yymsp[-2].minor);
 #line 68 "src/triasmParser.y"
-{ yymsp[-2].minor.yy7 = lemonExprBase(yymsp[-1].minor.yy0); }
-#line 1245 "lemon/triasmParser.c"
+{ yymsp[-2].minor.yy41 = lemonExprBase(yymsp[-1].minor.yy0); }
+#line 1228 "lemon/triasmParser.c"
   yy_destructor(yypParser,20,&yymsp[0].minor);
 }
         break;
-      case 21: /* expr ::= OPEN expr CLOSE */
+      case 23: /* expr ::= OPEN expr CLOSE */
 {  yy_destructor(yypParser,21,&yymsp[-2].minor);
 #line 69 "src/triasmParser.y"
-{ yymsp[-2].minor.yy7 = yymsp[-1].minor.yy7; }
-#line 1253 "lemon/triasmParser.c"
+{ yymsp[-2].minor.yy41 = yymsp[-1].minor.yy41; }
+#line 1236 "lemon/triasmParser.c"
   yy_destructor(yypParser,22,&yymsp[0].minor);
 }
         break;
-      case 22: /* expr ::= expr PLUS expr */
+      case 24: /* expr ::= expr PLUS expr */
 #line 70 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprBinOp('+', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1260 "lemon/triasmParser.c"
+{ yylhsminor.yy41 = lemonExprBinOp('+', yymsp[-2].minor.yy41, yymsp[0].minor.yy41); }
+#line 1243 "lemon/triasmParser.c"
   yy_destructor(yypParser,7,&yymsp[-1].minor);
-  yymsp[-2].minor.yy7 = yylhsminor.yy7;
+  yymsp[-2].minor.yy41 = yylhsminor.yy41;
         break;
-      case 23: /* expr ::= expr MINUS expr */
+      case 25: /* expr ::= expr MINUS expr */
 #line 71 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprBinOp('-', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1267 "lemon/triasmParser.c"
+{ yylhsminor.yy41 = lemonExprBinOp('-', yymsp[-2].minor.yy41, yymsp[0].minor.yy41); }
+#line 1250 "lemon/triasmParser.c"
   yy_destructor(yypParser,8,&yymsp[-1].minor);
-  yymsp[-2].minor.yy7 = yylhsminor.yy7;
+  yymsp[-2].minor.yy41 = yylhsminor.yy41;
         break;
-      case 24: /* expr ::= MINUS expr */
+      case 26: /* expr ::= MINUS expr */
 {  yy_destructor(yypParser,8,&yymsp[-1].minor);
 #line 72 "src/triasmParser.y"
-{ yymsp[-1].minor.yy7 = lemonExprUnOp('-', yymsp[0].minor.yy7); }
-#line 1275 "lemon/triasmParser.c"
+{ yymsp[-1].minor.yy41 = lemonExprUnOp('-', yymsp[0].minor.yy41); }
+#line 1258 "lemon/triasmParser.c"
 }
         break;
-      case 25: /* expr ::= expr MUL expr */
+      case 27: /* expr ::= expr MUL expr */
 #line 73 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprBinOp('*', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1281 "lemon/triasmParser.c"
+{ yylhsminor.yy41 = lemonExprBinOp('*', yymsp[-2].minor.yy41, yymsp[0].minor.yy41); }
+#line 1264 "lemon/triasmParser.c"
   yy_destructor(yypParser,4,&yymsp[-1].minor);
-  yymsp[-2].minor.yy7 = yylhsminor.yy7;
+  yymsp[-2].minor.yy41 = yylhsminor.yy41;
         break;
-      case 26: /* expr ::= expr DIV expr */
+      case 28: /* expr ::= expr DIV expr */
 #line 74 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprBinOp('/', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1288 "lemon/triasmParser.c"
+{ yylhsminor.yy41 = lemonExprBinOp('/', yymsp[-2].minor.yy41, yymsp[0].minor.yy41); }
+#line 1271 "lemon/triasmParser.c"
   yy_destructor(yypParser,5,&yymsp[-1].minor);
-  yymsp[-2].minor.yy7 = yylhsminor.yy7;
+  yymsp[-2].minor.yy41 = yylhsminor.yy41;
         break;
-      case 27: /* expr ::= expr MOD expr */
+      case 29: /* expr ::= expr MOD expr */
 #line 75 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprBinOp('%', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1295 "lemon/triasmParser.c"
+{ yylhsminor.yy41 = lemonExprBinOp('%', yymsp[-2].minor.yy41, yymsp[0].minor.yy41); }
+#line 1278 "lemon/triasmParser.c"
   yy_destructor(yypParser,6,&yymsp[-1].minor);
-  yymsp[-2].minor.yy7 = yylhsminor.yy7;
+  yymsp[-2].minor.yy41 = yylhsminor.yy41;
         break;
-      case 28: /* expr ::= id OPEN args CLOSE */
+      case 30: /* expr ::= id OPEN args CLOSE */
 #line 76 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprCall(yymsp[-3].minor.yy54, yymsp[-1].minor.yy29); }
-#line 1302 "lemon/triasmParser.c"
+{ yylhsminor.yy41 = lemonExprCall(yymsp[-3].minor.yy19, yymsp[-1].minor.yy11); }
+#line 1285 "lemon/triasmParser.c"
   yy_destructor(yypParser,21,&yymsp[-2].minor);
   yy_destructor(yypParser,22,&yymsp[0].minor);
-  yymsp[-3].minor.yy7 = yylhsminor.yy7;
+  yymsp[-3].minor.yy41 = yylhsminor.yy41;
         break;
-      case 29: /* expr ::= id OPEN CLOSE */
+      case 31: /* expr ::= id OPEN CLOSE */
 #line 77 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprCall(yymsp[-2].minor.yy54, lemonArgsCreate(lemonState)); }
-#line 1310 "lemon/triasmParser.c"
+{ yylhsminor.yy41 = lemonExprCall(yymsp[-2].minor.yy19, lemonArgsCreate(lemonState)); }
+#line 1293 "lemon/triasmParser.c"
   yy_destructor(yypParser,21,&yymsp[-1].minor);
   yy_destructor(yypParser,22,&yymsp[0].minor);
-  yymsp[-2].minor.yy7 = yylhsminor.yy7;
+  yymsp[-2].minor.yy41 = yylhsminor.yy41;
         break;
-      case 30: /* expr ::= expr QUESTION expr COLON expr */
+      case 32: /* expr ::= expr QUESTION expr COLON expr */
 #line 78 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprTriOp(yymsp[-4].minor.yy7, yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1318 "lemon/triasmParser.c"
+{ yylhsminor.yy41 = lemonExprTriOp(yymsp[-4].minor.yy41, yymsp[-2].minor.yy41, yymsp[0].minor.yy41); }
+#line 1301 "lemon/triasmParser.c"
   yy_destructor(yypParser,1,&yymsp[-3].minor);
-  yy_destructor(yypParser,11,&yymsp[-1].minor);
-  yymsp[-4].minor.yy7 = yylhsminor.yy7;
+  yy_destructor(yypParser,10,&yymsp[-1].minor);
+  yymsp[-4].minor.yy41 = yylhsminor.yy41;
         break;
-      case 31: /* expr ::= expr BIT_AND expr */
+      case 33: /* expr ::= expr BIT_AND expr */
 #line 79 "src/triasmParser.y"
-{ yylhsminor.yy7 = lemonExprBinOp('&', yymsp[-2].minor.yy7, yymsp[0].minor.yy7); }
-#line 1326 "lemon/triasmParser.c"
+{ yylhsminor.yy41 = lemonExprBinOp('&', yymsp[-2].minor.yy41, yymsp[0].minor.yy41); }
+#line 1309 "lemon/triasmParser.c"
   yy_destructor(yypParser,3,&yymsp[-1].minor);
-  yymsp[-2].minor.yy7 = yylhsminor.yy7;
+  yymsp[-2].minor.yy41 = yylhsminor.yy41;
         break;
       default:
         break;
@@ -1369,9 +1352,9 @@ static void yy_parse_failed(
   /* Here code is inserted which will be executed whenever the
   ** parser fails */
 /************ Begin %parse_failure code ***************************************/
-#line 21 "src/triasmParser.y"
+#line 16 "src/triasmParser.y"
  lemonFailure(lemonState); 
-#line 1374 "lemon/triasmParser.c"
+#line 1357 "lemon/triasmParser.c"
 /************ End %parse_failure code *****************************************/
   LemonParseARG_STORE /* Suppress warning about unused %extra_argument variable */
   LemonParseCTX_STORE
@@ -1390,9 +1373,9 @@ static void yy_syntax_error(
   LemonParseCTX_FETCH
 #define TOKEN yyminor
 /************ Begin %syntax_error code ****************************************/
-#line 19 "src/triasmParser.y"
+#line 14 "src/triasmParser.y"
  lemonError(TOKEN); 
-#line 1395 "lemon/triasmParser.c"
+#line 1378 "lemon/triasmParser.c"
 /************ End %syntax_error code ******************************************/
   LemonParseARG_STORE /* Suppress warning about unused %extra_argument variable */
   LemonParseCTX_STORE

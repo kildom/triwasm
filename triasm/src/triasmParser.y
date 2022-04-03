@@ -35,9 +35,14 @@ line(R) ::= EOL.                      { R = NULL; }
 %destructor command                   { lemonCommandFree($$); }
 command(R) ::= instr(A).              { R = lemonInstrCreate(A, NULL, NULL); }
 command(R) ::= instr(A) args(B).      { R = lemonInstrCreate(A, B, NULL); }
-command(R) ::= instr(A) STRING(B).    { R = lemonInstrCreate(A, NULL, B); }
+command(R) ::= instr(A) strings(B).   { R = lemonInstrCreate(A, NULL, B); }
 command(R) ::= id(A) COLON.           { R = lemonLabelCreate(A); }
 command(R) ::= id(A) ASSIGN expr(B).  { R = lemonAssignCreate(A, B); }
+
+%type strings                         { LemonToken* }
+%destructor strings                   { lemonTokenFree($$); }
+strings(R) ::= strings(A) STRING(B).  { R = A; lemonStringAppend(A, B); }
+strings(R) ::= STRING(A).             { R = A; }
 
 %type args                            { LemonArgs* }
 %destructor args                      { lemonArgsFree($$); }

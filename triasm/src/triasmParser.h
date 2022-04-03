@@ -13,9 +13,9 @@ extern "C" {
 #define LEMON_PLUS                             7
 #define LEMON_MINUS                            8
 #define LEMON_EOL                              9
-#define LEMON_STRING                          10
-#define LEMON_COLON                           11
-#define LEMON_ASSIGN                          12
+#define LEMON_COLON                           10
+#define LEMON_ASSIGN                          11
+#define LEMON_STRING                          12
 #define LEMON_COMMA                           13
 #define LEMON_IDENTIFIER                      14
 #define LEMON_INSTRUCTION                     15
