@@ -5,8 +5,9 @@
 #include <iostream>
 
 #include "dollar.hh"
+#include "types.hh"
 
-#include "../src/triasmParser.h"
+#include "../src/lemonParser.h"
 
 using regex = std::regex;
 DOLLAR_TYPEDEF(regex);
@@ -39,7 +40,6 @@ std::string strBaseType(BaseType x) {
 }
 
 enum class ExpType {
-    UNINITIALIZED,
     NUMBER,
     TERNARY,
     CALL,
@@ -51,7 +51,6 @@ enum class ExpType {
 
 std::string strExpType(ExpType x) {
     switch (x) {
-    case ExpType::UNINITIALIZED: return "UNINITIALIZED";
     case ExpType::NUMBER: return "NUMBER";
     case ExpType::TERNARY: return "TERNARY";
     case ExpType::CALL: return "CALL";
@@ -69,22 +68,22 @@ static ExpType *charToExpType = ([](){ auto t = new ExpType[128];
     return t; })();
 
 enum class CommandType {
-    UNINITIALIZED,
     ADD,
     SUB,
     _ANNOTATION,
     ASSIGN,
     LABEL,
+    PRAGMA,
 };
 
 std::string strCommandType(CommandType x) {
     switch (x) {
-    case CommandType::UNINITIALIZED: return "UNINITIALIZED";
     case CommandType::ADD: return "ADD";
     case CommandType::SUB: return "SUB";
     case CommandType::_ANNOTATION: return "_ANNOTATION";
     case CommandType::ASSIGN: return "ASSIGN";
     case CommandType::LABEL: return "LABEL";
+    case CommandType::PRAGMA: return "PRAGMA";
     default: return "???";
     }
 }
@@ -101,29 +100,29 @@ void deleteList(T* next) {
 struct LemonCommand {
     LemonCommand* next;
     CommandType type;
+    int line;
     LemonExpr* first;
     const char* string;
-    LemonCommand() : next(nullptr), type(CommandType::UNINITIALIZED), first(nullptr), string(nullptr) { }
-    ~LemonCommand() { deleteList(first); if (string != nullptr) delete[] string; }
+    int stringLength;
+    LemonCommand(CommandType type, int line) : next(nullptr), type(type), line(line), first(nullptr), string(nullptr), stringLength(0) { }
+    ~LemonCommand() { deleteList(first); }
 };
-
-struct LemonProg : public LemonCommand { };
 
 struct LemonExpr {
     LemonExpr* next;
     LemonExpr* args;
     ExpType type;
+    int stringLength;
     union
     {
         BaseType baseType;
         uint64_t number;
+        const char* string;
     };
-    const char* string;
-    LemonExpr() : next(nullptr), args(nullptr), type(ExpType::UNINITIALIZED), number(0), string(nullptr) { }
-    ~LemonExpr() { if (string != nullptr) delete[] string; }
+    LemonExpr(ExpType type) : next(nullptr), args(nullptr), type(type), string(nullptr), stringLength(0) { }
+    ~LemonExpr() { deleteList(args); }
 };
 
-struct LemonArgs : LemonExpr { };
 
 enum class InstrId {
     #define INSTR(name) name = (__COUNTER__ * 1000 + __LINE__),
@@ -177,7 +176,9 @@ public:
     static regex$N re;
     void* parser;
     int line;
-    int col;
+    int tokenLocation;
+    int tokenLength;
+    const char* inputString;
     int totalErrors;
     int allowedErrors;
     TriASMParser();
@@ -187,9 +188,8 @@ public:
     void error(const char* message);
     static TokenizeMatch matches[];
 
-    void parseToken(int id, const char* value);
+    void parseToken(int id, const LemonToken& value);
     void simpleToken(const TokenizeMatch& m, const std::ssub_match& part);
-    void simpleTokenWithoutVal(const TokenizeMatch& m, const std::ssub_match& part);
     void oneCharToken(const TokenizeMatch& m, const std::ssub_match& part);
     void twoCharsToken(const TokenizeMatch& m, const std::ssub_match& part);
     void skipToken(const TokenizeMatch& m, const std::ssub_match& part);
@@ -203,7 +203,8 @@ TriASMParser::TokenizeMatch TriASMParser::matches[] = {
         #define DIR_LAST(name) "\\." #name
         #include "instr.inc"
         , &TriASMParser::simpleToken, LEMON_INSTRUCTION },
-    { 0, R"(\r?\n)", &TriASMParser::simpleTokenWithoutVal, LEMON_EOL },
+    { 9, R"(\.PRAGMA)", &TriASMParser::simpleToken, LEMON_PRAGMA },
+    { 0, R"(\r?\n)", &TriASMParser::simpleToken, LEMON_EOL },
     { 5, R"(POP|AMB0|AMB1|SP)", &TriASMParser::simpleToken, LEMON_BASE },
     { 3, R"([a-z_\$@\.][a-z_\$@\.0-9]*)", &TriASMParser::simpleToken, LEMON_IDENTIFIER },
     { 9, R"(//[^\n]*)", &TriASMParser::skipToken },
@@ -244,32 +245,23 @@ void TriASMParser::prepare() {
 
 void TriASMParser::error(const char* message)
 {
-    std::cerr << line << ":" << col << ": " << message << "\n";
+    std::cerr << line << ":" << ": " << message << "\n";
     totalErrors++;
 }
 
-void TriASMParser::parseToken(int id, const char* value) {
-    std::cout << line << ":" << col << ": " << "triasm " << id << " " << (value == nullptr ? std::string() : std::string("'") + value + "'") << "\n";
+void TriASMParser::parseToken(int id, const LemonToken& value) {
+    std::cout << line << ":" << ": " << "triasm " << id << " " << "????" << "\n";
     LemonParse(parser, id, value);
 }
 
 void TriASMParser::simpleToken(const TokenizeMatch& m, const std::ssub_match& part)
 {
-    size_t size = part.second - part.first;
-    char* str = new char[size + 1];
-    memcpy(str, &*part.first, size);
-    str[size] = 0;
-    parseToken(m.tokenId, str);
-}
-
-void TriASMParser::simpleTokenWithoutVal(const TokenizeMatch& m, const std::ssub_match& part)
-{
-    parseToken(m.tokenId, nullptr);
+    parseToken(m.tokenId, LemonToken { .value = inputString + tokenLocation, .length = tokenLength, .line = line, });
 }
 
 void TriASMParser::oneCharToken(const TokenizeMatch& m, const std::ssub_match& part)
 {
-    parseToken(charToLemonTokenId[*part.first], nullptr);
+    parseToken(charToLemonTokenId[*part.first], LemonToken { .value = inputString + tokenLocation, .length = tokenLength, .line = line, });
 }
 
 void TriASMParser::twoCharsToken(const TokenizeMatch& m, const std::ssub_match& part)
@@ -300,7 +292,7 @@ void TriASMParser::twoCharsToken(const TokenizeMatch& m, const std::ssub_match& 
             }
         }
     }
-    parseToken(tokenId, nullptr);
+    parseToken(tokenId, LemonToken { .value = inputString + tokenLocation, .length = tokenLength, .line = line, });
 }
 
 void TriASMParser::skipToken(const TokenizeMatch& m, const std::ssub_match& part)
@@ -328,18 +320,17 @@ void TriASMParser::parse(const std::string& input)
         LemonParseFree(parser, lemonFree);
     }
     if (result != nullptr) {
-        lemonProgFree(this, (LemonProg*)result);
+        deleteList(result);
     }
     result = nullptr;
     parser = LemonParseAlloc(lemonAlloc, (Lemon*)(void*)this);
     std::smatch parts;
+    inputString = input.c_str();
     auto loc = input.cbegin();
     line = 1;
-    col = 1;
     totalErrors = 0;
     allowedErrors = 50;
     while (*loc == ' ' || *loc == '\t') {
-        ++col;
         ++loc;
     }
     while (loc < input.cend() && totalErrors < allowedErrors) {
@@ -348,28 +339,27 @@ void TriASMParser::parse(const std::string& input)
             error("Invalid input");
             do {
                 ++loc;
-                ++col;
             } while (*loc != '\n' && loc < input.cend());
             continue;
         }
         for (auto& m : matches) {
             auto& part = parts[m.index];
             if (part.matched) {
+                tokenLocation = (&*part.first) - inputString;
+                tokenLength = part.length();
                 (this->*m.callback)(m, part);
                 break;
             }
         }
         auto next = parts[0].second;
         for (auto a = loc; a < next; ++a) {
-            col++;
             if (*a == '\n') {
                 line++;
-                col = 1;
             }
         }
         loc = next;
     }
-    parseToken(LEMON_EOF, nullptr);
+    parseToken(LEMON_EOF, LemonToken { .value = &*input.cend(), .length = 0, .line = line, });
 }
 
 std::string testInput = R"--(
@@ -378,14 +368,15 @@ std::string testInput = R"--(
     read8 [AMB0] + [POP]
     label:
     label2:
+    .pragma "To jest test"
 )--";
 
 void dumpExpr(std::string ind, LemonExpr* first) {
     while (first) {
         std::cout << ind << "EXPR " << strExpType(first->type) << ": ";
-        if (first->string != nullptr) {
+        /*if (first->string != nullptr) {
             std::cout << first->string << " ";
-        }
+        }*/
         switch (first->type)
         {
         case ExpType::BASE:
@@ -423,181 +414,170 @@ int main() {
 
 #define P do { std::cout << "FUNC: " << __FUNCTION__ << "\n"; } while (0)
 
-template<class T>
-T* useList(T* last) {
-    T* first = nullptr;
-    while (last != nullptr)
-    {
-        T* next = last->next;
-        last->next = first;
-        first = last;
-        last = next;
-    }
-    return first;
+void lemonProgFree(LemonProg* prog) { P;
+    deleteList(prog->first);
 }
 
-void lemonTokenFree(Lemon* th, const char* token) { P;
-    if (token != nullptr) {
-        delete[] token;
-    }
-}
-
-void lemonProgFree(Lemon* th, LemonProg* prog) { P;
-    deleteList<LemonCommand>(prog);
-}
-
-void lemonCommandFree(Lemon* th, LemonCommand* command) { P;
+void lemonCommandFree(LemonCommand* command) { P;
     delete command;
 }
 
-void lemonArgsFree(Lemon* th, LemonArgs* args) { P;
-    deleteList<LemonExpr>(args);
+void lemonArgsFree(LemonArgs* args) { P;
+    deleteList(args->first);
 }
 
-void lemonExprFree(Lemon* th, LemonExpr* expr) { P;
+void lemonExprFree(LemonExpr* expr) { P;
     delete expr;
 }
 
 void lemonFailure(Lemon* th) { P;
+    th->totalErrors = th->allowedErrors + 1;
     std::cerr << "Source code parsing failure!\n";
 }
 
 void lemonError(Lemon* th) { P;
+    th->totalErrors++;
     std::cerr << "Syntax error!\n";
 }
 
 void lemonStackOverflow(Lemon* th) { P;
+    th->totalErrors = th->allowedErrors + 1;
     std::cerr << "Parser stack overflow!\n";
 }
 
 void lemonResult(Lemon* th, LemonProg* prog) { P;
     std::cout << "RESULT: " << (void*)prog << "\n";
-    th->result = useList<LemonCommand>(prog);
+    th->result = prog->first;
 }
 
-LemonProg* lemonProgAppend(Lemon* th, LemonProg* prog, LemonCommand* command) { P;
+LemonProg lemonProgAppend(LemonProg* prog, LemonCommand* command) { P;
     if (command == nullptr) {
-        return prog;
+        return *prog;
     }
-    command->next = prog;
-    return (LemonProg*)command;
+    if (prog->last == nullptr) {
+        prog->first = command;
+    } else {
+        prog->last->next = command;
+    }
+    prog->last = command;
+    command->next = nullptr;
+    return *prog;
 }
 
+LemonProg lemonProgCreate() { P;
+    return LemonProg { .first = nullptr, .last = nullptr };
+}
 
-LemonCommand* lemonInstrCreate(Lemon* th, const char* name, LemonArgs* args, const char* stringLiteral) { P;
-    auto instr = new LemonCommand();
-    instr->first = useList<LemonExpr>(args);
-    instr->string = stringLiteral;
-    instr->type = CommandType::ADD;
+LemonCommand* lemonInstrCreate(LemonToken* name, LemonArgs* args) { P;
+    auto instr = new LemonCommand(CommandType::ADD, name->line);
+    instr->first = args ? args->first : nullptr;
     return instr;
 }
 
-LemonCommand* lemonLabelCreate(Lemon* th, const char* name) { P;
-    auto label = new LemonCommand();
-    label->string = name;
-    label->type = CommandType::LABEL;
+LemonCommand* lemonPragmaCreate(LemonToken* value) { P;
+    auto pragma = new LemonCommand(CommandType::PRAGMA, value->line);
+    pragma->string = value->value;
+    pragma->stringLength = value->length;
+    return pragma;
+}
+
+LemonCommand* lemonLabelCreate(LemonToken* name) { P;
+    auto label = new LemonCommand(CommandType::LABEL, name->line);
+    label->string = name->value;
+    label->stringLength = name->length;
     return label;
 }
 
-LemonCommand* lemonAssignCreate(Lemon* th, const char* name, LemonExpr* expr) { P;
-    auto assign = new LemonCommand();
-    assign->string = name;
+LemonCommand* lemonAssignCreate(LemonToken* name, LemonExpr* expr) { P;
+    auto assign = new LemonCommand(CommandType::ASSIGN, name->line);
+    assign->string = name->value;
+    assign->stringLength = name->length;
     assign->first = expr;
-    assign->type = CommandType::ASSIGN;
     return assign;
 }
 
-const char* lemonStringAppend(Lemon* th, const char* string, const char* append) { P;
-    auto len1 = strlen(string);
-    auto len2 = strlen(append);
-    auto res = new char[len1 + len2 + 1];
-    std::memcpy(res, string, len1);
-    std::memcpy(res + len1, append, len2 + 1);
-    delete[] string;
-    delete[] append;
-    return res;
+LemonArgs lemonArgsAppend(LemonArgs* args, LemonExpr* expr) { P;
+    if (args->last == nullptr) {
+        args->first = expr;
+    } else {
+        args->last->next = expr;
+    }
+    args->last = expr;
+    expr->next = nullptr;
+    return *args;
 }
 
-LemonArgs* lemonArgsAppend(Lemon* th, LemonArgs* args, LemonExpr* expr) { P;
-    expr->next = args;
-    return (LemonArgs*)expr;
+LemonArgs lemonArgsCreate(LemonExpr* expr) { P;
+    expr->next = nullptr;
+    return LemonArgs { .first = expr, .last = expr };
 }
 
-LemonExpr* lemonExprTernary(Lemon* th, LemonExpr* cond, LemonExpr* ifTrue, LemonExpr* ifFalse) { P;
-    auto exp = new LemonExpr();
-    exp->type = ExpType::TERNARY;
+LemonExpr* lemonExprTernary(LemonExpr* cond, LemonExpr* ifTrue, LemonExpr* ifFalse) { P;
+    auto exp = new LemonExpr(ExpType::TERNARY);
     exp->args = cond;
     cond->next = ifTrue;
     ifTrue->next = ifFalse;
     return exp;
 }
 
-LemonExpr* lemonExprBinOp(Lemon* th, char op, LemonExpr* a, LemonExpr* b) { P;
-    auto exp = new LemonExpr();
-    exp->type = charToExpType[op];
+LemonExpr* lemonExprBinOp(char op, LemonExpr* a, LemonExpr* b) { P;
+    auto exp = new LemonExpr(charToExpType[op]);
     exp->args = a;
     a->next = b;
     return exp;
 }
 
-LemonExpr* lemonExprUnOp(Lemon* th, char op, LemonExpr* a) { P;
-    auto exp = new LemonExpr();
-    exp->type = charToExpType[op];
+LemonExpr* lemonExprUnOp(char op, LemonExpr* a) { P;
+    auto exp = new LemonExpr(charToExpType[op]);
     exp->args = a;
     return exp;
 }
 
-LemonExpr* lemonExprCall(Lemon* th, const char* name, LemonArgs* args) { P;
-    auto exp = new LemonExpr();
-    exp->type = ExpType::CALL;
-    exp->string = name;
-    exp->args = useList<LemonExpr>(args);
+LemonExpr* lemonExprCall(LemonToken* name, LemonArgs* args) { P;
+    auto exp = new LemonExpr(ExpType::CALL);
+    exp->string = name->value;
+    exp->stringLength = name->length;
+    exp->args = args->first;
     return exp;
 }
 
 
-LemonExpr* lemonExprNumber(Lemon* th, const char* value, int base) { P;
+LemonExpr* lemonExprNumber(LemonToken* value, int base) { P;
     uint64_t number = 0;
-    auto ptr = value;
-    while (*ptr) {
-        number *= (uint64_t)base;
-        if (*ptr <= '9') {
-            number += *ptr - '0';
-        } else if (*ptr <= 'F') {
-            number += *ptr - 'A' + 10;
+    auto ptr = value->value;
+    for (int i = 0; i < value->length; i++) {
+        char c = ptr[i];
+        if (c <= '9') {
+            number += c - '0';
+        } else if (c <= 'F') {
+            number += c - 'A' + 10;
         } else {
-            number += *ptr - 'a' + 10;
+            number += c - 'a' + 10;
         }
-        ptr++;
     }
-    delete[] value;
-    auto exp = new LemonExpr();
-    exp->type = ExpType::NUMBER;
+    auto exp = new LemonExpr(ExpType::NUMBER);
     exp->number = number;
     return exp;
 }
 
-LemonExpr* lemonExprIdentifier(Lemon* th, const char* name) { P;
-    auto exp = new LemonExpr();
-    exp->type = ExpType::IDENTIFIER;
-    exp->string = name;
+LemonExpr* lemonExprIdentifier(LemonToken* name) { P;
+    auto exp = new LemonExpr(ExpType::IDENTIFIER);
+    exp->string = name->value;
+    exp->stringLength = name->length;
     return exp;
 }
 
-LemonExpr* lemonExprBase(Lemon* th, const char* name) { P;
+LemonExpr* lemonExprBase(LemonToken* name) { P;
     BaseType type;
-    if (strcasecmp(name, "AMB0") == 0) {
-        type = BaseType::AMB0;
-    } else if (strcasecmp(name, "AMB1") == 0) {
-        type = BaseType::AMB1;
-    } else if (strcasecmp(name, "SP") == 0) {
-        type = BaseType::SP;
-    } else {
+    if (name->length == 3) {
         type = BaseType::POP;
+    } else if (name->length == 4) {
+        const char *ptr = name->value;
+        type = (ptr[3] == '0') ? BaseType::AMB0 : BaseType::AMB1;
+    } else {
+        type = BaseType::SP;
     }
-    delete[] name;
-    auto exp = new LemonExpr();
-    exp->type = ExpType::BASE;
+    auto exp = new LemonExpr(ExpType::BASE);
     exp->baseType = type;
     return exp;
 }
