@@ -294,6 +294,18 @@ TEST_F(dollar, constructor_new)
 #undef TC2
 }
 
+TEST_F(dollar, constructor_null)
+{
+    TestObject$N a(nullptr);
+    EXPECT_EQ(a._ptr, nullptr);
+    #if BUILD_ERROR_DOLLAR_CONSTR_NULLPTR1
+    TestObject$ b(nullptr);
+    #endif
+    #if BUILD_ERROR_DOLLAR_CONSTR_NULLPTR2
+    TestObject$$ c(nullptr);
+    #endif
+}
+
 TEST_F(dollar, assign_null)
 {
     TestObject$N a;
@@ -301,6 +313,14 @@ TEST_F(dollar, assign_null)
     EXPECT_NE(a._ptr, nullptr);
     a = nullptr;
     EXPECT_EQ(a._ptr, nullptr);
+    #if BUILD_ERROR_DOLLAR_ASSIGN_NULLPTR1
+    TestObject$ b;
+    b = nullptr;
+    #endif
+    #if BUILD_ERROR_DOLLAR_ASSIGN_NULLPTR2
+    TestObject$$ c;
+    c = nullptr;
+    #endif
 }
 
 TEST_F(dollar, assign_copy)
@@ -867,6 +887,32 @@ TEST_F(dollar, any)
     TC($N);
 
 #undef TC
+}
+
+TEST_F(dollar, raw)
+{
+    void* ptr;
+    {
+        TestSimple$$ x;
+        x->value = 12;
+        ptr = x.exportOpaquePtr();
+    }
+    EXPECT_EQ(((TestSimple$::Inner*)ptr)->counter, 1);
+    {
+        TestSimple$ x = TestSimple$::importOpaquePtr(ptr, false);
+        EXPECT_EQ(x->value, 12);
+    }
+    EXPECT_FATAL_BEGIN("Importing raw pointer from invalid type.") {
+        Grandchild$ x = Grandchild$::importOpaquePtr(ptr, true);
+    } EXPECT_FATAL_END;
+    {
+        TestSimple$ x = TestSimple$::importOpaquePtr(ptr, true);
+        EXPECT_EQ(x._ptr->counter, 1);
+        EXPECT_EQ(x->value, 12);
+    }
+    EXPECT_FATAL_BEGIN("Importing null raw pointer to not nullable reference.") {
+        TestSimple$ x = TestSimple$::importOpaquePtr(nullptr, true);
+    } EXPECT_FATAL_END;
 }
 
 // TODO: Add test cases that will fail in compilation time

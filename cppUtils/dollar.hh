@@ -194,6 +194,10 @@ public:
         DBG("$ ##constr(): %p->%p", this, _ptr);
     }
 
+    $(typename _DollarRefTypeSelect<refType, _DollarEmptyClass, _DollarEmptyClass, nullptr_t>::type) : _ptr(nullptr) {
+        DBG("$ ##constr(nullptr): %p->%p", this, _ptr);
+    }
+
     $(_$_new_t) : _ptr(_dollarDefaultCreate<T>::create()) {
         DBG("$ ##constr(new$): %p->%p", this, _ptr);
     }
@@ -588,20 +592,42 @@ public:
         return (Inner*)_ptr;
     }
 
+    void* exportOpaquePtr() const
+    {
+        if (_ptr == nullptr) {
+            if (refType == DOLLAR_INSTANCE) {
+                _ptr = _dollarDefaultCreate<T>::create();
+                DBG("$ implicit init: %p->%p", this, _ptr);
+            } else if (refType == DOLLAR_NOT_NULL) {
+                FATAL("Dereferencing uninitialized nonnull reference.");
+            }
+        } else {
+            _ptr->counter++;
+        }
+        return (void*)_ptr;
+    }
+
+    static $ importOpaquePtr(void* ptr, bool own)
+    {
+        if (ptr == nullptr) {
+            if (refType != DOLLAR_NULLABLE) {
+                FATAL("Importing null raw pointer to not nullable reference.");
+            }
+        } else {
+            auto id = ((Inner*)ptr)->typeInfo.typeId;
+            if (!_DollarTypeIdHelper<T>::isBaseOf(id)) {
+                FATAL("Importing raw pointer from invalid type.");
+            }
+            if (!own) {
+                ((Inner*)ptr)->counter++;
+            }
+        }
+        return $((Inner*)ptr);
+    }
+
 };
 
 typedef $<DollarDummyBaseClass, DOLLAR_NOT_NULL> any$;
 typedef $<DollarDummyBaseClass, DOLLAR_NULLABLE> any$N;
-
-/* TODO: Methods for C interface:
-MyClass$$ obj;
-
-void *c_ptr = obj.exportRawPointer();
-... 
-MyClass$ temp = MyClass$::importRawPointer(c_ptr, / * takeOwnership = * / false);
-...
-MyClass$::importRawPointer(c_ptr, true);
-
-*/
 
 #endif // _DOLLAR_HH_
