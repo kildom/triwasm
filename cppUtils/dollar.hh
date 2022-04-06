@@ -2,6 +2,7 @@
 #define _DOLLAR_HH_
 
 #include <utility>
+#include <cstddef>
 
 #include "trace.hh"
 #include "types.hh"

@@ -40,11 +40,13 @@ std::string strBaseType(BaseType x) {
 }
 
 enum class ExpType {
-    NUMBER,
-    TERNARY,
     CALL,
     IDENTIFIER,
+    LAST_WITH_STRING,
+    NUMBER,
     BASE,
+    LAST_WITH_NUMBER,
+    TERNARY,
     #define EXPR_OP(name, symbol) OP_##name,
     #include "instr.inc"
 };
@@ -68,22 +70,22 @@ static ExpType *charToExpType = ([](){ auto t = new ExpType[128];
     return t; })();
 
 enum class CommandType {
-    ADD,
-    SUB,
-    _ANNOTATION,
     ASSIGN,
     LABEL,
     PRAGMA,
+    #define INSTR(name) name,
+    #define DIR(name) _##name,
+    #include "instr.inc"
 };
 
 std::string strCommandType(CommandType x) {
     switch (x) {
-    case CommandType::ADD: return "ADD";
-    case CommandType::SUB: return "SUB";
-    case CommandType::_ANNOTATION: return "_ANNOTATION";
     case CommandType::ASSIGN: return "ASSIGN";
     case CommandType::LABEL: return "LABEL";
     case CommandType::PRAGMA: return "PRAGMA";
+    #define INSTR(name) case CommandType::name: return #name;
+    #define DIR(name) case CommandType::_##name: return "." #name;
+    #include "instr.inc"
     default: return "???";
     }
 }
@@ -363,46 +365,62 @@ void TriASMParser::parse(const std::string& input)
 }
 
 std::string testInput = R"--(
-    .data8 1, 2, 3 + a, -4, sin(12, 3)
+    .data8 1, 2, 5 + a, -4, sin(12, 3)
     a = 12 + 3 * 8 == a || b
-    read8 [AMB0] + [POP]
+    add p(9, 10)
+    read8 [AMB0] - 12 + [POP]
     label:
     label2:
-    .pragma "To jest test"
+    .pragma "License:askajhfdf"
+    NOT64HL
 )--";
 
 void dumpExpr(std::string ind, LemonExpr* first) {
     while (first) {
-        std::cout << ind << "EXPR " << strExpType(first->type) << ": ";
-        /*if (first->string != nullptr) {
-            std::cout << first->string << " ";
-        }*/
-        switch (first->type)
-        {
-        case ExpType::BASE:
+        std::cout << ind << (first->next ? " ├──" : " └──") << strExpType(first->type) << " ";
+        if (first->type <= ExpType::LAST_WITH_STRING) {
+            std::cout << std::string(first->string, first->stringLength) << " ";
+        } else if (first->type == ExpType::BASE) {
             std::cout << strBaseType((BaseType)first->number);
-            break;
-        
-        default:
+        } else if (first->type <= ExpType::LAST_WITH_NUMBER) {
             std::cout << first->number;
-            break;
         }
         std::cout << "\n";
-        dumpExpr(ind + "   ", first->args);
+        dumpExpr(ind + (first->next ? " |  " : "    "), first->args);
         first = first->next;
     }
 }
 
 void dumpProg(LemonCommand* first) {
     while (first) {
-        std::cout << "COMMAND " << strCommandType(first->type) << ": ";
+        std::cout << strCommandType(first->type) << " ";
         if (first->string != nullptr) {
-            std::cout << first->string << " ";
+            std::cout << std::string(first->string, first->stringLength) << " ";
         }
         std::cout << "\n";
-        dumpExpr("   ", first->first);
+        dumpExpr("", first->first);
         first = first->next;
     }
+}
+
+void testOrder()
+{
+    const char* tab[] = {
+        #define INSTR(name) #name,
+        #define DIR(name) "." #name,
+        #include "instr.inc"
+    };
+    int len = sizeof(tab) / sizeof(tab[0]);
+    for (auto i = 0; i < len; i++) {
+        for (auto j = i + 1; j < len; j++) {
+            auto first = tab[i];
+            auto sec = tab[j];
+            if (strlen(first) < strlen(sec) && strncasecmp(first, sec, strlen(first)) == 0) {
+                std::cout << first << " <<< " << sec << "\n";
+            }
+        }
+    }
+    exit(0);
 }
 
 int main() {
@@ -469,7 +487,19 @@ LemonProg lemonProgCreate() { P;
 }
 
 LemonCommand* lemonInstrCreate(LemonToken* name, LemonArgs* args) { P;
-    auto instr = new LemonCommand(CommandType::ADD, name->line);
+    CommandType type;
+
+    if (name->value[0] != '.') {
+        #define INSTR(N) if (strlen(#N) == name->length && strncasecmp(#N, name->value, name->length) == 0) { type = CommandType::N; } else
+        #include "instr.inc"
+        { FATAL("Internal error"); }
+    } else {
+        #define DIR(N) if (strlen("." #N) == name->length && strncasecmp("." #N, name->value, name->length) == 0) { type = CommandType::_##N; } else
+        #include "instr.inc"
+        { FATAL("Internal error"); }
+    }
+
+    auto instr = new LemonCommand(type, name->line);
     instr->first = args ? args->first : nullptr;
     return instr;
 }
@@ -547,6 +577,7 @@ LemonExpr* lemonExprNumber(LemonToken* value, int base) { P;
     auto ptr = value->value;
     for (int i = 0; i < value->length; i++) {
         char c = ptr[i];
+        number *= base;
         if (c <= '9') {
             number += c - '0';
         } else if (c <= 'F') {
