@@ -1,44 +1,67 @@
-#ifndef _ARRAY_HH_
-#define _ARRAY_HH_
+#ifndef _STRING_HH_
+#define _STRING_HH_
 
-#include <vector>
+#include <string>
 
 #include "trace.hh"
 #include "types.hh"
 #include "dollar.hh"
 #include "range.hh"
 
-template<typename T>
-using Array = std::vector<T>;
 
-template<typename T>
-class ArrayView;
+template<typename T = char, DollarRefType refType = DOLLAR_NOT_NULL>
+class GenericRegEx$ : public $<std::basic_regex<T>, refType> {
+};
 
-template<typename T, DollarRefType refType = DOLLAR_NOT_NULL>
-class Array$ : public $<std::vector<T>, refType> {
+template<typename T = char>
+using String = std::basic_string<T>;
+
+template<typename T = char>
+class StringView;
+
+template<typename T = char, DollarRefType refType = DOLLAR_NOT_NULL>
+class GenericString$ : public $<std::basic_string<T>, refType> {
 public:
-    using $<std::vector<T>, refType>::$;
-    using $<std::vector<T>, refType>::operator=;
+    using $<std::basic_string<T>, refType>::$;
+    using $<std::basic_string<T>, refType>::operator=;
+
+    GenericString$(const T* a) : $<std::basic_string<T>, refType>() {
+        DBG("String ## constr(const T* a)");
+        $<std::basic_string<T>, refType>::createInplace(a);
+    }
+
+    GenericString$(const T* a, ssize length) : $<std::basic_string<T>, refType>() {
+        DBG("String ## constr(const T*, ssize)");
+        if (length < 0) {
+            FATAL("Negative string length.");
+        }
+        $<std::basic_string<T>, refType>::createInplace(a, (std::size_t)length);
+    }
+
+    void operator=(const T* a) {
+        DBG("String ## =(const T* a)");
+        $<std::basic_string<T>, refType>::createInplace(a);
+    }
 
     template<DollarRefType refType2>
-    Array$(const $<std::vector<T>, refType2> &a) : $<std::vector<T>, refType>(a) { }
+    GenericString$(const $<std::basic_string<T>, refType2> &a) : $<std::basic_string<T>, refType>(a) { DBG("## GenericString$(const T* a)");  }
 
     template<DollarRefType refType2>
-    Array$($<std::vector<T>, refType2> &&a) : $<std::vector<T>, refType>(a) { }
+    GenericString$($<std::basic_string<T>, refType2> &&a) : $<std::basic_string<T>, refType>(a) { }
 
     template<DollarRefType refType2>
-    void operator=(const $<std::vector<T>, refType2> &a) { $<std::vector<T>, refType>::operator=(a); }
+    void operator=(const $<std::basic_string<T>, refType2> &a) { $<std::basic_string<T>, refType>::operator=(a); }
 
     template<DollarRefType refType2>
-    void operator=($<std::vector<T>, refType2> &&a) { $<std::vector<T>, refType>::operator=(a); }
+    void operator=($<std::basic_string<T>, refType2> &&a) { $<std::basic_string<T>, refType>::operator=(a); }
 
     template<class UnboundedRange>
-    std::enable_if_t<std::is_class<UnboundedRange>::value, ArrayView<T>> operator[](const UnboundedRange& r) {
+    std::enable_if_t<std::is_class<UnboundedRange>::value, StringView<T>> operator[](const UnboundedRange& r) {
         return operator[](r.bound((*this)->size()));
     }
 
     template<class UnboundedRange>
-    std::enable_if_t<std::is_class<UnboundedRange>::value, ArrayView<T>> operator()(const UnboundedRange& r) {
+    std::enable_if_t<std::is_class<UnboundedRange>::value, StringView<T>> operator()(const UnboundedRange& r) {
         return operator()(r.bound((*this)->size()));
     }
 
@@ -59,32 +82,32 @@ public:
         return (**this)[index];
     }
 
-    ArrayView<T> operator[](const Range& r) {
+    StringView<T> operator[](const Range& r) {
         if (r.to < r.from || r.from < 0 || r.to > (ssize)(*this)->size()) {
             FATAL("Invalid range.");
         }
-        return ArrayView<T>{
-            .array = *this,
+        return StringView<T>{
+            .string = *this,
             .from = r.from,
             .to = r.to,
         };
     }
 
-    ArrayView<T> operator()(const Range& r) {
+    StringView<T> operator()(const Range& r) {
         if (r.to < r.from || r.from < 0) {
             FATAL("Invalid range.");
         }
         if (r.to > (ssize)(*this)->size()) {
             (*this)->resize(r.to);
         }
-        return ArrayView<T>{
-            .array = *this,
+        return StringView<T>{
+            .string = *this,
             .from = r.from,
             .to = r.to,
         };
     }
 
-    ArrayView<T> operator[](const RelaxedRange& r) {
+    StringView<T> operator[](const RelaxedRange& r) {
         ssize from = r.from;
         ssize to = r.to;
         ssize size = (*this)->size();
@@ -100,14 +123,14 @@ public:
                 from = size;
             }
         }
-        return ArrayView<T>{
-            .array = *this,
+        return StringView<T>{
+            .string = *this,
             .from = from,
             .to = to,
         };
     }
 
-    ArrayView<T> operator()(const RelaxedRange& r) {
+    StringView<T> operator()(const RelaxedRange& r) {
         ssize from = r.from;
         ssize to = r.to;
         ssize size = (*this)->size();
@@ -120,8 +143,8 @@ public:
         if (to > size) {
             (*this)->resize(to);
         }
-        return ArrayView<T>{
-            .array = *this,
+        return StringView<T>{
+            .string = *this,
             .from = from,
             .to = to,
         };
@@ -159,14 +182,14 @@ public:
 
     auto& back() {
         if ((*this)->empty()) {
-            FATAL("Cannot get value from empty array.");
+            FATAL("Cannot get value from empty string.");
         }
         return (*this)->back();
     }
 
     auto pop() {
         if ((*this)->empty()) {
-            FATAL("Cannot pop from empty array.");
+            FATAL("Cannot pop from empty string.");
         }
         auto last = (*this)->back();
         (*this)->pop_back();
@@ -187,12 +210,12 @@ public:
 
     auto operator()() {
         struct Wrapper {
-            Array$& arr;
+            GenericString$& str;
             void operator=(const T& item) {
-                arr->push_back(item);
+                str->push_back(item);
             }
         };
-        return Wrapper{ .arr = *this };
+        return Wrapper{ .str = *this };
     }
 
     auto begin() const {
@@ -205,15 +228,15 @@ public:
 
     auto reverseIterate() {
         struct Wrapper {
-            Array$ arr;
+            GenericString$ str;
             auto begin() {
-                return arr->rbegin();
+                return str->rbegin();
             }
             auto end() {
-                return arr->rend();
+                return str->rend();
             }
         };
-        return Wrapper{ .arr = *this };
+        return Wrapper{ .str = *this };
     }
 
     auto indexIterate() {
@@ -233,28 +256,28 @@ public:
 };
 
 template<typename T>
-class ArrayView {
+class StringView {
 public:
-    typedef Array<T> Type;
-    Array$<T> array;
+    typedef String<T> Type;
+    GenericString$<T> string;
     ssize from;
     ssize to;
 
-    std::vector<T>& checkRange() const
+    std::basic_string<T>& checkRange() const
     {
-        if (to > array.length()) {
+        if (to > string.length()) {
             FATAL("Outdated range");
         }
-        return *array;
+        return *string;
     }
 
     template<class UnboundedRange>
-    std::enable_if_t<std::is_class<UnboundedRange>::value, ArrayView> operator[](const UnboundedRange& r) {
+    std::enable_if_t<std::is_class<UnboundedRange>::value, StringView> operator[](const UnboundedRange& r) {
         return operator[](r.bound((*this)->size()));
     }
 
     template<class UnboundedRange>
-    std::enable_if_t<std::is_class<UnboundedRange>::value, ArrayView> operator()(const UnboundedRange& r) {
+    std::enable_if_t<std::is_class<UnboundedRange>::value, StringView> operator()(const UnboundedRange& r) {
         return operator()(r.bound((*this)->size()));
     }
 
@@ -279,20 +302,20 @@ public:
         return v[index];
     }
 
-    ArrayView operator[](const Range& r) {
+    StringView operator[](const Range& r) {
         ssize absFrom = r.from + from;
         ssize absTo = r.to + from;
         if (absTo < absFrom || absFrom < from || absTo > to) {
             FATAL("Invalid range.");
         }
-        return ArrayView{
-            .array = array,
+        return StringView{
+            .string = string,
             .from = absFrom,
             .to = absTo,
         };
     }
 
-    ArrayView operator()(const Range& r) {
+    StringView operator()(const Range& r) {
         ssize absFrom = r.from + from;
         ssize absTo = r.to + from;
         if (absTo < absFrom || absFrom < from) {
@@ -301,14 +324,14 @@ public:
         if (absTo > to) {
             length(absTo - from);
         }
-        return ArrayView{
-            .array = array,
+        return StringView{
+            .string = string,
             .from = absFrom,
             .to = absTo,
         };
     }
 
-    ArrayView<T> operator[](const RelaxedRange& r) {
+    StringView<T> operator[](const RelaxedRange& r) {
         ssize absFrom = r.from + from;
         ssize absTo = r.to + from;
         if (absFrom < from) {
@@ -323,14 +346,14 @@ public:
                 absFrom = to;
             }
         }
-        return ArrayView<T>{
-            .array = array,
+        return StringView<T>{
+            .string = string,
             .from = absFrom,
             .to = absTo,
         };
     }
 
-    ArrayView<T> operator()(const RelaxedRange& r) {
+    StringView<T> operator()(const RelaxedRange& r) {
         ssize absFrom = r.from;
         ssize absTo = r.to;
         if (absFrom < from) {
@@ -342,8 +365,8 @@ public:
         if (absTo > to) {
             length(absTo - from);
         }
-        return ArrayView<T>{
-            .array = array,
+        return StringView<T>{
+            .string = string,
             .from = absFrom,
             .to = absTo,
         };
@@ -383,7 +406,7 @@ public:
 
     auto operator()() {
         struct Wrapper {
-            ArrayView& view;
+            StringView& view;
             void operator=(const T& item) {
                 auto& v = view.checkRange();
                 v.insert(v.begin() + view.to, item);
@@ -405,8 +428,8 @@ public:
 
     auto reverseIterate() {
         struct Wrapper {
-            typename std::vector<T>::reverse_iterator rbegin;
-            typename std::vector<T>::reverse_iterator rend;
+            typename std::basic_string<T>::reverse_iterator rbegin;
+            typename std::basic_string<T>::reverse_iterator rend;
             auto& begin() {
                 return rbegin;
             }
@@ -430,20 +453,20 @@ public:
             auto begin() { return Iterator{ .index = 0 }; }
             auto end() { return Iterator{ .index = length }; }
         };
-        return Wrapper{ .length = (ssize)(*this)->size() };
+        return Wrapper{ .view = (ssize)(*this)->size() };
     }
 
-    void operator=(const ArrayView& src) {
-        copyArray(src.checkRange(), src.from, src.to);
+    void operator=(const StringView& src) {
+        copyString(src.checkRange(), src.from, src.to);
     }
 
-    void operator=(Array$<T> src) {
-        copyArray(*src, 0, src.length());
+    void operator=(GenericString$<T> src) {
+        copyString(*src, 0, src.length());
     }
 
-    void copyArray(const std::vector<T>& src, ssize srcFrom, ssize srcTo)
+    void copyString(const std::basic_string<T>& src, ssize srcFrom, ssize srcTo)
     {
-        std::vector<T>& v = checkRange();
+        std::basic_string<T>& v = checkRange();
         ssize size = to - from;
         ssize srcSize = srcTo - srcFrom;
         if (&v == &src)
@@ -481,9 +504,53 @@ public:
 };
 
 template<typename T>
-using Array$$ = Array$<T, DOLLAR_INSTANCE>;
+using GenericString$$ = GenericString$<T, DOLLAR_INSTANCE>;
 
 template<typename T>
-using Array$N = Array$<T, DOLLAR_NULLABLE>;
+using GenericString$N = GenericString$<T, DOLLAR_NULLABLE>;
 
-#endif // _ARRAY_HH_
+using String$ = GenericString$<char, DOLLAR_NOT_NULL>;
+using String$$ = GenericString$<char, DOLLAR_INSTANCE>;
+using String$N = GenericString$<char, DOLLAR_NULLABLE>;
+using Bytes$ = GenericString$<u8, DOLLAR_NOT_NULL>;
+using Bytes$$ = GenericString$<u8, DOLLAR_INSTANCE>;
+using Bytes$N = GenericString$<u8, DOLLAR_NULLABLE>;
+
+using RegEx$ = GenericRegEx$<char, DOLLAR_NOT_NULL>;
+using RegEx$$ = GenericRegEx$<char, DOLLAR_INSTANCE>;
+using RegEx$N = GenericRegEx$<char, DOLLAR_NULLABLE>;
+using BytesRegEx$ = GenericRegEx$<char, DOLLAR_NOT_NULL>;
+using BytesRegEx$$ = GenericRegEx$<char, DOLLAR_INSTANCE>;
+using BytesRegEx$N = GenericRegEx$<char, DOLLAR_NULLABLE>;
+
+String$ operator ""_S(const char* text, std::size_t length)
+{
+    return String$(text, (ssize)length);
+}
+
+Bytes$ operator ""_B(const char* text, std::size_t length)
+{
+    return Bytes$((const u8*)text, (ssize)length);
+}
+/*
+RegEx$ operator ""_R(const char* text, std::size_t length)
+{
+    return RegEx$(std::string(text, (ssize)length));
+}
+
+RegEx$ operator ""_Ri(const char* text, std::size_t length)
+{
+    return RegEx$(std::string(text, (ssize)length), RegEx$::IGNORE_CASE);
+}
+
+RegEx$ operator ""_Ro(const char* text, std::size_t length)
+{
+    return RegEx$(std::string(text, (ssize)length), RegEx$::OPTIMIZE);
+}
+
+RegEx$ operator ""_Rio(const char* text, std::size_t length)
+{
+    return RegEx$(std::string(text, (ssize)length), RegEx$::IGNORE_CASE | RegEx$::OPTIMIZE);
+}
+*/
+#endif // _STRING_HH_

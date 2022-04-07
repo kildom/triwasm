@@ -5,10 +5,7 @@
 
 #include "dollar.hh"
 #include "array.hh"
-
-class String$ {}; // TODO: string
-class String$N {}; // TODO: string
-class String$$ {}; // TODO: string
+#include "string.hh"
 
 namespace triasm {
 
