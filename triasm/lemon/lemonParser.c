@@ -134,11 +134,8 @@
 typedef union {
   int yyinit;
   LemonParseTOKENTYPE yy0;
-  LemonCommand* yy1;
-  LemonProg yy12;
-  LemonArgs yy21;
   LemonToken yy45;
-  LemonExpr* yy46;
+  int yy52;
 } YYMINORTYPE;
 #ifndef YYSTACKDEPTH
 #define YYSTACKDEPTH 2000
@@ -148,14 +145,14 @@ typedef union {
 #define LemonParseARG_PARAM
 #define LemonParseARG_FETCH
 #define LemonParseARG_STORE
-#define LemonParseCTX_SDECL  Lemon* th ;
-#define LemonParseCTX_PDECL , Lemon* th 
+#define LemonParseCTX_SDECL  void* th ;
+#define LemonParseCTX_PDECL , void* th 
 #define LemonParseCTX_PARAM ,th 
-#define LemonParseCTX_FETCH  Lemon* th =yypParser->th ;
+#define LemonParseCTX_FETCH  void* th =yypParser->th ;
 #define LemonParseCTX_STORE yypParser->th =th ;
 #define YYNSTATE             84
 #define YYNRULE              49
-#define YYNRULE_WITH_ACTION  49
+#define YYNRULE_WITH_ACTION  47
 #define YYNTOKEN             38
 #define YY_MAX_SHIFT         83
 #define YY_MIN_SHIFTREDUCE   84
@@ -233,125 +230,125 @@ typedef union {
 *********** Begin parsing tables **********************************************/
 #define YY_ACTTAB_COUNT (1250)
 static const YYACTIONTYPE yy_action[] = {
- /*     0 */   135,  152,  134,    3,  144,  152,  152,  152,   33,   67,
- /*    10 */   152,  152,  152,  152,  152,  152,  152,  152,  152,  152,
- /*    20 */   152,  152,  152,  152,  152,  152,  152,  152,  152,  150,
- /*    30 */   143,  152,  152,  150,  150,  150,   33,   68,  150,  150,
- /*    40 */   150,  150,  150,  150,  150,  150,  150,  150,  150,  150,
- /*    50 */   150,  150,  150,  150,  150,  150,  150,  183,   43,  150,
- /*    60 */   150,  183,   37,  183,   33,   69,  183,  183,  183,  183,
- /*    70 */   183,  183,  183,  183,  183,  183,  183,  183,  183,  183,
- /*    80 */   183,  183,  183,  183,  183,  154,   79,    2,  183,  154,
- /*    90 */   142,  154,   33,   44,  154,   28,   27,   26,   25,   24,
+ /*     0 */   135,  150,  134,    3,  142,  150,  150,  150,   33,   67,
+ /*    10 */   150,  150,  150,  150,  150,  150,  150,  150,  150,  150,
+ /*    20 */   150,  150,  150,  150,  150,  150,  150,  150,  150,  148,
+ /*    30 */   141,  150,  150,  148,  148,  148,   33,   68,  148,  148,
+ /*    40 */   148,  148,  148,  148,  148,  148,  148,  148,  148,  148,
+ /*    50 */   148,  148,  148,  148,  148,  148,  148,  181,   43,  148,
+ /*    60 */   148,  181,   37,  181,   33,   69,  181,  181,  181,  181,
+ /*    70 */   181,  181,  181,  181,  181,  181,  181,  181,  181,  181,
+ /*    80 */   181,  181,  181,  181,  181,  152,   79,    2,  181,  152,
+ /*    90 */   140,  152,   33,   44,  152,   28,   27,   26,   25,   24,
  /*   100 */    23,   22,   21,   20,   19,   18,   17,   16,   15,   14,
- /*   110 */    13,   12,   11,  153,   72,  146,  154,  153,  135,  153,
- /*   120 */   135,    4,  153,  153,  153,  153,  153,  153,  153,  153,
- /*   130 */   153,  153,  153,  153,  153,  153,  153,  153,  153,  153,
- /*   140 */   153,  151,  135,  153,  153,  151,  146,  151,   33,   45,
- /*   150 */   151,  151,  151,  151,  151,  151,  151,  151,  151,  151,
- /*   160 */   151,  151,  151,  151,  151,  151,  151,  151,  151,  184,
- /*   170 */   135,  151,  151,  184,  135,  184,   33,   46,  184,  184,
- /*   180 */   184,  184,  184,  184,  184,  184,  184,  184,  184,  184,
- /*   190 */   184,  184,  184,  184,  184,  184,  184,  182,   33,   47,
- /*   200 */   184,  182,  135,  182,   33,   48,  182,  182,  182,  182,
- /*   210 */   182,  182,  182,  182,  182,  182,  182,  182,  182,  182,
- /*   220 */   182,  182,  182,  182,  182,  181,   33,   49,  182,  181,
- /*   230 */   135,  181,   33,   50,  181,  181,  181,  181,  181,  181,
- /*   240 */   181,  181,  181,  181,  181,  181,  181,  181,  181,  181,
- /*   250 */   181,  181,  181,  180,   33,   51,  181,  180,  135,  180,
- /*   260 */    33,   52,  180,  180,  180,  180,  180,  180,  180,  180,
- /*   270 */   180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
- /*   280 */   180,  179,   33,   53,  180,  179,  135,  179,   33,   54,
- /*   290 */   179,  179,  179,  179,  179,  179,  179,  179,  179,  179,
- /*   300 */   179,  179,  179,  179,  179,  179,  179,  179,  179,  178,
- /*   310 */    33,   55,  179,  178,  135,  178,   33,   56,  178,  178,
- /*   320 */   178,  178,  178,  178,  178,  178,  178,  178,  178,  178,
- /*   330 */   178,  178,  178,  178,  178,  178,  178,  177,   33,   57,
- /*   340 */   178,  177,  135,  177,   33,   58,  177,  177,  177,  177,
- /*   350 */   177,  177,  177,  177,  177,  177,  177,  177,  177,  177,
- /*   360 */   177,  177,  177,  177,  177,  176,   33,   59,  177,  176,
- /*   370 */   135,  176,   33,   60,  176,  176,  176,  176,  176,  176,
- /*   380 */   176,  176,  176,  176,  176,  176,  176,  176,  176,  176,
- /*   390 */   176,  176,  176,  175,   33,   61,  176,  175,  135,  175,
- /*   400 */    33,   62,  175,  175,  175,  175,  175,  175,  175,  175,
- /*   410 */   175,  175,  175,  175,  175,  175,  175,  175,  175,  175,
- /*   420 */   175,  174,   33,   63,  175,  174,  135,  174,   33,   64,
- /*   430 */   174,  174,  174,  174,  174,  174,  174,  174,  174,  174,
- /*   440 */   174,  174,  174,  174,  174,  174,  174,  174,  174,  173,
- /*   450 */    33,   65,  174,  173,  135,  173,   33,   34,  173,  173,
- /*   460 */   173,  173,  173,  173,  173,  173,  173,  173,  173,  173,
- /*   470 */   173,  173,  173,  173,  173,  173,  173,  172,   33,   70,
- /*   480 */   173,  172,  135,  172,   77,    5,  172,  172,  172,  172,
- /*   490 */   172,  172,  172,  172,  172,  172,  172,  172,  172,  172,
- /*   500 */   172,  172,  172,  172,  172,  171,  135,  135,  172,  171,
- /*   510 */   135,  171,  135,  135,  171,  171,  171,  171,  171,  171,
- /*   520 */   171,  171,  171,  171,  171,  171,  171,  171,  171,  171,
- /*   530 */   171,  171,  171,  170,  135,  135,  171,  170,  135,  170,
- /*   540 */   135,  135,  170,  170,  170,  170,  170,  170,  170,  170,
- /*   550 */   170,  170,  170,  170,  170,  170,  170,  170,  170,  170,
- /*   560 */   170,  169,  135,  135,  170,  169,  135,  169,  135,  135,
- /*   570 */   169,  169,  169,  169,  169,  169,  169,  169,  169,  169,
- /*   580 */   169,  169,  169,  169,  169,  169,   13,   12,   11,  168,
- /*   590 */   135,  135,  169,  168,  135,  168,  135,  135,  168,  168,
- /*   600 */   168,  168,  168,  168,  168,  168,  168,  168,  168,  168,
- /*   610 */   168,  168,  168,  168,   13,   12,   11,  167,  135,  135,
- /*   620 */   168,  167,  135,  167,  135,  135,  167,  167,  167,  167,
- /*   630 */   167,  167,  167,  167,  167,  167,  167,  167,  167,  167,
- /*   640 */    15,   14,   13,   12,   11,  166,  135,  135,  167,  166,
- /*   650 */   135,  166,  135,  135,  166,  166,  166,  166,  166,  166,
- /*   660 */   166,  166,  166,  166,  166,  166,  166,  166,   15,   14,
- /*   670 */    13,   12,   11,  165,  135,  135,  166,  165,  135,  165,
- /*   680 */   135,  135,  165,  165,  165,  165,  165,  165,  165,  165,
- /*   690 */   165,  165,  165,  165,   17,   16,   15,   14,   13,   12,
- /*   700 */    11,  164,  135,  135,  165,  164,  135,  164,  135,  135,
- /*   710 */   164,  164,  164,  164,  164,  164,  164,  164,  164,  164,
- /*   720 */   164,  164,   17,   16,   15,   14,   13,   12,   11,  163,
- /*   730 */   135,  135,  164,  163,  135,  163,  135,  135,  163,  163,
- /*   740 */   163,  163,  163,  163,  163,  163,  163,  163,  163,  163,
- /*   750 */    17,   16,   15,   14,   13,   12,   11,  162,  135,  135,
- /*   760 */   163,  162,  135,  162,  135,  135,  162,  162,  162,  162,
- /*   770 */   162,  162,  162,  162,  162,  162,  162,  162,   17,   16,
- /*   780 */    15,   14,   13,   12,   11,  161,  135,  135,  162,  161,
- /*   790 */   135,  161,  135,  135,  161,  161,  161,  161,  161,  161,
- /*   800 */   161,  161,   21,   20,   19,   18,   17,   16,   15,   14,
- /*   810 */    13,   12,   11,  160,  135,  135,  161,  160,  135,  160,
- /*   820 */   135,  135,  160,  160,  160,  160,  160,  160,  160,  160,
+ /*   110 */    13,   12,   11,  151,   72,  144,  152,  151,  135,  151,
+ /*   120 */   135,    4,  151,  151,  151,  151,  151,  151,  151,  151,
+ /*   130 */   151,  151,  151,  151,  151,  151,  151,  151,  151,  151,
+ /*   140 */   151,  149,  135,  151,  151,  149,  144,  149,   33,   45,
+ /*   150 */   149,  149,  149,  149,  149,  149,  149,  149,  149,  149,
+ /*   160 */   149,  149,  149,  149,  149,  149,  149,  149,  149,  182,
+ /*   170 */   135,  149,  149,  182,  135,  182,   33,   46,  182,  182,
+ /*   180 */   182,  182,  182,  182,  182,  182,  182,  182,  182,  182,
+ /*   190 */   182,  182,  182,  182,  182,  182,  182,  180,   33,   47,
+ /*   200 */   182,  180,  135,  180,   33,   48,  180,  180,  180,  180,
+ /*   210 */   180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+ /*   220 */   180,  180,  180,  180,  180,  179,   33,   49,  180,  179,
+ /*   230 */   135,  179,   33,   50,  179,  179,  179,  179,  179,  179,
+ /*   240 */   179,  179,  179,  179,  179,  179,  179,  179,  179,  179,
+ /*   250 */   179,  179,  179,  178,   33,   51,  179,  178,  135,  178,
+ /*   260 */    33,   52,  178,  178,  178,  178,  178,  178,  178,  178,
+ /*   270 */   178,  178,  178,  178,  178,  178,  178,  178,  178,  178,
+ /*   280 */   178,  177,   33,   53,  178,  177,  135,  177,   33,   54,
+ /*   290 */   177,  177,  177,  177,  177,  177,  177,  177,  177,  177,
+ /*   300 */   177,  177,  177,  177,  177,  177,  177,  177,  177,  176,
+ /*   310 */    33,   55,  177,  176,  135,  176,   33,   56,  176,  176,
+ /*   320 */   176,  176,  176,  176,  176,  176,  176,  176,  176,  176,
+ /*   330 */   176,  176,  176,  176,  176,  176,  176,  175,   33,   57,
+ /*   340 */   176,  175,  135,  175,   33,   58,  175,  175,  175,  175,
+ /*   350 */   175,  175,  175,  175,  175,  175,  175,  175,  175,  175,
+ /*   360 */   175,  175,  175,  175,  175,  174,   33,   59,  175,  174,
+ /*   370 */   135,  174,   33,   60,  174,  174,  174,  174,  174,  174,
+ /*   380 */   174,  174,  174,  174,  174,  174,  174,  174,  174,  174,
+ /*   390 */   174,  174,  174,  173,   33,   61,  174,  173,  135,  173,
+ /*   400 */    33,   62,  173,  173,  173,  173,  173,  173,  173,  173,
+ /*   410 */   173,  173,  173,  173,  173,  173,  173,  173,  173,  173,
+ /*   420 */   173,  172,   33,   63,  173,  172,  135,  172,   33,   64,
+ /*   430 */   172,  172,  172,  172,  172,  172,  172,  172,  172,  172,
+ /*   440 */   172,  172,  172,  172,  172,  172,  172,  172,  172,  171,
+ /*   450 */    33,   65,  172,  171,  135,  171,   33,   34,  171,  171,
+ /*   460 */   171,  171,  171,  171,  171,  171,  171,  171,  171,  171,
+ /*   470 */   171,  171,  171,  171,  171,  171,  171,  170,   33,   70,
+ /*   480 */   171,  170,  135,  170,   77,    5,  170,  170,  170,  170,
+ /*   490 */   170,  170,  170,  170,  170,  170,  170,  170,  170,  170,
+ /*   500 */   170,  170,  170,  170,  170,  169,  135,  135,  170,  169,
+ /*   510 */   135,  169,  135,  135,  169,  169,  169,  169,  169,  169,
+ /*   520 */   169,  169,  169,  169,  169,  169,  169,  169,  169,  169,
+ /*   530 */   169,  169,  169,  168,  135,  135,  169,  168,  135,  168,
+ /*   540 */   135,  135,  168,  168,  168,  168,  168,  168,  168,  168,
+ /*   550 */   168,  168,  168,  168,  168,  168,  168,  168,  168,  168,
+ /*   560 */   168,  167,  135,  135,  168,  167,  135,  167,  135,  135,
+ /*   570 */   167,  167,  167,  167,  167,  167,  167,  167,  167,  167,
+ /*   580 */   167,  167,  167,  167,  167,  167,   13,   12,   11,  166,
+ /*   590 */   135,  135,  167,  166,  135,  166,  135,  135,  166,  166,
+ /*   600 */   166,  166,  166,  166,  166,  166,  166,  166,  166,  166,
+ /*   610 */   166,  166,  166,  166,   13,   12,   11,  165,  135,  135,
+ /*   620 */   166,  165,  135,  165,  135,  135,  165,  165,  165,  165,
+ /*   630 */   165,  165,  165,  165,  165,  165,  165,  165,  165,  165,
+ /*   640 */    15,   14,   13,   12,   11,  164,  135,  135,  165,  164,
+ /*   650 */   135,  164,  135,  135,  164,  164,  164,  164,  164,  164,
+ /*   660 */   164,  164,  164,  164,  164,  164,  164,  164,   15,   14,
+ /*   670 */    13,   12,   11,  163,  135,  135,  164,  163,  135,  163,
+ /*   680 */   135,  135,  163,  163,  163,  163,  163,  163,  163,  163,
+ /*   690 */   163,  163,  163,  163,   17,   16,   15,   14,   13,   12,
+ /*   700 */    11,  162,  135,  135,  163,  162,  135,  162,  135,  135,
+ /*   710 */   162,  162,  162,  162,  162,  162,  162,  162,  162,  162,
+ /*   720 */   162,  162,   17,   16,   15,   14,   13,   12,   11,  161,
+ /*   730 */   135,  135,  162,  161,  135,  161,  135,  135,  161,  161,
+ /*   740 */   161,  161,  161,  161,  161,  161,  161,  161,  161,  161,
+ /*   750 */    17,   16,   15,   14,   13,   12,   11,  160,  135,  135,
+ /*   760 */   161,  160,  135,  160,  135,  135,  160,  160,  160,  160,
+ /*   770 */   160,  160,  160,  160,  160,  160,  160,  160,   17,   16,
+ /*   780 */    15,   14,   13,   12,   11,  159,  135,  135,  160,  159,
+ /*   790 */   135,  159,  135,  135,  159,  159,  159,  159,  159,  159,
+ /*   800 */   159,  159,   21,   20,   19,   18,   17,   16,   15,   14,
+ /*   810 */    13,   12,   11,  158,  135,  135,  159,  158,  135,  158,
+ /*   820 */   135,  135,  158,  158,  158,  158,  158,  158,  158,  158,
  /*   830 */    21,   20,   19,   18,   17,   16,   15,   14,   13,   12,
- /*   840 */    11,  159,  135,  135,  160,  159,  135,  159,  135,  135,
- /*   850 */   159,  159,  159,  159,  159,  159,   23,   22,   21,   20,
- /*   860 */    19,   18,   17,   16,   15,   14,   13,   12,   11,  158,
- /*   870 */   135,  135,  159,  158,  135,  158,  135,  135,  158,  158,
- /*   880 */   158,  158,  158,   24,   23,   22,   21,   20,   19,   18,
- /*   890 */    17,   16,   15,   14,   13,   12,   11,  157,  135,  135,
- /*   900 */   158,  157,  135,  157,  135,  135,  157,  157,  157,  157,
+ /*   840 */    11,  157,  135,  135,  158,  157,  135,  157,  135,  135,
+ /*   850 */   157,  157,  157,  157,  157,  157,   23,   22,   21,   20,
+ /*   860 */    19,   18,   17,   16,   15,   14,   13,   12,   11,  156,
+ /*   870 */   135,  135,  157,  156,  135,  156,  135,  135,  156,  156,
+ /*   880 */   156,  156,  156,   24,   23,   22,   21,   20,   19,   18,
+ /*   890 */    17,   16,   15,   14,   13,   12,   11,  155,  135,  135,
+ /*   900 */   156,  155,  135,  155,  135,  135,  155,  155,  155,  155,
  /*   910 */    25,   24,   23,   22,   21,   20,   19,   18,   17,   16,
- /*   920 */    15,   14,   13,   12,   11,  156,  135,  135,  157,  156,
- /*   930 */   135,  156,  135,  135,  156,  156,  156,   26,   25,   24,
+ /*   920 */    15,   14,   13,   12,   11,  154,  135,  135,  155,  154,
+ /*   930 */   135,  154,  135,  135,  154,  154,  154,   26,   25,   24,
  /*   940 */    23,   22,   21,   20,   19,   18,   17,   16,   15,   14,
- /*   950 */    13,   12,   11,  155,  135,  135,  156,  155,  135,  155,
- /*   960 */   135,  135,  155,  155,   27,   26,   25,   24,   23,   22,
+ /*   950 */    13,   12,   11,  153,  135,  135,  154,  153,  135,  153,
+ /*   960 */   135,  135,  153,  153,   27,   26,   25,   24,   23,   22,
  /*   970 */    21,   20,   19,   18,   17,   16,   15,   14,   13,   12,
- /*   980 */    11,  149,   73,   83,  155,   76,  135,  149,  135,  135,
+ /*   980 */    11,  147,   73,   83,  153,   76,  135,  147,  135,  135,
  /*   990 */    30,   28,   27,   26,   25,   24,   23,   22,   21,   20,
- /*  1000 */    19,   18,   17,   16,   15,   14,   13,   12,   11,  148,
- /*  1010 */   135,  135,  149,  135,  135,  148,  135,  135,   30,   28,
+ /*  1000 */    19,   18,   17,   16,   15,   14,   13,   12,   11,  146,
+ /*  1010 */   135,  135,  147,  135,  135,  146,  135,  135,   30,   28,
  /*  1020 */    27,   26,   25,   24,   23,   22,   21,   20,   19,   18,
- /*  1030 */    17,   16,   15,   14,   13,   12,   11,  145,  135,  135,
- /*  1040 */   148,   82,   33,   66,   75,  135,   30,   28,   27,   26,
+ /*  1030 */    17,   16,   15,   14,   13,   12,   11,  143,  135,  135,
+ /*  1040 */   146,   82,   33,   66,   75,  135,   30,   28,   27,   26,
  /*  1050 */    25,   24,   23,   22,   21,   20,   19,   18,   17,   16,
  /*  1060 */    15,   14,   13,   12,   11,   30,   28,   27,   26,   25,
  /*  1070 */    24,   23,   22,   21,   20,   19,   18,   17,   16,   15,
  /*  1080 */    14,   13,   12,   11,   29,  135,  135,   41,  135,   30,
  /*  1090 */    28,   27,   26,   25,   24,   23,   22,   21,   20,   19,
- /*  1100 */    18,   17,   16,   15,   14,   13,   12,   11,  141,   36,
- /*  1110 */    35,  135,  151,  151,  135,   32,   31,  138,  138,  138,
- /*  1120 */   138,  136,   71,    1,   74,  138,  138,  135,  135,   32,
+ /*  1100 */    18,   17,   16,   15,   14,   13,   12,   11,  139,   36,
+ /*  1110 */    35,  135,  149,  149,  135,   32,   31,  184,  184,  184,
+ /*  1120 */   184,  183,   71,    1,   74,  184,  184,  135,  135,   32,
  /*  1130 */    31,   10,    9,  135,  135,  135,    8,    7,    6,  135,
- /*  1140 */    40,   39,   38,   80,  147,   36,   35,  140,  140,  140,
- /*  1150 */   140,   32,   31,  135,  135,  140,  140,  139,  139,  139,
- /*  1160 */   139,  137,  137,  137,  137,  139,  139,   10,    9,  137,
- /*  1170 */   137,  135,    8,    7,    6,  147,   40,   39,   38,   80,
- /*  1180 */    36,   35,  135,   78,  153,  153,   32,   31,   81,   33,
+ /*  1140 */    40,   39,   38,   80,  145,   36,   35,  138,  138,  138,
+ /*  1150 */   138,   32,   31,  135,  135,  138,  138,  137,  137,  137,
+ /*  1160 */   137,  136,  136,  136,  136,  137,  137,   10,    9,  136,
+ /*  1170 */   136,  135,    8,    7,    6,  145,   40,   39,   38,   80,
+ /*  1180 */    36,   35,  135,   78,  151,  151,   32,   31,   81,   33,
  /*  1190 */    66,   75,  135,  135,  135,  135,  135,  135,  135,  135,
  /*  1200 */   135,  135,   10,    9,  135,  135,  135,    8,    7,    6,
  /*  1210 */    42,   40,   39,   38,   80,   36,   35,  135,  135,  135,
@@ -683,55 +680,55 @@ static const char *const yyTokenName[] = {
 /* For tracing reduce actions, the names of all rules are required.
 */
 static const char *const yyRuleName[] = {
- /*   0 */ "root ::= prog",
- /*   1 */ "prog ::= prog line",
- /*   2 */ "prog ::=",
- /*   3 */ "line ::= command EOL",
- /*   4 */ "line ::= EOL",
- /*   5 */ "command ::= INSTRUCTION",
- /*   6 */ "command ::= INSTRUCTION args",
- /*   7 */ "command ::= PRAGMA STRING",
- /*   8 */ "command ::= id COLON",
- /*   9 */ "command ::= id ASSIGN expr",
- /*  10 */ "args ::= argsnc",
- /*  11 */ "args ::= argsnc COMMA",
- /*  12 */ "argsnc ::= argsnc COMMA expr",
- /*  13 */ "argsnc ::= expr",
- /*  14 */ "id ::= IDENTIFIER",
- /*  15 */ "id ::= INSTRUCTION",
- /*  16 */ "id ::= BASE",
- /*  17 */ "id ::= PRAGMA",
- /*  18 */ "expr ::= expr QUESTION expr COLON expr",
- /*  19 */ "expr ::= expr OR expr",
- /*  20 */ "expr ::= expr AND expr",
- /*  21 */ "expr ::= expr BIT_OR expr",
- /*  22 */ "expr ::= expr BIT_XOR expr",
- /*  23 */ "expr ::= expr BIT_AND expr",
- /*  24 */ "expr ::= expr EQ expr",
- /*  25 */ "expr ::= expr NE expr",
- /*  26 */ "expr ::= expr LT expr",
- /*  27 */ "expr ::= expr GT expr",
- /*  28 */ "expr ::= expr LE expr",
- /*  29 */ "expr ::= expr GE expr",
- /*  30 */ "expr ::= expr SHL expr",
- /*  31 */ "expr ::= expr SHR expr",
- /*  32 */ "expr ::= expr PLUS expr",
- /*  33 */ "expr ::= expr MINUS expr",
- /*  34 */ "expr ::= expr MUL expr",
- /*  35 */ "expr ::= expr DIV expr",
- /*  36 */ "expr ::= expr MOD expr",
- /*  37 */ "expr ::= PLUS expr",
- /*  38 */ "expr ::= MINUS expr",
- /*  39 */ "expr ::= NOT expr",
- /*  40 */ "expr ::= BIT_NOT expr",
- /*  41 */ "expr ::= id OPEN args CLOSE",
- /*  42 */ "expr ::= id OPEN CLOSE",
- /*  43 */ "expr ::= OPEN expr CLOSE",
- /*  44 */ "expr ::= DECIMAL",
- /*  45 */ "expr ::= HEX",
- /*  46 */ "expr ::= OCT",
- /*  47 */ "expr ::= id",
- /*  48 */ "expr ::= SOPEN BASE SCLOSE",
+ /*   0 */ "prog ::= prog line",
+ /*   1 */ "line ::= command EOL",
+ /*   2 */ "line ::= EOL",
+ /*   3 */ "command ::= INSTRUCTION",
+ /*   4 */ "command ::= INSTRUCTION args",
+ /*   5 */ "command ::= PRAGMA STRING",
+ /*   6 */ "command ::= id COLON",
+ /*   7 */ "command ::= id ASSIGN expr",
+ /*   8 */ "args ::= argsnc",
+ /*   9 */ "args ::= argsnc COMMA",
+ /*  10 */ "argsnc ::= argsnc COMMA expr",
+ /*  11 */ "argsnc ::= expr",
+ /*  12 */ "id ::= IDENTIFIER",
+ /*  13 */ "id ::= INSTRUCTION",
+ /*  14 */ "id ::= BASE",
+ /*  15 */ "id ::= PRAGMA",
+ /*  16 */ "expr ::= expr QUESTION expr COLON expr",
+ /*  17 */ "expr ::= expr OR expr",
+ /*  18 */ "expr ::= expr AND expr",
+ /*  19 */ "expr ::= expr BIT_OR expr",
+ /*  20 */ "expr ::= expr BIT_XOR expr",
+ /*  21 */ "expr ::= expr BIT_AND expr",
+ /*  22 */ "expr ::= expr EQ expr",
+ /*  23 */ "expr ::= expr NE expr",
+ /*  24 */ "expr ::= expr LT expr",
+ /*  25 */ "expr ::= expr GT expr",
+ /*  26 */ "expr ::= expr LE expr",
+ /*  27 */ "expr ::= expr GE expr",
+ /*  28 */ "expr ::= expr SHL expr",
+ /*  29 */ "expr ::= expr SHR expr",
+ /*  30 */ "expr ::= expr PLUS expr",
+ /*  31 */ "expr ::= expr MINUS expr",
+ /*  32 */ "expr ::= expr MUL expr",
+ /*  33 */ "expr ::= expr DIV expr",
+ /*  34 */ "expr ::= expr MOD expr",
+ /*  35 */ "expr ::= PLUS expr",
+ /*  36 */ "expr ::= MINUS expr",
+ /*  37 */ "expr ::= NOT expr",
+ /*  38 */ "expr ::= BIT_NOT expr",
+ /*  39 */ "expr ::= id OPEN args CLOSE",
+ /*  40 */ "expr ::= id OPEN CLOSE",
+ /*  41 */ "expr ::= OPEN expr CLOSE",
+ /*  42 */ "expr ::= DECIMAL",
+ /*  43 */ "expr ::= HEX",
+ /*  44 */ "expr ::= OCT",
+ /*  45 */ "expr ::= id",
+ /*  46 */ "expr ::= SOPEN BASE SCLOSE",
+ /*  47 */ "root ::= prog",
+ /*  48 */ "prog ::=",
 };
 #endif /* NDEBUG */
 
@@ -857,34 +854,19 @@ static void yy_destructor(
     ** inside the C code.
     */
 /********* Begin destructor definitions ***************************************/
-    case 39: /* prog */
-{
-#line 18 "src/lemonParser.y"
- lemonProgFree(&(yypminor->yy12)); 
-#line 864 "lemon/lemonParser.c"
-}
-      break;
-    case 40: /* line */
-    case 41: /* command */
-{
-#line 24 "src/lemonParser.y"
- lemonCommandFree((yypminor->yy1)); 
-#line 872 "lemon/lemonParser.c"
-}
-      break;
     case 42: /* args */
     case 45: /* argsnc */
 {
-#line 39 "src/lemonParser.y"
- lemonArgsFree(&(yypminor->yy21)); 
-#line 880 "lemon/lemonParser.c"
+#line 35 "src/lemonParser.y"
+ lemonArgsFree(th, (yypminor->yy52)); 
+#line 862 "lemon/lemonParser.c"
 }
       break;
     case 44: /* expr */
 {
-#line 56 "src/lemonParser.y"
- lemonExprFree((yypminor->yy46)); 
-#line 887 "lemon/lemonParser.c"
+#line 52 "src/lemonParser.y"
+ lemonExprFree(th, (yypminor->yy52)); 
+#line 869 "lemon/lemonParser.c"
 }
       break;
 /********* End destructor definitions *****************************************/
@@ -1104,7 +1086,7 @@ static void yyStackOverflow(yyParser *yypParser){
 /******** Begin %stack_overflow code ******************************************/
 #line 9 "src/lemonParser.y"
  lemonStackOverflow(th); 
-#line 1107 "lemon/lemonParser.c"
+#line 1089 "lemon/lemonParser.c"
 /******** End %stack_overflow code ********************************************/
    LemonParseARG_STORE /* Suppress warning about unused %extra_argument var */
    LemonParseCTX_STORE
@@ -1176,109 +1158,109 @@ static void yy_shift(
 /* For rule J, yyRuleInfoLhs[J] contains the symbol on the left-hand side
 ** of that rule */
 static const YYCODETYPE yyRuleInfoLhs[] = {
-    38,  /* (0) root ::= prog */
-    39,  /* (1) prog ::= prog line */
-    39,  /* (2) prog ::= */
-    40,  /* (3) line ::= command EOL */
-    40,  /* (4) line ::= EOL */
-    41,  /* (5) command ::= INSTRUCTION */
-    41,  /* (6) command ::= INSTRUCTION args */
-    41,  /* (7) command ::= PRAGMA STRING */
-    41,  /* (8) command ::= id COLON */
-    41,  /* (9) command ::= id ASSIGN expr */
-    42,  /* (10) args ::= argsnc */
-    42,  /* (11) args ::= argsnc COMMA */
-    45,  /* (12) argsnc ::= argsnc COMMA expr */
-    45,  /* (13) argsnc ::= expr */
-    43,  /* (14) id ::= IDENTIFIER */
-    43,  /* (15) id ::= INSTRUCTION */
-    43,  /* (16) id ::= BASE */
-    43,  /* (17) id ::= PRAGMA */
-    44,  /* (18) expr ::= expr QUESTION expr COLON expr */
-    44,  /* (19) expr ::= expr OR expr */
-    44,  /* (20) expr ::= expr AND expr */
-    44,  /* (21) expr ::= expr BIT_OR expr */
-    44,  /* (22) expr ::= expr BIT_XOR expr */
-    44,  /* (23) expr ::= expr BIT_AND expr */
-    44,  /* (24) expr ::= expr EQ expr */
-    44,  /* (25) expr ::= expr NE expr */
-    44,  /* (26) expr ::= expr LT expr */
-    44,  /* (27) expr ::= expr GT expr */
-    44,  /* (28) expr ::= expr LE expr */
-    44,  /* (29) expr ::= expr GE expr */
-    44,  /* (30) expr ::= expr SHL expr */
-    44,  /* (31) expr ::= expr SHR expr */
-    44,  /* (32) expr ::= expr PLUS expr */
-    44,  /* (33) expr ::= expr MINUS expr */
-    44,  /* (34) expr ::= expr MUL expr */
-    44,  /* (35) expr ::= expr DIV expr */
-    44,  /* (36) expr ::= expr MOD expr */
-    44,  /* (37) expr ::= PLUS expr */
-    44,  /* (38) expr ::= MINUS expr */
-    44,  /* (39) expr ::= NOT expr */
-    44,  /* (40) expr ::= BIT_NOT expr */
-    44,  /* (41) expr ::= id OPEN args CLOSE */
-    44,  /* (42) expr ::= id OPEN CLOSE */
-    44,  /* (43) expr ::= OPEN expr CLOSE */
-    44,  /* (44) expr ::= DECIMAL */
-    44,  /* (45) expr ::= HEX */
-    44,  /* (46) expr ::= OCT */
-    44,  /* (47) expr ::= id */
-    44,  /* (48) expr ::= SOPEN BASE SCLOSE */
+    39,  /* (0) prog ::= prog line */
+    40,  /* (1) line ::= command EOL */
+    40,  /* (2) line ::= EOL */
+    41,  /* (3) command ::= INSTRUCTION */
+    41,  /* (4) command ::= INSTRUCTION args */
+    41,  /* (5) command ::= PRAGMA STRING */
+    41,  /* (6) command ::= id COLON */
+    41,  /* (7) command ::= id ASSIGN expr */
+    42,  /* (8) args ::= argsnc */
+    42,  /* (9) args ::= argsnc COMMA */
+    45,  /* (10) argsnc ::= argsnc COMMA expr */
+    45,  /* (11) argsnc ::= expr */
+    43,  /* (12) id ::= IDENTIFIER */
+    43,  /* (13) id ::= INSTRUCTION */
+    43,  /* (14) id ::= BASE */
+    43,  /* (15) id ::= PRAGMA */
+    44,  /* (16) expr ::= expr QUESTION expr COLON expr */
+    44,  /* (17) expr ::= expr OR expr */
+    44,  /* (18) expr ::= expr AND expr */
+    44,  /* (19) expr ::= expr BIT_OR expr */
+    44,  /* (20) expr ::= expr BIT_XOR expr */
+    44,  /* (21) expr ::= expr BIT_AND expr */
+    44,  /* (22) expr ::= expr EQ expr */
+    44,  /* (23) expr ::= expr NE expr */
+    44,  /* (24) expr ::= expr LT expr */
+    44,  /* (25) expr ::= expr GT expr */
+    44,  /* (26) expr ::= expr LE expr */
+    44,  /* (27) expr ::= expr GE expr */
+    44,  /* (28) expr ::= expr SHL expr */
+    44,  /* (29) expr ::= expr SHR expr */
+    44,  /* (30) expr ::= expr PLUS expr */
+    44,  /* (31) expr ::= expr MINUS expr */
+    44,  /* (32) expr ::= expr MUL expr */
+    44,  /* (33) expr ::= expr DIV expr */
+    44,  /* (34) expr ::= expr MOD expr */
+    44,  /* (35) expr ::= PLUS expr */
+    44,  /* (36) expr ::= MINUS expr */
+    44,  /* (37) expr ::= NOT expr */
+    44,  /* (38) expr ::= BIT_NOT expr */
+    44,  /* (39) expr ::= id OPEN args CLOSE */
+    44,  /* (40) expr ::= id OPEN CLOSE */
+    44,  /* (41) expr ::= OPEN expr CLOSE */
+    44,  /* (42) expr ::= DECIMAL */
+    44,  /* (43) expr ::= HEX */
+    44,  /* (44) expr ::= OCT */
+    44,  /* (45) expr ::= id */
+    44,  /* (46) expr ::= SOPEN BASE SCLOSE */
+    38,  /* (47) root ::= prog */
+    39,  /* (48) prog ::= */
 };
 
 /* For rule J, yyRuleInfoNRhs[J] contains the negative of the number
 ** of symbols on the right-hand side of that rule. */
 static const signed char yyRuleInfoNRhs[] = {
-   -1,  /* (0) root ::= prog */
-   -2,  /* (1) prog ::= prog line */
-    0,  /* (2) prog ::= */
-   -2,  /* (3) line ::= command EOL */
-   -1,  /* (4) line ::= EOL */
-   -1,  /* (5) command ::= INSTRUCTION */
-   -2,  /* (6) command ::= INSTRUCTION args */
-   -2,  /* (7) command ::= PRAGMA STRING */
-   -2,  /* (8) command ::= id COLON */
-   -3,  /* (9) command ::= id ASSIGN expr */
-   -1,  /* (10) args ::= argsnc */
-   -2,  /* (11) args ::= argsnc COMMA */
-   -3,  /* (12) argsnc ::= argsnc COMMA expr */
-   -1,  /* (13) argsnc ::= expr */
-   -1,  /* (14) id ::= IDENTIFIER */
-   -1,  /* (15) id ::= INSTRUCTION */
-   -1,  /* (16) id ::= BASE */
-   -1,  /* (17) id ::= PRAGMA */
-   -5,  /* (18) expr ::= expr QUESTION expr COLON expr */
-   -3,  /* (19) expr ::= expr OR expr */
-   -3,  /* (20) expr ::= expr AND expr */
-   -3,  /* (21) expr ::= expr BIT_OR expr */
-   -3,  /* (22) expr ::= expr BIT_XOR expr */
-   -3,  /* (23) expr ::= expr BIT_AND expr */
-   -3,  /* (24) expr ::= expr EQ expr */
-   -3,  /* (25) expr ::= expr NE expr */
-   -3,  /* (26) expr ::= expr LT expr */
-   -3,  /* (27) expr ::= expr GT expr */
-   -3,  /* (28) expr ::= expr LE expr */
-   -3,  /* (29) expr ::= expr GE expr */
-   -3,  /* (30) expr ::= expr SHL expr */
-   -3,  /* (31) expr ::= expr SHR expr */
-   -3,  /* (32) expr ::= expr PLUS expr */
-   -3,  /* (33) expr ::= expr MINUS expr */
-   -3,  /* (34) expr ::= expr MUL expr */
-   -3,  /* (35) expr ::= expr DIV expr */
-   -3,  /* (36) expr ::= expr MOD expr */
-   -2,  /* (37) expr ::= PLUS expr */
-   -2,  /* (38) expr ::= MINUS expr */
-   -2,  /* (39) expr ::= NOT expr */
-   -2,  /* (40) expr ::= BIT_NOT expr */
-   -4,  /* (41) expr ::= id OPEN args CLOSE */
-   -3,  /* (42) expr ::= id OPEN CLOSE */
-   -3,  /* (43) expr ::= OPEN expr CLOSE */
-   -1,  /* (44) expr ::= DECIMAL */
-   -1,  /* (45) expr ::= HEX */
-   -1,  /* (46) expr ::= OCT */
-   -1,  /* (47) expr ::= id */
-   -3,  /* (48) expr ::= SOPEN BASE SCLOSE */
+   -2,  /* (0) prog ::= prog line */
+   -2,  /* (1) line ::= command EOL */
+   -1,  /* (2) line ::= EOL */
+   -1,  /* (3) command ::= INSTRUCTION */
+   -2,  /* (4) command ::= INSTRUCTION args */
+   -2,  /* (5) command ::= PRAGMA STRING */
+   -2,  /* (6) command ::= id COLON */
+   -3,  /* (7) command ::= id ASSIGN expr */
+   -1,  /* (8) args ::= argsnc */
+   -2,  /* (9) args ::= argsnc COMMA */
+   -3,  /* (10) argsnc ::= argsnc COMMA expr */
+   -1,  /* (11) argsnc ::= expr */
+   -1,  /* (12) id ::= IDENTIFIER */
+   -1,  /* (13) id ::= INSTRUCTION */
+   -1,  /* (14) id ::= BASE */
+   -1,  /* (15) id ::= PRAGMA */
+   -5,  /* (16) expr ::= expr QUESTION expr COLON expr */
+   -3,  /* (17) expr ::= expr OR expr */
+   -3,  /* (18) expr ::= expr AND expr */
+   -3,  /* (19) expr ::= expr BIT_OR expr */
+   -3,  /* (20) expr ::= expr BIT_XOR expr */
+   -3,  /* (21) expr ::= expr BIT_AND expr */
+   -3,  /* (22) expr ::= expr EQ expr */
+   -3,  /* (23) expr ::= expr NE expr */
+   -3,  /* (24) expr ::= expr LT expr */
+   -3,  /* (25) expr ::= expr GT expr */
+   -3,  /* (26) expr ::= expr LE expr */
+   -3,  /* (27) expr ::= expr GE expr */
+   -3,  /* (28) expr ::= expr SHL expr */
+   -3,  /* (29) expr ::= expr SHR expr */
+   -3,  /* (30) expr ::= expr PLUS expr */
+   -3,  /* (31) expr ::= expr MINUS expr */
+   -3,  /* (32) expr ::= expr MUL expr */
+   -3,  /* (33) expr ::= expr DIV expr */
+   -3,  /* (34) expr ::= expr MOD expr */
+   -2,  /* (35) expr ::= PLUS expr */
+   -2,  /* (36) expr ::= MINUS expr */
+   -2,  /* (37) expr ::= NOT expr */
+   -2,  /* (38) expr ::= BIT_NOT expr */
+   -4,  /* (39) expr ::= id OPEN args CLOSE */
+   -3,  /* (40) expr ::= id OPEN CLOSE */
+   -3,  /* (41) expr ::= OPEN expr CLOSE */
+   -1,  /* (42) expr ::= DECIMAL */
+   -1,  /* (43) expr ::= HEX */
+   -1,  /* (44) expr ::= OCT */
+   -1,  /* (45) expr ::= id */
+   -3,  /* (46) expr ::= SOPEN BASE SCLOSE */
+   -1,  /* (47) root ::= prog */
+    0,  /* (48) prog ::= */
 };
 
 static void yy_accept(yyParser*);  /* Forward Declaration */
@@ -1320,276 +1302,262 @@ static YYACTIONTYPE yy_reduce(
   */
 /********** Begin reduce actions **********************************************/
         YYMINORTYPE yylhsminor;
-      case 0: /* root ::= prog */
-#line 14 "src/lemonParser.y"
-{ lemonResult(th, &yymsp[0].minor.yy12); }
-#line 1326 "lemon/lemonParser.c"
+      case 0: /* prog ::= prog line */
+#line 17 "src/lemonParser.y"
+{ lemonResultVerify(th, yymsp[0].minor.yy52); }
+#line 1308 "lemon/lemonParser.c"
         break;
-      case 1: /* prog ::= prog line */
-#line 19 "src/lemonParser.y"
-{ yylhsminor.yy12 = lemonProgAppend(&yymsp[-1].minor.yy12, yymsp[0].minor.yy1); }
+      case 1: /* line ::= command EOL */
+      case 9: /* args ::= argsnc COMMA */ yytestcase(yyruleno==9);
+#line 22 "src/lemonParser.y"
+{ yylhsminor.yy52 = yymsp[-1].minor.yy52; }
+#line 1314 "lemon/lemonParser.c"
+  yymsp[-1].minor.yy52 = yylhsminor.yy52;
+        break;
+      case 2: /* line ::= EOL */
+#line 23 "src/lemonParser.y"
+{ yymsp[0].minor.yy52 = -1; }
+#line 1320 "lemon/lemonParser.c"
+        break;
+      case 3: /* command ::= INSTRUCTION */
+#line 27 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonInstr(th, &yymsp[0].minor.yy0, 0); }
+#line 1325 "lemon/lemonParser.c"
+  yymsp[0].minor.yy52 = yylhsminor.yy52;
+        break;
+      case 4: /* command ::= INSTRUCTION args */
+#line 28 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonInstr(th, &yymsp[-1].minor.yy0, yymsp[0].minor.yy52); }
 #line 1331 "lemon/lemonParser.c"
-  yymsp[-1].minor.yy12 = yylhsminor.yy12;
+  yymsp[-1].minor.yy52 = yylhsminor.yy52;
         break;
-      case 2: /* prog ::= */
-#line 20 "src/lemonParser.y"
-{ yymsp[1].minor.yy12 = lemonProgCreate(); }
+      case 5: /* command ::= PRAGMA STRING */
+#line 29 "src/lemonParser.y"
+{ yymsp[-1].minor.yy52 = lemonPragma(th, &yymsp[0].minor.yy0); }
 #line 1337 "lemon/lemonParser.c"
         break;
-      case 3: /* line ::= command EOL */
-#line 25 "src/lemonParser.y"
-{ yylhsminor.yy1 = yymsp[-1].minor.yy1; }
+      case 6: /* command ::= id COLON */
+#line 30 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonLabel(th, &yymsp[-1].minor.yy45); }
 #line 1342 "lemon/lemonParser.c"
-  yymsp[-1].minor.yy1 = yylhsminor.yy1;
+  yymsp[-1].minor.yy52 = yylhsminor.yy52;
         break;
-      case 4: /* line ::= EOL */
-#line 26 "src/lemonParser.y"
-{ yymsp[0].minor.yy1 = NULL; }
-#line 1348 "lemon/lemonParser.c"
-        break;
-      case 5: /* command ::= INSTRUCTION */
+      case 7: /* command ::= id ASSIGN expr */
 #line 31 "src/lemonParser.y"
-{ yylhsminor.yy1 = lemonInstrCreate(&yymsp[0].minor.yy0, NULL); }
-#line 1353 "lemon/lemonParser.c"
-  yymsp[0].minor.yy1 = yylhsminor.yy1;
+{ yylhsminor.yy52 = lemonAssign(th, &yymsp[-2].minor.yy45, yymsp[0].minor.yy52); }
+#line 1348 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 6: /* command ::= INSTRUCTION args */
-#line 32 "src/lemonParser.y"
-{ yylhsminor.yy1 = lemonInstrCreate(&yymsp[-1].minor.yy0, &yymsp[0].minor.yy21); }
-#line 1359 "lemon/lemonParser.c"
-  yymsp[-1].minor.yy1 = yylhsminor.yy1;
+      case 8: /* args ::= argsnc */
+#line 36 "src/lemonParser.y"
+{ yylhsminor.yy52 = yymsp[0].minor.yy52; }
+#line 1354 "lemon/lemonParser.c"
+  yymsp[0].minor.yy52 = yylhsminor.yy52;
         break;
-      case 7: /* command ::= PRAGMA STRING */
-#line 33 "src/lemonParser.y"
-{ yymsp[-1].minor.yy1 = lemonPragmaCreate(&yymsp[0].minor.yy0); }
-#line 1365 "lemon/lemonParser.c"
-        break;
-      case 8: /* command ::= id COLON */
-#line 34 "src/lemonParser.y"
-{ yylhsminor.yy1 = lemonLabelCreate(&yymsp[-1].minor.yy45); }
-#line 1370 "lemon/lemonParser.c"
-  yymsp[-1].minor.yy1 = yylhsminor.yy1;
-        break;
-      case 9: /* command ::= id ASSIGN expr */
-#line 35 "src/lemonParser.y"
-{ yylhsminor.yy1 = lemonAssignCreate(&yymsp[-2].minor.yy45, yymsp[0].minor.yy46); }
-#line 1376 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy1 = yylhsminor.yy1;
-        break;
-      case 10: /* args ::= argsnc */
+      case 10: /* argsnc ::= argsnc COMMA expr */
 #line 40 "src/lemonParser.y"
-{ yylhsminor.yy21 = yymsp[0].minor.yy21; }
-#line 1382 "lemon/lemonParser.c"
-  yymsp[0].minor.yy21 = yylhsminor.yy21;
+{ yylhsminor.yy52 = yymsp[-2].minor.yy52; lemonArgsAppend(th, yylhsminor.yy52, yymsp[0].minor.yy52); }
+#line 1360 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 11: /* args ::= argsnc COMMA */
+      case 11: /* argsnc ::= expr */
 #line 41 "src/lemonParser.y"
-{ yylhsminor.yy21 = yymsp[-1].minor.yy21; }
-#line 1388 "lemon/lemonParser.c"
-  yymsp[-1].minor.yy21 = yylhsminor.yy21;
+{ yylhsminor.yy52 = lemonArgsCreate(th); lemonArgsAppend(th, yylhsminor.yy52, yymsp[0].minor.yy52); }
+#line 1366 "lemon/lemonParser.c"
+  yymsp[0].minor.yy52 = yylhsminor.yy52;
         break;
-      case 12: /* argsnc ::= argsnc COMMA expr */
-#line 44 "src/lemonParser.y"
-{ yylhsminor.yy21 = lemonArgsAppend(&yymsp[-2].minor.yy21, yymsp[0].minor.yy46); }
-#line 1394 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy21 = yylhsminor.yy21;
-        break;
-      case 13: /* argsnc ::= expr */
+      case 12: /* id ::= IDENTIFIER */
+      case 13: /* id ::= INSTRUCTION */ yytestcase(yyruleno==13);
+      case 14: /* id ::= BASE */ yytestcase(yyruleno==14);
+      case 15: /* id ::= PRAGMA */ yytestcase(yyruleno==15);
 #line 45 "src/lemonParser.y"
-{ yylhsminor.yy21 = lemonArgsCreate(yymsp[0].minor.yy46); }
-#line 1400 "lemon/lemonParser.c"
-  yymsp[0].minor.yy21 = yylhsminor.yy21;
-        break;
-      case 14: /* id ::= IDENTIFIER */
-      case 15: /* id ::= INSTRUCTION */ yytestcase(yyruleno==15);
-      case 16: /* id ::= BASE */ yytestcase(yyruleno==16);
-      case 17: /* id ::= PRAGMA */ yytestcase(yyruleno==17);
-#line 49 "src/lemonParser.y"
 { yylhsminor.yy45 = yymsp[0].minor.yy0; }
-#line 1409 "lemon/lemonParser.c"
+#line 1375 "lemon/lemonParser.c"
   yymsp[0].minor.yy45 = yylhsminor.yy45;
         break;
-      case 18: /* expr ::= expr QUESTION expr COLON expr */
+      case 16: /* expr ::= expr QUESTION expr COLON expr */
+#line 57 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprTernary(th, yymsp[-4].minor.yy52, yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1381 "lemon/lemonParser.c"
+  yymsp[-4].minor.yy52 = yylhsminor.yy52;
+        break;
+      case 17: /* expr ::= expr OR expr */
 #line 61 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprTernary(yymsp[-4].minor.yy46, yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1415 "lemon/lemonParser.c"
-  yymsp[-4].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, 'O', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1387 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 19: /* expr ::= expr OR expr */
+      case 18: /* expr ::= expr AND expr */
+#line 63 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprBinOp(th, 'A', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1393 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
+        break;
+      case 19: /* expr ::= expr BIT_OR expr */
 #line 65 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('O', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1421 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, '|', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1399 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 20: /* expr ::= expr AND expr */
+      case 20: /* expr ::= expr BIT_XOR expr */
 #line 67 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('A', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1427 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, '^', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1405 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 21: /* expr ::= expr BIT_OR expr */
+      case 21: /* expr ::= expr BIT_AND expr */
 #line 69 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('|', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1433 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, '&', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1411 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 22: /* expr ::= expr BIT_XOR expr */
-#line 71 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('^', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1439 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
-        break;
-      case 23: /* expr ::= expr BIT_AND expr */
+      case 22: /* expr ::= expr EQ expr */
 #line 73 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('&', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1445 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, 'E', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1417 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 24: /* expr ::= expr EQ expr */
+      case 23: /* expr ::= expr NE expr */
+#line 74 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprBinOp(th, 'N', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1423 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
+        break;
+      case 24: /* expr ::= expr LT expr */
+#line 76 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprBinOp(th, '<', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1429 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
+        break;
+      case 25: /* expr ::= expr GT expr */
 #line 77 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('E', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1451 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, '>', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1435 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 25: /* expr ::= expr NE expr */
+      case 26: /* expr ::= expr LE expr */
 #line 78 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('N', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1457 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, 'L', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1441 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 26: /* expr ::= expr LT expr */
-#line 80 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('<', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1463 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+      case 27: /* expr ::= expr GE expr */
+#line 79 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprBinOp(th, 'G', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1447 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 27: /* expr ::= expr GT expr */
-#line 81 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('>', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1469 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
-        break;
-      case 28: /* expr ::= expr LE expr */
-#line 82 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('L', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1475 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
-        break;
-      case 29: /* expr ::= expr GE expr */
+      case 28: /* expr ::= expr SHL expr */
 #line 83 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('G', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1481 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, 'r', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1453 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 30: /* expr ::= expr SHL expr */
-#line 87 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('r', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1487 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+      case 29: /* expr ::= expr SHR expr */
+#line 84 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprBinOp(th, 'l', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1459 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 31: /* expr ::= expr SHR expr */
+      case 30: /* expr ::= expr PLUS expr */
 #line 88 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('l', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1493 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, '+', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1465 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 32: /* expr ::= expr PLUS expr */
+      case 31: /* expr ::= expr MINUS expr */
+#line 89 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprBinOp(th, '-', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1471 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
+        break;
+      case 32: /* expr ::= expr MUL expr */
+#line 91 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprBinOp(th, '*', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1477 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
+        break;
+      case 33: /* expr ::= expr DIV expr */
 #line 92 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('+', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1499 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, '/', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1483 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 33: /* expr ::= expr MINUS expr */
+      case 34: /* expr ::= expr MOD expr */
 #line 93 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('-', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1505 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yylhsminor.yy52 = lemonExprBinOp(th, '%', yymsp[-2].minor.yy52, yymsp[0].minor.yy52); }
+#line 1489 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 34: /* expr ::= expr MUL expr */
-#line 95 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('*', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1511 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
-        break;
-      case 35: /* expr ::= expr DIV expr */
-#line 96 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('/', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1517 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
-        break;
-      case 36: /* expr ::= expr MOD expr */
+      case 35: /* expr ::= PLUS expr */
 #line 97 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprBinOp('%', yymsp[-2].minor.yy46, yymsp[0].minor.yy46); }
-#line 1523 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+{ yymsp[-1].minor.yy52 = yymsp[0].minor.yy52; }
+#line 1495 "lemon/lemonParser.c"
         break;
-      case 37: /* expr ::= PLUS expr */
-#line 101 "src/lemonParser.y"
-{ yymsp[-1].minor.yy46 = yymsp[0].minor.yy46; }
-#line 1529 "lemon/lemonParser.c"
+      case 36: /* expr ::= MINUS expr */
+#line 98 "src/lemonParser.y"
+{ yymsp[-1].minor.yy52 = lemonExprUnOp(th, 'M', yymsp[0].minor.yy52); }
+#line 1500 "lemon/lemonParser.c"
         break;
-      case 38: /* expr ::= MINUS expr */
-#line 102 "src/lemonParser.y"
-{ yymsp[-1].minor.yy46 = lemonExprUnOp('M', yymsp[0].minor.yy46); }
-#line 1534 "lemon/lemonParser.c"
+      case 37: /* expr ::= NOT expr */
+#line 99 "src/lemonParser.y"
+{ yymsp[-1].minor.yy52 = lemonExprUnOp(th, '!', yymsp[0].minor.yy52); }
+#line 1505 "lemon/lemonParser.c"
         break;
-      case 39: /* expr ::= NOT expr */
+      case 38: /* expr ::= BIT_NOT expr */
+#line 100 "src/lemonParser.y"
+{ yymsp[-1].minor.yy52 = lemonExprUnOp(th, '~', yymsp[0].minor.yy52); }
+#line 1510 "lemon/lemonParser.c"
+        break;
+      case 39: /* expr ::= id OPEN args CLOSE */
 #line 103 "src/lemonParser.y"
-{ yymsp[-1].minor.yy46 = lemonExprUnOp('!', yymsp[0].minor.yy46); }
-#line 1539 "lemon/lemonParser.c"
+{ yylhsminor.yy52 = lemonExprCall(th, &yymsp[-3].minor.yy45, yymsp[-1].minor.yy52); }
+#line 1515 "lemon/lemonParser.c"
+  yymsp[-3].minor.yy52 = yylhsminor.yy52;
         break;
-      case 40: /* expr ::= BIT_NOT expr */
+      case 40: /* expr ::= id OPEN CLOSE */
 #line 104 "src/lemonParser.y"
-{ yymsp[-1].minor.yy46 = lemonExprUnOp('~', yymsp[0].minor.yy46); }
-#line 1544 "lemon/lemonParser.c"
+{ yylhsminor.yy52 = lemonExprCall(th, &yymsp[-2].minor.yy45, 0); }
+#line 1521 "lemon/lemonParser.c"
+  yymsp[-2].minor.yy52 = yylhsminor.yy52;
         break;
-      case 41: /* expr ::= id OPEN args CLOSE */
+      case 41: /* expr ::= OPEN expr CLOSE */
 #line 107 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprCall(&yymsp[-3].minor.yy45, &yymsp[-1].minor.yy21); }
-#line 1549 "lemon/lemonParser.c"
-  yymsp[-3].minor.yy46 = yylhsminor.yy46;
+{ yymsp[-2].minor.yy52 = yymsp[-1].minor.yy52; }
+#line 1527 "lemon/lemonParser.c"
         break;
-      case 42: /* expr ::= id OPEN CLOSE */
-#line 108 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprCall(&yymsp[-2].minor.yy45, NULL); }
-#line 1555 "lemon/lemonParser.c"
-  yymsp[-2].minor.yy46 = yylhsminor.yy46;
+      case 42: /* expr ::= DECIMAL */
+#line 110 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprNumber(th, &yymsp[0].minor.yy0, 10); }
+#line 1532 "lemon/lemonParser.c"
+  yymsp[0].minor.yy52 = yylhsminor.yy52;
         break;
-      case 43: /* expr ::= OPEN expr CLOSE */
+      case 43: /* expr ::= HEX */
 #line 111 "src/lemonParser.y"
-{ yymsp[-2].minor.yy46 = yymsp[-1].minor.yy46; }
-#line 1561 "lemon/lemonParser.c"
+{ yylhsminor.yy52 = lemonExprNumber(th, &yymsp[0].minor.yy0, 16); }
+#line 1538 "lemon/lemonParser.c"
+  yymsp[0].minor.yy52 = yylhsminor.yy52;
         break;
-      case 44: /* expr ::= DECIMAL */
+      case 44: /* expr ::= OCT */
+#line 112 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprNumber(th, &yymsp[0].minor.yy0, 8); }
+#line 1544 "lemon/lemonParser.c"
+  yymsp[0].minor.yy52 = yylhsminor.yy52;
+        break;
+      case 45: /* expr ::= id */
+#line 113 "src/lemonParser.y"
+{ yylhsminor.yy52 = lemonExprIdentifier(th, &yymsp[0].minor.yy45); }
+#line 1550 "lemon/lemonParser.c"
+  yymsp[0].minor.yy52 = yylhsminor.yy52;
+        break;
+      case 46: /* expr ::= SOPEN BASE SCLOSE */
 #line 114 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprNumber(&yymsp[0].minor.yy0, 10); }
-#line 1566 "lemon/lemonParser.c"
-  yymsp[0].minor.yy46 = yylhsminor.yy46;
-        break;
-      case 45: /* expr ::= HEX */
-#line 115 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprNumber(&yymsp[0].minor.yy0, 16); }
-#line 1572 "lemon/lemonParser.c"
-  yymsp[0].minor.yy46 = yylhsminor.yy46;
-        break;
-      case 46: /* expr ::= OCT */
-#line 116 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprNumber(&yymsp[0].minor.yy0, 8); }
-#line 1578 "lemon/lemonParser.c"
-  yymsp[0].minor.yy46 = yylhsminor.yy46;
-        break;
-      case 47: /* expr ::= id */
-#line 117 "src/lemonParser.y"
-{ yylhsminor.yy46 = lemonExprIdentifier(&yymsp[0].minor.yy45); }
-#line 1584 "lemon/lemonParser.c"
-  yymsp[0].minor.yy46 = yylhsminor.yy46;
-        break;
-      case 48: /* expr ::= SOPEN BASE SCLOSE */
-#line 118 "src/lemonParser.y"
-{ yymsp[-2].minor.yy46 = lemonExprBase(&yymsp[-1].minor.yy0); }
-#line 1590 "lemon/lemonParser.c"
+{ yymsp[-2].minor.yy52 = lemonExprBase(th, &yymsp[-1].minor.yy0); }
+#line 1556 "lemon/lemonParser.c"
         break;
       default:
+      /* (47) root ::= prog */ yytestcase(yyruleno==47);
+      /* (48) prog ::= */ yytestcase(yyruleno==48);
         break;
 /********** End reduce actions ************************************************/
   };
@@ -1633,7 +1601,7 @@ static void yy_parse_failed(
 /************ Begin %parse_failure code ***************************************/
 #line 10 "src/lemonParser.y"
  lemonFailure(th); 
-#line 1636 "lemon/lemonParser.c"
+#line 1604 "lemon/lemonParser.c"
 /************ End %parse_failure code *****************************************/
   LemonParseARG_STORE /* Suppress warning about unused %extra_argument variable */
   LemonParseCTX_STORE
@@ -1654,7 +1622,7 @@ static void yy_syntax_error(
 /************ Begin %syntax_error code ****************************************/
 #line 8 "src/lemonParser.y"
  lemonError(th); 
-#line 1657 "lemon/lemonParser.c"
+#line 1625 "lemon/lemonParser.c"
 /************ End %syntax_error code ******************************************/
   LemonParseARG_STORE /* Suppress warning about unused %extra_argument variable */
   LemonParseCTX_STORE

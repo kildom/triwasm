@@ -49,58 +49,39 @@ extern "C" {
 #define LEMON_SCLOSE                          37
 /* END LEMON TOKENS */
 
-typedef struct TriASMParser Lemon;
-typedef struct LemonCommand LemonCommand;
-typedef struct LemonExpr LemonExpr;
-
-typedef struct LemonToken_tag {
-    const char* value;
-    int32_t length;
-    int32_t line;
+typedef struct LemonToken_s {
+    int from;
+    int to;
+    int line;
 } LemonToken;
 
-typedef struct LemonProg_tag {
-    LemonCommand* first;
-    LemonCommand* last;
-} LemonProg;
-
-typedef struct LemonArgs_tag {
-    LemonExpr* first;
-    LemonExpr* last;
-} LemonArgs;
-
-void *LemonParseAlloc(void* (*mallocCallback)(size_t), Lemon* th);
+void *LemonParseAlloc(void* (*mallocCallback)(size_t), void* th);
 void LemonParseFree(void *parser, void (*freeCallback)(void*));
 void LemonParse(void *parser, int tokenCode, LemonToken tokenValue);
 
-void lemonProgFree(LemonProg* prog);
-void lemonCommandFree(LemonCommand* command);
-void lemonArgsFree(LemonArgs* args);
-void lemonExprFree(LemonExpr* expr);
+void lemonFailure(void* th);
+void lemonError(void* th);
+void lemonStackOverflow(void* th);
 
-void lemonFailure(Lemon* th);
-void lemonError(Lemon* th);
-void lemonStackOverflow(Lemon* th);
+void lemonResultVerify(void* th, int counter);
 
-void lemonResult(Lemon* th, LemonProg* prog);
-LemonProg lemonProgAppend(LemonProg* prog, LemonCommand* command);
-LemonProg lemonProgCreate();
+int lemonInstr(void* th, LemonToken* name, int args);
+int lemonPragma(void* th, LemonToken* value);
+int lemonLabel(void* th, LemonToken* name);
+int lemonAssign(void* th, LemonToken* name, int expr);
 
-LemonCommand* lemonInstrCreate(LemonToken* name, LemonArgs* args);
-LemonCommand* lemonPragmaCreate(LemonToken* value);
-LemonCommand* lemonLabelCreate(LemonToken* name);
-LemonCommand* lemonAssignCreate(LemonToken* name, LemonExpr* expr);
+void lemonArgsFree(void* th, int args);
+int lemonArgsAppend(void* th, int args, int expr);
+int lemonArgsCreate(void* th);
 
-LemonArgs lemonArgsAppend(LemonArgs* args, LemonExpr* expr);
-LemonArgs lemonArgsCreate(LemonExpr* expr);
-
-LemonExpr* lemonExprTernary(LemonExpr* cond, LemonExpr* ifTrue, LemonExpr* ifFalse);
-LemonExpr* lemonExprBinOp(char op, LemonExpr* a, LemonExpr* b);
-LemonExpr* lemonExprUnOp(char op, LemonExpr* a);
-LemonExpr* lemonExprCall(LemonToken* name, LemonArgs* args);
-LemonExpr* lemonExprNumber(LemonToken* value, int base);
-LemonExpr* lemonExprIdentifier(LemonToken* name);
-LemonExpr* lemonExprBase(LemonToken* name);
+void lemonExprFree(void* th, int expr);
+int lemonExprTernary(void* th, int cond, int ifTrue, int ifFalse);
+int lemonExprBinOp(void* th, char op, int a, int b);
+int lemonExprUnOp(void* th, char op, int a);
+int lemonExprCall(void* th, LemonToken* name, int args);
+int lemonExprNumber(void* th, LemonToken* value, int base);
+int lemonExprIdentifier(void* th, LemonToken* name);
+int lemonExprBase(void* th, LemonToken* name);
 
 #ifdef __cplusplus
 }
