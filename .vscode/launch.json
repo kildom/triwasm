@@ -44,6 +44,22 @@
             "windows": {
                 "runtimeExecutable": "C:\\node\\node.exe"
             }
+        },
+        {
+            "type": "pwa-node",
+            "request": "launch",
+            "name": "test tokens",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/triasm/src/tokenizer.js",
+            "cwd": "${workspaceFolder}/triasm/src",
+            "linux": {
+                "runtimeExecutable": "${env:HOME}/my/node-v14.17.3-linux-x64/bin/node"
+            },
+            "windows": {
+                "runtimeExecutable": "C:\\node\\node.exe"
+            }
         }
     ]
 }
