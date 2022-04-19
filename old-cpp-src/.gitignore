@@ -1,0 +1,10 @@
+/build/**/debug/*
+/build/**/release/*
+/build/**/obj/*
+/test/build/obj
+/test/*.wat
+/test/*.wasm
+/test/**/*.o
+/test/**/*.d
+/test/**/*.exe
+/test/**/obj/
