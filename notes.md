@@ -448,3 +448,69 @@ trivm-sdk
 ├─📄 LICENSE.txt
 └─📄 README.txt
 ```
+
+# Idea for mjs modules amalgamation
+
+Tool name: **mjsAmalgamation**
+
+```js
+
+/*
+mjsAmalgamation hints for resolving cyclic imports:
+    // mjsAmalgamation: no-side-effects            - this module has no side effects
+    // mjsAmalgamation: unused-by-side-effects ... - list of all imports that are not used by side effects of this module
+*/
+
+
+function _mod1() {
+    const mod2 = _mod2._exports; // --> import * as mod2 from 'mod2.mjs';
+
+    function f1() {
+        return '1';
+    }
+    function main() {
+        console.log(mod2.f2());
+    }
+    _mod1._exports.f1 = f1; // --> export f1;
+    _mod1._loader_mod3();   // ----^
+    main();
+
+}
+
+function _mod2() {
+    const mod3 = _mod3._exports; // --> import * as mod3 from 'mod3.mjs';
+
+    function f2() {
+        return mod3.f3() + '2';
+    }
+
+    _mod2._exports.f2 = f2; // --> export f2;
+}
+
+function _mod3() {
+    let f1;                            //
+    _mod1._loader_mod3 = function() {  // --> import { f1 } from 'mod1.mjs';
+        f1 = _mod1._exports.f1;        //
+    }                                  //
+
+    function f3() {
+        return f1() + '3';
+    }
+
+    _mod3._exports.f3 = f3; // --> export f3;
+
+}
+
+
+function _entry() {
+    _mod1._exports = {};
+    _mod2._exports = {};
+    _mod3._exports = {};
+    _mod3();
+    _mod2();
+    _mod1();
+}
+
+_entry();
+
+```

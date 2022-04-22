@@ -52,7 +52,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/triasm/src/tokenizer.js",
+            "program": "${workspaceFolder}/triasm/src/main.mjs",
             "cwd": "${workspaceFolder}/triasm/src",
             "linux": {
                 "runtimeExecutable": "${env:HOME}/my/node-v14.17.3-linux-x64/bin/node"

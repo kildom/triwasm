@@ -1,3 +1,54 @@
+/*!
+ * Copyright (c) 2023 Dominik Kilian <kontakt@dominik.cc>
+ *
+ * This program is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this
+ * program. If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+/*
+Expression parser output object methods:
+    onParserStartExpr();
+    onParserTernaryExpr(cond, a, b);
+    onParserOrExpr(a, b);
+    onParserAndExpr(a, b);
+    onParserBitOrExpr(a, b);
+    onParserBitXorExpr(a, b);
+    onParserBitAndExpr(a, b);
+    onParserEqExpr(a, b);
+    onParserNeExpr(a, b);
+    onParserLtExpr(a, b);
+    onParserGtExpr(a, b);
+    onParserLeExpr(a, b);
+    onParserGeExpr(a, b);
+    onParserShlExpr(a, b);
+    onParserShrExpr(a, b);
+    onParserAddExpr(a, b);
+    onParserSubExpr(a, b);
+    onParserMulExpr(a, b);
+    onParserDivExpr(a, b);
+    onParserModExpr(a, b);
+    onParserMinusExpr(a);
+    onParserNotExpr(a);
+    onParserBitNotExpr(a);
+    onParserNumberExpr(valueStr);
+    onParserCallExpr(name, args);
+    onParserIdExpr(name);
+*/
+
+
+class ExprParserError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "ExprParserError";
+    }
+};
 
 const TOKEN_END = 0;
 const TOKEN_ID = 3;
@@ -69,7 +120,7 @@ function tokenize(input) {
     offset = 0;
     for (let m of input.matchAll(reToken)) {
         if (input.substring(offset, m.index).trim() !== '') {
-            throw Error(`Syntax error. Invalid expression.`);
+            throw new ExprParserError(`Syntax error!`);
         }
         offset = m.index + m[0].length;
         if (m[1] !== undefined) {
@@ -86,13 +137,13 @@ function tokenize(input) {
                 id: oneCharTokenMap[m[3]],
             });
         } else if (m[4] || m[5] || m[6]) {
-            let valueBig = BigInt(m[4] || m[5] || m[6]);
+            /*let valueBig = BigInt(m[4] || m[5] || m[6]);
             let value64 = valueBig & 0xFFFFFFFFFFFFFFFFn;
             if (value64 != valueBig) {
-                throw Error(`Integer literal out of range!`);
-            }
+                throw new ExprParserError(`Integer literal out of range!`);
+            }*/
             result.push({
-                id: TOKEN_NUMBER, value: value64
+                id: TOKEN_NUMBER, value: m[4] || m[5] || m[6]
             });
         }
     }
@@ -112,16 +163,17 @@ class ExprParser {
         this.tokenIndex = 0;
         this.tokenId = this.tokens[0].id;
         this.tokenValue = this.tokens[0].value;
+        this.outputObject.onParserStartExpr();
         let result = this.parseArgs();
         if (this.tokenId != TOKEN_END) {
-            throw Error('Unexpected token!');
+            throw new ExprParserError('Unexpected token!');
         }
         return result;
     }
 
     consume() {
         if (this.tokenId == TOKEN_END) {
-            throw Error('Unexpected end of expression!');
+            throw new ExprParserError('Unexpected end of expression!');
         }
         this.tokenIndex++;
         this.tokenId = this.tokens[this.tokenIndex].id;
@@ -156,7 +208,7 @@ class ExprParser {
             this.consume();
             let second = this.parseTernaryExpr();
             if (this.tokenId != TOKEN_COLON) {
-                throw Error(`Expecting ":"!`);
+                throw new ExprParserError(`Expecting ":"!`);
             }
             this.consume();
             let third = this.parseTernaryExpr();
@@ -323,7 +375,7 @@ class ExprParser {
             this.consume();
             result = this.parseExpr();
             if (this.tokenId != TOKEN_CLOSE) {
-                throw Error('Missing closing bracket');
+                throw new ExprParserError('Missing closing bracket!');
             }
             this.consume();
         } else if (this.tokenId == TOKEN_NUMBER) {
@@ -336,7 +388,7 @@ class ExprParser {
                 this.consume();
                 let args = this.parseArgs();
                 if (this.tokenId != TOKEN_CLOSE) {
-                    throw Error('Missing closing bracket');
+                    throw new ExprParserError('Missing closing bracket!');
                 }
                 this.consume();
                 result = this.outputObject.onParserCallExpr(id, args);
@@ -344,7 +396,7 @@ class ExprParser {
                 result = this.outputObject.onParserIdExpr(id);
             }
         } else {
-            throw Error(`Expecting expression!`);
+            throw new ExprParserError(`Invalid expression!`);
         }
         return result;
     }
@@ -352,4 +404,4 @@ class ExprParser {
 };
 
 
-exports.ExprParser = ExprParser;
+export { ExprParser, ExprParserError };

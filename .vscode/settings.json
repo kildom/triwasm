@@ -108,5 +108,6 @@
         "filesystem": "cpp",
         "__memory": "cpp"
     },
+    "editor.rulers": [90, 100],
     "terminal.integrated.automationShell.windows": "cmd.exe"
 }
