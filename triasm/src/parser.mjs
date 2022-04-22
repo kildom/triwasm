@@ -45,9 +45,6 @@ class ParserError extends Error {
 
 
 function parseBase(args) {
-    if (args === undefined) {
-        return [BASE.ZERO, '0'];
-    }
     let m = args.match(reBaseReg);
     if (m === null) {
         return [BASE.ZERO, args];
@@ -101,20 +98,25 @@ function parse(input, outputObject) {
                 }
                 let args = m[4];
                 let base = BASE.ZERO;
-                if (info.withBase) {
-                    [base, args] = parseBase(args);
-                }
                 if (args === undefined) {
                     if (info.args !== null) {
                         args = [];
+                        if (info.args[0] > 0) {
+                            throw new ParserError(`${line}: Invalid number of arguments!`);
+                        }
                     } else {
                         args = '';
                     }
                 } else if (info.args !== null) {
+                    if (info.withBase) {
+                        [base, args] = parseBase(args);
+                    }
                     args = exprParser.parse(args);
                     if (args.length < info.args[0] || args.length > info.args[1]) {
                         throw new ParserError(`${line}: Invalid number of arguments!`);
                     }
+                } else {
+                    args = args.trim();
                 }
                 outputObject.onParserInstr(info.id, args, base);
             }

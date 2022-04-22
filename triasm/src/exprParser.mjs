@@ -117,7 +117,7 @@ const reToken = /(?:([a-z_\$@\.][a-z_\$@\.0-9]*)|(<<|>>|<=|>=|\|\||&&|==|!=)|([~
 function tokenize(input) {
     let result = [];
     input = input.trim();
-    offset = 0;
+    let offset = 0;
     for (let m of input.matchAll(reToken)) {
         if (input.substring(offset, m.index).trim() !== '') {
             throw new ExprParserError(`Syntax error!`);
