@@ -392,27 +392,51 @@ tools/
 
 ## Content of the SDK
 
+Variants:
+* js-only - no engine, it should use system's (or user provided) node.js or electron
+* small   - contains embedded Node.js
+* full    - contains wasi-sdk and Electron (no Node.js - we will use Electron instead)
+
+Information in Release notes:
+
+> Before you start downloading, choose correct variant:
+> * trivm-sdk-**base**-...  - No external tools included. Platform independent. You need Node.js v16.0 or later to use this variant. If needed, other external tools can be downloaded automatically later.
+> * trivm-sdk-**small**-... - contains embedded Node.js. If needed, other external tools can be downloaded automatically later.
+> * trivm-sdk-**full**-...  - contains everything needed. Usefull for off-line installation.
+
+Example list of release packages (limited by platforms supported by wasi-sdk):
+* trivm-sdk-base-1.1-any-platform.tar.xz
+* trivm-sdk-full-1.1-linux-x64.tar.xz
+* trivm-sdk-full-1.1-win-x64.tar.xz
+* trivm-sdk-full-1.1-macos-x64.tar.xz
+* trivm-sdk-small-1.1-linux-x64.tar.xz
+* trivm-sdk-small-1.1-win-x64.tar.xz
+* trivm-sdk-small-1.1-macos-x64.tar.xz
+
 ```
 trivm-sdk
 │
 ├─📁 bin
 │   │
-│   ├─📄 triwasm
-│   ├─📄 tricc
-│   ├─📄 triconf
-│   └─📄 triasm
+│   ├─📄 triwasm       / .bat on Windows, shell on Linux/MacOS
+│   ├─📄 tricc        /  it detects if run in Node.js or Electron
+│   ├─📄 triconf      \  the same content (on Linux/MacOS may be symlink)
+│   ├─📄 triasm        \ tool is detected based on its name
+│   └─📁 js
+│       │
+│       ├─📄 triwasm.js
+│       ├─📄 tricc.js
+│       ├─📄 triconf.js
+│       ├─📄 triasm.js
+│       └─📄 LICENSE.txt      (GPL)
 │
 ├─📁 src
 │   │
 │   ├─📄 trivm.c
-│   └─📄 trivm.h
+│   ├─📄 trivm.h
+│   └─📄 LICENSE.txt      (BSD-n-Clause)
 │
-├─📁 data
-│   │
-│   ├─📁 triwasmlib
-│   │   │
-│   │   ├─📄 startup.triasm
-│   │   └─📄 triwasmlib.wasm
+├─📁 ext
 │   │
 │   ├─📁 wasi-sdk
 │   │   │
@@ -424,7 +448,25 @@ trivm-sdk
 │   │   ├─📄 README.txt
 │   │   └─📄 ...
 │   │
-│   └─📄 triconf.app
+│   └─📁 node
+│       │
+│       ├─📄 README.txt
+│       └─📄 ...
+│
+├─📁 data
+│   │
+│   ├─📁 lib
+│   │   │
+│   │   ├─📁 licenses
+│   │   ├─📄 prologue.triasm
+│   │   ├─📄 epilogue.triasm
+│   │   ├─📄 triwasmlib.wasm
+│   │   └─📄 softfloatlib.wasm
+│   │
+│   └─📁 gui
+│       │
+│       ├─📄 triconf.app
+│       └─📄 LICENSE.txt      (GPL + react + Blueprint.js + other dependecies)
 │
 ├─📁 samples
 │   │
@@ -443,9 +485,10 @@ trivm-sdk
 │   │   │
 │   │   └─📄 README.txt
 │   │
-│   └─📁 ...
+│   ├─📁 ...
+│   └─📄 LICENSE.txt      (BSD-0-Clause)
 │
-├─📄 LICENSE.txt
+├─📄 LICENSE.txt      (information that license is located on each directory)
 └─📄 README.txt
 ```
 
