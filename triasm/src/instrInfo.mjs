@@ -200,6 +200,7 @@ function createInstrById() {
         .filter(x => x.trim().length > 0 && !x.trim().startsWith('#'))
         .map(x => x.trim().split(/\s+/))
         .map((x, i) => ({
+            id: i,
             name: x[1].toUpperCase(),
             args: x[2] == '-' ? null : x[2].split('-').map(y => y == '' ? 0x7FFFFFFF : parseInt(y)),
             withBase: !!parseInt(x[3]),

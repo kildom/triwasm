@@ -24,6 +24,13 @@ const EXPR_STATE_CALC_VALUE = 3;
 
 class ExprNotConstError extends Error { };
 
+class PostponeCalculation extends Error {
+    constructor(dependence) {
+        super();
+        this.dependence = dependence;
+    }
+};
+
 class Conf {
     constructor() {
         this.extI64 = false;
@@ -43,7 +50,23 @@ class InstrBase {
         this.index = index;
         this.lineNumber = compiler.lineNumber;
     }
+
+    evalConst(value) {
+        try {
+            return value(this);
+        } catch (ex) {
+            if (ex instanceof ExprNotConstError) {
+                return null;
+            }
+            throw ex;
+        }
+    }
 };
+
+const ASSIGN_WAITING = 0;
+const ASSIGN_CALCULATING = 1;
+const ASSIGN_CONST = 2;
+const ASSIGN_NON_CONST = 3;
 
 /* Passes:
     0. Parsing:
@@ -54,19 +77,19 @@ class InstrBase {
         - Create identifier to discardable block relation
 
 Preparing and discarding blocks:
- - Create map of all assignment positions: compiler.assignMap[variable_name] = [ position1, position2, ... ]
- - Set assignment instructions state to ASSIGN_WAITING
- - Set state to EXPR_STATE_CONST_ASSIGN
- - Try to evaluate value of each assign instruction on stack (if non-empty) or from the list (if stack empty).
-    - Before evaluating, set instruction state to ASSIGN_CALCULATING
-    - Resolve identifiers to assign instruction before this or (if not exists) last assign instruction.
-    - If reference assign is ASSIGN_WAITING, throws PostponeCalculation(nextAssign),
+ X Create map of all assignment positions: variable.assignments = [ position1, position2, ... ]
+ X Set assignment instructions state to ASSIGN_WAITING
+ X Set state to EXPR_STATE_CONST_ASSIGN
+ X Try to evaluate value of each assign instruction on stack (if non-empty) or from the list (if stack empty).
+    X Before evaluating, set instruction state to ASSIGN_CALCULATING
+    X Resolve identifiers to assign instruction before this or (if not exists) last assign instruction.
+    X If reference assign is ASSIGN_WAITING, throws PostponeCalculation(nextAssign),
       so push current assign to stack and start evaluating ex.nextAssign
-    - If reference assign is ASSIGN_NON_CONST, throws ExprNotConstError(), so sets current state also to ASSIGN_NON_CONST
-    - If reference assign is ASSIGN_CONST, returns refAssign.constValue
-    - If reference assign is ASSIGN_CALCULATING, throws CompilerError('...')
- - Set state to EXPR_STATE_CONST_EXPR
- - Ask each instruction for its minimal size, calculate and save their addresses.
+    X If reference assign is ASSIGN_NON_CONST, throws ExprNotConstError(), so sets current state also to ASSIGN_NON_CONST
+    X If reference assign is ASSIGN_CONST, returns refAssign.constValue
+    X If reference assign is ASSIGN_CALCULATING, throws CompilerError('...')
+ X Set state to EXPR_STATE_CONST_EXPR
+ X Ask each instruction for its minimal size, calculate and save their addresses.
  - Set state to EXPR_STATE_CREATE_DEPS
  - Create list of used identifiers for each instruction by evaluating their expressions
  - Repeat for entire list until no new dependencies are added
@@ -87,6 +110,7 @@ class Block extends InstrBase {
         this.discardable = false;
         this.end = null;
         this.locals = {};
+        this.deps = new Set();
         switch (args.toUpperCase()) {
             case 'DISCARDABLE':
                 this.discardable = true;
@@ -98,6 +122,11 @@ class Block extends InstrBase {
                 throw new ParserError(`${this.lineNumber}: Unknown type of block.`);
         }
     }
+    getInitialSize() {
+        return 0;
+    }
+    collectDeps() {
+    }
 };
 
 class BlockEnd extends InstrBase {
@@ -105,12 +134,22 @@ class BlockEnd extends InstrBase {
         super(compiler, index, null);
         this.block = block;
     }
+    getInitialSize() {
+        return 0;
+    }
+    collectDeps() {
+    }
 };
 
 
 class EmptyInstr extends InstrBase {
     constructor(compiler, index) {
         super(compiler, index, null);
+    }
+    getInitialSize() {
+        return 0;
+    }
+    collectDeps() {
     }
 };
 
@@ -120,10 +159,17 @@ class Assign extends InstrBase {
         super(compiler, index, null);
         this.name = name;
         this.value = value;
+        this.state = ASSIGN_WAITING;
+        this.constValue = null;
+    }
+    getInitialSize() {
+        this.compiler.vars[this.name].value = this.constValue;
+        return 0;
+    }
+    collectDeps() {
+        this.value(this);
     }
 };
-
-
 
 class SimpleCoreInstruction extends InstrBase {
     constructor(compiler, index, info, args, base) {
@@ -131,7 +177,31 @@ class SimpleCoreInstruction extends InstrBase {
         this.args = args;
         this.endAddr = 0;
     }
-
+    getInitialSize() {
+        if (this.args.length == 0) {
+            return 1;
+        }
+        let value = this.evalConst(this.args[0]);
+        if (value === null) {
+            return 2;
+        }
+        return 1 + this.getImmediateSize(value);
+    }
+    getImmediateSize(value) {
+        value = Number(value & 0xFFFFFFFFn);
+        if (value <= 0x7F || value >= 0xFFFFFF80) {
+            return 1;
+        } else if (value <= 0x7FFF || value >= 0xFFFF8000) {
+            return 2;
+        } else {
+            return 4;
+        }
+    }
+    collectDeps() {
+        if (this.args.length > 0) {
+            this.args[0](this);
+        }
+    }
 };
 
 const parserInstrClasses = {
@@ -149,10 +219,10 @@ class Compiler {
         this.conf = conf;
         this.lineNumber = 1;
         this.instructions = [];
-        this.blocks = [];
-        this.blockStack = [];
-        this.vars = {};
-        this.exprState = EXPR_STATE_CREATE_DEPS;
+        this.discardableBlocks = [];
+        this.stack = [];
+        this.assignments = {};
+        this.exprState = EXPR_STATE_CONST_ASSIGN;
         this.parserInstrConditions = {
             '-': true,
             unwind: conf.extUnwind,
@@ -163,11 +233,91 @@ class Compiler {
             f32f64: conf.extF32 && conf.extF64,
         };
         this.parse();
+        // this.evaluateConstAssignments();
+        // this.initialAssignments();
+        // this.initialInstrLayout();
+        // this.createBlockDependencies();
+    }
+
+    createBlockDependencies() {
+        this.exprState = EXPR_STATE_CREATE_DEPS;
+        let depsRoot = {
+            deps: new Set()
+        };
+        do {
+            this.depsUpdated = false;
+            this.stack = [depsRoot];
+            for (let instr of this.instructions) {
+                if ((instr instanceof Block) && instr.discardable == true) {
+                    this.stack.push(instr);
+                }
+                instr.collectDeps();
+                if ((instr instanceof BlockEnd) && instr.block.discardable == true) {
+                    this.stack.pop();
+                }
+            }
+        } while (this.depsUpdated)
+    }
+
+    initialInstrLayout() {
+        this.exprState = EXPR_STATE_CONST_EXPR;
+        let addr = 0;
+        for (let instr of this.instructions) {
+            instr.addr = addr;
+            let size = instr.getInitialSize();
+            addr += size;
+        }
+    }
+
+    initialAssignments() {
+        for (let instr of this.instructions) {
+            if (instr instanceof Assign) {
+                this.vars[instr.name].value = instr.constValue;
+            }
+        }
+    }
+
+    evaluateConstAssignments() {
+        let index = 0;
+        let stack = [];
+        do {
+            let assignment = null;
+            if (stack.length > 0) {
+                assignment = stack.pop();
+            } else {
+                while (index < this.instructions.length) {
+                    if ((this.instructions[index] instanceof Assign) && this.instructions[index].state == ASSIGN_WAITING) {
+                        assignment = this.instructions[index];
+                        index++;
+                        break;
+                    }
+                    index++;
+                }
+            }
+            if (assignment === null) {
+                break;
+            }
+            assignment.state = ASSIGN_CALCULATING;
+            try {
+                assignment.constValue = assignment.value(assignment);
+                assignment.state = ASSIGN_CONST;
+            } catch (ex) {
+                if (ex instanceof ExprNotConstError) {
+                    assignment.state = ASSIGN_NON_CONST;
+                } else if (ex instanceof PostponeCalculation) {
+                    stack.push(assignment);
+                    stack.push(ex.dependence);
+                }
+            }
+        } while (true);
     }
 
     parse() {
         try {
             parse(this.input, this);
+            if (this.stack.length > 0) {
+                throw new ParserError(`${this.stack[0].lineNumber}: Unfinished block!`);
+            }
         } catch (ex) {
             if (ex instanceof ParserError) {
                 console.log(ex.message);
@@ -188,29 +338,34 @@ class Compiler {
     }
 
     getRealName(name) {
-        for (let i = this.blockStack.length - 1; i >= 0; i--) {
-            if (name in this.blockStack[i].locals) {
-                return this.blockStack[i].locals[name];
+        for (let i = this.stack.length - 1; i >= 0; i--) {
+            if (name in this.stack[i].locals) {
+                return this.stack[i].locals[name];
             }
         }
         return name;
     }
 
     onParserAssign(name, value) {
-        name = this.getRealName(name);
-        let variable;
-        if (name in this.vars) {
-            variable = this.vars;
-        } else {
-            variable = { name, blocks: new Set() }
-        }
-        for (let block of this.blockStack) {
+        let realName = this.getRealName(name);
+        let instr = new Assign(this, this.instructions.length, name, value);
+        for (let block of this.stack) {
             if (block.discardable) {
-                variable.blocks.add(block);
+                instr.blocks.add(block);
             }
         }
-        let instr = new Assign(this, this.instructions.length, name, value);
         this.instructions.push(instr);
+        let proxy;
+        if (realName in this.assignProxies) {
+            proxy = this.assignProxies[realName];
+            if (proxy.assignment === null) {
+                proxy.assignment = instr;
+            } else {
+                this.assignProxies[realName] = { assignment: instr }
+            }
+        } else {
+            this.assignProxies[realName] = { assignment: instr }
+        }
     }
 
     onParserInstr(id, args, base) {
@@ -224,24 +379,26 @@ class Compiler {
         switch (id) {
             case INSTR._BEGIN:
                 instr = new Block(this, index, args);
-                this.blocks.push(instr);
-                this.blockStack.push(instr);
+                if (instr.discardable) {
+                    this.discardableBlocks.push(instr);
+                }
+                this.stack.push(instr);
                 break;
 
             case INSTR._END:
-                if (this.blockStack.length == 0) {
-                    throw new ParserError(`${this.lineNumber}: ".END" directive without matching ".BEGIN".`); // TODO: Check at the end if blockStack is empty
+                if (this.stack.length == 0) {
+                    throw new ParserError(`${this.lineNumber}: ".END" directive without matching ".BEGIN".`);
                 }
-                block = this.blockStack.pop();
+                block = this.stack.pop();
                 instr = new BlockEnd(this, index, block);
                 block.end = instr;
                 break;
 
             case INSTR._LOCAL:
-                if (this.blockStack.length == 0) {
+                if (this.stack.length == 0) {
                     throw new ParserError(`${this.lineNumber}: ".LOCAL" outside a block.`);
                 }
-                block = this.blockStack[this.blockStack.length - 1];
+                block = this.stack[this.stack.length - 1];
                 if (args in block.locals) {
                     throw new ParserError(`${this.lineNumber}: ".LOCAL" variable already defined.`);
                 }
@@ -271,36 +428,41 @@ class Compiler {
             throw new ParserError(`${instr.lineNumber}: Variable "${id}" never assigned.`);
         }
         let variable = this.vars[id];
-        if (this.exprState == EXPR_STATE_CALC_VALUE) {
-            if (variable.discarded) {
-                throw new ParserError(`${instr.lineNumber}: Variable "${id}" was assigned in a discarded block.`);
-            }
-            return variable.value;
-        } else if (instr.compiler.exprState == EXPR_STATE_CONST_ASSIGN) {
-            let map = this.assignMap[id];
-            let index = map[map.length - 1];
-            for (let i of map) {
-                if (i >= instr.index) {
-                    break;
+        switch (this.exprState) {
+            case EXPR_STATE_CREATE_DEPS:
+                let index = variable.assignments[variable.assignments.length - 1];
+                for (let i of variable.assignments) {
+                    if (i >= instr.index) {
+                        break;
+                    }
+                    index = i;
                 }
-                index = i;
-            }
-            let prevAssign = this.instructions[index];
-            switch (prevAssign.state) {
-                case ASSIGN_WAITING:
-                    throw new PostponeCalculation(prevAssign);
-                case ASSIGN_CALCULATING:
-                    throw new ParserError(`${instr.lineNumber}: Expression dependency cycle. Other instruction on line ${prevAssign.lineNumber}.`);
-                case ASSIGN_CONST:
-                    return prevAssign.calculatedValue;
-                case ASSIGN_VARIABLE:
+                let prevAssign = this.instructions[index];
+                switch (prevAssign.state) {
+                    case ASSIGN_WAITING:
+                        throw new PostponeCalculation(prevAssign);
+                    case ASSIGN_CALCULATING:
+                        throw new ParserError(`${instr.lineNumber}: Expression dependency cycle. Other instruction on line ${prevAssign.lineNumber}.`);
+                    case ASSIGN_CONST:
+                        return prevAssign.constValue;
+                    case ASSIGN_VARIABLE:
+                        throw new ExprNotConstError();
+                }
+                break;
+            case EXPR_STATE_CONST_EXPR:
+                if (variable.value === null) {
                     throw new ExprNotConstError();
-            }
+                }
+                return variable.value;
+            case EXPR_STATE_CALC_VALUE:
+                if (variable.discarded) {
+                    throw new ParserError(`${instr.lineNumber}: Variable "${id}" was assigned in a discarded block. Discarding blocks cannot depend on size of variable-size instructions!`);
+                }
+                return variable.value;
+        }
+        if (this.exprState == EXPR_STATE_CALC_VALUE) {
+        } else if (instr.compiler.exprState == EXPR_STATE_CONST_ASSIGN) {
         } else if (instr.compiler.exprState == EXPR_STATE_CONST_EXPR) {
-            if (!variable.isConst) {
-                throw new ExprNotConstError();
-            }
-            return variable.value;
         } else {
             instr.deps[id] = true;
             return variable.value;
@@ -329,24 +491,34 @@ class Compiler {
         }
     }
 
+    onParserNumberExpr(valueStr) {
+        let valueBig = BigInt(valueStr);
+        let value64 = valueBig & 0xFFFFFFFFFFFFFFFFn;
+        if (value64 != valueBig) {
+            throw new ParserError(`${this.lineNumber}: Integer literal out of range!`);
+        }
+        return instr => value64;
+    }
+
 };
 
 function exprCallAddr(instr) {
-    if (instr.compiler.exprState == EXPR_STATE_CALC_VALUE) {
-        return instr.addr;
-    } else if (instr.compiler.exprState != EXPR_STATE_CREATE_DEPS) {
-        throw new ExprNotConstError();
-    } else {
-        return 1n;
+    switch (instr.compiler.exprState) {
+        case EXPR_STATE_CREATE_DEPS:
+        case EXPR_STATE_CALC_VALUE:
+            return BigInt(instr.addr);
+        case EXPR_STATE_CONST_ASSIGN:
+        case EXPR_STATE_CONST_EXPR:
+            throw new ExprNotConstError();
     }
 }
 
 function exprCallLine(instr) {
-    return instr.lineNumber;
+    return BigInt(instr.lineNumber);
 }
 
 function exprCallUid(instr) {
-    return instr.index;
+    return BigInt(instr.index);
 }
 
 
@@ -361,5 +533,6 @@ add test
 test:
 sub
 mul line()
+test = 12
 .end
 `, conf);

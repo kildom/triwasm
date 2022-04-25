@@ -137,11 +137,6 @@ function tokenize(input) {
                 id: oneCharTokenMap[m[3]],
             });
         } else if (m[4] || m[5] || m[6]) {
-            /*let valueBig = BigInt(m[4] || m[5] || m[6]);
-            let value64 = valueBig & 0xFFFFFFFFFFFFFFFFn;
-            if (value64 != valueBig) {
-                throw new ExprParserError(`Integer literal out of range!`);
-            }*/
             result.push({
                 id: TOKEN_NUMBER, value: m[4] || m[5] || m[6]
             });
