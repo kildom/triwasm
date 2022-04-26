@@ -155,12 +155,12 @@ class EmptyInstr extends InstrBase {
 
 
 class Assign extends InstrBase {
-    constructor(compiler, index, name, value) {
+    constructor(compiler, index, value) {
         super(compiler, index, null);
-        this.name = name;
         this.value = value;
         this.state = ASSIGN_WAITING;
         this.constValue = null;
+        this.blocks = new Set();
     }
     getInitialSize() {
         this.compiler.vars[this.name].value = this.constValue;
@@ -204,9 +204,208 @@ class SimpleCoreInstruction extends InstrBase {
     }
 };
 
-const parserInstrClasses = {
-    sc: SimpleCoreInstruction,
+
+class AsmFunctions {
+
+    static parserInstrClasses = {
+        sc: SimpleCoreInstruction,
+    };
+    
+    static createExpr(name, args, lineNumber) {
+        let f = AsmFunctions[`func_${name}`];
+        let a = AsmFunctions[`args_${name}`];
+        if (f === undefined) {
+            throw new ParserError(`${lineNumber}: Unknown function "${name}()"!`);
+        }
+        if (a === undefined) {
+            a = [f.length - 1, f.length - 1];
+        }
+        if (args.length < a[0] || args.length > a[1]) {
+            throw new ParserError(`${lineNumber}: Invalid number of arguments for function "${name}()"!`);
+        }
+        return this.createFunction(f, args);
+    }
+
+    static createFunction(f, args) {
+        return instr => f(instr, ...args);
+    }
+
+    static func_addr(instr) {
+        return BigInt(instr.addr);
+    }
+
+    static func_line(instr) {
+        return BigInt(instr.lineNumber);
+    }
+
+    static func_iid(instr) {
+        return BigInt(instr.index);
+    }
+
+    static func_size(instr, first, last) {
+        first = parseInt(first());
+        last = parseInt(last());
+        if (first >= BigInt(instr.compiler.instructions.length) || last >= BigInt(instr.compiler.instructions.length)) {
+            throw new ParserError(`${instr.lineNumber}: Invalid instruction ID used in an argument of the "size()" function!`);
+        }
+        console.error(`TODO: size() function`);
+        return 1n;
+    }
+
 };
+
+
+class ParserOutput {
+
+    parse(input, compiler, conf) {
+        this.compiler = compiler;
+        this.conf = conf;
+        this.lineNumber = 1;
+        this.instructions = [];
+        this.discardableBlocks = [];
+        this.stack = [];
+        this.assignProxies = {};
+        this.parserInstrConditions = {
+            '-': true,
+            unwind: conf.extUnwind,
+            mem64: conf.extMem64,
+            i64: conf.extI64,
+            f32: conf.extF32,
+            f64: conf.extF64,
+            f32f64: conf.extF32 && conf.extF64,
+        };
+
+        parse(input, this);
+
+        if (this.stack.length > 0) {
+            throw new ParserError(`${this.stack[0].lineNumber}: Unfinished block!`);
+        }
+        for (let [name, proxy] of Object.entries(this.assignProxies)) {
+            if (proxy.assignment === null) {
+                throw new ParserError(`${proxy.lineNumber}: Undefined variable "${name}"!`);
+            }
+        }
+    }
+
+    getRealName(name) {
+        for (let i = this.stack.length - 1; i >= 0; i--) {
+            if (name in this.stack[i].locals) {
+                return this.stack[i].locals[name];
+            }
+        }
+        return name;
+    }
+
+    onParserLine(lineNumber) {
+        this.lineNumber = lineNumber;
+    }
+
+    onParserInstr(id, args, base) {
+        let info = instrInfoById[id];
+        if (!this.parserInstrConditions[info.condition]) {
+            throw new ParserError(`${this.lineNumber}: Instruction is from a disabled extension.`);
+        }
+        let instr;
+        let index = this.instructions.length;
+        let block;
+        switch (id) {
+            case INSTR._BEGIN:
+                instr = new Block(this.compiler, index, args);
+                if (instr.discardable) {
+                    this.discardableBlocks.push(instr);
+                }
+                this.stack.push(instr);
+                break;
+
+            case INSTR._END:
+                if (this.stack.length == 0) {
+                    throw new ParserError(`${this.lineNumber}: ".END" directive without matching ".BEGIN".`);
+                }
+                block = this.stack.pop();
+                instr = new BlockEnd(this, index, block);
+                block.end = instr;
+                break;
+
+            case INSTR._LOCAL:
+                if (this.stack.length == 0) {
+                    throw new ParserError(`${this.lineNumber}: ".LOCAL" outside a block.`);
+                }
+                block = this.stack[this.stack.length - 1];
+                if (args in block.locals) {
+                    throw new ParserError(`${this.lineNumber}: ".LOCAL" variable already defined.`);
+                }
+                let name = `~LOCAL~${index}~${block.index}~${args}`;
+                block.locals[args] = name;
+                instr = new EmptyInstr(this.compiler, index);
+                break;
+
+            default:
+                console.log(info.name);
+                let Class = AsmFunctions.parserInstrClasses[info.instrClass];
+                instr = new Class(this.compiler, index, info, args, base);
+                break;
+        }
+        this.instructions.push(instr);
+    }
+
+    onParserLabel(name) {
+        this.onParserAssign(name, this.onParserCallExpr('addr', []));
+    }
+
+    onParserAssign(name, value) {
+        let realName = this.getRealName(name);
+        let instr = new Assign(this.compiler, this.instructions.length, value);
+        for (let block of this.stack) {
+            if (block.discardable) {
+                instr.blocks.add(block);
+            }
+        }
+        this.instructions.push(instr);
+        if (realName in this.assignProxies) {
+            let proxy = this.assignProxies[realName];
+            if (proxy.assignment === null) {
+                proxy.assignment = instr;
+            } else {
+                this.assignProxies[realName] = { assignment: instr }
+            }
+        } else {
+            this.assignProxies[realName] = { assignment: instr }
+        }
+    }
+
+    onParserStartExpr() {
+    }
+
+    onParserIdExpr(id) {
+        let realName = this.getRealName(id);
+        let proxy;
+        if (realName in this.assignProxies) {
+            proxy = this.assignProxies[realName].assignment;
+        } else {
+            proxy = {
+                lineNumber: this.lineNumber,
+                name: realName,
+                assignment: null,
+            };
+        }
+        let compiler = this.compiler;
+        return instr => compiler.getVariable(instr, proxy);
+    }
+
+    onParserCallExpr(name, args) {
+        return AsmFunctions.createExpr(name, args);
+    }
+
+    onParserNumberExpr(valueStr) {
+        let valueBig = BigInt(valueStr);
+        let value64 = valueBig & 0xFFFFFFFFFFFFFFFFn;
+        if (value64 != valueBig) {
+            throw new ParserError(`${this.lineNumber}: Integer literal out of range!`);
+        }
+        return instr => value64;
+    }
+
+}
 
 
 class Compiler {
@@ -215,6 +414,11 @@ class Compiler {
     }
 
     compile(input, conf) {
+        let po = new ParserOutput();
+        po.parse(input, this, conf);
+        this.instructions = po.instructions;
+        this.discardableBlocks = po.discardableBlocks;
+        return;
         this.input = input;
         this.conf = conf;
         this.lineNumber = 1;
@@ -328,101 +532,6 @@ class Compiler {
         }
     }
 
-    // Parser interface
-    onParserLine(lineNumber) {
-        this.lineNumber = lineNumber;
-    }
-
-    onParserLabel(name) {
-        this.onParserAssign(name, this.onParserCallExpr('addr', []));
-    }
-
-    getRealName(name) {
-        for (let i = this.stack.length - 1; i >= 0; i--) {
-            if (name in this.stack[i].locals) {
-                return this.stack[i].locals[name];
-            }
-        }
-        return name;
-    }
-
-    onParserAssign(name, value) {
-        let realName = this.getRealName(name);
-        let instr = new Assign(this, this.instructions.length, name, value);
-        for (let block of this.stack) {
-            if (block.discardable) {
-                instr.blocks.add(block);
-            }
-        }
-        this.instructions.push(instr);
-        let proxy;
-        if (realName in this.assignProxies) {
-            proxy = this.assignProxies[realName];
-            if (proxy.assignment === null) {
-                proxy.assignment = instr;
-            } else {
-                this.assignProxies[realName] = { assignment: instr }
-            }
-        } else {
-            this.assignProxies[realName] = { assignment: instr }
-        }
-    }
-
-    onParserInstr(id, args, base) {
-        let info = instrInfoById[id];
-        if (!this.parserInstrConditions[info.condition]) {
-            throw new ParserError(`${this.lineNumber}: Instruction is from a disabled extension.`);
-        }
-        let instr;
-        let index = this.instructions.length;
-        let block;
-        switch (id) {
-            case INSTR._BEGIN:
-                instr = new Block(this, index, args);
-                if (instr.discardable) {
-                    this.discardableBlocks.push(instr);
-                }
-                this.stack.push(instr);
-                break;
-
-            case INSTR._END:
-                if (this.stack.length == 0) {
-                    throw new ParserError(`${this.lineNumber}: ".END" directive without matching ".BEGIN".`);
-                }
-                block = this.stack.pop();
-                instr = new BlockEnd(this, index, block);
-                block.end = instr;
-                break;
-
-            case INSTR._LOCAL:
-                if (this.stack.length == 0) {
-                    throw new ParserError(`${this.lineNumber}: ".LOCAL" outside a block.`);
-                }
-                block = this.stack[this.stack.length - 1];
-                if (args in block.locals) {
-                    throw new ParserError(`${this.lineNumber}: ".LOCAL" variable already defined.`);
-                }
-                let name = `~LOCAL~${index}~${block.index}~${args}`;
-                block.locals[args] = name;
-                instr = new EmptyInstr(this, index);
-                break;
-
-            default:
-                let Class = parserInstrClasses[info.instrClass];
-                instr = new Class(this, index, info, args, base);
-                break;
-        }
-        this.instructions.push(instr);
-    }
-
-    onParserStartExpr() {
-    }
-
-    onParserIdExpr(id) {
-        id = this.getRealName(id);
-        return instr => this.getVariable(instr, id);
-    }
-
     getVariable(instr, id) {
         if (!(id in this.vars)) {
             throw new ParserError(`${instr.lineNumber}: Variable "${id}" never assigned.`);
@@ -469,58 +578,7 @@ class Compiler {
         }
     }
 
-    onParserCallExpr(name, args) {
-        switch (name) {
-            case 'addr':
-                if (args.length != 0) {
-                    throw new ParserError(`${this.lineNumber}: Function "${name}": invalid number of arguments.`);
-                }
-                return exprCallAddr;
-            case 'line':
-                if (args.length != 0) {
-                    throw new ParserError(`${this.lineNumber}: Function "${name}": invalid number of arguments.`);
-                }
-                return exprCallLine;
-            case 'uid':
-                if (args.length != 0) {
-                    throw new ParserError(`${this.lineNumber}: Function "${name}": invalid number of arguments.`);
-                }
-                return exprCallUid;
-            default:
-                throw new ParserError(`${this.lineNumber}: Unknown function "${name}".`);
-        }
-    }
-
-    onParserNumberExpr(valueStr) {
-        let valueBig = BigInt(valueStr);
-        let value64 = valueBig & 0xFFFFFFFFFFFFFFFFn;
-        if (value64 != valueBig) {
-            throw new ParserError(`${this.lineNumber}: Integer literal out of range!`);
-        }
-        return instr => value64;
-    }
-
 };
-
-function exprCallAddr(instr) {
-    switch (instr.compiler.exprState) {
-        case EXPR_STATE_CREATE_DEPS:
-        case EXPR_STATE_CALC_VALUE:
-            return BigInt(instr.addr);
-        case EXPR_STATE_CONST_ASSIGN:
-        case EXPR_STATE_CONST_EXPR:
-            throw new ExprNotConstError();
-    }
-}
-
-function exprCallLine(instr) {
-    return BigInt(instr.lineNumber);
-}
-
-function exprCallUid(instr) {
-    return BigInt(instr.index);
-}
-
 
 let conf = new Conf();
 let c = new Compiler();
