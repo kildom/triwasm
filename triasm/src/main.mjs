@@ -44,22 +44,20 @@ class Conf {
 const CODE_INSTR = (1 << 7);
 
 class InstrBase {
-    constructor(compiler, index, info) {
+    constructor(compiler, index, info, minimalSize) {
         this.compiler = compiler;
-        this.info = info;
         this.index = index;
+        this.info = info;
+        this.minimalSize = minimalSize;
         this.lineNumber = compiler.lineNumber;
     }
 
-    evalConst(value) {
-        try {
-            return value(this);
-        } catch (ex) {
-            if (ex instanceof ExprNotConstError) {
-                return null;
-            }
-            throw ex;
-        }
+    getSize() {
+        return 0;
+    }
+
+    getMinimalSize() {
+        return this.minimalSize;
     }
 };
 
@@ -68,45 +66,10 @@ const ASSIGN_CALCULATING = 1;
 const ASSIGN_CONST = 2;
 const ASSIGN_NON_CONST = 3;
 
-/* Passes:
-    0. Parsing:
-        - Create list of instructions
-        - Create block objects
-        - Create list of all variables (initialize to 0)
-        - Redirect expressions to local variables
-        - Create identifier to discardable block relation
-
-Preparing and discarding blocks:
- X Create map of all assignment positions: variable.assignments = [ position1, position2, ... ]
- X Set assignment instructions state to ASSIGN_WAITING
- X Set state to EXPR_STATE_CONST_ASSIGN
- X Try to evaluate value of each assign instruction on stack (if non-empty) or from the list (if stack empty).
-    X Before evaluating, set instruction state to ASSIGN_CALCULATING
-    X Resolve identifiers to assign instruction before this or (if not exists) last assign instruction.
-    X If reference assign is ASSIGN_WAITING, throws PostponeCalculation(nextAssign),
-      so push current assign to stack and start evaluating ex.nextAssign
-    X If reference assign is ASSIGN_NON_CONST, throws ExprNotConstError(), so sets current state also to ASSIGN_NON_CONST
-    X If reference assign is ASSIGN_CONST, returns refAssign.constValue
-    X If reference assign is ASSIGN_CALCULATING, throws CompilerError('...')
- X Set state to EXPR_STATE_CONST_EXPR
- X Ask each instruction for its minimal size, calculate and save their addresses.
- - Set state to EXPR_STATE_CREATE_DEPS
- - Create list of used identifiers for each instruction by evaluating their expressions
- - Repeat for entire list until no new dependencies are added
- - Create block dependency graph based on all expressions
- - Discard unused blocks - replace them with empty instructions or mark them as discarded
- - Mark variables from discarded blocks as unusable (using it will report error)
- - Set state to EXPR_STATE_CALC_VALUE
- - Execute each non-const assignment instruction (except discarded blocks)
- - Repeat until we get the same results
- - Generate bytecode for each instruction except discarded blocks
- - Repeat until we get the same bytecode
- - DONE
-*/
-
 class Block extends InstrBase {
-    constructor(compiler, index, args) {
-        super(compiler, index, null);
+    constructor(compiler, index, args, block) {
+        super(compiler, index, null, 0);
+        this.block = block;
         this.discardable = false;
         this.end = null;
         this.locals = {};
@@ -122,22 +85,13 @@ class Block extends InstrBase {
                 throw new ParserError(`${this.lineNumber}: Unknown type of block.`);
         }
     }
-    getInitialSize() {
-        return 0;
-    }
-    collectDeps() {
-    }
 };
+
 
 class BlockEnd extends InstrBase {
     constructor(compiler, index, block) {
-        super(compiler, index, null);
+        super(compiler, index, null, 0);
         this.block = block;
-    }
-    getInitialSize() {
-        return 0;
-    }
-    collectDeps() {
     }
 };
 
@@ -146,46 +100,23 @@ class EmptyInstr extends InstrBase {
     constructor(compiler, index) {
         super(compiler, index, null);
     }
-    getInitialSize() {
-        return 0;
-    }
-    collectDeps() {
-    }
 };
 
 
 class Assign extends InstrBase {
-    constructor(compiler, index, value) {
+    constructor(compiler, index, value, block) {
         super(compiler, index, null);
         this.value = value;
         this.state = ASSIGN_WAITING;
-        this.constValue = null;
-        this.blocks = new Set();
-    }
-    getInitialSize() {
-        this.compiler.vars[this.name].value = this.constValue;
-        return 0;
-    }
-    collectDeps() {
-        this.value(this);
+        this.block = block;
     }
 };
 
 class SimpleCoreInstruction extends InstrBase {
     constructor(compiler, index, info, args, base) {
-        super(compiler, index, info);
+        super(compiler, index, info, 1 + args.length);
         this.args = args;
         this.endAddr = 0;
-    }
-    getInitialSize() {
-        if (this.args.length == 0) {
-            return 1;
-        }
-        let value = this.evalConst(this.args[0]);
-        if (value === null) {
-            return 2;
-        }
-        return 1 + this.getImmediateSize(value);
     }
     getImmediateSize(value) {
         value = Number(value & 0xFFFFFFFFn);
@@ -197,11 +128,6 @@ class SimpleCoreInstruction extends InstrBase {
             return 4;
         }
     }
-    collectDeps() {
-        if (this.args.length > 0) {
-            this.args[0](this);
-        }
-    }
 };
 
 
@@ -210,7 +136,7 @@ class AsmFunctions {
     static parserInstrClasses = {
         sc: SimpleCoreInstruction,
     };
-    
+
     static createExpr(name, args, lineNumber) {
         let f = AsmFunctions[`func_${name}`];
         let a = AsmFunctions[`args_${name}`];
@@ -263,8 +189,8 @@ class ParserOutput {
         this.lineNumber = 1;
         this.instructions = [];
         this.discardableBlocks = [];
-        this.stack = [];
         this.assignProxies = {};
+        this.currentBlock = null;
         this.parserInstrConditions = {
             '-': true,
             unwind: conf.extUnwind,
@@ -277,8 +203,8 @@ class ParserOutput {
 
         parse(input, this);
 
-        if (this.stack.length > 0) {
-            throw new ParserError(`${this.stack[0].lineNumber}: Unfinished block!`);
+        if (this.currentBlock !== null) {
+            throw new ParserError(`${this.currentBlock.lineNumber}: Unfinished block!`);
         }
         for (let [name, proxy] of Object.entries(this.assignProxies)) {
             if (proxy.assignment === null) {
@@ -288,10 +214,12 @@ class ParserOutput {
     }
 
     getRealName(name) {
-        for (let i = this.stack.length - 1; i >= 0; i--) {
-            if (name in this.stack[i].locals) {
-                return this.stack[i].locals[name];
+        let block = this.currentBlock;
+        while (block !== null) {
+            if (name in block.locals) {
+                return block.locals[name];
             }
+            block = block.block;
         }
         return name;
     }
@@ -310,37 +238,35 @@ class ParserOutput {
         let block;
         switch (id) {
             case INSTR._BEGIN:
-                instr = new Block(this.compiler, index, args);
+                instr = new Block(this.compiler, index, args, this.currentBlock);
                 if (instr.discardable) {
                     this.discardableBlocks.push(instr);
                 }
-                this.stack.push(instr);
+                this.currentBlock = instr;
                 break;
 
             case INSTR._END:
-                if (this.stack.length == 0) {
+                if (this.currentBlock === null) {
                     throw new ParserError(`${this.lineNumber}: ".END" directive without matching ".BEGIN".`);
                 }
-                block = this.stack.pop();
-                instr = new BlockEnd(this, index, block);
-                block.end = instr;
+                instr = new BlockEnd(this, index, this.currentBlock);
+                this.currentBlock.end = instr;
+                this.currentBlock = this.currentBlock.block;
                 break;
 
             case INSTR._LOCAL:
-                if (this.stack.length == 0) {
+                if (this.currentBlock === null) {
                     throw new ParserError(`${this.lineNumber}: ".LOCAL" outside a block.`);
                 }
-                block = this.stack[this.stack.length - 1];
-                if (args in block.locals) {
+                if (args in this.currentBlock.locals) {
                     throw new ParserError(`${this.lineNumber}: ".LOCAL" variable already defined.`);
                 }
-                let name = `~LOCAL~${index}~${block.index}~${args}`;
-                block.locals[args] = name;
+                let name = `~LOCAL~${index}~${this.currentBlock.index}~${args}`;
+                this.currentBlock.locals[args] = name;
                 instr = new EmptyInstr(this.compiler, index);
                 break;
 
             default:
-                console.log(info.name);
                 let Class = AsmFunctions.parserInstrClasses[info.instrClass];
                 instr = new Class(this.compiler, index, info, args, base);
                 break;
@@ -354,12 +280,7 @@ class ParserOutput {
 
     onParserAssign(name, value) {
         let realName = this.getRealName(name);
-        let instr = new Assign(this.compiler, this.instructions.length, value);
-        for (let block of this.stack) {
-            if (block.discardable) {
-                instr.blocks.add(block);
-            }
-        }
+        let instr = new Assign(this.compiler, this.instructions.length, value, this.currentBlock);
         this.instructions.push(instr);
         if (realName in this.assignProxies) {
             let proxy = this.assignProxies[realName];
@@ -378,18 +299,18 @@ class ParserOutput {
 
     onParserIdExpr(id) {
         let realName = this.getRealName(id);
-        let proxy;
         if (realName in this.assignProxies) {
-            proxy = this.assignProxies[realName].assignment;
+            let assignment = this.assignProxies[realName].assignment;
+            return instr => assignment.getValue();
         } else {
-            proxy = {
+            let proxy = {
                 lineNumber: this.lineNumber,
                 name: realName,
                 assignment: null,
             };
+            this.assignProxies[realName] = proxy;
+            return instr => proxy.assignment.getValue();
         }
-        let compiler = this.compiler;
-        return instr => compiler.getVariable(instr, proxy);
     }
 
     onParserCallExpr(name, args) {
@@ -418,31 +339,52 @@ class Compiler {
         po.parse(input, this, conf);
         this.instructions = po.instructions;
         this.discardableBlocks = po.discardableBlocks;
-        return;
-        this.input = input;
-        this.conf = conf;
-        this.lineNumber = 1;
-        this.instructions = [];
-        this.discardableBlocks = [];
-        this.stack = [];
-        this.assignments = {};
-        this.exprState = EXPR_STATE_CONST_ASSIGN;
-        this.parserInstrConditions = {
-            '-': true,
-            unwind: conf.extUnwind,
-            mem64: conf.extMem64,
-            i64: conf.extI64,
-            f32: conf.extF32,
-            f64: conf.extF64,
-            f32f64: conf.extF32 && conf.extF64,
-        };
-        this.parse();
-        // this.evaluateConstAssignments();
-        // this.initialAssignments();
-        // this.initialInstrLayout();
-        // this.createBlockDependencies();
+        this.knownAddresses = false;
+        //this.initialInstrLayout();
+        this.createBlockDependencies();
     }
 
+    createBlockDependencies()
+    {
+        /*let depsRoot = {
+            deps: new Set()
+        };
+        this.currentBlock = depsRoot;
+        for (let instr of this.instructions) {
+            if ((instr instanceof Block) && instr.discardable == true) {
+                this.stack.push(instr);
+            }
+            instr.collectDeps();
+            if ((instr instanceof BlockEnd) && instr.block.discardable == true) {
+                this.stack.pop();
+            }
+        }*/
+    }
+
+
+    initialInstrLayout() { // TODO: probably not needed
+        this.knownAddresses = false;
+        let addr = 0;
+        for (let instr of this.instructions) {
+            instr.addr = addr;
+            let size;
+            try {
+                size = instr.getSize();
+            } catch (ex) {
+                if (ex instanceof ExprNotConstError) {
+                    size = instr.getMinimalSize();
+                } else {
+                    throw ex;
+                }
+            }
+            addr += size;
+        }
+    }
+
+};
+
+
+class Old {
     createBlockDependencies() {
         this.exprState = EXPR_STATE_CREATE_DEPS;
         let depsRoot = {
