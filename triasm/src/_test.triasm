@@ -1,0 +1,29 @@
+
+BRT test_not_local
+
+.begin discardable
+before = iid()
+.addr addr() % 8 == 0 ? addr() : addr() + 8 - addr() % 8
+.data32 size, before, after
+after = iid()
+size = size(before, after)
+.end
+
+.ref after
+readsp
+
+mul entry
+.begin discardable
+.local test
+entry:
+add test
+test:
+test_not_local:
+sub
+mul line()
+test = 12
+.end
+.begin discardable
+opt:
+udiv 12 ? test_not_local : entry
+.end

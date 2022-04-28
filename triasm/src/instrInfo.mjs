@@ -175,10 +175,10 @@ const instrInfoTextTable = `
 ~>   CONVF64S64     0-1   0    f64     -       0                                                                                                    
 
 # Directives
-~>   .DATA8         0-    0    -       -       0                                                                                                  
-~>   .DATA16        0-    0    -       -       0                                                                                                  
-~>   .DATA32        0-    0    -       -       0                                                                                                  
-~>   .DATA64        0-    0    -       -       0                                                                                                  
+~>   .DATA8         0-    0    -       data    1                                                                                                  
+~>   .DATA16        0-    0    -       data    2                                                                                                  
+~>   .DATA32        0-    0    -       data    4                                                                                                  
+~>   .DATA64        0-    0    -       data    8                                                                                                  
 ~>   .ADDR          1-1   0    -       -       0                                                                                                  
 ~>   .ALIGN         1-1   0    -       -       0                                                                                                  
 ~>   .TRAMPOLINE    1-1   0    -       -       0                                                                                                  

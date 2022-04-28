@@ -14,7 +14,6 @@
 
 /*
 Expression parser output object methods:
-    onParserStartExpr();
     onParserTernaryExpr(cond, a, b);
     onParserOrExpr(a, b);
     onParserAndExpr(a, b);
@@ -158,7 +157,6 @@ class ExprParser {
         this.tokenIndex = 0;
         this.tokenId = this.tokens[0].id;
         this.tokenValue = this.tokens[0].value;
-        this.outputObject.onParserStartExpr();
         let result = this.parseArgs();
         if (this.tokenId != TOKEN_END) {
             throw new ExprParserError('Unexpected token!');
