@@ -16,20 +16,7 @@ import { instrInfoById, instrInfoByName, INSTR, BASE } from './instrInfo.mjs';
 import { ExprParser, ExprParserError } from './exprParser.mjs';
 import { parse, ParserError } from './parser.mjs'
 
-const EXPR_STATE_CREATE_DEPS = 0;
-const EXPR_STATE_CONST_ASSIGN = 1;
-const EXPR_STATE_CONST_EXPR = 2;
-const EXPR_STATE_CALC_VALUE = 3;
-
-
-class ExprNotConstError extends Error { };
-
-class PostponeCalculation extends Error {
-    constructor(dependence) {
-        super();
-        this.dependence = dependence;
-    }
-};
+class ExprCycleError extends Error { };
 
 class Conf {
     constructor() {
@@ -41,15 +28,15 @@ class Conf {
     }
 };
 
-const CODE_INSTR = (1 << 7);
 
 class InstrBase {
-    constructor(compiler, index, info, minimalSize) {
+    constructor(compiler, lineNumber, index, info, minimalSize) {
         this.compiler = compiler;
+        this.lineNumber = lineNumber;
         this.index = index;
         this.info = info;
         this.minimalSize = minimalSize;
-        this.lineNumber = compiler.lineNumber;
+        this.addr = 0;
     }
 
     getSize() {
@@ -59,16 +46,15 @@ class InstrBase {
     getMinimalSize() {
         return this.minimalSize;
     }
+
+    collectDeps() {
+    }
 };
 
-const ASSIGN_WAITING = 0;
-const ASSIGN_CALCULATING = 1;
-const ASSIGN_CONST = 2;
-const ASSIGN_NON_CONST = 3;
 
 class Block extends InstrBase {
-    constructor(compiler, index, args, block) {
-        super(compiler, index, null, 0);
+    constructor(compiler, lineNumber, index, args, block) {
+        super(compiler, lineNumber, index, null, 0);
         this.block = block;
         this.discardable = false;
         this.end = null;
@@ -89,34 +75,93 @@ class Block extends InstrBase {
 
 
 class BlockEnd extends InstrBase {
-    constructor(compiler, index, block) {
-        super(compiler, index, null, 0);
+    constructor(compiler, lineNumber, index, block) {
+        super(compiler, lineNumber, index, null, 0);
         this.block = block;
     }
 };
 
 
 class EmptyInstr extends InstrBase {
-    constructor(compiler, index) {
-        super(compiler, index, null);
+    constructor(compiler, lineNumber, index) {
+        super(compiler, lineNumber, index, null);
     }
 };
 
 
 class Assign extends InstrBase {
-    constructor(compiler, index, value, block) {
-        super(compiler, index, null);
+    constructor(compiler, lineNumber, index, value, block) {
+        super(compiler, lineNumber, index, null);
         this.value = value;
-        this.state = ASSIGN_WAITING;
         this.block = block;
+        this.ctx = null;
+    }
+    collectDeps(deps) {
+        this.calculate(true);
+        for (let b of this.ctx.deps) {
+            deps.add(b);
+        }
+    }
+    getValue(ctx) {
+        this.calculate(ctx.deps);
+        ctx.invalid = ctx.invalid || this.ctx.invalid;
+        if (ctx.deps) {
+            ctx.deps.add(this.block);
+        }
+        return this.ctx.value;
+    }
+    calculate(useDeps) {
+        if (this.ctx === null) {
+            if (this.calculating) {
+                throw new ExprCycleError(`${this.lineNumber}: Cycle in assignment evaluation! Cycle in the line numbers:`);
+            }
+            this.ctx = { instr: this };
+            if (useDeps) {
+                this.ctx.deps = new Set();
+            }
+            try {
+                this.calculating = true;
+                this.ctx.value = this.value(this.ctx);
+                this.calculating = false;
+            } catch (ex) {
+                if (ex instanceof ExprCycleError) {
+                    throw new ExprCycleError(ex.message + ' ' + this.lineNumber);
+                }
+                throw ex;
+            }
+        }
     }
 };
 
+function mergeExprCtx(dst, src) {
+    dst.invalid = dst.invalid || src.invalid;
+    if (dst.deps && src.deps) {
+        for (let b of src.deps) {
+            dst.deps.add(b);
+        }
+    }
+}
+
 class SimpleCoreInstruction extends InstrBase {
-    constructor(compiler, index, info, args, base) {
-        super(compiler, index, info, 1 + args.length);
-        this.args = args;
+    constructor(compiler, lineNumber, index, info, args, base) {
+        super(compiler, lineNumber, index, info, 1 + args.length);
+        this.arg = args.length > 0 ? args[0] : null;
         this.endAddr = 0;
+    }
+    collectDeps(deps) {
+        if (this.arg !== null) {
+            this.arg({ instr: this, deps: deps });
+        }
+    }
+    getSize(ctx) {
+        if (this.arg !== null) {
+            let thisCtx = { instr: this };
+            let argValue = this.arg(thisCtx);
+            mergeExprCtx(ctx, thisCtx);
+            return 1 + this.getImmediateSize(argValue);
+        } else {
+            return 1;
+        }
     }
     getImmediateSize(value) {
         value = Number(value & 0xFFFFFFFFn);
@@ -153,29 +198,59 @@ class AsmFunctions {
     }
 
     static createFunction(f, args) {
-        return instr => f(instr, ...args);
+        return ctx => f(ctx, ...args);
     }
 
-    static func_addr(instr) {
-        return BigInt(instr.addr);
+    static func_addr(ctx) {
+        ctx.invalid = true;
+        return BigInt(ctx.instr.addr);
     }
 
-    static func_line(instr) {
-        return BigInt(instr.lineNumber);
+    static func_line(ctx) {
+        return BigInt(ctx.instr.lineNumber);
     }
 
-    static func_iid(instr) {
-        return BigInt(instr.index);
+    static func_iid(ctx) {
+        return BigInt(ctx.instr.index);
     }
 
-    static func_size(instr, first, last) {
+    static func_size(ctx, first, last) {
         first = parseInt(first());
         last = parseInt(last());
-        if (first >= BigInt(instr.compiler.instructions.length) || last >= BigInt(instr.compiler.instructions.length)) {
-            throw new ParserError(`${instr.lineNumber}: Invalid instruction ID used in an argument of the "size()" function!`);
+        let instructions = ctx.instr.compiler.instructions;
+        if (first >= instructions.length || last > instructions.length || first > last) {
+            throw new ParserError(`${ctx.instr.lineNumber}: Invalid instruction ID used in an argument of the "size()" function!`);
         }
-        console.error(`TODO: size() function`);
-        return 1n;
+        let size = 0;
+        for (let i = first; i < last; i++) {
+            let instr = instructions[i];
+            if (instr instanceof Block) {
+                ctx.invalid = ctx.invalid || instr.discardable;
+            } else if (instr instanceof BlockEnd) {
+                ctx.invalid = ctx.invalid || instr.block.discardable;
+            }
+            size += instr.getSize(ctx);
+        }
+        return BigInt(size);
+    }
+
+    static func_if(ctx, cond, ifTrue, ifFalse) {
+        let oldInvalid = ctx.invalid;
+        ctx.invalid = false;
+        let valCond = cond(ctx);
+        let invalid = ctx.invalid;
+        ctx.invalid = invalid || oldInvalid;
+        if (!invalid) {
+            if (valCond != 0n) {
+                return ifTrue(ctx);
+            } else {
+                return ifFalse(ctx);
+            }
+        } else {
+            let trueVal = ifTrue(ctx);
+            let falseVal = ifFalse(ctx);
+            return (valCond != 0n) ? trueVal : falseVal;
+        }
     }
 
 };
@@ -188,7 +263,7 @@ class ParserOutput {
         this.conf = conf;
         this.lineNumber = 1;
         this.instructions = [];
-        this.discardableBlocks = [];
+        this.blocks = [];
         this.assignProxies = {};
         this.currentBlock = null;
         this.parserInstrConditions = {
@@ -201,11 +276,20 @@ class ParserOutput {
             f32f64: conf.extF32 && conf.extF64,
         };
 
+        this.rootBlock = new Block(this.compiler, 0, 0, '', null);
+        this.blocks.push(this.rootBlock);
+        this.currentBlock = this.rootBlock;
+        this.instructions.push(this.rootBlock);
+
         parse(input, this);
 
-        if (this.currentBlock !== null) {
+        if (this.currentBlock !== this.rootBlock) {
             throw new ParserError(`${this.currentBlock.lineNumber}: Unfinished block!`);
         }
+
+        this.rootBlock.end = new BlockEnd(this.compiler, this.lineNumber, this.instructions.length, this.rootBlock);
+        this.instructions.push(this.rootBlock.end);
+
         for (let [name, proxy] of Object.entries(this.assignProxies)) {
             if (proxy.assignment === null) {
                 throw new ParserError(`${proxy.lineNumber}: Undefined variable "${name}"!`);
@@ -235,40 +319,34 @@ class ParserOutput {
         }
         let instr;
         let index = this.instructions.length;
-        let block;
         switch (id) {
             case INSTR._BEGIN:
-                instr = new Block(this.compiler, index, args, this.currentBlock);
-                if (instr.discardable) {
-                    this.discardableBlocks.push(instr);
-                }
+                instr = new Block(this.compiler, this.lineNumber, index, args, this.currentBlock);
+                this.blocks.push(instr);
                 this.currentBlock = instr;
                 break;
 
             case INSTR._END:
-                if (this.currentBlock === null) {
+                if (this.currentBlock === this.rootBlock) {
                     throw new ParserError(`${this.lineNumber}: ".END" directive without matching ".BEGIN".`);
                 }
-                instr = new BlockEnd(this, index, this.currentBlock);
+                instr = new BlockEnd(this.compiler, this.lineNumber, index, this.currentBlock);
                 this.currentBlock.end = instr;
                 this.currentBlock = this.currentBlock.block;
                 break;
 
             case INSTR._LOCAL:
-                if (this.currentBlock === null) {
-                    throw new ParserError(`${this.lineNumber}: ".LOCAL" outside a block.`);
-                }
                 if (args in this.currentBlock.locals) {
                     throw new ParserError(`${this.lineNumber}: ".LOCAL" variable already defined.`);
                 }
                 let name = `~LOCAL~${index}~${this.currentBlock.index}~${args}`;
                 this.currentBlock.locals[args] = name;
-                instr = new EmptyInstr(this.compiler, index);
+                instr = new EmptyInstr(this.compiler, this.lineNumber, index);
                 break;
 
             default:
                 let Class = AsmFunctions.parserInstrClasses[info.instrClass];
-                instr = new Class(this.compiler, index, info, args, base);
+                instr = new Class(this.compiler, this.lineNumber, index, info, args, base);
                 break;
         }
         this.instructions.push(instr);
@@ -280,7 +358,7 @@ class ParserOutput {
 
     onParserAssign(name, value) {
         let realName = this.getRealName(name);
-        let instr = new Assign(this.compiler, this.instructions.length, value, this.currentBlock);
+        let instr = new Assign(this.compiler, this.lineNumber, this.instructions.length, value, this.currentBlock);
         this.instructions.push(instr);
         if (realName in this.assignProxies) {
             let proxy = this.assignProxies[realName];
@@ -301,7 +379,7 @@ class ParserOutput {
         let realName = this.getRealName(id);
         if (realName in this.assignProxies) {
             let assignment = this.assignProxies[realName].assignment;
-            return instr => assignment.getValue();
+            return ctx => assignment.getValue(ctx);
         } else {
             let proxy = {
                 lineNumber: this.lineNumber,
@@ -309,7 +387,7 @@ class ParserOutput {
                 assignment: null,
             };
             this.assignProxies[realName] = proxy;
-            return instr => proxy.assignment.getValue();
+            return ctx => proxy.assignment.getValue(ctx);
         }
     }
 
@@ -323,7 +401,11 @@ class ParserOutput {
         if (value64 != valueBig) {
             throw new ParserError(`${this.lineNumber}: Integer literal out of range!`);
         }
-        return instr => value64;
+        return ctx => value64;
+    }
+
+    onParserTernaryExpr(a, b, c) {
+        return AsmFunctions.createExpr('if', [a, b, c]);
     }
 
 }
@@ -338,201 +420,88 @@ class Compiler {
         let po = new ParserOutput();
         po.parse(input, this, conf);
         this.instructions = po.instructions;
-        this.discardableBlocks = po.discardableBlocks;
-        this.knownAddresses = false;
-        //this.initialInstrLayout();
-        this.createBlockDependencies();
+        this.blocks = po.blocks;
+        this.rootBlock = po.rootBlock;
+        this.resolveBlockDependencies();
+        this.generateCode();
     }
 
-    createBlockDependencies()
-    {
-        /*let depsRoot = {
-            deps: new Set()
-        };
-        this.currentBlock = depsRoot;
+    resolveBlockDependencies() {
+        this.currentBlock = null;
         for (let instr of this.instructions) {
-            if ((instr instanceof Block) && instr.discardable == true) {
-                this.stack.push(instr);
+            if (instr instanceof Block) {
+                this.currentBlock = instr;
             }
-            instr.collectDeps();
-            if ((instr instanceof BlockEnd) && instr.block.discardable == true) {
-                this.stack.pop();
+            instr.collectDeps(this.currentBlock.deps);
+            if (instr instanceof BlockEnd) {
+                this.currentBlock = this.currentBlock.block;
             }
-        }*/
-    }
-
-
-    initialInstrLayout() { // TODO: probably not needed
-        this.knownAddresses = false;
-        let addr = 0;
-        for (let instr of this.instructions) {
-            instr.addr = addr;
-            let size;
-            try {
-                size = instr.getSize();
-            } catch (ex) {
-                if (ex instanceof ExprNotConstError) {
-                    size = instr.getMinimalSize();
-                } else {
-                    throw ex;
+        }
+        let stack = [this.rootBlock];
+        while (stack.length > 0) {
+            let block = stack.pop();
+            if (block.used) {
+                continue;
+            }
+            block.used = true;
+            for (let dep of block.deps) {
+                let block = dep;
+                while (block !== null && !block.used) {
+                    stack.push(block);
+                    block = block.block;
                 }
             }
-            addr += size;
         }
     }
 
-};
-
-
-class Old {
-    createBlockDependencies() {
-        this.exprState = EXPR_STATE_CREATE_DEPS;
-        let depsRoot = {
-            deps: new Set()
-        };
+    generateCode() {
+        for (let instr of this.instructions) {
+            instr.endAddr = 0;
+        }
+        this.output = new Uint8Array(8 * this.instructions.length);
         do {
-            this.depsUpdated = false;
-            this.stack = [depsRoot];
             for (let instr of this.instructions) {
-                if ((instr instanceof Block) && instr.discardable == true) {
-                    this.stack.push(instr);
-                }
-                instr.collectDeps();
-                if ((instr instanceof BlockEnd) && instr.block.discardable == true) {
-                    this.stack.pop();
-                }
+                instr.estimatedAddr = undefined;
             }
-        } while (this.depsUpdated)
-    }
-
-    initialInstrLayout() {
-        this.exprState = EXPR_STATE_CONST_EXPR;
-        let addr = 0;
-        for (let instr of this.instructions) {
-            instr.addr = addr;
-            let size = instr.getInitialSize();
-            addr += size;
-        }
-    }
-
-    initialAssignments() {
-        for (let instr of this.instructions) {
-            if (instr instanceof Assign) {
-                this.vars[instr.name].value = instr.constValue;
-            }
-        }
-    }
-
-    evaluateConstAssignments() {
-        let index = 0;
-        let stack = [];
-        do {
-            let assignment = null;
-            if (stack.length > 0) {
-                assignment = stack.pop();
-            } else {
-                while (index < this.instructions.length) {
-                    if ((this.instructions[index] instanceof Assign) && this.instructions[index].state == ASSIGN_WAITING) {
-                        assignment = this.instructions[index];
-                        index++;
-                        break;
-                    }
-                    index++;
+            this.addr = 0;
+            let rerun = false;
+            for (let index = 0; index < this.instructions.length; index++) {
+                let instr = this.instructions[index];
+                if ((instr instanceof Block) && instr.discardable && !instr.used) {
+                    index = instr.end.index;
+                    continue;
                 }
-            }
-            if (assignment === null) {
-                break;
-            }
-            assignment.state = ASSIGN_CALCULATING;
-            try {
-                assignment.constValue = assignment.value(assignment);
-                assignment.state = ASSIGN_CONST;
-            } catch (ex) {
-                if (ex instanceof ExprNotConstError) {
-                    assignment.state = ASSIGN_NON_CONST;
-                } else if (ex instanceof PostponeCalculation) {
-                    stack.push(assignment);
-                    stack.push(ex.dependence);
+                if (instr.estimatedAddr !== undefined && instr.estimatedAddr != instr.addr) {
+                    rerun = true;
                 }
+                instr.addr = this.addr;
+                instr.generate();
+                instr.endAddr = this.addr;
             }
-        } while (true);
-    }
-
-    parse() {
-        try {
-            parse(this.input, this);
-            if (this.stack.length > 0) {
-                throw new ParserError(`${this.stack[0].lineNumber}: Unfinished block!`);
-            }
-        } catch (ex) {
-            if (ex instanceof ParserError) {
-                console.log(ex.message);
-                return;
-            } else {
-                throw ex;
-            }
-        }
-    }
-
-    getVariable(instr, id) {
-        if (!(id in this.vars)) {
-            throw new ParserError(`${instr.lineNumber}: Variable "${id}" never assigned.`);
-        }
-        let variable = this.vars[id];
-        switch (this.exprState) {
-            case EXPR_STATE_CREATE_DEPS:
-                let index = variable.assignments[variable.assignments.length - 1];
-                for (let i of variable.assignments) {
-                    if (i >= instr.index) {
-                        break;
-                    }
-                    index = i;
-                }
-                let prevAssign = this.instructions[index];
-                switch (prevAssign.state) {
-                    case ASSIGN_WAITING:
-                        throw new PostponeCalculation(prevAssign);
-                    case ASSIGN_CALCULATING:
-                        throw new ParserError(`${instr.lineNumber}: Expression dependency cycle. Other instruction on line ${prevAssign.lineNumber}.`);
-                    case ASSIGN_CONST:
-                        return prevAssign.constValue;
-                    case ASSIGN_VARIABLE:
-                        throw new ExprNotConstError();
-                }
-                break;
-            case EXPR_STATE_CONST_EXPR:
-                if (variable.value === null) {
-                    throw new ExprNotConstError();
-                }
-                return variable.value;
-            case EXPR_STATE_CALC_VALUE:
-                if (variable.discarded) {
-                    throw new ParserError(`${instr.lineNumber}: Variable "${id}" was assigned in a discarded block. Discarding blocks cannot depend on size of variable-size instructions!`);
-                }
-                return variable.value;
-        }
-        if (this.exprState == EXPR_STATE_CALC_VALUE) {
-        } else if (instr.compiler.exprState == EXPR_STATE_CONST_ASSIGN) {
-        } else if (instr.compiler.exprState == EXPR_STATE_CONST_EXPR) {
-        } else {
-            instr.deps[id] = true;
-            return variable.value;
-        }
+        } while (rerun);
     }
 
 };
+
 
 let conf = new Conf();
 let c = new Compiler();
 
 c.compile(`
+mul entry
 .begin discardable
 .local test
 entry:
 add test
 test:
+test_not_local:
 sub
 mul line()
 test = 12
 .end
+.begin discardable
+opt:
+udiv 12 ? test_not_local : entry
+.end
+mul test_not_local ? 0 : opt
 `, conf);
