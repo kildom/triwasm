@@ -50,16 +50,16 @@ const instrInfoTextTable = `
 ~>   HOST           0-1   0    -       sc      0x1D                                        
 
 # Read/Write instructions
-~>   READ8S         0-1   1    -       -       0                                                                                                  
-~>   READ8          0-1   1    -       -       0                                                                                                  
-~>   READ16S        0-1   1    -       -       0                                                                                                  
-~>   READ16         0-1   1    -       -       0                                                                                                  
-~>   READ32         0-1   1    -       -       0                                                                                                  
-~>   READ64         0-1   1    mem64   -       0                                                                                                      
-~>   WRITE8         0-1   1    -       -       0                                                                                                  
-~>   WRITE16        0-1   1    -       -       0                                                                                                  
-~>   WRITE32        0-1   1    -       -       0                                                                                                  
-~>   WRITE64        0-1   1    mem64   -       0                                                                                                      
+~>   READ8S         0-1   1    -       rw      1                                                                                                  
+~>   READ8          0-1   1    -       rw      1                                                                                                  
+~>   READ16S        0-1   1    -       rw      2                                                                                                  
+~>   READ16         0-1   1    -       rw      2                                                                                                  
+~>   READ32         0-1   1    -       rw      4                                                                                                  
+~>   READ64         0-1   1    mem64   rw      8                                                                                                      
+~>   WRITE8         0-1   1    -       rw      1                                                                                                  
+~>   WRITE16        0-1   1    -       rw      2                                                                                                  
+~>   WRITE32        0-1   1    -       rw      4                                                                                                  
+~>   WRITE64        0-1   1    mem64   rw      8                                                                                                      
 
 # 64-bit integer instructions
 ~>   ADD64***       0-0   0    i64     -       0                                                                                                    

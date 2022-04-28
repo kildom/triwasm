@@ -1,4 +1,7 @@
 
+UNWIND 0x1234, test_not_local - 0
+
+
 BRT test_not_local
 
 .begin discardable

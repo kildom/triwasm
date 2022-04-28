@@ -12,6 +12,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { ParserError } from "./parser.mjs";
+
 
 class ExprCycleError extends Error { };
 
@@ -256,6 +258,73 @@ class BranchInstruction extends InstrBase {
     }
 };
 
+export class UnwindInstruction extends InstrBase {
+
+    static INSTR_CODES = [0x83, 0x82, 0x81, 0, 0x80];
+
+    constructor(compiler, lineNumber, index, info, args) {
+        super(compiler, lineNumber, index, info);
+        this.args = args;
+    }
+    collectDeps(deps) {
+        this.args[0]({ instr: this, deps: deps });
+        if (this.args.length > 1) {
+            this.args[1]({ instr: this, deps: deps });
+        }
+    }
+    getSize(ctx) {
+        let thisCtx = { instr: this };
+        let argValue = this.getArgValue(thisCtx);
+        if (argValue === null) {
+            ctx.invalid = true;
+            return 2;
+        } else {
+            ctx.invalid = ctx.invalid || thisCtx.invalid;
+            return 1 + this.getImmediateSize(argValue);
+        }
+    }
+    generate() {
+        if (this.arg !== null) {
+            let argValue = this.getArgValue({ instr: this });
+            if (argValue === null) {
+                this.compiler.postPostponedError = new ParserError(`${this.lineNumber}: Too many words to unwind!`);
+                argValue = 0n;
+            }
+            let size = this.getImmediateSize(argValue);
+            let minSize = (this.endAddr - this.addr) - 1;
+            while (size < minSize && size < 4) {
+                size <<= 1;
+            }
+            this.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
+            this.generateImmediate(argValue, size);
+        } else {
+            this.generateByte(SimpleCoreInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
+        }
+    }
+    getArgValue(ctx) {
+        let argValue = this.args[0](ctx);
+        if (this.args.length > 1) {
+            let keep = argValue;
+            let reduce = this.args[1](ctx);
+            if (reduce <= 15n && keep <= 7n) {
+                return (keep << 4n) | reduce;
+            } else if (reduce <= 15n && keep <= 15n) {
+                return (keep << 4n) | reduce | 0xFFFFFF00n;
+            } else if (reduce <= 255n && keep <= 127n) {
+                return (keep << 8n) | reduce;
+            } else if (reduce <= 255n && keep <= 255n) {
+                return (keep << 8n) | reduce | 0xFFFF0000n;
+            } else if (reduce <= 65535n && keep <= 65535n) {
+                return (keep << 16n) | reduce;
+            } else {
+                return null;
+            }
+        } else {
+            return argValue;
+        }
+    }
+};
+
 class DataInstruction extends InstrBase {
 
     constructor(compiler, lineNumber, index, info, args) {
@@ -294,16 +363,8 @@ class AlignInstruction extends InstrBase {
         this.addrExpr(ctx);
     }
     getSize(ctx) {
-        let thisCtx = { instr: this };
-        let alignValue = Number(this.alignExpr(thisCtx));
-        let addrValue = Number(this.addrExpr(thisCtx));
-        ctx.invalid = ctx.invalid || thisCtx.invalid;
-        let unaligned = alignValue == 0 ? 0 : addrValue % alignValue;
-        if (unaligned == 0) {
-            return 0;
-        } else {
-            return alignValue - unaligned;
-        }
+        ctx.invalid = true;
+        return 0;
     }
     generate() {
         let thisCtx = { instr: this };
@@ -332,16 +393,8 @@ class AddrInstruction extends InstrBase {
         this.current(ctx);
     }
     getSize(ctx) {
-        let thisCtx = { instr: this };
-        let expectedValue = Number(this.expected(thisCtx));
-        let currentValue = Number(this.current(thisCtx));
-        ctx.invalid = ctx.invalid || thisCtx.invalid || currentValue > expectedValue;
-        let padding = expectedValue - currentValue;
-        if (padding <= 0) {
-            return 0;
-        } else {
-            return padding;
-        }
+        ctx.invalid = true;
+        return 0;
     }
     generate() {
         let thisCtx = { instr: this };

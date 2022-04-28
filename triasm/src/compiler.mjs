@@ -15,7 +15,11 @@
 import { instrInfoById, INSTR, BASE } from './instrInfo.mjs';
 import { parse, ParserError } from './parser.mjs';
 import { AsmFunctions } from './functions.mjs';
-import { Block, BlockEnd, EmptyInstr, Assign, SimpleCoreInstruction, DataInstruction, AlignInstruction, AddrInstruction, RefInstruction, ReadSpInstruction, BranchInstruction } from './instructions.mjs'
+import {
+    Block, BlockEnd, EmptyInstr, Assign, SimpleCoreInstruction, DataInstruction,
+    AlignInstruction, AddrInstruction, RefInstruction, ReadSpInstruction,
+    BranchInstruction, UnwindInstruction
+} from './instructions.mjs'
 
 const MAX_RERUNS = 50;
 
@@ -132,6 +136,15 @@ class ParserOutput {
                     instr = new BranchInstruction(this.compiler, this.lineNumber, index, info, args[0], this.onParserCallExpr('addr', []));
                 }
                 break;
+
+            case INSTR.UNWIND:
+                if (args.length == 0) {
+                    instr = new SimpleCoreInstruction(this.compiler, this.lineNumber, index, info, args, BASE.ZERO);
+                } else {
+                    instr = new UnwindInstruction(this.compiler, this.lineNumber, index, info, args);
+                }
+                break;
+
 
             default:
                 let Class = ParserOutput.parserInstrClasses[info.instrClass];
