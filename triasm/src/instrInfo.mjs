@@ -193,6 +193,28 @@ const instrInfoTextTable = `
 ~>   .MTABLE        4-    0    -       -       0                                                                                                  
 `;
 
+/* TODO: new directives:
+
+.generate id_or_zero, address?, maximum_size?
+e.g.
+    .generate 0 - stop generating
+    .generate 3 - continue generating on the block number 3
+    .generate 3, 0x00000000, 0x1000 - start generating code block 3 starting at 0x0 of size 0x1000
+    .generate 3, 0x00001000 - start generating new code block 3 starting at 0x1000 of size 0xFFFFF000
+
+.if .single_memory
+    .ref force_const(.single_memory) ? __block_then__238923894723 : __block_else__238923894723
+    .block discardable
+    __block_then__238923894723:
+
+.else
+    .end
+    .block discardable
+    __block_else__238923894723:
+
+.end
+    .end
+*/
 
 function createInstrById() {
     let res1 = instrInfoTextTable
