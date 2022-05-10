@@ -1,5 +1,17 @@
 
-UNWIND 0x1234, test_not_local - 0
+BRT test_not_local
+
+TMP0 = 8
+
+BRT
+
+addr_next = next
+BRT addr_next
+
+.ADDR 0x100
+
+BRT addr_next
+next:
 
 
 BRT test_not_local

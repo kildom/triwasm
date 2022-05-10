@@ -34,10 +34,7 @@ class InstrBase {
     collectDeps() {
     }
 
-    generate() {
-    }
-
-    cleanup() {
+    generate(minSize) {
     }
 
     generateByte(value) {
@@ -121,57 +118,6 @@ class EmptyInstr extends InstrBase {
     }
 };
 
-
-class Assign extends InstrBase {
-    constructor(compiler, lineNumber, index, value, block) {
-        super(compiler, lineNumber, index, null);
-        this.value = value;
-        this.block = block;
-        this.ctx = null;
-    }
-    collectDeps(deps) {
-        this.calculate(true);
-        for (let b of this.ctx.deps) {
-            deps.add(b);
-        }
-    }
-    getValue(ctx) {
-        this.calculate(ctx.deps);
-        ctx.invalid = ctx.invalid || this.ctx.invalid;
-        if (ctx.deps) {
-            ctx.deps.add(this.block);
-        }
-        return this.ctx.value;
-    }
-    calculate(useDeps) {
-        if (this.calculating) {
-            throw new ExprCycleError(`${this.lineNumber}: Cycle in assignment evaluation! Cycle in the line numbers:`);
-        }
-        if (this.ctx === null) {
-            this.ctx = { instr: this };
-            if (useDeps) {
-                this.ctx.deps = new Set();
-            }
-            try {
-                this.calculating = true;
-                this.ctx.value = this.value(this.ctx);
-                this.calculating = false;
-            } catch (ex) {
-                if (ex instanceof ExprCycleError) {
-                    throw new ExprCycleError(ex.message + ' ' + this.lineNumber);
-                }
-                throw ex;
-            }
-        }
-    }
-    cleanup() {
-        this.ctx = null;
-    }
-    generate() {
-        this.ctx = null;
-    }
-};
-
 function mergeExprCtx(dst, src) {
     dst.invalid = dst.invalid || src.invalid;
     if (dst.deps && src.deps) {
@@ -180,6 +126,48 @@ function mergeExprCtx(dst, src) {
         }
     }
 }
+
+
+class Assign extends InstrBase {
+    constructor(compiler, lineNumber, index, value, block) {
+        super(compiler, lineNumber, index, null);
+        this.value = value;
+        this.block = block;
+    }
+    collectDeps(deps) {
+        let ctx = { instr: this, deps: new Set() };
+        this.calculate(ctx);
+        for (let b of ctx.deps) {
+            deps.add(b);
+        }
+    }
+    getValue(ctx) {
+        let thisCtx = { ...ctx, instr: this };
+        let result = this.calculate(thisCtx);
+        mergeExprCtx(ctx, thisCtx);
+        if (ctx.deps) {
+            ctx.deps.add(this.block);
+        }
+        return result;
+    }
+    calculate(ctx) {
+        let result;
+        if (this.calculating) {
+            throw new ExprCycleError(`${this.lineNumber}: Cycle in assignment evaluation! Cycle in the line numbers:`);
+        }
+        try {
+            this.calculating = true;
+            result = this.value(ctx);
+            this.calculating = false;
+        } catch (ex) {
+            if (ex instanceof ExprCycleError) {
+                throw new ExprCycleError(ex.message + ' ' + this.lineNumber);
+            }
+            throw ex;
+        }
+        return result;
+    }
+};
 
 class SimpleCoreInstruction extends InstrBase {
 
@@ -198,18 +186,21 @@ class SimpleCoreInstruction extends InstrBase {
         if (this.arg !== null) {
             let thisCtx = { instr: this };
             let argValue = this.arg(thisCtx);
-            ctx.invalid = ctx.invalid || thisCtx.invalid;
-            return 1 + this.getImmediateSize(argValue);
+            mergeExprCtx(ctx, thisCtx);
+            if (thisCtx.invalid) {
+                return 2;
+            } else {
+                return 1 + this.getImmediateSize(argValue);
+            }
         } else {
             return 1;
         }
     }
-    generate() {
+    generate(minSize) {
         if (this.arg !== null) {
             let argValue = this.arg({ instr: this });
             let size = this.getImmediateSize(argValue);
-            let minSize = (this.endAddr - this.addr) - 1;
-            while (size < minSize && size < 4) {
+            while (size < (minSize - 1) && size < 4) {
                 size <<= 1;
             }
             this.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
@@ -237,7 +228,7 @@ class BranchInstruction extends InstrBase {
         ctx.invalid = true;
         return 2;
     }
-    generate() {
+    generate(minSize) {
         let dest = Number(this.destExpr({ instr: this }));
         let addr = Number(this.addrExpr({ instr: this }));
         let offset = dest - addr;
@@ -249,8 +240,7 @@ class BranchInstruction extends InstrBase {
         } else {
             size = 4;
         }
-        let minSize = (this.endAddr - addr) - 1;
-        while (size < minSize && size < 4) {
+        while (size < (minSize - 1) && size < 4) {
             size <<= 1;
         }
         this.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
@@ -275,15 +265,14 @@ export class UnwindInstruction extends InstrBase {
     getSize(ctx) {
         let thisCtx = { instr: this };
         let argValue = this.getArgValue(thisCtx);
-        if (argValue === null) {
-            ctx.invalid = true;
+        ctx.invalid = ctx.invalid || thisCtx.invalid || argValue === null;
+        if (thisCtx.invalid) {
             return 2;
         } else {
-            ctx.invalid = ctx.invalid || thisCtx.invalid;
             return 1 + this.getImmediateSize(argValue);
         }
     }
-    generate() {
+    generate(minSize) {
         if (this.arg !== null) {
             let argValue = this.getArgValue({ instr: this });
             if (argValue === null) {
@@ -291,8 +280,7 @@ export class UnwindInstruction extends InstrBase {
                 argValue = 0n;
             }
             let size = this.getImmediateSize(argValue);
-            let minSize = (this.endAddr - this.addr) - 1;
-            while (size < minSize && size < 4) {
+            while (size < (minSize - 1) && size < 4) {
                 size <<= 1;
             }
             this.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
@@ -341,7 +329,7 @@ class DataInstruction extends InstrBase {
     getSize(ctx) {
         return this.itemBytes * this.args.length;
     }
-    generate() {
+    generate(minSize) {
         this.compiler.reserveOutput(this.itemBytes * this.args.length);
         for (let arg of this.args) {
             let value = arg({ instr: this });
@@ -366,7 +354,7 @@ class AlignInstruction extends InstrBase {
         ctx.invalid = true;
         return 0;
     }
-    generate() {
+    generate(minSize) {
         let thisCtx = { instr: this };
         let alignValue = Number(this.alignExpr(thisCtx));
         let addrValue = Number(this.addrExpr(thisCtx));
@@ -396,7 +384,7 @@ class AddrInstruction extends InstrBase {
         ctx.invalid = true;
         return 0;
     }
-    generate() {
+    generate(minSize) {
         let thisCtx = { instr: this };
         let expectedValue = Number(this.expected(thisCtx));
         let currentValue = Number(this.current(thisCtx));
@@ -431,7 +419,7 @@ class ReadSpInstruction extends InstrBase {
     getSize(ctx) {
         return 1;
     }
-    generate() {
+    generate(minSize) {
         this.generateByte(ReadSpInstruction.INSTR_CODE | (this.info.opcode << 2));
     }
 };

@@ -295,6 +295,7 @@ class Compiler {
         this.blocks = po.blocks;
         this.rootBlock = po.rootBlock;
         this.resolveBlockDependencies();
+        this.initialAddresses();
         this.initialState = false;
         this.generateCode();
         return this.output.subarray(0, this.addr);
@@ -337,11 +338,25 @@ class Compiler {
         }
     }
 
-    generateCode() {
-        for (let instr of this.instructions) {
-            instr.addr = 0;
-            instr.endAddr = 0;
+    initialAddresses() {
+        this.addr = 0;
+        for (let index = 0; index < this.instructions.length; index++) {
+            let instr = this.instructions[index];
+            if ((instr instanceof Block) && instr.discardable && !instr.used) {
+                index = instr.end.index;
+                continue;
+            }
+            if (instr.estimatedAddr !== undefined && instr.estimatedAddr != this.addr) {
+                rerun = true;
+            }
+            instr.addr = this.addr;
+            let size = instr.getSize({ instr: this.rootBlock });
+            this.addr += size;
+            instr.endAddr = this.addr;
         }
+    }
+
+    generateCode() {
         this.output = new Uint8Array(8 * this.instructions.length);
         let rerun = true;
         let rerunCounter = 0;
@@ -354,7 +369,6 @@ class Compiler {
                 instr.oldAddr = instr.addr;
                 instr.addr = undefined;
                 instr.estimatedAddr = undefined;
-                instr.cleanup();
             }
             this.postPostponedError = null;
             this.addr = 0;
@@ -370,7 +384,7 @@ class Compiler {
                 }
                 instr.addr = this.addr;
                 this.reserveOutput(10);
-                instr.generate();
+                instr.generate(Math.max(0, instr.endAddr - instr.addr));
                 instr.endAddr = this.addr;
             }
         } while (rerun);
