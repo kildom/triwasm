@@ -13,6 +13,7 @@
  */
 
 import { ParserError } from "./parser.mjs";
+import { BASE, instrInfoById, INSTR } from "./instrInfo.mjs";
 
 
 class ExprCycleError extends Error { };
@@ -248,6 +249,129 @@ class BranchInstruction extends InstrBase {
     }
 };
 
+class ReadWriteInstruction extends InstrBase {
+
+    static BASE_SHIFT = 5;
+    static WRITE_SHIFT = 4;
+    static POP_SHIFT = 3;
+    static MORE_SHIFT = 2;
+    static MEM64_SHIFT = 1;
+    static SMALL_SHIFT = 0;
+    static SIGNED_SHIFT = 1;
+    static BYTE_SHIFT = 2;
+
+    constructor(compiler, lineNumber, index, info, args, base) {
+        super(compiler, lineNumber, index, info);
+        this.arg = args.length > 0 ? args[0] : (ctx => 0n);
+        this.base = base;
+        this.signed = info.name.endsWith('S');
+        this.bytes = info.opcode;
+        this.write = info.name.startsWith('W');
+        if (base == 0 && args.length == 0) {
+            throw new ParserError(`${this.lineNumber}: "${info.name}" instruction without arguments!`);
+        }
+    }
+    collectDeps(deps) {
+        this.arg({ instr: this, deps: deps });
+    }
+    getSize(ctx) {
+        return this.genCommon(0, ctx);
+    }
+    generate(minSize) {
+        this.genCommon(minSize, null);
+    }
+    genCommon(minSize, ctx) {
+        let totalSize = 0;
+        let argValue;
+        let thisCtx = { instr: this };
+        argValue = this.arg(thisCtx) & 0xFFFFFFFFn;
+        if (ctx) {
+            mergeExprCtx(ctx, thisCtx);
+            if (!thisCtx.invalid) {
+                argValue = 0n;
+            }
+        }
+        if ((this.base & BASE.REG_MASK) == BASE.SP) {
+            argValue = (-argValue) & 0xFFFFFFFFn;
+        }
+        let align = this.bytes < 4 ? BigInt(this.bytes) : 4n;
+        let doPop;
+        if (argValue % align != 0n || minSize >= 7) {
+            let maxSub;
+            if (this.bytes == 8) {
+                maxSub = 127n * align;
+            } else if (this.bytes == 4) {
+                maxSub = 3n * align;
+            } else {
+                maxSub = 63n * align;
+            }
+            let addImm;
+            if (argValue > maxSub) {
+                addImm = argValue - maxSub;
+            } else {
+                addImm = argValue % align;
+            }
+            argValue -= addImm;
+            let opcode = instrInfoById[(this.base & BASE.POP) ? INSTR.SUB : INSTR.NEG].opcode;
+            addImm = (-addImm) & 0xFFFFFFFFn;
+            let size = this.getImmediateSize(addImm);
+            totalSize += 1 + size;
+            if (!ctx) {
+                this.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (opcode << 2));
+                this.generateImmediate(addImm, size);
+            }
+            minSize = Math.max(0, minSize - size - 1);
+            doPop = true;
+        } else {
+            doPop = this.base & BASE.POP;
+        }
+        let rwImm = Number(argValue / align);
+        if (this.bytes == 8) {
+            rwImm = (rwImm << 2) | 0x02;
+        } else if (this.bytes == 1) {
+            rwImm = (rwImm << 3) | 0x04 | (this.signed ? 0x02 : 0x00) | 0x01;
+        } else if (this.bytes == 2) {
+            rwImm = (rwImm << 3) | 0x00 | (this.signed ? 0x02 : 0x00) | 0x01;
+        } else if (rwImm < 4 && minSize <= 1) {
+            rwImm = rwImm << 0;
+        } else if (this.compiler.conf.extMem64) {
+            rwImm = rwImm << 2;
+        } else {
+            rwImm = rwImm << 1;
+        }
+        let tailSize;
+        let rem = rwImm;
+        if (this.bytes == 4) {
+            tailSize = 0;
+            rem >>= 2;
+        } else {
+            tailSize = 1;
+            rem >>= 9;
+        }
+        while (rem > 0) {
+            tailSize++;
+            rem >>= 7;
+        }
+        tailSize = Math.min(Math.max(minSize - 1, tailSize), 5);
+        totalSize += 1 + tailSize;
+        if (!ctx) {
+            this.generateByte(
+                ((this.base & BASE.REG_MASK) << ReadWriteInstruction.BASE_SHIFT) |
+                ((this.write ? 1 : 0) << ReadWriteInstruction.WRITE_SHIFT) |
+                ((doPop ? 1 : 0) << ReadWriteInstruction.POP_SHIFT) |
+                ((tailSize > 0 ? 1 : 0) << ReadWriteInstruction.MORE_SHIFT) |
+                (rwImm >> (7 * tailSize)));
+            while (tailSize > 0) {
+                tailSize--;
+                this.generateByte(
+                    ((tailSize > 0 ? 1 : 0) << 7) |
+                    ((rwImm >> (7 * tailSize)) & 0x7F));
+            }
+        }
+        return totalSize;
+    }
+};
+
 export class UnwindInstruction extends InstrBase {
 
     static INSTR_CODES = [0x83, 0x82, 0x81, 0, 0x80];
@@ -424,4 +548,4 @@ class ReadSpInstruction extends InstrBase {
     }
 };
 
-export { ExprCycleError, Block, BlockEnd, EmptyInstr, Assign, SimpleCoreInstruction, DataInstruction, AlignInstruction, AddrInstruction, RefInstruction, ReadSpInstruction, BranchInstruction };
+export { ExprCycleError, Block, BlockEnd, EmptyInstr, Assign, SimpleCoreInstruction, DataInstruction, AlignInstruction, AddrInstruction, RefInstruction, ReadSpInstruction, BranchInstruction, ReadWriteInstruction };

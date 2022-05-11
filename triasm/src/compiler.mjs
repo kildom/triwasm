@@ -18,7 +18,7 @@ import { AsmFunctions } from './functions.mjs';
 import {
     Block, BlockEnd, EmptyInstr, Assign, SimpleCoreInstruction, DataInstruction,
     AlignInstruction, AddrInstruction, RefInstruction, ReadSpInstruction,
-    BranchInstruction, UnwindInstruction
+    BranchInstruction, UnwindInstruction, ReadWriteInstruction
 } from './instructions.mjs'
 
 const MAX_RERUNS = 50;
@@ -27,6 +27,7 @@ class ParserOutput {
 
     static parserInstrClasses = {
         sc: SimpleCoreInstruction,
+        rw: ReadWriteInstruction,
         data: DataInstruction,
         '.REF': RefInstruction,
         'READSP': ReadSpInstruction,
@@ -291,6 +292,7 @@ class Compiler {
         this.initialState = true;
         let po = new ParserOutput();
         po.parse(input, this, conf);
+        this.conf = conf;
         this.instructions = po.instructions;
         this.blocks = po.blocks;
         this.rootBlock = po.rootBlock;

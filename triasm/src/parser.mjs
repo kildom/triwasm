@@ -33,7 +33,15 @@ import { ExprParser, ExprParserError } from './exprParser.mjs';
  */
 const reLine = /^[ \t]*(?:([a-z_\$@\.][a-z_\$@\.0-9]*)[ \t]*(?:(:)[ \t]*|=[ \t]*([^\r\n# \t][^\r\n#]*)|[ \t]([^\r\n# \t:=][^\r\n#]*)|))?(?:#.*)?$/gmi;
 
-const reBaseReg = /^(?:\[\s*(POP)\s*\]\s*(?:\+\s*\[\s*(AMB0|AMB1|SP)\s*\])?|\[\s*(AMB0|AMB1|SP)\s*\]\s*(?:\+\s*\[\s*(POP)\s*\])?)\s*(\+|-|$)\s*/i;
+/* reBaseReg groups:
+ *     1: AMBn if AMBn
+ *     2: POP if AMBn
+ *     3: SP if SP
+ *     4: POP if SP
+ *     5: POP if just POP
+ *     6: arg sign: '+', '-', or empty
+ */
+const reBaseReg = /^(?:\[\s*(AMB0|AMB1)\s*\]\s*(?:\+\s*\[\s*(POP)\s*\])?|\[\s*(SP)\s*\]\s*(?:\-\s*\[\s*(POP)\s*\])?|\[\s*(POP)\s*\])\s*(\+|-|$)\s*/i;
 
 
 class ParserError extends Error {
@@ -52,17 +60,17 @@ function parseBase(args) {
     args = args.substring(m[0].length).trim();
     if (args === '') {
         args = '0';
-    } else if (m[5] === '-') {
+    } else if (m[6] === '-') {
         args = `0 - ${args}`;
     }
     let base;
-    switch ((m[2] || m[3] || '').toUpperCase()) {
+    switch ((m[1] || m[3] || '').toUpperCase()) {
         case 'AMB0': base = BASE.AMB0; break;
         case 'AMB1': base = BASE.AMB1; break;
         case 'SP': base = BASE.SP; break;
         default: base = BASE.ZERO; break;
     }
-    if (m[1] || m[4]) {
+    if (m[2] || m[4] || m[5]) {
         base |= BASE.POP;
     }
     return [base, args];

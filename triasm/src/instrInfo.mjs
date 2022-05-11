@@ -268,8 +268,8 @@ const INSTR = createInstr();
 
 const BASE = {
     ZERO: 0,
-    SP: 1,
-    AMB0: 2,
+    AMB0: 1,
+    SP: 2,
     AMB1: 3,
     REG_MASK: 3,
     POP: 4,

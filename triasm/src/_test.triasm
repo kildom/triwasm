@@ -1,4 +1,32 @@
 
+TMP0 = 0
+PC = 4
+ASP = 8
+TMP1 = 12
+TMP2 = 16
+AMB0 = 20
+AMB1 = 24
+SPL = 28
+SPH = 32
+ASPL = 36
+ASPH = 40
+
+READ32 TMP0
+
+READ32 [SP] - [POP]
+.align 16
+READ32 [SP] - 3
+.align 16
+NEG -3
+READ32 [SP] - [POP]
+.align 16
+READ32 [SP] - [POP] - 139
+.align 16
+SUB -127
+READ32 [SP] - [POP] - 12
+.align 16
+
+
 BRT test_not_local
 
 TMP0 = 8
