@@ -1,0 +1,62 @@
+<%
+simpleCoreInstr = {
+    add: 0x02,
+    sub: 0x03,
+    mul: 0x04,
+    and: 0x05,
+    or: 0x06,
+    xor: 0x07,
+    udiv: 0x08,
+    sdiv: 0x09,
+    umod: 0x0A,
+    smod: 0x0B,
+    shl: 0x0C,
+    exts: 0x0D,
+    ushr: 0x0E,
+    sshr: 0x0F,
+    ult: 0x10,
+    ugt: 0x11,
+    slt: 0x12,
+    sgt: 0x13,
+    eq: 0x14,
+    not: 0x15,
+    neg: 0x16,
+    writesp: 0x1A,
+    ext: 0x1D,
+};
+%>
+
+#-GROUP Simple core instructions
+<% for (let [name, code] of Object.enties({...simpleCoreInstr, unwind: ext.unwind ? '28' : ' ERROR '})) { %>
+<%=name%>              #-RESULT 1 6d<%=code%> 11
+<%=name%> 0            #-RESULT 1 6d<%=code%> 10 | 8x00
+<%=name%> 3            #-RESULT 1 6d<%=code%> 10 | 8x03
+<%=name%> -128         #-RESULT 1 6d<%=code%> 10 | 8x80
+<%=name%> 127          #-RESULT 1 6d<%=code%> 10 | 8x7F
+<%=name%> 128          #-RESULT 1 6d<%=code%> 01 | 8x80 | 8x00
+<%=name%> -129         #-RESULT 1 6d<%=code%> 01 | 8x7F | 8xFF
+<%=name%> 32767        #-RESULT 1 6d<%=code%> 01 | 8xFF | 8x7F
+<%=name%> -32768       #-RESULT 1 6d<%=code%> 01 | 8x00 | 8x80
+<%=name%> 32768        #-RESULT 1 6d<%=code%> 00 | 8x00 | 8x80 | 8x00 | 8x00
+<%=name%> -32769       #-RESULT 1 6d<%=code%> 00 | 8xFF | 8x7F | 8xFF | 8xFF
+<%=name%> 2147483647   #-RESULT 1 6d<%=code%> 00 | 8xFF | 8xFF | 8xFF | 8x7F
+<%=name%> -2147483648  #-RESULT 1 6d<%=code%> 00 | 8x00 | 8x00 | 8x00 | 8x80
+<%=name%> 0x80000000   #-RESULT 1 6d<%=code%> 00 | 8x00 | 8x00 | 8x00 | 8x80
+<%=name%> 0xFEDCBA98   #-RESULT 1 6d<%=code%> 00 | 8x98 | 8xBA | 8xDC | 8xFE
+<%=name%> 0x01234567   #-RESULT 1 6d<%=code%> 00 | 8x67 | 8x45 | 8x23 | 8x01
+<% } %>
+
+#-GROUP Two-arguments unwind instruction
+unwind 0, 0          #-RESULT 1 6x1C 10 | 8x00
+unwind 3, 3          #-RESULT 1 6x1C 10 | 8x33     
+unwind 7, 3          #-RESULT 1 6x1C 10 | 8x73              
+unwind 8, 3          #-RESULT 1 6x1C 10 | 8x83               
+unwind 15, 3         #-RESULT 1 6x1C 10 | 8xF3                 
+unwind 3, 7          #-RESULT 1 6x1C 10 | 8x37                  
+unwind 3, 8          #-RESULT 1 6x1C 10 | 8x38                  
+unwind 3, 15         #-RESULT 1 6x1C 10 | 8x3F                   
+unwind 15, 15        #-RESULT 1 6x1C 10 | 8xFF
+unwind 65536, 3      #-RESULT ERROR
+unwind 3, 65536      #-RESULT ERROR              
+unwind -1, 3         #-RESULT ERROR              
+unwind 3, -1         #-RESULT ERROR                          
