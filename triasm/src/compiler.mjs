@@ -18,7 +18,7 @@ import { AsmFunctions } from './functions.mjs';
 import {
     Block, BlockEnd, EmptyInstr, Assign, SimpleCoreInstruction, DataInstruction,
     AlignInstruction, AddrInstruction, RefInstruction, ReadSpInstruction,
-    BranchInstruction, UnwindInstruction, ReadWriteInstruction
+    BranchInstruction, UnwindInstruction, ReadWriteInstruction, PlaceInstruction
 } from './instructions.mjs'
 
 const MAX_RERUNS = 50;
@@ -29,8 +29,9 @@ class ParserOutput {
         sc: SimpleCoreInstruction,
         rw: ReadWriteInstruction,
         data: DataInstruction,
+        READSP: ReadSpInstruction,
         '.REF': RefInstruction,
-        'READSP': ReadSpInstruction,
+        '.PLACE': PlaceInstruction,
     };
 
     parse(input, compiler, conf) {
@@ -296,11 +297,70 @@ class Compiler {
         this.instructions = po.instructions;
         this.blocks = po.blocks;
         this.rootBlock = po.rootBlock;
+        this.moveBlocks();
         this.resolveBlockDependencies();
-        this.initialAddresses();
+        /*this.initialAddresses();
         this.initialState = false;
         this.generateCode();
-        return this.output.subarray(0, this.addr);
+        return this.output.subarray(0, this.addr);*/
+    }
+
+    moveBlocks() {
+        let buckets = { '': [] };
+        let stack = [''];
+        let places = new Set(['']);
+        let current = buckets[''];
+        for (let instr of this.instructions) {
+            if ((instr instanceof Block) && instr.moveTo !== null) {
+                let name = instr.moveTo;
+                if (!(name in buckets)) {
+                    buckets[name] = [];
+                }
+                stack.push(name);
+                current = buckets[name];
+            } else if (instr instanceof PlaceInstruction) {
+                if (places.has(instr.name)) {
+                    throw new CompilerError(`${instr.lineNumber}: Moveable blocks ${instr.name} already placed!`);
+                }
+                places.add(instr.name);
+            }
+
+            current.push(instr);
+
+            if ((instr instanceof BlockEnd) && instr.block.moveTo !== null) {
+                stack.pop();
+                current = buckets[stack[stack.length - 1]];
+            }
+        }
+        // Throw Parser error if there are any keys in buckets that are not places
+        for (let key in buckets) {
+            if (!places.has(key)) {
+                throw new ParserError(`${this.lineNumber}: Movable block ${key} is not placed anywhere.`);
+            }
+        }
+        // Recursively replace PlaceInstructions in buckets with instructions from bucket with the same name
+        this.instructions = this.replacePlaceInstr(buckets[''], buckets)
+        // Reindex all new instructions
+        for (let i = 0; i < this.instructions.length; i++) {
+            this.instructions[i].index = i;
+        }
+    }
+
+    // Replace PlaceInstructions in buckets with instructions from bucket with the same name
+    replacePlaceInstr(instructions, buckets) {
+        let newInstructions = [];
+        for (let instr of instructions) {
+            if (instr instanceof PlaceInstruction) {
+                let bucket = buckets[instr.name];
+                delete buckets[instr.name];
+                for (let instr of this.replacePlaceInstr(bucket, buckets)) {
+                    newInstructions.push(instr);
+                }
+            } else {
+                newInstructions.push(instr);
+            }
+        }
+        return newInstructions;
     }
 
     resolveBlockDependencies() {
@@ -341,7 +401,8 @@ class Compiler {
     }
 
     initialAddresses() {
-        this.addr = 0;
+        this.vma = 0;
+        this.lma = 0;
         for (let index = 0; index < this.instructions.length; index++) {
             let instr = this.instructions[index];
             if ((instr instanceof Block) && instr.discardable && !instr.used) {
@@ -368,9 +429,12 @@ class Compiler {
                 throw new ParserError('0: Maximum number of generating reruns reached!');
             }
             for (let instr of this.instructions) {
-                instr.oldAddr = instr.addr;
-                instr.addr = undefined;
-                instr.estimatedAddr = undefined;
+                instr.oldVma = instr.vma;
+                instr.vma = undefined;
+                instr.estimatedVma = undefined;
+                instr.oldLma = instr.lma;
+                instr.lma = undefined;
+                instr.estimatedLma = undefined;
             }
             this.postPostponedError = null;
             this.addr = 0;
@@ -418,6 +482,45 @@ class Compiler {
             }
         }
         return value;
+    }
+
+    generate8(data) {
+        if (this.loadEnabled) {
+            this.output[this.lma++] = data & 0xFF;
+        }
+        this.vma++;
+    }
+
+    generate16(data) {
+        if (this.loadEnabled) {
+            this.output[this.lma++] = data & 0xFF;
+            this.output[this.lma++] = (data >> 8) & 0xFF;
+        }
+        this.vma += 2;
+    }
+
+    generate32(data) {
+        if (this.loadEnabled) {
+            this.output[this.lma++] = data & 0xFF;
+            this.output[this.lma++] = (data >> 8) & 0xFF;
+            this.output[this.lma++] = (data >> 16) & 0xFF;
+            this.output[this.lma++] = (data >> 24) & 0xFF;
+        }
+        this.vma += 4;
+    }
+
+    generate64(data) {
+        if (this.loadEnabled) {
+            this.output[this.lma++] = Number(data & 0xFFn);
+            this.output[this.lma++] = Number((data >> 8n) & 0xFFn);
+            this.output[this.lma++] = Number((data >> 16n) & 0xFFn);
+            this.output[this.lma++] = Number((data >> 24n) & 0xFFn);
+            this.output[this.lma++] = Number((data >> 32n) & 0xFFn);
+            this.output[this.lma++] = Number((data >> 40n) & 0xFFn);
+            this.output[this.lma++] = Number((data >> 48n) & 0xFFn);
+            this.output[this.lma++] = Number((data >> 64n) & 0xFFn);
+        }
+        this.vma += 8;
     }
 
 };

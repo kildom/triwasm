@@ -179,7 +179,7 @@ const instrInfoTextTable = `
 ~>   .DATA16        0-    0    -       data    2                                                                                                  
 ~>   .DATA32        0-    0    -       data    4                                                                                                  
 ~>   .DATA64        0-    0    -       data    8                                                                                                  
-~>   .ADDR          1-1   0    -       -       0                                                                                                  
+~>   .ADDR          1-1   0    -       -       0                                                                                                 
 ~>   .ALIGN         1-1   0    -       -       0                                                                                                  
 ~>   .TRAMPOLINE    1-1   0    -       -       0                                                                                                  
 ~>   .REF           0-    0    -       -       0                                                                                                  
@@ -189,18 +189,30 @@ const instrInfoTextTable = `
 ~>   .PRAGMA        -     0    -       -       0                                                                                                  
 ~>   .ASSERT        -     0    -       -       0                                                                                                  
 ~>   .UID           -     0    -       -       0                                                                                                  
+~>   .PLACE         -     0    -       -       0                                                                                                  
+~>   .BASE          1-2   0    -       -       0                                                                                                  
 # .MTABLE unique_id, min_bits, max_bits, signed, ...
 ~>   .MTABLE        4-    0    -       -       0                                                                                                  
 `;
 
 /* TODO: new directives:
 
-.generate id_or_zero, address?, maximum_size?
-e.g.
-    .generate 0 - stop generating
-    .generate 3 - continue generating on the block number 3
-    .generate 3, 0x00000000, 0x1000 - start generating code block 3 starting at 0x0 of size 0x1000
-    .generate 3, 0x00001000 - start generating new code block 3 starting at 0x1000 of size 0xFFFFF000
+.location vma[, pma]
+
+x = addr() - current Virtual Memory Address
+x = pma(addr()) - current Program Memory Address
+x = lma(addr()) - current Load Memory Address
+
+.addr x - set VMA
+
+.begin moveable data_section - generator when reaches this block skips it always.
+                               parser adds to this directive link pointing the next
+                               movable block with the same name.
+.end - when generator reaches this instruction jumps to the next block with this name
+       (stored in begin). If there is none then it pops return index (next instruction after .place)
+.place data_section - when generator reaches this instruction, pushes next instruction index to
+                      return stack and jumps to content of the first block of that name
+                      (except blocks that has parent "discardable" and not "used").
 
 .if .single_memory
     .ref force_const(.single_memory) ? __block_then__238923894723 : __block_else__238923894723

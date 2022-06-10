@@ -88,12 +88,20 @@ class Block extends InstrBase {
         super(compiler, lineNumber, index, null);
         this.block = block;
         this.discardable = false;
+        this.moveTo = null;
         this.end = null;
         this.locals = {};
         this.deps = new Set();
-        switch (args.toUpperCase()) {
+        let [blockType, blockArgs] = args.split(/\s+/, 2);
+        blockArgs = blockArgs.trim();
+        switch (blockType.toUpperCase()) {
             case 'DISCARDABLE':
+                if (blockArgs != '') throw new ParserError(`${this.lineNumber}: Unexpected string after DISCARDABLE.`);
                 this.discardable = true;
+                break;
+            case 'MOVABLE':
+                if (blockArgs == '') throw new ParserError(`${this.lineNumber}: Destination name expected.`);
+                this.moveTo = blockArgs;
                 break;
             case '':
                 // nothing to do
@@ -548,4 +556,16 @@ class ReadSpInstruction extends InstrBase {
     }
 };
 
-export { ExprCycleError, Block, BlockEnd, EmptyInstr, Assign, SimpleCoreInstruction, DataInstruction, AlignInstruction, AddrInstruction, RefInstruction, ReadSpInstruction, BranchInstruction, ReadWriteInstruction };
+class PlaceInstruction extends InstrBase {
+    constructor(compiler, lineNumber, index, info, args, base) {
+        super(compiler, lineNumber, index, info);
+        this.name = args.trim();
+        if (this.name = '') throw new ParserError(`${this.lineNumber}: Expecting name.`);
+    }
+};
+
+export {
+    ExprCycleError, Block, BlockEnd, EmptyInstr, Assign, SimpleCoreInstruction, DataInstruction,
+    AlignInstruction, AddrInstruction, RefInstruction, ReadSpInstruction, BranchInstruction,
+    ReadWriteInstruction, PlaceInstruction
+};

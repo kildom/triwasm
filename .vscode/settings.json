@@ -18,6 +18,7 @@
         "instrs",
         "memsec",
         "memtype",
+        "READSP",
         "rotr",
         "sleb",
         "startsec",

@@ -43,13 +43,30 @@ class AsmFunctions {
             ctx.invalid = true;
             return 0n;
         } else {
-            if (instr.addr !== undefined) {
-                return BigInt(instr.addr);
+            if (instr.vma !== undefined) {
+                return BigInt(instr.vma);
             } else {
-                if (instr.estimatedAddr === undefined) {
-                    instr.estimatedAddr = Math.max(instr.oldAddr, instr.compiler.addr);
+                if (instr.estimatedVma === undefined) {
+                    instr.estimatedVma = Math.max(instr.oldVma, instr.compiler.vma);
                 }
-                return BigInt(Math.max(instr.estimatedAddr, instr.compiler.addr));
+                return BigInt(Math.max(instr.estimatedVma, instr.compiler.vma));
+            }
+        }
+    }
+
+    static func_lma(ctx) {
+        let instr = ctx.instr;
+        if (instr.compiler.initialState) {
+            ctx.invalid = true;
+            return 0n;
+        } else {
+            if (instr.lma !== undefined) {
+                return BigInt(instr.lma);
+            } else {
+                if (instr.estimatedLma === undefined) {
+                    instr.estimatedLma = Math.max(instr.oldLma, instr.compiler.lma);
+                }
+                return BigInt(Math.max(instr.estimatedLma, instr.compiler.lma));
             }
         }
     }
