@@ -74,3 +74,25 @@ const System = (function() {
 System.__execute__();
 
 ```
+
+```JavaScript
+{
+	"files": [
+		"SystemRegisterBegin.js",
+		"triasm.mts",
+		"SystemRegisterEnd.js"
+	],
+	"compilerOptions": {
+		"target": "es2016", /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
+		"module": "system", /* Specify what module code is generated. */
+		"allowJs": true,                                  /* Allow JavaScript files to be a part of your program. Use the 'checkJS' option to get errors from these files. */
+		"sourceMap": true,                                /* Create source map files for emitted JavaScript files. */
+		"outFile": "triasm.js", /* Specify a file that bundles all outputs into one JavaScript file. If 'declaration' is true, also designates a file that bundles all .d.ts output. */
+		"removeComments": true,                           /* Disable emitting comments. */
+		"esModuleInterop": true, /* Emit additional JavaScript to ease support for importing CommonJS modules. This enables 'allowSyntheticDefaultImports' for type compatibility. */
+		"forceConsistentCasingInFileNames": true, /* Ensure that casing is correct in imports. */
+		"strict": true, /* Enable all strict type-checking options. */
+		"skipLibCheck": true /* Skip type checking all .d.ts files. */
+	}
+}
+```
