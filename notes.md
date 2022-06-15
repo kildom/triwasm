@@ -494,6 +494,8 @@ trivm-sdk
 
 # Idea for mjs modules amalgamation
 
+For TypeScript it is better to allow `tcs` to merge modules and add custom `System.register` function line in [triasm/notes.md](triasm/notes.md)
+
 Tool name: **mjsAmalgamation**
 
 ```js
