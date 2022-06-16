@@ -90,27 +90,31 @@ convert them to signed integers, perform the operation and then convert the resu
 
 ### Operators
 
-|Precedence|Operator|Associativity|
-|----------|--------------|---|
-| 0 | a() *- function call* | n/a |
-| 1 | +a &nbsp; -a &nbsp; !a &nbsp; ~a | Right-to-left ← |
-| 2 | a*b &nbsp; a/b &nbsp; a%b | Left-to-right →  |
-| 3 | a+b &nbsp; a-b | Left-to-right →  |
-| 4 | a&lt;&lt;b &nbsp; a>>b | Left-to-right →  |
-| 5 | a&lt;b &nbsp; a>b &nbsp; a&lt;=b &nbsp; a>=b | Left-to-right →  |
-| 6 | a==b &nbsp; a!=b | Left-to-right →  |
-| 7 | a&amp;b | Left-to-right →  |
-| 8 | a^b | Left-to-right →  |
-| 9 | a\|b | Left-to-right →  |
-| 10 | a&amp;&amp;b | Left-to-right →  |
-| 11 | a\|\|b | Left-to-right →  |
-| 12 | a?b:c | Right-to-left ← |
+|Precedence|Operator                                      | Associativity   |
+|----------|----------------------------------------------|-----------------|
+|        0 | f(...)                                       | n/a             |
+|        1 | +a &nbsp; -a &nbsp; !a &nbsp; ~a             | Right-to-left ← |
+|        2 | a*b &nbsp; a/b &nbsp; a%b                    | Left-to-right → |
+|        3 | a+b &nbsp; a-b                               | Left-to-right → |
+|        4 | a&lt;&lt;b &nbsp; a>>b                       | Left-to-right → |
+|        5 | a&lt;b &nbsp; a>b &nbsp; a&lt;=b &nbsp; a>=b | Left-to-right → |
+|        6 | a==b &nbsp; a!=b                             | Left-to-right → |
+|        7 | a&amp;b                                      | Left-to-right → |
+|        8 | a^b                                          | Left-to-right → |
+|        9 | a\|b                                         | Left-to-right → |
+|       10 | a&amp;&amp;b                                 | Left-to-right → |
+|       11 | a\|\|b                                       | Left-to-right → |
+|       12 | a?b:c                                        | Right-to-left ← |
 
 The operators that returns boolean result (`!`, `<`, `>`, `<=`, `>=`, `==`, `!=`) return 0 for false and 1 for true.
+The operators that takes boolean operands (`!`, `?:`, `&&`, `||`) assumes that the operands are 0 for false and non-zero for true.
 
-In shifting operators, if the shift amount is greater than 64, the result is zero.
+The `a&&b` operator returns zero if `a` is zero, otherwise returns the value of `b`.
+The `a||b` operator returns `a` if `a` is non-zero, otherwise returns the value of `b`.
 
-In the ternary operator `a?b:c`, if the condition `a` is known during resolving the references, one of the two results `b` or `c` is never evaluated.
+In shifting operators (`<<`, `>>`), if the shift amount is greater than 63, the result is zero.
+
+In the ternary operator `a?b:c` and boolean operators `a||b`, `a&&b`, if the operand `a` is known during resolving the references, other operands may be never evaluated.
 This have significant implications during discarding unused blocks.
 
 ### Literals

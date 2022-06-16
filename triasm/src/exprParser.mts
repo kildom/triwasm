@@ -12,119 +12,72 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/*
-Expression parser output object methods:
-    onParserTernaryExpr(cond, a, b);
-    onParserOrExpr(a, b);
-    onParserAndExpr(a, b);
-    onParserBitOrExpr(a, b);
-    onParserBitXorExpr(a, b);
-    onParserBitAndExpr(a, b);
-    onParserEqExpr(a, b);
-    onParserNeExpr(a, b);
-    onParserLtExpr(a, b);
-    onParserGtExpr(a, b);
-    onParserLeExpr(a, b);
-    onParserGeExpr(a, b);
-    onParserShlExpr(a, b);
-    onParserShrExpr(a, b);
-    onParserAddExpr(a, b);
-    onParserSubExpr(a, b);
-    onParserMulExpr(a, b);
-    onParserDivExpr(a, b);
-    onParserModExpr(a, b);
-    onParserMinusExpr(a);
-    onParserNotExpr(a);
-    onParserBitNotExpr(a);
-    onParserNumberExpr(valueStr);
-    onParserCallExpr(name, args);
-    onParserIdExpr(name);
-*/
+import { reMatchAll } from './utils.mjs';
 
-
-class ExprParserError extends Error {
-    constructor(message) {
+export class ExprParserError extends Error {
+    constructor(message: string) {
         super(message);
         this.name = "ExprParserError";
     }
 };
 
-const TOKEN_END = 0;
-const TOKEN_ID = 3;
-const TOKEN_NUMBER = 5;
-const TOKEN_BIT_NOT = 6;
-const TOKEN_NOT = 7;
-const TOKEN_MOD = 8;
-const TOKEN_DIV = 9;
-const TOKEN_MUL = 10;
-const TOKEN_OPEN = 11;
-const TOKEN_CLOSE = 12;
-const TOKEN_SUB = 13;
-const TOKEN_ADD = 14;
-const TOKEN_COMMA = 15;
-const TOKEN_COLON = 16;
-const TOKEN_QUESTION = 18;
-const TOKEN_BIT_OR = 19;
-const TOKEN_BIT_XOR = 20;
-const TOKEN_BIT_AND = 21;
-const TOKEN_LT = 22;
-const TOKEN_GT = 23;
-const TOKEN_SHL = 24;
-const TOKEN_SHR = 25;
-const TOKEN_LE = 26;
-const TOKEN_GE = 27;
-const TOKEN_OR = 28;
-const TOKEN_AND = 29;
-const TOKEN_EQ = 30;
-const TOKEN_NE = 31;
+enum TOKEN {
+    END, ID, NUMBER, BIT_NOT, NOT, MOD, DIV, MUL, OPEN, CLOSE, SUB, ADD, COMMA, COLON,
+    QUESTION, BIT_OR, BIT_XOR, BIT_AND, LT, GT, SHL, SHR, LE, GE, OR, AND, EQ, NE,
+};
 
 
 const oneCharTokenMap = {
-    '~': TOKEN_BIT_NOT,
-    '!': TOKEN_NOT,
-    '%': TOKEN_MOD,
-    '/': TOKEN_DIV,
-    '*': TOKEN_MUL,
-    '(': TOKEN_OPEN,
-    ')': TOKEN_CLOSE,
-    '-': TOKEN_SUB,
-    '+': TOKEN_ADD,
-    ',': TOKEN_COMMA,
-    ':': TOKEN_COLON,
-    '?': TOKEN_QUESTION,
-    '|': TOKEN_BIT_OR,
-    '^': TOKEN_BIT_XOR,
-    '&': TOKEN_BIT_AND,
-    '<': TOKEN_LT,
-    '>': TOKEN_GT,
+    '~': TOKEN.BIT_NOT,
+    '!': TOKEN.NOT,
+    '%': TOKEN.MOD,
+    '/': TOKEN.DIV,
+    '*': TOKEN.MUL,
+    '(': TOKEN.OPEN,
+    ')': TOKEN.CLOSE,
+    '-': TOKEN.SUB,
+    '+': TOKEN.ADD,
+    ',': TOKEN.COMMA,
+    ':': TOKEN.COLON,
+    '?': TOKEN.QUESTION,
+    '|': TOKEN.BIT_OR,
+    '^': TOKEN.BIT_XOR,
+    '&': TOKEN.BIT_AND,
+    '<': TOKEN.LT,
+    '>': TOKEN.GT,
 };
 
 
 const twoCharsTokenMap = {
-    '<<': TOKEN_SHL,
-    '>>': TOKEN_SHR,
-    '<=': TOKEN_LE,
-    '>=': TOKEN_GE,
-    '||': TOKEN_OR,
-    '&&': TOKEN_AND,
-    '==': TOKEN_EQ,
-    '!=': TOKEN_NE,
+    '<<': TOKEN.SHL,
+    '>>': TOKEN.SHR,
+    '<=': TOKEN.LE,
+    '>=': TOKEN.GE,
+    '||': TOKEN.OR,
+    '&&': TOKEN.AND,
+    '==': TOKEN.EQ,
+    '!=': TOKEN.NE,
 };
 
 const reToken = /(?:([a-z_\$@\.][a-z_\$@\.0-9]*)|(<<|>>|<=|>=|\|\||&&|==|!=)|([~!%/\*\(\)\-\+,:=\?\|\^&<>])|(0x[0-9a-f]+)|(0o[0-7]+)|([0-9]+))[\t ]*/gi
 
-function tokenize(input) {
-    let result = [];
+interface Token {
+    id: number;
+    value?: string;
+};
+
+function tokenize(input: string) : Token[] {
+    let result: Token[] = [];
     input = input.trim();
     let offset = 0;
-    for (let m of input.matchAll(reToken)) {
+    for (let m of reMatchAll(reToken, input)) {
         if (input.substring(offset, m.index).trim() !== '') {
             throw new ExprParserError(`Syntax error!`);
         }
         offset = m.index + m[0].length;
         if (m[1] !== undefined) {
             result.push({
-                id: TOKEN_ID,
+                id: TOKEN.ID,
                 value: m[1],
             });
         } else if (m[2] !== undefined) {
@@ -137,35 +90,70 @@ function tokenize(input) {
             });
         } else if (m[4] || m[5] || m[6]) {
             result.push({
-                id: TOKEN_NUMBER, value: m[4] || m[5] || m[6]
+                id: TOKEN.NUMBER, value: m[4] || m[5] || m[6]
             });
         }
     }
     result.push({
-        id: TOKEN_END
+        id: TOKEN.END
     });
     return result;
 }
 
-class ExprParser {
-    constructor(outputObject) {
+export interface OutputObject {
+    onParserTernaryExpr(cond: any, a: any, b: any): any;
+    onParserOrExpr(a: any, b: any): any;
+    onParserAndExpr(a: any, b: any): any;
+    onParserBitOrExpr(a: any, b: any): any;
+    onParserBitXorExpr(a: any, b: any): any;
+    onParserBitAndExpr(a: any, b: any): any;
+    onParserEqExpr(a: any, b: any): any;
+    onParserNeExpr(a: any, b: any): any;
+    onParserLtExpr(a: any, b: any): any;
+    onParserGtExpr(a: any, b: any): any;
+    onParserLeExpr(a: any, b: any): any;
+    onParserGeExpr(a: any, b: any): any;
+    onParserShlExpr(a: any, b: any): any;
+    onParserShrExpr(a: any, b: any): any;
+    onParserAddExpr(a: any, b: any): any;
+    onParserSubExpr(a: any, b: any): any;
+    onParserMulExpr(a: any, b: any): any;
+    onParserDivExpr(a: any, b: any): any;
+    onParserModExpr(a: any, b: any): any;
+    onParserMinusExpr(a: any): any;
+    onParserNotExpr(a: any): any;
+    onParserBitNotExpr(a: any): any;
+    onParserNumberExpr(valueStr: string): any;
+    onParserCallExpr(name: string, args: any[]): any;
+    onParserIdExpr(name: string): any;
+};
+
+
+export class ExprParser {
+    outputObject: OutputObject;
+    tokens: Token[];
+    tokenIndex: number;
+    tokenId: number;
+    tokenValue: string | undefined;
+
+    constructor(outputObject: OutputObject) {
         this.outputObject = outputObject;
     }
 
-    parse(input) {
+    parse(input: string): any[] {
         this.tokens = tokenize(input);
         this.tokenIndex = 0;
         this.tokenId = this.tokens[0].id;
         this.tokenValue = this.tokens[0].value;
         let result = this.parseArgs();
-        if (this.tokenId != TOKEN_END) {
+        if (this.tokenId != TOKEN.END) {
             throw new ExprParserError('Unexpected token!');
         }
         return result;
     }
 
-    consume() {
-        if (this.tokenId == TOKEN_END) {
+    consume(): void {
+        if (this.tokenId == TOKEN.END) {
             throw new ExprParserError('Unexpected end of expression!');
         }
         this.tokenIndex++;
@@ -173,15 +161,15 @@ class ExprParser {
         this.tokenValue = this.tokens[this.tokenIndex].value;
     }
 
-    parseArgs() {
-        let result = [];
+    parseArgs(): any[] {
+        let result: any[] = [];
         do {
-            if (this.tokenId == TOKEN_END || this.tokenId == TOKEN_COMMA || this.tokenId == TOKEN_CLOSE) {
+            if (this.tokenId == TOKEN.END || this.tokenId == TOKEN.COMMA || this.tokenId == TOKEN.CLOSE) {
                 break;
             }
             let expr = this.parseExpr();
             result.push(expr);
-            if (this.tokenId != TOKEN_COMMA) {
+            if (this.tokenId != TOKEN.COMMA) {
                 break;
             } else {
                 this.consume();
@@ -191,16 +179,16 @@ class ExprParser {
         return result;
     }
 
-    parseExpr() {
+    parseExpr(): any {
         return this.parseTernaryExpr();
     }
 
-    parseTernaryExpr() {
+    parseTernaryExpr(): any {
         let first = this.parseOrExpr();
-        if (this.tokenId == TOKEN_QUESTION) {
+        if (this.tokenId == TOKEN.QUESTION) {
             this.consume();
             let second = this.parseTernaryExpr();
-            if (this.tokenId != TOKEN_COLON) {
+            if (this.tokenId as number != TOKEN.COLON) {
                 throw new ExprParserError(`Expecting ":"!`);
             }
             this.consume();
@@ -211,58 +199,58 @@ class ExprParser {
         }
     }
 
-    parseOrExpr() {
+    parseOrExpr(): any {
         let result = this.parseAndExpr();
-        while (this.tokenId == TOKEN_OR) {
+        while (this.tokenId == TOKEN.OR) {
             this.consume();
             result = this.outputObject.onParserOrExpr(result, this.parseAndExpr());
         }
         return result;
     }
 
-    parseAndExpr() {
+    parseAndExpr(): any {
         let result = this.parseBitOrExpr();
-        while (this.tokenId == TOKEN_AND) {
+        while (this.tokenId == TOKEN.AND) {
             this.consume();
             result = this.outputObject.onParserAndExpr(result, this.parseBitOrExpr());
         }
         return result;
     }
 
-    parseBitOrExpr() {
+    parseBitOrExpr(): any {
         let result = this.parseBitXorExpr();
-        while (this.tokenId == TOKEN_BIT_OR) {
+        while (this.tokenId == TOKEN.BIT_OR) {
             this.consume();
             result = this.outputObject.onParserBitOrExpr(result, this.parseBitXorExpr());
         }
         return result;
     }
 
-    parseBitXorExpr() {
+    parseBitXorExpr(): any {
         let result = this.parseBitAndExpr();
-        while (this.tokenId == TOKEN_BIT_XOR) {
+        while (this.tokenId == TOKEN.BIT_XOR) {
             this.consume();
             result = this.outputObject.onParserBitXorExpr(result, this.parseBitAndExpr());
         }
         return result;
     }
 
-    parseBitAndExpr() {
+    parseBitAndExpr(): any {
         let result = this.parseEqNeExpr();
-        while (this.tokenId == TOKEN_BIT_AND) {
+        while (this.tokenId == TOKEN.BIT_AND) {
             this.consume();
             result = this.outputObject.onParserBitAndExpr(result, this.parseEqNeExpr());
         }
         return result;
     }
 
-    parseEqNeExpr() {
+    parseEqNeExpr(): any {
         let result = this.parseRelExpr();
         while (true) {
-            if (this.tokenId == TOKEN_EQ) {
+            if (this.tokenId == TOKEN.EQ) {
                 this.consume();
                 result = this.outputObject.onParserEqExpr(result, this.parseRelExpr());
-            } else if (this.tokenId == TOKEN_NE) {
+            } else if (this.tokenId == TOKEN.NE) {
                 this.consume();
                 result = this.outputObject.onParserNeExpr(result, this.parseRelExpr());
             } else {
@@ -272,19 +260,19 @@ class ExprParser {
         return result;
     }
 
-    parseRelExpr() {
+    parseRelExpr(): any {
         let result = this.parseShiftExpr();
         while (true) {
-            if (this.tokenId == TOKEN_LT) {
+            if (this.tokenId == TOKEN.LT) {
                 this.consume();
                 result = this.outputObject.onParserLtExpr(result, this.parseShiftExpr());
-            } else if (this.tokenId == TOKEN_GT) {
+            } else if (this.tokenId == TOKEN.GT) {
                 this.consume();
                 result = this.outputObject.onParserGtExpr(result, this.parseShiftExpr());
-            } else if (this.tokenId == TOKEN_LE) {
+            } else if (this.tokenId == TOKEN.LE) {
                 this.consume();
                 result = this.outputObject.onParserLeExpr(result, this.parseShiftExpr());
-            } else if (this.tokenId == TOKEN_GE) {
+            } else if (this.tokenId == TOKEN.GE) {
                 this.consume();
                 result = this.outputObject.onParserGeExpr(result, this.parseShiftExpr());
             } else {
@@ -294,13 +282,13 @@ class ExprParser {
         return result;
     }
 
-    parseShiftExpr() {
+    parseShiftExpr(): any {
         let result = this.parseAddSubExpr();
         while (true) {
-            if (this.tokenId == TOKEN_SHL) {
+            if (this.tokenId == TOKEN.SHL) {
                 this.consume();
                 result = this.outputObject.onParserShlExpr(result, this.parseAddSubExpr());
-            } else if (this.tokenId == TOKEN_SHR) {
+            } else if (this.tokenId == TOKEN.SHR) {
                 this.consume();
                 result = this.outputObject.onParserShrExpr(result, this.parseAddSubExpr());
             } else {
@@ -310,13 +298,13 @@ class ExprParser {
         return result;
     }
 
-    parseAddSubExpr() {
+    parseAddSubExpr(): any {
         let result = this.parseMulDivModExpr();
         while (true) {
-            if (this.tokenId == TOKEN_ADD) {
+            if (this.tokenId == TOKEN.ADD) {
                 this.consume();
                 result = this.outputObject.onParserAddExpr(result, this.parseMulDivModExpr());
-            } else if (this.tokenId == TOKEN_SUB) {
+            } else if (this.tokenId == TOKEN.SUB) {
                 this.consume();
                 result = this.outputObject.onParserSubExpr(result, this.parseMulDivModExpr());
             } else {
@@ -326,16 +314,16 @@ class ExprParser {
         return result;
     }
 
-    parseMulDivModExpr() {
+    parseMulDivModExpr(): any {
         let result = this.parseUnaryExpr();
         while (true) {
-            if (this.tokenId == TOKEN_MUL) {
+            if (this.tokenId == TOKEN.MUL) {
                 this.consume();
                 result = this.outputObject.onParserMulExpr(result, this.parseUnaryExpr());
-            } else if (this.tokenId == TOKEN_DIV) {
+            } else if (this.tokenId == TOKEN.DIV) {
                 this.consume();
                 result = this.outputObject.onParserDivExpr(result, this.parseUnaryExpr());
-            } else if (this.tokenId == TOKEN_MOD) {
+            } else if (this.tokenId == TOKEN.MOD) {
                 this.consume();
                 result = this.outputObject.onParserModExpr(result, this.parseUnaryExpr());
             } else {
@@ -345,42 +333,42 @@ class ExprParser {
         return result;
     }
 
-    parseUnaryExpr() {
-        if (this.tokenId == TOKEN_SUB) {
+    parseUnaryExpr(): any {
+        if (this.tokenId == TOKEN.SUB) {
             this.consume();
             return this.outputObject.onParserMinusExpr(this.parseUnaryExpr());
-        } else if (this.tokenId == TOKEN_ADD) {
+        } else if (this.tokenId == TOKEN.ADD) {
             this.consume();
             return this.parseUnaryExpr();
-        } else if (this.tokenId == TOKEN_NOT) {
+        } else if (this.tokenId == TOKEN.NOT) {
             this.consume();
             return this.outputObject.onParserNotExpr(this.parseUnaryExpr());
-        } else if (this.tokenId == TOKEN_BIT_NOT) {
+        } else if (this.tokenId == TOKEN.BIT_NOT) {
             this.consume();
             return this.outputObject.onParserBitNotExpr(this.parseUnaryExpr());
         }
         return this.parseTerminalExpr();
     }
 
-    parseTerminalExpr() {
-        let result;
-        if (this.tokenId == TOKEN_OPEN) {
+    parseTerminalExpr(): any {
+        let result: any;
+        if (this.tokenId == TOKEN.OPEN) {
             this.consume();
             result = this.parseExpr();
-            if (this.tokenId != TOKEN_CLOSE) {
+            if (this.tokenId as number  != TOKEN.CLOSE) {
                 throw new ExprParserError('Missing closing bracket!');
             }
             this.consume();
-        } else if (this.tokenId == TOKEN_NUMBER) {
-            result = this.outputObject.onParserNumberExpr(this.tokenValue);
+        } else if (this.tokenId == TOKEN.NUMBER) {
+            result = this.outputObject.onParserNumberExpr(this.tokenValue as string);
             this.consume();
-        } else if (this.tokenId == TOKEN_ID) {
-            let id = this.tokenValue;
+        } else if (this.tokenId == TOKEN.ID) {
+            let id = this.tokenValue as string;
             this.consume();
-            if (this.tokenId == TOKEN_OPEN) {
+            if (this.tokenId as number == TOKEN.OPEN) {
                 this.consume();
                 let args = this.parseArgs();
-                if (this.tokenId != TOKEN_CLOSE) {
+                if (this.tokenId as number  != TOKEN.CLOSE) {
                     throw new ExprParserError('Missing closing bracket!');
                 }
                 this.consume();
@@ -396,5 +384,3 @@ class ExprParser {
 
 };
 
-
-export { ExprParser, ExprParserError };
