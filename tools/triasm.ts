@@ -1,3 +1,2 @@
 
-
-console.log('OK');
+console.log('triasm');

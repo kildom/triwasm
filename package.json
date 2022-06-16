@@ -4,15 +4,22 @@
   "version": "0.0.1",
   "description": "SDK for triVM",
   "scripts": {
+    "prebuild-triasm": "npx ncp tools/bin/starter.bat dist/bin/triasm.bat && npx ncp tools/bin/starter.sh dist/bin/triasm",
     "build-triasm": "npx tsc -p build/triasm.tsconfig.json",
+    "prebuild-triwasm": "npx ncp tools/bin/starter.bat dist/bin/triwasm.bat && npx ncp tools/bin/starter.sh dist/bin/triwasm",
     "build-triwasm": "npx tsc -p build/triwasm.tsconfig.json",
-    "build": "npm run build-triasm && npm run build-triwasm"
+    "prebuild-tricc": "npx ncp tools/bin/starter.bat dist/bin/tricc.bat && npx ncp tools/bin/starter.sh dist/bin/tricc",
+    "build-tricc": "npx tsc -p build/tricc.tsconfig.json",
+    "prebuild-triconf": "npx ncp tools/bin/starter.bat dist/bin/triconf.bat && npx ncp tools/bin/starter.sh dist/bin/triconf",
+    "build-triconf": "npx tsc -p build/triconf.tsconfig.json",
+    "build": "npm run build-triasm && npm run build-triwasm && npm run build-tricc && npm run build-triconf"
   },
   "author": "Dominik Kilian <kontakt@dominik.cc>",
   "license": "GPL-3.0",
   "devDependencies": {
-    "typescript": "^4.7.3",
     "extract-zip": "^2.0.1",
+    "ncp": "^2.0.0",
+    "typescript": "^4.7.3",
     "xml2js": "^0.4.23"
   }
 }
