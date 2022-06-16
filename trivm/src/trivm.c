@@ -1,0 +1,783 @@
+
+#include <stdint.h>
+#include <string.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <math.h>
+
+#include "trivm.h"
+
+
+/* =========================================== Config defaults and fixups =========================================== */
+
+#ifndef TRIVM_EXT_UNWIND
+#define TRIVM_EXT_UNWIND                        0
+#endif
+#ifndef TRIVM_EXT_MEM64
+#define TRIVM_EXT_MEM64                         0
+#endif
+#ifndef TRIVM_EXT_INT64
+#define TRIVM_EXT_INT64                         0
+#endif
+#ifndef TRIVM_EXT_FLOAT32
+#define TRIVM_EXT_FLOAT32                       0
+#endif
+#ifndef TRIVM_EXT_FLOAT64
+#define TRIVM_EXT_FLOAT64                       0
+#endif
+#ifndef TRIVM_ENABLE_STDLIB
+#define TRIVM_ENABLE_STDLIB                     1
+#endif
+#ifndef TRIVM_ENABLE_ALL_FAULTS
+#define TRIVM_ENABLE_ALL_FAULTS                 0
+#endif
+#ifndef TRIVM_ENABLE_FAULT_INSTR_OUT_OF_BOUNDS
+#define TRIVM_ENABLE_FAULT_INSTR_OUT_OF_BOUNDS  0
+#endif
+#ifndef TRIVM_ENABLE_FAULT_INSTR_INVALID
+#define TRIVM_ENABLE_FAULT_INSTR_INVALID        0
+#endif
+#ifndef TRIVM_ENABLE_FAULT_ACCESS_OUT_OF_BOUNDS
+#define TRIVM_ENABLE_FAULT_ACCESS_OUT_OF_BOUNDS 0
+#endif
+#ifndef TRIVM_ENABLE_FAULT_READ_ONLY
+#define TRIVM_ENABLE_FAULT_READ_ONLY            0
+#endif
+#ifndef TRIVM_ENABLE_FAULT_DIVISION_BY_ZERO
+#define TRIVM_ENABLE_FAULT_DIVISION_BY_ZERO     0
+#endif
+#ifndef TRIVM_ENABLE_FAULT_STACK_OVERFLOW
+#define TRIVM_ENABLE_FAULT_STACK_OVERFLOW       0
+#endif
+#ifndef TRIVM_ENABLE_FAULT_STACK_UNDERFLOW
+#define TRIVM_ENABLE_FAULT_STACK_UNDERFLOW      0
+#endif
+#ifndef TRIVM_ENABLE_FAULT_AUX_STACK_OVERFLOW
+#define TRIVM_ENABLE_FAULT_AUX_STACK_OVERFLOW   0
+#endif
+#ifndef TRIVM_ENABLE_FAULT_AUX_STACK_UNDERFLOW
+#define TRIVM_ENABLE_FAULT_AUX_STACK_UNDERFLOW  0
+#endif
+
+#if TRIVM_ENABLE_ALL_FAULTS
+#undef TRIVM_ENABLE_FAULT_INSTR_OUT_OF_BOUNDS
+#undef TRIVM_ENABLE_FAULT_INSTR_INVALID
+#undef TRIVM_ENABLE_FAULT_ACCESS_OUT_OF_BOUNDS
+#undef TRIVM_ENABLE_FAULT_READ_ONLY
+#undef TRIVM_ENABLE_FAULT_DIVISION_BY_ZERO
+#undef TRIVM_ENABLE_FAULT_STACK_OVERFLOW
+#undef TRIVM_ENABLE_FAULT_STACK_UNDERFLOW
+#undef TRIVM_ENABLE_FAULT_AUX_STACK_OVERFLOW
+#undef TRIVM_ENABLE_FAULT_AUX_STACK_UNDERFLOW
+#define TRIVM_ENABLE_FAULT_INSTR_OUT_OF_BOUNDS  1
+#define TRIVM_ENABLE_FAULT_INSTR_INVALID        1
+#define TRIVM_ENABLE_FAULT_ACCESS_OUT_OF_BOUNDS 1
+#define TRIVM_ENABLE_FAULT_READ_ONLY            1
+#define TRIVM_ENABLE_FAULT_DIVISION_BY_ZERO     1
+#define TRIVM_ENABLE_FAULT_STACK_OVERFLOW       1
+#define TRIVM_ENABLE_FAULT_STACK_UNDERFLOW      1
+#define TRIVM_ENABLE_FAULT_AUX_STACK_OVERFLOW   1
+#define TRIVM_ENABLE_FAULT_AUX_STACK_UNDERFLOW  1
+#endif
+
+
+/* ============================================ Include operations tree ============================================= */
+
+#include "trivm_op_tree.h"
+
+
+/* ================================================== Fault types =================================================== */
+
+#define TRIVM_FAULT_INSTR_OUT_OF_BOUNDS  0
+#define TRIVM_FAULT_INSTR_INVALID        1
+#define TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS 2
+#define TRIVM_FAULT_READ_ONLY            3
+#define TRIVM_FAULT_DIVISION_BY_ZERO     4
+#define TRIVM_FAULT_STACK_OVERFLOW       5
+#define TRIVM_FAULT_STACK_UNDERFLOW      6
+#define TRIVM_FAULT_AUX_STACK_OVERFLOW   7
+#define TRIVM_FAULT_AUX_STACK_UNDERFLOW  8
+
+
+/* =============================================== Build-time checks ================================================ */
+
+#if (TRIVM_TREE_CORE_LAST_TWO_ARGS >= TRIVM_TREE_ADV32_FIRST_ONE_ARG) || \
+    (TRIVM_TREE_ADV32_LAST_TWO_ARGS >= TRIVM_TREE_CORE_FIRST_ONE_ARG)
+#error TREE_CORE and TREE_ADV32 shares the same op code limit where 1-arg instr starts, so they have to be aligned.
+#endif
+
+// TODO: more build-time checks
+
+
+/* ================================================ Utility defines ================================================= */
+
+#define WORD_SIZE 4
+#define TOTAL_REGISTERS 11
+
+#define STARTUP_ENTRY_OFFSET (TRIVM_ENABLE_ROM ? 0 : (WORD_SIZE * TOTAL_REGISTERS))
+#define FAULT_ENTRY_OFFSET (3 + STARTUP_ENTRY_OFFSET)
+
+#define TWO_BYTE_INSTR_ENABLED (TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT32 || TRIVM_EXT_FLOAT64)
+#define ADV32_TREE_ENABLED TRIVM_EXT_FLOAT32
+#define ADV64_TREE_ENABLED (TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)
+
+#if defined(__GNUC__)
+/* In some cases, more size-optimal code is generated when a function is not inlined. */
+#define NO_INLINE __attribute__((noinline))
+#else
+#define NO_INLINE
+#endif
+
+
+/* ========================================== Instruction encoding defines ========================================== */
+
+#define CODE_MAX_SIZE 10               /* Maximum instruction size in bytes  */
+
+#define CODE_INSTR (1 << 7)            /* Flag indivating ordinary (not memory access ) instruction */
+
+#define CODE_INSTR_ARG_MASK 3          /* Mask with instruction argument type */
+#define CODE_INSTR_OP_MASK 0x7C        /* Mask with instruction op-code */
+
+#define CODE_INSTR_OP_MASK_ADV 0x78    /* Mask that indicates advanced (TODO: rename) instruction */
+
+#define CODE_INSTR_ARG_4B 0
+#define CODE_INSTR_ARG_2B 1
+#define CODE_INSTR_ARG_1B 2
+#define CODE_INSTR_ARG_POP 3
+
+#define CODE_LONG_RES 0x0004
+#define CODE_LONG_ARG0 0x8000
+#define CODE_LONG_ARG1 0x4000
+
+#define CODE_MEM_BASE1_BIT 6
+#define CODE_MEM_BASE1 (1 << 6)
+#define CODE_MEM_BASE0 (1 << 5)
+#define CODE_MEM_WRITE_FLAG (1 << 4)
+#define CODE_MEM_POP (1 << 3)
+#define CODE_MEM_ARGS (1 << 2)
+#define CODE_MEM_OFFSET_MASK 3
+
+#define CODE_MEM_MODE_BYTE (1 << 2)
+#define CODE_MEM_MODE_SIGN_EXT (1 << 1)
+#define CODE_MEM_MODE_NON64 (1 << 1)
+#define CODE_MEM_MODE_NON32 (1 << 0)
+
+
+/* ================================================ Fault triggering ================================================ */
+
+#define TRIGGER_FAULT_WITH_CODE(type, code, ...) do \
+	{ \
+		if (TRIVM_ENABLE_FAULT_##type) \
+		{ \
+			/*> FAULT: " #type ", code={code}, addr={vm->pc}# */ \
+			trigger_fault_with_code(vm, (TRIVM_FAULT_##type), (code)); \
+			__VA_ARGS__; \
+		} else { \
+			/*> IGNORED FAULT: " #type ", code={code}, addr={vm->pc}# */ \
+		} \
+	} while (0)
+
+#define TRIGGER_FAULT(type, ...) do \
+	{ \
+		if (TRIVM_ENABLE_FAULT_##type) \
+		{ \
+			/*> FAULT: " #type ", code={code}, addr={vm->pc}# */ \
+			trigger_fault(vm, (TRIVM_FAULT_##type)); \
+			__VA_ARGS__; \
+		} else { \
+			/*> IGNORED FAULT: " #type ", code={code}, addr={vm->pc}# */ \
+		} \
+	} while (0)
+
+static void trigger_fault_with_code(struct trivm_instance *vm, uint32_t type, uint32_t code)
+{
+	vm->tmp0 = type;
+	vm->tmp1 = code;
+	vm->tmp2 = vm->pc;
+	vm->pc = FAULT_ENTRY_OFFSET;
+}
+
+static void trigger_fault(struct trivm_instance *vm, uint32_t type)
+{
+	vm->tmp0 = type;
+	vm->tmp2 = vm->pc;
+	vm->pc = FAULT_ENTRY_OFFSET;
+}
+
+
+/* ============================================= Core utility functions ============================================= */
+
+NO_INLINE
+static uint32_t read_prog(struct trivm_instance *vm)
+{
+	uint32_t result = 0;
+#if TRIVM_ENABLE_ROM
+	if (vm->pc < vm->rom_size)
+	{
+		result = vm->rom[vm->pc];
+	}
+#else
+	if (vm->pc < vm->ram_size)
+	{
+		result = vm->ram[vm->pc];
+	}
+#endif
+	vm->pc++;
+	return result;
+}
+
+NO_INLINE
+static uint32_t mem_pop(struct trivm_instance *vm)
+{
+	uint32_t result = 0;
+	if (vm->sp > 0)
+	{
+		result = *(uint32_t*)(&vm->ram[vm->sp]);
+	}
+	vm->sp -= sizeof(uint32_t);
+	/*>     POP @{vm->sp} => {{result}} */
+	return result;
+}
+
+NO_INLINE
+static void mem_push(struct trivm_instance *vm, uint32_t value)
+{
+	vm->sp += sizeof(uint32_t);
+	if (vm->sp < vm->ram_size)
+	{
+		*(uint32_t*)(&vm->ram[vm->sp]) = value;
+	}
+	/*>     PUSH @{vm->sp} <= {{value}} */
+}
+
+
+/* =============================================== FLOAT32 extension ================================================ */
+
+static inline uint32_t TO_U32(float x) {
+	union {
+		float f;
+		uint32_t i;
+	} c;
+	c.f = x;
+	return c.i;
+}
+
+static inline float TO_F32(uint32_t x) {
+	union {
+		float f;
+		uint32_t i;
+	} c;
+	c.i = x;
+	return c.f;
+}
+
+
+/* ========================================== INT64 and FLOAT64 extensions ========================================== */
+
+static inline uint64_t TO_U64(double x) {
+	union {
+		double f;
+		uint64_t i;
+	} c;
+	c.f = x;
+	return c.i;
+}
+
+static inline double TO_F64(uint64_t x) {
+	union {
+		double f;
+		uint64_t i;
+	} c;
+	c.i = x;
+	return c.f;
+}
+
+static uint64_t check_div64_0(struct trivm_instance *vm, uint64_t arg0, uint64_t arg1)
+{
+	if (arg1 == 0)
+	{
+		TRIGGER_FAULT(DIVISION_BY_ZERO);
+		return 1;
+	}
+	return arg1;
+}
+
+static bool trivm_instr_long(struct trivm_instance *vm, uint32_t code, uint32_t arg1_lo)
+{
+	uint32_t op = (code >> 8) & 0x3F;
+	uint64_t arg1;
+	uint32_t arg1_hi;
+
+	if (code & CODE_LONG_ARG1)
+	{
+		arg1_hi = arg1_lo;
+		if ((code & CODE_INSTR_ARG_MASK) == CODE_INSTR_ARG_POP)
+		{
+			arg1_lo = mem_pop(vm);
+		}
+		else
+		{
+			arg1_lo = read_prog(vm);
+			arg1_lo |= read_prog(vm) << 8;
+			arg1_lo |= read_prog(vm) << 16;
+			arg1_lo |= read_prog(vm) << 24;
+		}
+	}
+	else
+	{
+		arg1_hi = (uint32_t)((int32_t)arg1_lo >> 31);
+	}
+
+	arg1 = (uint64_t)arg1_lo | ((uint64_t)arg1_hi << 32);
+
+	uint64_t arg0 = 0;
+	if (op < TRIVM_TREE_ADV64_FIRST_ONE_ARG)
+	{
+		uint32_t arg0_lo = mem_pop(vm);
+		uint32_t arg0_hi;
+		if (code & CODE_LONG_ARG0)
+		{
+			arg0_hi = arg0_lo;
+			arg0_lo = mem_pop(vm);
+		}
+		else
+		{
+			arg0_hi = (uint32_t)((int32_t)arg0_lo >> 31);
+		}
+		arg0 = (uint64_t)arg0_lo | ((uint64_t)arg0_hi << 32);
+	}
+
+	uint64_t ret;
+
+	/*>     Op:adv64 {$op_name_adv64(op)} */
+	TRIVM_TREE_ADV64;
+
+	mem_push(vm, (uint32_t)ret);
+	if (code & CODE_LONG_RES)
+	{
+		mem_push(vm, (uint32_t)(ret >> 32));
+	}
+
+	return true;
+
+#if TRIVM_ENABLE_FAULT_INSTR_INVALID
+invalid_instruction:
+	TRIGGER_FAULT(INSTR_INVALID);
+	return true;
+#endif
+}
+
+
+/* ================================================ UNWIND extension ================================================ */
+
+static void trivm_instr_unwind(struct trivm_instance *vm, uint32_t arg1, uint32_t arg1_shift)
+{
+	uint32_t keep;
+	uint32_t reduce;
+	uint32_t total;
+	uint8_t middle = (32 - arg1_shift) / 2;
+
+	reduce = arg1 & ((1 << middle) - 1);
+	keep = (arg1 >> middle) & ((1 << middle) - 1);
+	reduce *= 4;
+	keep *= 4;
+	total = reduce + keep;
+
+	if (vm->sp < total || vm->sp - total < vm->spl)
+	{
+		TRIGGER_FAULT_WITH_CODE(STACK_UNDERFLOW, vm->sp - total, return);
+	}
+	
+	if (vm->sp < total || vm->sp - total > vm->ram_size || vm->sp >= vm->ram_size)
+	{
+		return;
+	}
+
+	uint8_t* src = &vm->ram[vm->sp - keep + 1];
+	uint8_t* dst = &vm->ram[vm->sp - total + 1];
+
+#if TRIVM_ENABLE_STDLIB
+	memmove(dst, src, keep);
+#else
+	uint8_t* end = src + keep;
+	while (src < end)
+	{
+		*dst++ = *src++;
+	}
+#endif
+
+	vm->sp -= reduce;
+}
+
+
+/* ========================================== Core instructions execution =========================================== */
+
+void trivm_instr_ext(struct trivm_instance *vm, uint32_t id)
+{
+	// TODO: external call
+}
+
+static uint32_t check_div_0(struct trivm_instance *vm, uint32_t arg0, uint32_t arg1)
+{
+	if (arg1 == 0)
+	{
+		TRIGGER_FAULT(DIVISION_BY_ZERO);
+		return 1;
+	}
+	return arg1;
+}
+
+static bool trivm_instr(struct trivm_instance *vm, uint32_t code)
+{
+	uint32_t arg1 = 0;
+	uint32_t arg1_shift = 24;
+	uint32_t op = code & CODE_INSTR_OP_MASK;
+	switch (code & CODE_INSTR_ARG_MASK)
+	{
+	case CODE_INSTR_ARG_4B:
+		arg1 = read_prog(vm);
+		arg1 |= read_prog(vm) << 8;
+		arg1_shift -= 16;
+		// Intensional missing break
+	case CODE_INSTR_ARG_2B:
+		arg1 |= read_prog(vm) << 16;
+		arg1_shift -= 8;
+		// Intensional missing break
+	case CODE_INSTR_ARG_1B:
+		arg1 |= read_prog(vm) << 24;
+		arg1 = (uint32_t)((int32_t)arg1 >> arg1_shift);
+		/*>     Arg1 imm {{arg1}}, bits {#32 - arg1_shift} */
+	default: //CODE_INSTR_ARG_POP
+		arg1_shift = 0;
+		arg1 = mem_pop(vm);
+		/*>     Arg1 pop {{arg1}} */
+		break;
+	}
+
+	if (TWO_BYTE_INSTR_ENABLED && (code & CODE_INSTR_OP_MASK_ADV) == CODE_INSTR_OP_MASK_ADV)
+	{
+		code = code | (read_prog(vm) << 8);
+		if (ADV64_TREE_ENABLED && ((code & 0xC004) != 0))
+		{
+			return trivm_instr_long(vm, code, arg1);
+		}
+		op = code >> 7;
+	}
+
+	uint32_t arg0 = 0;
+	if (op < TRIVM_TREE_CORE_FIRST_ONE_ARG)
+	{
+		arg0 = mem_pop(vm);
+		/*>     Arg0 pop {{arg0}} */
+	}
+
+	uint32_t ret;
+	if ((op & 1) && ADV32_TREE_ENABLED)
+	{
+		/*>     Op:adv32 {$op_name_adv32(op)} */
+		TRIVM_TREE_ADV32;
+	}
+	else
+	{
+		uint32_t arg1_pc = vm->pc + arg1;
+		/*>     Op:core {$op_name_core(op)} */
+		TRIVM_TREE_CORE;
+	}
+
+	mem_push(vm, ret);
+
+	return true;
+
+#if TRIVM_ENABLE_FAULT_INSTR_INVALID
+invalid_instruction:
+	TRIGGER_FAULT(INSTR_INVALID);
+	return true;
+#endif
+}
+
+
+/* =========================================== Memory access instructions =========================================== */
+
+static void trivm_mem(struct trivm_instance *vm, uint32_t code)
+{
+	uint32_t access_size = 4;
+	uint32_t addr;
+	uint32_t value[TRIVM_EXT_MEM64 ? 2 : 1];
+	uint32_t sign_ext = 0;
+	uint8_t *ptr;
+	uint32_t offset;
+	uint32_t last;
+	uint32_t imm;
+
+	addr = code & CODE_MEM_OFFSET_MASK;
+
+	if (code & CODE_MEM_ARGS)
+	{
+		/*> ARGS ... */
+		uint32_t count = 5;
+		do
+		{
+			if (count == 0) {
+				TRIGGER_FAULT(INSTR_INVALID, { return; });
+				break;
+			}
+			imm = read_prog(vm);
+			/*> ARG byte {imm} */
+			addr <<= 7;
+			addr ^= imm;
+			count--;
+		} while (imm & 0x80);
+
+		/*> IMM {addr} */
+
+		if (addr & CODE_MEM_MODE_NON32) {
+			if (addr & CODE_MEM_MODE_BYTE) {
+				/*> 8-bit access */
+				access_size = 1;
+				if (addr & CODE_MEM_MODE_SIGN_EXT) {
+					sign_ext = 24;
+				}
+			} else {
+				/*> 16-bit access */
+				access_size = 2;
+				if (addr & CODE_MEM_MODE_SIGN_EXT) {
+					sign_ext = 16;
+				}
+			}
+			addr >>= 3;
+		} else {
+			if (TRIVM_EXT_MEM64) {
+				if (code & CODE_MEM_MODE_NON64) {
+					/*> 32-bit access */
+					addr >>= 2;
+				} else {
+					/*> 64-bit access */
+					access_size = 8;
+					/* `addr` is already valid, because two lower bits are 0 and expected: */
+					/* addr = (addr >> 2) * 4 */
+					/*> ... */
+					/*> bytes {#access_size}, sign ext shift {#sign_ext}, offset (items) {{addr}} */
+					goto skip_access_size_mul;
+				}
+			} else {
+				/*> 32-bit access */
+				addr >>= 1;
+			}
+		}
+		/*> ... */
+	} else {
+		/*> no ARGS */
+	}
+
+	/*> bytes {#access_size}, sign ext shift {#sign_ext}, offset (items) {{addr}} */
+
+	addr *= access_size;
+
+skip_access_size_mul:
+
+	/*> offset (bytes) {{addr}} */
+
+	if (code & CODE_MEM_WRITE_FLAG) {
+		if (access_size == 8 && TRIVM_EXT_MEM64) {
+			value[1] = mem_pop(vm);
+		}
+		value[0] = mem_pop(vm);
+		/*> value hi={{access_size == 8 ? value[1] : 0}}, lo={{value[0]}} */
+	}
+
+	if (code & CODE_MEM_POP) {
+		uint32_t pop_value = mem_pop(vm);
+		addr += pop_value;
+		/*> pop {{pop_value}} -> {addr} */
+	}
+
+	if (code & CODE_MEM_BASE0)
+	{
+		addr += vm->amb[code >> CODE_MEM_BASE1_BIT];
+		/*> base AMB{#code >> CODE_MEM_BASE1_BIT} {{vm->amb[code >> CODE_MEM_BASE1_BIT]}} -> {addr} */
+	}
+	else if (code & CODE_MEM_BASE1)
+	{
+		addr = vm->sp - addr;
+		/*> base SP {{vm->sp}} -> {addr} */
+	}
+	else
+	{
+		/*> base 0 -> {addr} */
+	}
+
+	/*> ADDRESS {addr} */
+	/*> ?access_size == 4 && addr / 4 < TOTAL_REGISTERS? REGISTER {$reg_name(addr / 4)} */
+
+#if TRIVM_ENABLE_ROM
+	if (addr & 0x80000000)
+	{
+		ptr = (uint8_t*)vm->rom;
+		offset = addr ^ 0x80000000;
+		last = vm->rom_size - access_size;
+		/*> ROM memory, last accessable address {last} */
+		if (code & CODE_MEM_WRITE_FLAG)
+		{
+			TRIGGER_FAULT_WITH_CODE(READ_ONLY, addr);
+			return;
+		}
+	}
+	else
+#endif
+	{
+		ptr = vm->ram;
+		offset = addr;
+		last = vm->ram_size - access_size;
+		/*> RAM memory, last accessable address {last} */
+	}
+
+	if (offset > last)
+	{
+		TRIGGER_FAULT_WITH_CODE(ACCESS_OUT_OF_BOUNDS, addr);
+		return;
+	}
+
+	uint8_t* dst;
+	uint8_t* src;
+
+	if (code & CODE_MEM_WRITE_FLAG) {
+		/*> WRITE */
+		dst = ptr;
+		src = (uint8_t*)&value;
+	} else {
+		/*> READ */
+		dst = (uint8_t*)&value;
+		src = ptr;
+	}
+
+#if TRIVM_ENABLE_STDLIB
+	memcpy(dst, src, access_size);
+#else
+	uint8_t* end;
+	end = src + access_size;
+	while (src < end) {
+		*dst++ = *src++;
+	}
+#endif
+
+	if (!(code & CODE_MEM_WRITE_FLAG)) {
+		value[0] = (uint32_t)(((int32_t)value[0] << sign_ext) >> sign_ext);
+		/*> value hi={{access_size == 8 ? value[1] : 0}}, lo={{value[0]}} */
+		mem_push(vm, value[0]);
+		if (access_size == 8 && TRIVM_EXT_MEM64) {
+			mem_push(vm, value[1]);
+		}
+	}
+}
+
+
+/* =============================================== Bytecode executor ================================================ */
+
+static bool trivm_step(struct trivm_instance *vm)
+{
+	uint32_t code;
+
+#if TRIVM_ENABLE_ROM
+	if (vm->pc > vm->rom_size - CODE_MAX_SIZE)
+	{
+		TRIGGER_FAULT(INSTR_OUT_OF_BOUNDS, return true);
+	}
+#else
+	if (vm->pc > vm->ram_size - CODE_MAX_SIZE)
+	{
+		TRIGGER_FAULT(INSTR_OUT_OF_BOUNDS, return true);
+	}
+#endif
+
+	if ((int32_t)vm->sp < (int32_t)vm->spl)
+	{
+		TRIGGER_FAULT_WITH_CODE(STACK_UNDERFLOW, vm->sp, { vm->sp = vm->spl; return true; });
+	}
+
+	if ((int32_t)vm->asp > (int32_t)vm->asph)
+	{
+		TRIGGER_FAULT(AUX_STACK_UNDERFLOW, { vm->asph = 0x7FFFFFFF; return true; });
+	}
+
+	if (TRIVM_ENABLE_FAULT_STACK_OVERFLOW && vm->sph == vm->aspl)
+	{
+		if ((int32_t)vm->sp > (int32_t)(vm->asp - vm->sph))
+		{
+			TRIGGER_FAULT(STACK_OVERFLOW, { vm->sph = 0x7FFFFFFF; return true; });
+		}
+	}
+	else
+	{
+		if ((int32_t)vm->sp > (int32_t)vm->sph)
+		{
+			TRIGGER_FAULT(STACK_OVERFLOW, { vm->sph = 0x7FFFFFFF; return true; });
+		}
+
+		if ((int32_t)vm->asp < (int32_t)vm->aspl)
+		{
+			TRIGGER_FAULT(AUX_STACK_OVERFLOW, { vm->aspl = 0x80000000; return true; });
+		}
+	}
+
+	code = read_prog(vm);
+
+	if (code & CODE_INSTR)
+	{
+		/*> INSTR opcode {code} */
+		return trivm_instr(vm, code);
+	}
+	else
+	{
+		/*> MEM opcode {code} */
+		trivm_mem(vm, code);
+		return true;
+	}
+}
+
+
+bool trivm_run(struct trivm_instance *vm, uint32_t limit)
+{
+	bool result = true;
+	/*> RUN limit={{limit}} */
+	while (limit > 0 && result)
+	{
+		/*> STEP limit={{limit}} ... */
+		result = trivm_step(vm);
+		/*> ... */
+		if (limit != TRIVM_INFINITELY)
+		{
+			limit--;
+		}
+		/*> ?!result? EXIT to native */
+	}
+	/*> RUN done */
+	return result;
+}
+
+
+/* ========================================= Virtual machine initialization ========================================= */
+
+struct trivm_instance *trivm_init(uint8_t *memory, uint32_t memory_size, const uint8_t *rom, uint32_t program_size)
+{
+	struct trivm_instance *vm = (struct trivm_instance *)memory;
+	uint32_t addr = TRIVM_ENABLE_ROM ? 0 : TRIVM_PROGRAM_START + program_size;
+#if TRIVM_ENABLE_STDLIB
+	memset(&memory[addr], 0, memory_size - addr);
+#else
+	while (addr < memory_size) {
+		memory[addr] = 0;
+		addr++;
+	}
+#endif
+#if TRIVM_ENABLE_ROM
+	vm->rom = rom;
+	vm->rom_size = program_size;
+#endif
+	vm->ram_size = memory_size - TRIVM_MEMORY_HEADER;
+	vm->sp = offsetof(struct trivm_instance, pc) - TRIVM_MEMORY_HEADER;
+	if (STARTUP_ENTRY_OFFSET != 0) {
+		vm->pc = STARTUP_ENTRY_OFFSET;
+	}
+	vm->sph = vm->ram_size;
+	return vm;
+}

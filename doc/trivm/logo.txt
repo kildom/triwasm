@@ -1,0 +1,82 @@
+https://codepen.io/rossobarnes/pen/qNoaJy
+
+
+
+<div class="cube-container">
+    <div class="cube">
+      <div class="front"><div><div>t</div></div></div>
+      <div class="top"><div></div></div>
+      <div class="left"><div></div></div>
+    </div>
+  </div>
+  
+  
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&display=swap');
+
+.cube-container {
+  perspective: 1000px;
+  perspective-origin: 50% 50%;
+}
+.cube {
+  transform-style: preserve-3d;
+  > div {
+    backface-visibility: hidden;
+  }
+}
+.cube .front{ transform: rotateY(0deg) translateZ(100px); }
+.cube .left { transform: rotateY(-90deg) translateZ(100px); }
+.cube .top  { transform: rotateX(90deg) translateZ(100px); }
+// PRESENTATIONAL STYLES
+
+
+.cube > .front > div { background: #137; }
+.cube > .left > div { background: #35B; }
+.cube > .top > div { background: #47E; }
+  
+.cube > div > div {
+  width: 184px;
+  height: 184px;
+  border: 8px solid black;
+  font-family: 'Noto Serif';
+  font-weight: bold;
+}
+
+.cube > .front > div > div {
+  font-size: 200px;
+  position: relative;
+  top: -20px;
+  left: 0px;
+}
+
+body {
+  background: black;
+  color: rgba(255,255,255,0.8);
+  font-family: sans-serif;
+}
+.cube-container {
+  width: 200px; height: 200px;
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  transition: perspective 700ms;
+}
+.cube {
+  width: 100%; height: 100%;
+  position: absolute;
+  transition: transform 700ms;
+}
+.cube > div {
+  height: 100%; width: 100%;
+  color: while;
+  font-weigth: bold;
+  xborder: 6px solid red;
+  position: absolute;
+  font-size: 140px;
+  text-align: center;
+  line-height: 200px;
+}
+
+
+  var cubeEl = document.querySelector('.cube');
+cubeEl.style.transform = 'translateZ(-100px) rotateX(-15deg) rotateY(24deg) rotateZ(0deg)';
+

@@ -1,0 +1,63 @@
+name: Build for Cortex-M4
+
+on:
+  workflow_dispatch:
+#  push:
+#    branches: [ main ]
+#  pull_request:
+#    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    env:
+      CMSIS_VER: "5.7.0"
+      ARM_GCC_VER: "10-2020-q4"
+      
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup environment
+      run: |
+        mkdir -p $RUNNER_TEMP/ext/gcc
+        echo $RUNNER_TEMP/ext/gcc/bin >> $GITHUB_PATH
+
+    - name: Cache external tools
+      id: cached_ext
+      uses: actions/cache@v2
+      with:
+        key: 1 gcc-${{ env.ARM_GCC_VER }} cmsis-m4-${{ env.CMSIS_VER }}
+        path: ${{ runner.temp }}/ext
+        
+    - name: Download ARM GCC
+      if: steps.cached_ext.outputs.cache-hit != 'true'
+      uses: fiam/arm-none-eabi-gcc@v1
+      with:
+        release: ${{ env.ARM_GCC_VER }}
+        directory: ${{ runner.temp }}/ext/gcc
+        
+    - name: Download CMSIS
+      if: steps.cached_ext.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: "ARM-software/CMSIS_5"
+        ref: ${{ env.CMSIS_VER }}
+        path: ${{ github.workspace }}/_cmsis
+
+    - name: Reduce cache size
+      if: steps.cached_ext.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p $RUNNER_TEMP/ext/cmsis/CMSIS/Core
+        mv $GITHUB_WORKSPACE/_cmsis/CMSIS/Core/Include $RUNNER_TEMP/ext/cmsis/CMSIS/Core
+        mkdir -p $RUNNER_TEMP/ext/cmsis/Device/ARM
+        mv $GITHUB_WORKSPACE/_cmsis/Device/ARM/ARMCM4 $RUNNER_TEMP/ext/cmsis/Device/ARM
+
+    - name: Tools versions
+      run: |
+        arm-none-eabi-gcc --version
+        head -n 7 $RUNNER_TEMP/ext/cmsis/CMSIS/Core/Include/core_cm4.h
+

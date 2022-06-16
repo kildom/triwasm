@@ -1,0 +1,62 @@
+
+BR startup
+
+ADDRESS 3
+BR except_handler
+
+startup:
+
+some = 123 + label
+
+ADD
+Add 1
+label:
+SUB
+sub 2
+
+BRT label + some
+
+get_param = 3
+simple_copy = 4
+image2_offset = 0x7000
+image2_dest = 0x23000
+image2_size = 0x8000
+
+
+NEG 0
+EXT get_param
+
+ADD
+ADD
+ADD
+ADD 
+ADD 
+ADD 
+ADD 
+ADD 
+
+NEG -image2_size
+NEG -image2_dest
+READ [SP] + 8
+ADD image2_offset
+EXT simple_copy
+BRT next
+next:
+
+ADD
+ADD
+ADD
+ADD
+ADD
+ADD
+ADD
+ADD
+
+except_handler:
+
+READ [SP]+4
+WRITEB TMP21
+
+hex=0x100000000
+
+some_la:

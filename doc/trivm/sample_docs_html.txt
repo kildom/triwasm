@@ -1,0 +1,620 @@
+<html><head>
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@700&family=Roboto+Mono&family=Roboto:wght@400;700&display=swap');
+
+body {
+  color: #444;
+  font-family: 'Roboto', sans-serif;
+}
+
+.lang-info {
+  border: 1px solid #DB0;
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: #FFFAF3;
+  font-size: 85%;
+}
+
+a.edit-btn {
+  display: inline-block;
+  border: 1px solid #CCC;
+  text-decoration: none;
+  padding: 0.3em 0.6em;
+  border-radius: 6px;
+  background: #DDD;
+  color: #555;
+  box-shadow: 1px 1px 2px 0px #0004;
+  color: #458;
+  margin: 0px 4px;
+}
+
+code {
+  display: inline-block;
+  padding: 0.2em 0.5em;
+  margin: 0 0.1em;
+  border: 1px solid #DDD;
+  border-radius: 3px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 80%;
+  background: #F7F7F7;
+  box-shadow: inset 0px 0px 2px #DDD;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Merriweather', serif;
+  border-bottom: 1px solid #EEE;
+  padding-left: 0.7em;
+  margin-top: 1em;
+}
+
+table {
+  border-spacing: 0px;
+  border-collapse: separate;
+  margin: 1.5em 0em;
+}
+
+p {
+  margin: 0.7em 0em;
+}
+
+td {
+  border-bottom: 1px solid #CCC;
+  padding: 5px 10px;
+}
+
+th {
+  border-top: 1px solid #CCC;
+  border-bottom: 1px solid #CCC;
+  padding: 7px;
+  background: #F6F6F6;
+  color: #458;
+  box-shadow: inset 0px -40px 3px -40px #CCC, inset 0px 40px 3px -40px #CCC;
+}
+
+tr:nth-child(even) td {
+  background: #F6F6F6;
+}
+
+</style>
+</head><body>
+<div class="lang-info">
+  The triVM documentation was not written by native English speakers nor skilled technical documentation writes. Any fixes and corrections are welcome. Just click <a href="" class="edit-btn">Edit this page on github</a> and create Pull Request with your changes.
+ <br>
+  If you don't want to use github or Markdown, click <a href="" class="edit-btn">Edit this page here</a> to modify the content in your browser and send suggestions to the author.
+    
+</div>
+<h1>Core instruction set</h1>
+<p>Core instruction set is aways available on triVM regadless of enabled extrensions.</p>
+<h2>Binary operation instructions</h2>
+<p>Following instructions do operation on two 32-bit integers.
+The result is 32-bit integer pushed into the stack.</p>
+<p>Division and modullo instructions (<code>UDIV</code>, <code>UMOD</code>, <code>SDIV</code>, <code>SMOD</code>) will cause a <a href="">Division By Zero</a> Fault if <code>value2</code> is zero.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Encoding A</th>
+<th>Encoding B, C, D</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Encoded</td>
+<td></td>
+<td><code>value2 := immediate</code></td>
+</tr>
+<tr>
+<td>Stack</td>
+<td><code>… value1, value2 ⇒ … result</code></td>
+<td><code>… value1 ⇒ … result</code></td>
+</tr>
+<tr>
+<td>Syntax</td>
+<td><code>ADD</code></td>
+<td><code>ADD constant</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operation Pseudo Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0x02</td>
+<td>ADD</td>
+<td><code>result := value1 + value2</code></td>
+</tr>
+<tr>
+<td>0x03</td>
+<td>SUB</td>
+<td><code>result := value1 - value2</code></td>
+</tr>
+<tr>
+<td>0x04</td>
+<td>MUL</td>
+<td><code>result := value1 * value2</code></td>
+</tr>
+<tr>
+<td>0x05</td>
+<td>AND</td>
+<td><code>result := value1 &amp; value2</code></td>
+</tr>
+<tr>
+<td>0x06</td>
+<td>OR</td>
+<td><code>result := value1 | value2</code></td>
+</tr>
+<tr>
+<td>0x07</td>
+<td>XOR</td>
+<td><code>result := value1 ^ value2</code></td>
+</tr>
+<tr>
+<td>0x08</td>
+<td>UDIV</td>
+<td><code>result := value1 / value2</code> <em>(unsigned)</em></td>
+</tr>
+<tr>
+<td>0x09</td>
+<td>SDIV</td>
+<td><code>result := value1 / value2</code> <em>(signed)</em></td>
+</tr>
+<tr>
+<td>0x0A</td>
+<td>UMOD</td>
+<td><code>result := value1 % value2</code> <em>(unsigned)</em></td>
+</tr>
+<tr>
+<td>0x0B</td>
+<td>SMOD</td>
+<td><code>result := value1 % value2</code> <em>(signed)</em></td>
+</tr>
+<tr>
+<td>0x0C</td>
+<td>SHL</td>
+<td><code>result := value1 &lt;&lt; (value2 &amp; 31)</code></td>
+</tr>
+<tr>
+<td>0x0D</td>
+<td>USHR</td>
+<td><code>result := value1 &gt;&gt; (value2 &amp; 31)</code> <em>(unsigned)</em></td>
+</tr>
+<tr>
+<td>0x0E</td>
+<td>SSHR</td>
+<td><code>result := value1 &gt;&gt; (value2 &amp; 31)</code> <em>(signed)</em></td>
+</tr>
+<tr>
+<td>0x0F</td>
+<td>EXTS</td>
+<td><code>result := (value1 &lt;&lt; (value2 &amp; 31)) &gt;&gt; (value2 &amp; 31)</code> <em>(signed)</em></td>
+</tr>
+<tr>
+<td>0x10</td>
+<td>EQ</td>
+<td><code>result := value1 == value2</code></td>
+</tr>
+<tr>
+<td>0x11</td>
+<td>ULT</td>
+<td><code>result := value1 &lt; value2</code> <em>(unsigned)</em></td>
+</tr>
+<tr>
+<td>0x12</td>
+<td>SLT</td>
+<td><code>result := value1 &lt; value2</code> <em>(signed)</em></td>
+</tr>
+<tr>
+<td>0x13</td>
+<td>UGT</td>
+<td><code>result := value1 &gt; value2</code> <em>(unsigned)</em></td>
+</tr>
+<tr>
+<td>0x14</td>
+<td>SGT</td>
+<td><code>result := value1 &gt; value2</code> <em>(signed)</em></td>
+</tr>
+</tbody>
+</table>
+<h2>Unary operation instructions</h2>
+<p>Following instructions do operation on one 32-bit integer.
+The result is 32-bit integer pushed into the stack.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Encoding A</th>
+<th>Encoding B, C, D</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Encoded</td>
+<td></td>
+<td><code>value1 := immediate</code></td>
+</tr>
+<tr>
+<td>Stack</td>
+<td><code>… value1 ⇒ … result</code></td>
+<td><code>… ⇒ … result</code></td>
+</tr>
+<tr>
+<td>Syntax</td>
+<td><code>EQZ</code></td>
+<td><code>EQZ constant</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operation Pseudo Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0x15</td>
+<td>EQZ</td>
+<td><code>result := !value1</code></td>
+</tr>
+<tr>
+<td>0x16</td>
+<td>NEG</td>
+<td><code>result := -value1</code></td>
+</tr>
+</tbody>
+</table>
+<div class="warning">
+<p><code>NEG</code> instruction can be used to push constant value on the stack, for example <code>NEG -32</code> will push <code>32</code> to the stack.</p>
+</div>
+<h2>BR</h2>
+<p>Following instruction do relative jump unconditionally.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Encoding A</th>
+<th>Encoding B, C, D</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Encoded</td>
+<td></td>
+<td><code>value1 := immediate</code></td>
+</tr>
+<tr>
+<td>Stack</td>
+<td><code>… value1 ⇒ …</code></td>
+<td><code>… ⇒ …</code></td>
+</tr>
+<tr>
+<td>Syntax</td>
+<td><code>BR</code></td>
+<td><code>BR address</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operation Pseudo Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0x17</td>
+<td>BR</td>
+<td><code>PC := PC + value1</code></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>where: <code>PC</code> points to beginning of the next instruction after this one.</td>
+</tr>
+</tbody>
+</table>
+<div class="warning">
+<p>Absolute jump can be done with <code>WRITE PC</code> instruction.</p>
+</div>
+<h2>BRT, BRF</h2>
+<p>Following instruction do relative jump depending on condition.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Encoding A</th>
+<th>Encoding B, C, D</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Encoded</td>
+<td></td>
+<td><code>value2 := immediate</code></td>
+</tr>
+<tr>
+<td>Stack</td>
+<td><code>… value1, value2 ⇒ …</code></td>
+<td><code>… value1 ⇒ …</code></td>
+</tr>
+<tr>
+<td>Syntax</td>
+<td><code>BRT</code></td>
+<td><code>BRT address</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operation Pseudo Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0x00</td>
+<td>BRT</td>
+<td><code>if (value1) PC := PC + value2</code></td>
+</tr>
+<tr>
+<td>0x01</td>
+<td>BRF</td>
+<td><code>if (!value1) PC := PC + value2</code></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>where: <code>PC</code> points to beginning of the next instruction after this one.</td>
+</tr>
+</tbody>
+</table>
+<h2>CALL</h2>
+<p>Call a function.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Encoding A</th>
+<th>Encoding B, C, D</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Encoded</td>
+<td></td>
+<td><code>value1 := immediate</code></td>
+</tr>
+<tr>
+<td>Stack</td>
+<td><code>… value1 ⇒ … PC</code></td>
+<td><code>… ⇒ … PC</code></td>
+</tr>
+<tr>
+<td>Syntax</td>
+<td><code>CALL</code></td>
+<td><code>CALL address</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operation Pseudo Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0x19</td>
+<td>CALL</td>
+<td><code>push(PC); PC := PC + value1</code></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>where: <code>PC</code> points to beginning of the next instruction after this one.</td>
+</tr>
+</tbody>
+</table>
+<h2>HOST</h2>
+<p>Call a host function or return from VM to the host.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Encoding A</th>
+<th>Encoding B, C, D</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Encoded</td>
+<td></td>
+<td><code>value1 := immediate</code></td>
+</tr>
+<tr>
+<td>Stack</td>
+<td><code>… value1 ⇒ ???</code></td>
+<td><code>… ⇒ ???</code></td>
+</tr>
+<tr>
+<td>Syntax</td>
+<td><code>HOST</code></td>
+<td><code>HOST constant</code></td>
+</tr>
+</tbody>
+</table>
+<p>Content of the stack after this instruction depends on host function.</p>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operation Pseudo Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0x20</td>
+<td>HOST</td>
+<td>If <code>value1 == -1</code> then return to host else call host function <code>value1</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>READ, WRITE</h2>
+<p>Read or write an integer from the memory.</p>
+<p>READ and WRITE instructions can access 8-bit, 16-bit or 32-bit values.
+When reading 8-bit or 16-bit integer, the instruction can optionally sign-extend it to 32-bit integer.</p>
+<table>
+<thead>
+<tr>
+<th>Access bits</th>
+<th>Encoding</th>
+<th><code>width</code></th>
+<th>Extend to 32-bits</th>
+<th>Syntax</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>32</td>
+<td>Q and R (W=0)</td>
+<td>4</td>
+<td>-</td>
+<td><code>READ …</code></td>
+</tr>
+<tr>
+<td>16</td>
+<td>S (W=0, B=0, S=0)</td>
+<td>2</td>
+<td>zero-extend</td>
+<td><code>READ16 …</code></td>
+</tr>
+<tr>
+<td>16</td>
+<td>S (W=0, B=0, S=1)</td>
+<td>2</td>
+<td>sign-extend</td>
+<td><code>READ16S …</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>S (W=0, B=1, S=0)</td>
+<td>1</td>
+<td>zero-extend</td>
+<td><code>READ8 …</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>S (W=0, B=1, S=1)</td>
+<td>1</td>
+<td>sign-extend</td>
+<td><code>READ8S …</code></td>
+</tr>
+<tr>
+<td>32</td>
+<td>Q and R (W=1)</td>
+<td>4</td>
+<td>-</td>
+<td><code>WRITE …</code></td>
+</tr>
+<tr>
+<td>16</td>
+<td>S (W=1, B=0, S=0)</td>
+<td>2</td>
+<td>-</td>
+<td><code>WRITE16 …</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>S (W=1, B=1, S=0)</td>
+<td>1</td>
+<td>-</td>
+<td><code>WRITE8 …</code></td>
+</tr>
+</tbody>
+</table>
+<p>Memory address is calculated with the formula: <code>address := base_address + width * offset</code>, where:</p>
+<ul>
+<li><code>offset</code> is encoded in instruction,</li>
+<li><code>width</code> is a width of the access in bytes,</li>
+<li><code>base_address</code> can be one of:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Encoding</th>
+<th>Syntax</th>
+<th>Stack</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Zero</strong></td>
+<td><code>base=0</code></td>
+<td><code>WRITE offset</code></td>
+<td><code>… value1 ⇒ …</code></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><code>READ offset</code></td>
+<td><code>… ⇒ … value1</code></td>
+</tr>
+<tr>
+<td><strong>Stack pointer</strong></td>
+<td><code>base=1</code></td>
+<td><code>WRITE [SP] + offset</code></td>
+<td><code>… value1 ⇒ …</code></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><code>READ [SP] + offset</code></td>
+<td><code>… ⇒ … value1</code></td>
+</tr>
+<tr>
+<td><strong>Pop value</strong></td>
+<td><code>base=2</code></td>
+<td><code>WRITE [POP] + offset</code></td>
+<td><code>… offset2, value1 ⇒ …</code></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><code>READ [POP] + offset</code></td>
+<td><code>… offset2 ⇒ … value1</code></td>
+</tr>
+<tr>
+<td><strong>AMB register value + pop value</strong></td>
+<td><code>base=3</code></td>
+<td><code>WRITE [AMB] + [POP] + offset</code></td>
+<td><code>… offset2, value1 ⇒ …</code></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><code>READ [AMB] + [POP] + offset</code></td>
+<td><code>… offset2 ⇒ … value1</code></td>
+</tr>
+</tbody>
+</table>
+  
+  
+<p><code>offset</code> in the instruction syntax can be omitted if it is zero.</p>
+</body><style type="text/css"></style></html>

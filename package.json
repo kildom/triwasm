@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "name": "trivm-sdk",
+  "version": "0.0.1",
+  "description": "SDK for triVM",
+  "scripts": {
+    "build-triasm": "npx tsc -p build/triasm.tsconfig.json",
+    "build-triwasm": "npx tsc -p build/triwasm.tsconfig.json",
+    "build": "npm run build-triasm && npm run build-triwasm"
+  },
+  "author": "Dominik Kilian <kontakt@dominik.cc>",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "typescript": "^4.7.3",
+    "extract-zip": "^2.0.1",
+    "xml2js": "^0.4.23"
+  }
+}

@@ -1,0 +1,129 @@
+
+/*
+TODO: license
+*/
+
+// Table format:
+//     op_code    name    number_of_arguments    { body }    condition
+//     "condition" is optional
+//
+// Stack operations:
+//     TWO_ARGS:
+//         ... ][  arg0  ][  arg1 *  ]
+//         ... ][  ret * ]                   - if instruction body has "return", final push is skipped
+//     ONE_ARG:
+//         ... ][  arg1 *  ]
+//         ... ][  ret *   ]                 - if instruction body has "return", final push is skipped
+//
+// [  arg1 *  ] - can be from stack or from immediate value
+
+
+TRIVM_TREE_CORE: x << 2
+
+0x00    BRT     TWO_ARGS    { if (arg0) { vm->pc = arg1_pc; } /**/ return true; }
+0x01    BRF     TWO_ARGS    { if (!arg0) { vm->pc = arg1_pc; } /**/ return true; }
+0x02    ADD     TWO_ARGS    { ret = arg0 + arg1; }
+0x03    SUB     TWO_ARGS    { ret = arg0 - arg1; }
+0x04    MUL     TWO_ARGS    { ret = arg0 * arg1; }
+0x05    AND     TWO_ARGS    { ret = arg0 & arg1; }
+0x06    OR      TWO_ARGS    { ret = arg0 | arg1; }
+0x07    XOR     TWO_ARGS    { ret = arg0 ^ arg1; }
+0x08    UDIV    TWO_ARGS    { arg1 = check_div_0(vm, arg0, arg1); /**/ ret = arg0 / arg1; }
+0x09    SDIV    TWO_ARGS    { arg1 = check_div_0(vm, arg0, arg1); /**/ ret = (uint32_t)((int32_t)arg0 / (int32_t)arg1); }
+0x0A    UMOD    TWO_ARGS    { arg1 = check_div_0(vm, arg0, arg1); /**/ ret = arg0 % arg1; }
+0x0B    SMOD    TWO_ARGS    { arg1 = check_div_0(vm, arg0, arg1); /**/ ret = (uint32_t)((int32_t)arg0 % (int32_t)arg1); }
+0x0C    SHL     TWO_ARGS    { uint32_t shift = arg1 & 0x1F; /**/ ret = arg0 << shift; }
+0x0D    EXTS    TWO_ARGS    { uint32_t shift = arg1 & 0x1F; /**/ ret = arg0 << shift; /**/ ret = (uint32_t)((int32_t)ret >> shift); }
+0x0E    USHR    TWO_ARGS    { uint32_t shift = arg1 & 0x1F; /**/ ret = arg0 >> shift; }
+0x0F    SSHR    TWO_ARGS    { uint32_t shift = arg1 & 0x1F; /**/ ret = (uint32_t)((int32_t)arg0 >> shift); }
+0x10    ULT     TWO_ARGS    { ret = arg0 < arg1; }
+0x11    UGT     TWO_ARGS    { ret = arg0 > arg1; }
+0x12    SLT     TWO_ARGS    { ret = (uint32_t)((int32_t)arg0 < (int32_t)arg1); }
+0x13    SGT     TWO_ARGS    { ret = (uint32_t)((int32_t)arg0 > (int32_t)arg1); }
+0x14    EQ      TWO_ARGS    { ret = arg0 == arg1; }
+0x15    NOT     ONE_ARG     { ret = !arg1; }
+0x16    NEG     ONE_ARG     { ret = -arg1; }
+0x17    CALL    ONE_ARG     { ret = vm->pc; vm->pc = arg1_pc; }
+0x18    BR      ONE_ARG     { vm->pc = arg1_pc; /**/ return true; }
+// 0x19 - reserved for a future use
+0x1A    WRITESP ONE_ARG     { vm->sp = arg1 & ~3; /**/ return true; }
+0x1B    READSP  ONE_ARG     { ret = vm->sp; /**/ vm->pc--; }
+0x1C    UNWIND  ONE_ARG     { trivm_instr_unwind(vm, arg1, arg1_shift); /**/ return true; }        TRIVM_EXT_UNWIND
+0x1D    EXT     ONE_ARG     { if (arg1 == (uint32_t)(-1)) return false; trivm_instr_ext(vm, arg1); /**/ return true; }
+// 0x1E, 0x1F - extended instructions
+
+
+TRIVM_TREE_ADV32: (x << 1) | 1
+
+0x00    ADDF32       TWO_ARGS    { float a1 = TO_F32(arg1); /**/ float a0 = TO_F32(arg0); /**/ float r; /**/ r = a0 + a1; /**/ ret = TO_U32(r); }
+0x01    SUBF32       TWO_ARGS    { float a1 = TO_F32(arg1); /**/ float a0 = TO_F32(arg0); /**/ float r; /**/ r = a0 - a1; /**/ ret = TO_U32(r); }
+0x02    MULF32       TWO_ARGS    { float a1 = TO_F32(arg1); /**/ float a0 = TO_F32(arg0); /**/ float r; /**/ r = a0 * a1; /**/ ret = TO_U32(r); }
+0x03    DIVF32       TWO_ARGS    { float a1 = TO_F32(arg1); /**/ float a0 = TO_F32(arg0); /**/ float r; /**/ r = a0 / a1; /**/ ret = TO_U32(r); }
+0x04    LTF32        TWO_ARGS    { float a1 = TO_F32(arg1); /**/ float a0 = TO_F32(arg0); /**/ ret = a0 < a1; }
+0x05    GTF32        TWO_ARGS    { float a1 = TO_F32(arg1); /**/ float a0 = TO_F32(arg0); /**/ ret = a0 > a1; }
+0x06    LEF32        TWO_ARGS    { float a1 = TO_F32(arg1); /**/ float a0 = TO_F32(arg0); /**/ ret = a0 <= a1; }
+0x07    GEF32        TWO_ARGS    { float a1 = TO_F32(arg1); /**/ float a0 = TO_F32(arg0); /**/ ret = a0 >= a1; }
+0x08    EQF32        TWO_ARGS    { float a1 = TO_F32(arg1); /**/ float a0 = TO_F32(arg0); /**/ ret = a0 == a1; }
+// 0x09...0x29 reserved for one-arg code alignment with TRIVM_TREE_CORE
+0x2A    CEILF32      ONE_ARG     { float a1 = TO_F32(arg1); /**/ float r; /**/ r = ceilf(a1); /**/ ret = TO_U32(r); }
+0x2B    FLOORF32     ONE_ARG     { float a1 = TO_F32(arg1); /**/ float r; /**/ r = floorf(a1); /**/ ret = TO_U32(r); }
+0x2C    TRUNCF32     ONE_ARG     { float a1 = TO_F32(arg1); /**/ float r; /**/ r = truncf(a1); /**/ ret = TO_U32(r); }
+0x2D    NEARESTF32   ONE_ARG     { float a1 = TO_F32(arg1); /**/ float r; /**/ r = roundf(a1); /**/ ret = TO_U32(r); }
+0x2E    SQRTF32      ONE_ARG     { float a1 = TO_F32(arg1); /**/ float r; /**/ r = sqrtf(a1); /**/ ret = TO_U32(r); }
+// 0x2F reserved
+0x30    TRUNCF32U    ONE_ARG     { float a1 = TO_F32(arg1); /**/ ret = (uint32_t)a1; }
+0x31    TRUNCF32S    ONE_ARG     { float a1 = TO_F32(arg1); /**/ ret = (int32_t)a1; }
+0x32    CONVF32U     ONE_ARG     { float r; /**/ r = (float)(uint32_t)arg1; /**/ ret = TO_U32(r); }
+0x33    CONVF32S     ONE_ARG     { float r; /**/ r = (float)(int32_t)arg1; /**/ ret = TO_U32(r); }
+
+
+TRIVM_TREE_ADV64: x
+
+0x00    ADD64       TWO_ARGS  { ret = arg0 + arg1; }                                                                                               TRIVM_EXT_INT64
+0x01    SUB64       TWO_ARGS  { ret = arg0 - arg1; }                                                                                               TRIVM_EXT_INT64
+0x02    MUL64       TWO_ARGS  { ret = arg0 * arg1; }                                                                                               TRIVM_EXT_INT64
+0x03    AND64       TWO_ARGS  { ret = arg0 & arg1; }                                                                                               TRIVM_EXT_INT64
+0x04    UDIV64      TWO_ARGS  { arg1 = check_div64_0(vm, arg0, arg1); /**/ ret = arg0 / arg1; }                                                    TRIVM_EXT_INT64
+0x05    SDIV64      TWO_ARGS  { arg1 = check_div64_0(vm, arg0, arg1); /**/ ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1); }                      TRIVM_EXT_INT64
+0x06    UMOD64      TWO_ARGS  { arg1 = check_div64_0(vm, arg0, arg1); /**/ ret = arg0 % arg1; }                                                    TRIVM_EXT_INT64
+0x07    SMOD64      TWO_ARGS  { arg1 = check_div64_0(vm, arg0, arg1); /**/ ret = (uint64_t)((int64_t)arg0 % (int64_t)arg1); }                      TRIVM_EXT_INT64
+0x08    SHL64       TWO_ARGS  { uint32_t shift = (uint32_t)arg1 & 0x3F; /**/ ret = arg0 << shift; }                                                TRIVM_EXT_INT64
+0x09    EXTS64      TWO_ARGS  { uint32_t shift = (uint32_t)arg1 & 0x3F; /**/ ret = arg0 << shift; /**/ ret = (uint64_t)((int64_t)ret >> shift); }  TRIVM_EXT_INT64
+0x0A    USHR64      TWO_ARGS  { uint32_t shift = (uint32_t)arg1 & 0x3F; /**/ ret = arg0 >> shift; }                                                TRIVM_EXT_INT64
+0x0B    SSHR64      TWO_ARGS  { uint32_t shift = (uint32_t)arg1 & 0x3F; /**/ ret = (uint64_t)((int64_t)arg0 >> shift); }                           TRIVM_EXT_INT64
+0x0C    ULT64       TWO_ARGS  { ret = arg0 < arg1; }                                                                                               TRIVM_EXT_INT64
+0x0D    UGT64       TWO_ARGS  { ret = arg0 > arg1; }                                                                                               TRIVM_EXT_INT64
+0x0E    SLT64       TWO_ARGS  { ret = (uint64_t)((int64_t)arg0 < (int64_t)arg1); }                                                                 TRIVM_EXT_INT64
+0x0F    SGT64       TWO_ARGS  { ret = (uint64_t)((int64_t)arg0 > (int64_t)arg1); }                                                                 TRIVM_EXT_INT64
+0x10    EQ64        TWO_ARGS  { ret = arg0 == arg1; }                                                                                              TRIVM_EXT_INT64
+0x11    OR64        TWO_ARGS  { ret = arg0 | arg1; }                                                                                               TRIVM_EXT_INT64
+0x12    XOR64       TWO_ARGS  { ret = arg0 ^ arg1; }                                                                                               TRIVM_EXT_INT64
+// 0x12 reserved
+0x14    ADDF64      TWO_ARGS  { double a1 = TO_F64(arg1); /**/ double a0 = TO_F64(arg0); double r; /**/ r = a0 + a1; /**/ ret = TO_U64(r); }       TRIVM_EXT_FLOAT64
+0x15    SUBF64      TWO_ARGS  { double a1 = TO_F64(arg1); /**/ double a0 = TO_F64(arg0); double r; /**/ r = a0 - a1; /**/ ret = TO_U64(r); }       TRIVM_EXT_FLOAT64
+0x16    MULF64      TWO_ARGS  { double a1 = TO_F64(arg1); /**/ double a0 = TO_F64(arg0); double r; /**/ r = a0 * a1; /**/ ret = TO_U64(r); }       TRIVM_EXT_FLOAT64
+0x17    DIVF64      TWO_ARGS  { double a1 = TO_F64(arg1); /**/ double a0 = TO_F64(arg0); double r; /**/ r = a0 / a1; /**/ ret = TO_U64(r); }       TRIVM_EXT_FLOAT64
+0x18    LTF64       TWO_ARGS  { double a1 = TO_F64(arg1); /**/ double a0 = TO_F64(arg0); ret = a0 < a1; }                                          TRIVM_EXT_FLOAT64
+0x19    GTF64       TWO_ARGS  { double a1 = TO_F64(arg1); /**/ double a0 = TO_F64(arg0); ret = a0 > a1; }                                          TRIVM_EXT_FLOAT64
+0x1A    LEF64       TWO_ARGS  { double a1 = TO_F64(arg1); /**/ double a0 = TO_F64(arg0); ret = a0 <= a1; }                                         TRIVM_EXT_FLOAT64
+0x1B    GEF64       TWO_ARGS  { double a1 = TO_F64(arg1); /**/ double a0 = TO_F64(arg0); ret = a0 >= a1; }                                         TRIVM_EXT_FLOAT64
+0x1C    EQF64       TWO_ARGS  { double a1 = TO_F64(arg1); /**/ double a0 = TO_F64(arg0); ret = a0 == a1; }                                         TRIVM_EXT_FLOAT64
+// 0x1D...0x1F reserved
+0x20    CEILF64     ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = ceil(a1); /**/ ret = TO_U64(r); }                                TRIVM_EXT_FLOAT64
+0x21    FLOORF64    ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = floor(a1); /**/ ret = TO_U64(r); }                               TRIVM_EXT_FLOAT64
+0x22    TRUNCF64    ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = trunc(a1); /**/ ret = TO_U64(r); }                               TRIVM_EXT_FLOAT64
+0x23    NEARESTF64  ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = round(a1); /**/ ret = TO_U64(r); }                               TRIVM_EXT_FLOAT64
+0x24    SQRTF64     ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = sqrt(a1); /**/ ret = TO_U64(r); }                                TRIVM_EXT_FLOAT64
+0x25    TRUNCF64U64 ONE_ARG   { double a1 = TO_F64(arg1); /**/ ret = (uint64_t)a1; }                                                               TRIVM_EXT_FLOAT64
+0x26    TRUNCF64S64 ONE_ARG   { double a1 = TO_F64(arg1); /**/ ret = (int64_t)a1; }                                                                TRIVM_EXT_FLOAT64
+0x27    DEMOTE      ONE_ARG   { double a1 = TO_F64(arg1); /**/ float r = (float)a1; /**/ ret = TO_U32(r); }                                        TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64
+0x28    PROMOTE     ONE_ARG   { float a1 = TO_F32(arg1); /**/ double r = (double)a1; /**/ ret = TO_U64(r); }                                       TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64
+0x29    TRUNCF32U64 ONE_ARG   { float a1 = TO_F32(arg1); /**/ ret = (uint64_t)a1; }                                                                TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
+0x2A    TRUNCF32S64 ONE_ARG   { float a1 = TO_F32(arg1); /**/ ret = (int64_t)a1; }                                                                 TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
+// 0x2B reserved
+0x2C    CONVF32U64  ONE_ARG   { float r; /**/ r = (float)(uint64_t)arg1; /**/ ret = TO_U32(r); }                                                   TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
+0x2D    CONVF32S64  ONE_ARG   { float r; /**/ r = (float)(int64_t)arg1; /**/ ret = TO_U32(r); }                                                    TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
+0x2E    CONVF64U64  ONE_ARG   { double r; /**/ r = (double)(uint64_t)arg1; /**/ ret = TO_U64(r); }                                                 TRIVM_EXT_FLOAT64
+0x2F    CONVF64S64  ONE_ARG   { double r; /**/ r = (double)(int64_t)arg1; /**/ ret = TO_U64(r); }                                                  TRIVM_EXT_FLOAT64
+0x30    NOT64       ONE_ARG   { ret = !arg1; }                                                                                                     TRIVM_EXT_INT64
+0x31    NEG64       ONE_ARG   { ret = -arg1; }                                                                                                     TRIVM_EXT_INT64

@@ -1,0 +1,147 @@
+<html>
+    <head>
+	<meta charset="UTF-8">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	<style>
+		body {
+			background: #000;
+			color: #CCC;
+			font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+			margin: 0px;
+			padding: 0px;
+		}
+		a {
+			color: #EEE;
+			background: #222;
+			padding: 3px 8px;
+			border: 1px solid #777;
+			border-radius: 4px;
+			display: inline-block;
+			margin: 1px 3px;
+			text-decoration: none;
+		}
+		a:hover {
+			background: #246;
+			color: #FFF;
+		}
+		div#summary {
+			background-color: darkgrey;
+			color: rgb(27, 41, 41);
+			padding: 20px;
+			font-weight: bold;
+		}
+		div.test {
+			background: #333;
+			padding: 16px;
+			border: 2px solid #555;
+			border-radius: 10px;
+			margin: 20px;
+		}
+		div.test.failed {
+			background: #422;
+		}
+		div.test.failed span.result {
+			color: #F00;
+		}
+		div.test.ok span.result {
+			color: #0A0;
+		}
+		div.runs {
+			display: none;
+		}
+		div.run {
+			border: 1px solid #555;
+			border-radius: 4px;
+			margin: 15px 0px 15px 25px;
+			padding: 5px;
+		}
+		pre.src, pre.trace, pre.run_src, pre.output, pre.diff {
+			border: 1px solid #555;
+			border-radius: 4px;
+			margin: 15px 0px 15px 25px;
+			padding: 5px;
+			display: none;
+		}
+		pre.src:before{
+			content: 'Test source code:';
+			display: block;
+			color: rgb(62, 134, 62);
+		}
+		pre.trace:before{
+			content: 'Trace:';
+			display: block;
+			color: rgb(62, 114, 134);
+		}
+		pre.run_src:before{
+			content: 'triVM source code:';
+			display: block;
+			color: rgb(62, 134, 62);
+		}
+		pre.output:before{
+			content: 'Output:';
+			display: block;
+			color: rgb(62, 114, 134);
+		}
+		pre.diff:before{
+			content: 'Differences (actual != expected):';
+			display: block;
+			color: rgb(163, 118, 105);
+		}
+	</style>
+    </head>
+<body>
+
+	<div id="summary">
+	<div>Total tests: {{total_count}}</div>
+	<div>Success: {{total_count - failed_count}}</div>
+	<div>Failed: {{failed_count}}</div>
+	</div>
+
+<div id="tests">
+{% for test in tests %}
+<div class="test {{ 'ok' if test.ok else 'failed' }}">
+	<div class="name">{{ test.name | e}} - <span class="result">{{ 'OK' if test.ok else 'FAILED' }}</span>
+	<a href="javascript:" onclick="toggle(this, 2, 'div.runs')" class="runs">{{test.runs|length}} run(s)</a>
+	<a href="javascript:" onclick="toggle(this, 2, 'pre.src')" class="src">Source</a>
+	{% if test.trace != '' %}
+	<a href="javascript:" onclick="toggle(this, 2, 'pre.trace')" class="trace">Trace</a>
+	{% endif %}
+	</div>
+	<pre class="src">{{ test.source | e }}</pre>
+	<pre class="trace">{{ test.trace | e }}</pre>
+	<div class="runs">
+	{% for run in test.runs %}
+		<div class="run">RUN
+		<a href="javascript:" onclick="toggle(this, 1, 'pre.run_src')" class="steps">{{run.steps}} step(s)</a>
+		<a href="javascript:" onclick="toggle(this, 1, 'pre.output')" class="output">Output</a>
+		{% if run.diff != '' %}
+		<a href="javascript:" onclick="toggle(this, 1, 'pre.diff')" class="diff">Diff</a>
+		{% endif %}
+		<pre class="run_src">{{ run.code | e }}</pre>
+		<pre class="output">{{ run.output | e }}</pre>
+		<pre class="diff">{{ run.diff | e }}</pre>
+		</div>
+	{% endfor %}
+	</div>
+</div>
+{% endfor %}
+</div>
+
+<script>
+
+function toggle(element, num_parents, selector)
+{
+	e = $(element);
+	for (let i = 0; i < num_parents; i++)
+	{
+		e = e.parent();
+	}
+	e = e.find(selector)
+	e.toggle();
+	e.get(0).scrollIntoView()
+}
+
+</script>
+
+</body>
+</html>

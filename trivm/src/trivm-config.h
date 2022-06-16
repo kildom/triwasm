@@ -1,0 +1,15 @@
+#ifndef _TRIVM_CONFIG_H_
+#define _TRIVM_CONFIG_H_
+
+#define TRIVM_EXT_UNWIND 0
+#define TRIVM_EXT_MEM64 0
+#define TRIVM_EXT_INT64 0
+#define TRIVM_EXT_FLOAT32 0
+#define TRIVM_EXT_FLOAT64 0
+
+#define TRIVM_ENABLE_STDLIB 1
+#define TRIVM_ENABLE_ROM 1
+
+#define TRIVM_ENABLE_ALL_FAULTS 0
+
+#endif /* _TRIVM_CONFIG_H_ */
