@@ -4,15 +4,18 @@
   "version": "0.0.1",
   "description": "SDK for triVM",
   "scripts": {
-    "prebuild-triasm": "npx ncp tools/bin/starter.bat dist/bin/triasm.bat && npx ncp tools/bin/starter.sh dist/bin/triasm",
     "build-triasm": "npx tsc -p build/triasm.tsconfig.json",
-    "prebuild-triwasm": "npx ncp tools/bin/starter.bat dist/bin/triwasm.bat && npx ncp tools/bin/starter.sh dist/bin/triwasm",
+    "postbuild-triasm": "node build/postbuild.js starters",
     "build-triwasm": "npx tsc -p build/triwasm.tsconfig.json",
-    "prebuild-tricc": "npx ncp tools/bin/starter.bat dist/bin/tricc.bat && npx ncp tools/bin/starter.sh dist/bin/tricc",
+    "postbuild-triwasm": "node build/postbuild.js starters",
     "build-tricc": "npx tsc -p build/tricc.tsconfig.json",
-    "prebuild-triconf": "npx ncp tools/bin/starter.bat dist/bin/triconf.bat && npx ncp tools/bin/starter.sh dist/bin/triconf",
+    "postbuild-tricc": "node build/postbuild.js starters",
     "build-triconf": "npx tsc -p build/triconf.tsconfig.json",
-    "build": "npm run build-triasm && npm run build-triwasm && npm run build-tricc && npm run build-triconf"
+    "postbuild-triconf": "node build/postbuild.js starters",
+    "build-static": "node build/postbuild.js copystatic licenses",
+    "build": "npm run build-static && npm run build-triasm && npm run build-triwasm && npm run build-tricc && npm run build-triconf",
+    "build-clean": "RmDiR /S /Q dist || rm -Rf dist",
+    "rebuild": "npm run build-clean && npm run build"
   },
   "author": "Dominik Kilian <kontakt@dominik.cc>",
   "license": "GPL-3.0",

@@ -6,6 +6,7 @@
 		"sourceMap": true,
 		"removeComments": true,
 		"esModuleInterop": true,
-		"strict": true
+		"strict": true,
+        "moduleResolution": "nodenext"
     }
 }

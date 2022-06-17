@@ -1,7 +1,5 @@
 @echo off
 
-set JS_SCRIPT=%~dp0js\%~n0.js
-
 call :find_node %~dp0..\ext\electron\electron                      && goto node_found
 for /r %%i in (%~dp0..\ext\electron\*) do set TEST_DIR=%%i
 call :find_node %TEST_DIR%\electron                                && goto node_found
@@ -38,5 +36,5 @@ set NODE_BIN="%~1"
 goto :EOF
 
 :node_found
-%NODE_BIN% %JS_SCRIPT% %*
+%NODE_BIN% "%~dp0js\%~n0.js" %*
 exit /b %ERRORLEVEL%

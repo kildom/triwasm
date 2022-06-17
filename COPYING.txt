@@ -1,0 +1,27 @@
+
+The triVM SDK is not a monolith software. It contains multiple applications, libraries
+and modules. That is why the license requirements for each pice of the software are
+different and they are released on multiple licenses.
+
+Refer the "COPYING.txt" file on specific directory to find out license for specific
+part of the SDK.
+
+The list below shows overview of SDK licensing, but refer to the specific "COPYING.txt"
+file for details.
+
+BSD Zero Clause License
+    - source code that is intended to be run inside a virtual machine,
+      e.g. triWASM startup code
+
+BSD 2-Clause License
+    - source code that is intended to be embedded into host software, e.g. triVM core
+    - high level documentation
+
+BSD 3-Clause License
+    - Berkeley SoftFloat external library used in softfloatlib
+
+GNU General Public License v3.0
+    - tools that are intended to be run by the developers during development process,
+      e.g. triWASM compiler, configuration tools
+    - utility scripts, e.g. used during building
+    - tests
