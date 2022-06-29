@@ -16,9 +16,14 @@ Front page: highlights, link to on-line demo and tutorial, list of elements: tri
   * Architecture description and how it maps to WASM
   * Extensions to use with C with link to assembly syntax
   * Command line options
+  * Examples
+* triCC - highlights
+  * Command line options
+  * Examples
 * triASM
   * Assembly file syntax
   * Command line arguments
+  * Examples
 * Tools
   * Online demo - editor + host/guest compiler + running it in a browser
   * Online configurator with optional exporting prepared host and guest sources
