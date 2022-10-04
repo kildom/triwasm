@@ -75,9 +75,9 @@ _These proposals have not yet been merged to the spec. Merged proposals are list
 
 ### Phase 0 - Pre-Proposal (CG)
 
-| Proposal                                                    | Champion                         |
+| Proposal                                                    | Status                         |
 | ----------------------------------------------------------- | -------------------------------- |
-| [Funclets: Flexible Intraprocedural Control Flow][funclets] | Dan Gohman                       |
+| [Funclets: Flexible Intraprocedural Control Flow][funclets] | ⏳ plan for the far future |
 
 ## Implementation status
 
