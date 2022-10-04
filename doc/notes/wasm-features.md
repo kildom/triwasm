@@ -79,13 +79,6 @@ _These proposals have not yet been merged to the spec. Merged proposals are list
 | ----------------------------------------------------------- | -------------------------------- |
 | [Funclets: Flexible Intraprocedural Control Flow][funclets] | ⏳ plan for the far future |
 
-## Implementation status
-
-Roadmap is available on https://webassembly.org/roadmap/
-
-## Contributing new proposals
-
-Please see [Contributing to WebAssembly](https://github.com/WebAssembly/design/blob/main/Contributing.md) for the most up-to-date information on contributing proposals to standard.
 
 [import_export_of_mutable_globals]: https://github.com/WebAssembly/mutable-global
 [non-trapping_float-to-int_conversions]: https://github.com/WebAssembly/nontrapping-float-to-int-conversions
