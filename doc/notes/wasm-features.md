@@ -17,8 +17,6 @@ https://github.com/WebAssembly/proposals
 
 ### Phase 5 - The Feature is Standardized (WG)
 
-_These proposals have not yet been merged to the spec. Merged proposals are listed in [Finished Proposals](finished-proposals.md)._
-
 | Proposal                                                   | Status        |
 | -----------------------------------------------------------| --------------- |
 
