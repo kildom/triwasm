@@ -81,6 +81,9 @@
   * e.g. `UNWIND_RET 1, 1` will pop return address from stack, then keep 1 word on stack, then remove 1 word below it and then set PC:=return address.
   * above example will be encoded as following bits `iiii iiii   r kkk ssss` == `iiii iiii   1 001 0001`
   * `UNWIND` without arguments will first pop argument from stack and later pop return address (if needed).
+  * Or, even better: almost always `UNWIND_RET` will be preceded by `READ [SP] - @ret_address`, so:
+    * `UNWIND_RET 1, 2` will keep 1 word on top of stack, remove 2 words below it, jump to address pointed by bottom-most word of the removed words.
+    * Emulated will keep return address in TMP0, e.g. `unwind8_ret: call unwind8 ; read tmp0 ; write pc`
 * Allow two methods of calling host functions:
   * Call a function from HOST instruction. The host call stack will be: host caller -> vm core -> host callee function
   * Exit VM with information what host function to execute. Usefull for e.g. asynchronous functions:
