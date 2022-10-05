@@ -47,8 +47,8 @@
     wasm_function_not_calling_anything:
     wasm_function_calling_something_including_calling_optimized_common_parts:
     ...
-    READ [SP] - N     READ [SP] - N
-    UNWIND_RET X, Y   PUSH calc_unwind(X, Y)
+    READ [SP] - N     PUSH calc_unwind(X, Y)
+    UNWIND_RET X, Y   READ [SP] - N
                       JUMP __triwasmlib__unwind
     
     optimized_common_part:
