@@ -32,6 +32,55 @@
 * Table import. It will always work the same as table export.
 
 ## General
+* Reconsider using LR (Link Register) instead of pushing return address on stack
+  * Simple functions that does not call any other (or uses only tail call) will be simpler
+  * Return will be two byte operation `READ LR; WRITE PC`
+  * But, `UNWIND` instruction can be extended to do return - one bit of argument may indicate that
+  * `UNWIND` emulation can be executed in two ways (return bit is not needed in argument):
+    * `call unwind` - will do unwind and return here, so LR must be saved before
+    * `jump unwind` - will do unwind and return to LR address
+  * It does not have significant impact on normal WASM functions, but can be benefitial in two cases:
+    * During optimization, reusing parts of code will be simpler and smaller, because stack will not be touched after the call
+    * Emulation written in triASM can be more size-optimized
+  * For stack return address:
+    ```
+    wasm_function_not_calling_anything:
+    wasm_function_calling_something_including_calling_optimized_common_parts:
+    ...
+    READ [SP] - N     READ [SP] - N
+    UNWIND_RET X, Y   PUSH calc_unwind(X, Y)
+                      JUMP __triwasmlib__unwind
+    
+    optimized_common_part:
+    WRITE TMP0
+    ... using tmp0 is forbidden here
+    READ TMP0
+    WRITE PC
+    ```
+  * For LR return address:
+    ```
+    wasm_function_not_calling_anything:
+    ...
+    UNWIND_RET X, Y   PUSH calc_unwind(X, Y)
+                      JUMP __triwasmlib__unwind
+
+    wasm_function_calling_something_including_calling_optimized_common_parts:
+    READ LR           READ LR
+    ...
+    READ [SP] - N     READ [SP] - N
+    WRITE LR          PUSH calc_unwind(X, Y)
+    UNWIND_RET X, Y   JUMP __triwasmlib__unwind
+
+    optimized_common_part:
+    ... using tmp0 is allowed here
+    READ LR
+    WRITE PC
+    ```
+* Reconsider extending `UNWIND` instruction to allow returning to address on top of stack.
+  * One bit in `keep` parameter will indicate `return` operation,
+  * e.g. `UNWIND_RET 1, 1` will pop return address from stack, then keep 1 word on stack, then remove 1 word below it and then set PC:=return address.
+  * above example will be encoded as following bits `iiii iiii   r kkk ssss` == `iiii iiii   1 001 0001`
+  * `UNWIND` without arguments will first pop argument from stack and later pop return address (if needed).
 * Allow two methods of calling host functions:
   * Call a function from HOST instruction. The host call stack will be: host caller -> vm core -> host callee function
   * Exit VM with information what host function to execute. Usefull for e.g. asynchronous functions:
