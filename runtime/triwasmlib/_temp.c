@@ -420,4 +420,79 @@ call shl64_32
 jump add64
 .end
 
+Example of triASM for mul64 with pushing return address to stack.
+
+
+.block
+__trivmlib_mul32_64__:
+
+.local common1
+
+read [sp] - @a
+and 0xFFFF
+read [sp] - @b
+and 0xFFFF
+mul
+push 0
+
+read [sp] - @a
+shr 16
+read [sp] - @b
+call common1
+
+read [sp] - @b
+shr 16
+read [sp] - @a
+call common1
+
+read [sp] - @a
+shr 16
+read [sp] - @b
+shr 16
+mul
+push 0
+push 32
+call shl64_32
+read [sp] - @ret
+unwind 5, 3
+jump add64
+
+common1:
+write tmp1
+and 0xFFFF
+mul
+push 0
+push 16
+call shl64_32
+read tmp1
+jump add64
+
+.end
+
+.block
+__trivmlib_mul64__:
+
+.local common1
+
+read [sp] - @al
+read [sp] - @bl
+call __trivmlib_mul32_64__
+read [sp] - @al
+read [sp] - @bh
+call common1
+read [sp] - @ah
+read [sp] - @bl
+read [sp] - @ret
+unwind 5, 5
+jump common1
+
+common1:
+write tmp0
+call __trivmlib_mul32_64__
+push 32
+call shl64_32
+read tmp0
+jump add64
+
+.end
 */
