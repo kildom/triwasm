@@ -354,3 +354,70 @@ uint64_t __triwasmlib__shl64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     ".endfunc\n"
 
 #endif
+/*
+
+Example of triASM for mul64 when LR will be implemented instead of pushing return address to stack.
+
+.block
+.local common1, common2
+__trivmlib_mul32_64__:
+
+read [sp] - @a
+and 0xFFFF
+read [sp] - @b
+and 0xFFFF
+mul
+push 0
+
+read [sp] - @a
+shr 16
+read [sp] - @b
+call common1
+
+read [sp] - @b
+shr 16
+read [sp] - @a
+call common1
+
+read [sp] - @a
+shr 16
+read [sp] - @b
+shr 16
+mul
+push 0
+push 32
+unwind 2, 3
+jump common2
+
+common1:
+and 0xFFFF
+mul
+push 0
+push 16
+common2:
+call shl64_32
+jump add64
+.end
+
+.block
+.local common1
+__trivmlib_mul64__:
+read [sp] - @al
+read [sp] - @bl
+call __trivmlib_mul32_64__
+read [sp] - @al
+read [sp] - @bh
+call common1
+read [sp] - @ah
+read [sp] - @bl
+unwind 4, 2
+jump common1
+
+common1:
+call __trivmlib_mul32_64__
+push 32
+call shl64_32
+jump add64
+.end
+
+*/
