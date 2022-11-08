@@ -1,6 +1,7 @@
 {
     "extends": "./common.tsconfig.json",
     "files": [
+        "../tools/utils/platform-impl.js",
         "../tools/utils/build/SystemRegisterBegin.js",
         "../tools/tricc.ts",
         "../tools/utils/build/SystemRegisterEnd.js"

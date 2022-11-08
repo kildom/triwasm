@@ -3,6 +3,7 @@
     "editor.insertSpaces": true,
     "editor.tabSize": 4,
     "cSpell.words": [
+        "bytecode",
         "codesec",
         "consts",
         "discardable",
@@ -25,6 +26,8 @@
         "tableidx",
         "tablesec",
         "tabletype",
+        "triasm",
+        "triwasm",
         "typesec",
         "uleb",
         "wasm"

@@ -17,14 +17,12 @@ const System = (function () {
     const System = {};
     const modules = {};
     function execModule(module) {
-        if (module.__executed__) {
+        if (!module || module.__executed__) {
             return;
         }
         module.__executed__ = true;
         for (let dep of module.__deps__) {
-            if (dep in modules) {
-                execModule(modules[dep]);
-            }
+            execModule(modules[dep]);
         }
         module.__execute__();
         delete module.__execute__;
@@ -52,18 +50,17 @@ const System = (function () {
             let module = modules[name];
             for (let i = 0; i < module.__deps__.length; i++) {
                 let dep = module.__deps__[i];
-                if (dep in modules) {
-                    module.__setters__[i](modules[dep]);
-                } else {
-                    module.__setters__[i](require(dep));
-                }
+                module.__setters__[i](modules[dep]);
             }
             delete module.__setters__;
         }
-        console.log(modules);
         for (let module of Object.values(modules).reverse()) {
             execModule(module);
         }
     };
     return System;
 })();
+
+if (typeof(window) === 'object' && !window.module) {
+    window.module = null;
+}
