@@ -12,15 +12,17 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { ParserError } from './parser.mjs'
-import { Block, BlockEnd, ExprCycleError } from './instructions.mjs'
+import { ParserError } from './parser'
+import { Block, BlockEnd, ExprContext, ExprCycleError, ExprEval } from './instructions'
 
+type FuncEval = (ctx: ExprContext, ...args: ExprEval[]) => bigint;
 
-class AsmFunctions {
+export class AsmFunctions {
 
-    static createExpr(name, args, lineNumber) {
-        let f = AsmFunctions[`func_${name}`];
-        let a = AsmFunctions[`args_${name}`];
+    static createExpr(name: string, args: ExprEval[], lineNumber: number) {
+        let map = AsmFunctions as { [k: string]: any };
+        let f = map[`func_${name}`] as (FuncEval | undefined);
+        let a = map[`args_${name}`] as ([number, number] | undefined);
         if (f === undefined) {
             throw new ParserError(`${lineNumber}: Unknown function "${name}()"!`);
         }
@@ -33,86 +35,82 @@ class AsmFunctions {
         return this.createFunction(f, args);
     }
 
-    static createFunction(f, args) {
+    static createFunction(f: FuncEval, args: ExprEval[]): ExprEval {
         return ctx => f(ctx, ...args);
     }
 
-    static func_addr(ctx) {
+    static func_vma(ctx: ExprContext) {
+        return this.func_pma(ctx) + BigInt(ctx.instr.compiler.pmaBase);
+    }
+
+    static func_pma(ctx: ExprContext) {
         let instr = ctx.instr;
         if (instr.compiler.initialState) {
             ctx.invalid = true;
             return 0n;
         } else {
-            if (instr.vma !== undefined) {
-                return BigInt(instr.vma);
-            } else {
-                if (instr.estimatedVma === undefined) {
-                    instr.estimatedVma = Math.max(instr.oldVma, instr.compiler.vma);
+            if (instr.pma === undefined) {
+                if (instr.pmaEstimated === undefined) {
+                    instr.pmaEstimated = Math.max(instr.pmaOld, instr.compiler.pma);
                 }
-                return BigInt(Math.max(instr.estimatedVma, instr.compiler.vma));
+                return BigInt(Math.max(instr.pmaEstimated, instr.compiler.pma));
+            } else {
+                return BigInt(instr.pma);
             }
         }
     }
 
-    static func_lma(ctx) {
-        let instr = ctx.instr;
-        if (instr.compiler.initialState) {
-            ctx.invalid = true;
-            return 0n;
-        } else {
-            if (instr.lma !== undefined) {
-                return BigInt(instr.lma);
-            } else {
-                if (instr.estimatedLma === undefined) {
-                    instr.estimatedLma = Math.max(instr.oldLma, instr.compiler.lma);
-                }
-                return BigInt(Math.max(instr.estimatedLma, instr.compiler.lma));
-            }
-        }
+    static func_vma2pma(ctx: ExprContext, vma: ExprEval) {
+        return vma(ctx) - BigInt(ctx.instr.compiler.pmaBase);
     }
 
-    static func_line(ctx) {
+    static func_pma2vma(ctx: ExprContext, pma: ExprEval) {
+        return pma(ctx) + BigInt(ctx.instr.compiler.pmaBase);
+    }
+
+    static func_line(ctx: ExprContext) {
         return BigInt(ctx.instr.lineNumber);
     }
 
-    static func_iid(ctx) {
+    static func_iid(ctx: ExprContext) {
         return BigInt(ctx.instr.index);
     }
 
-    static func_size(ctx, first, last) {
+    static func_size(ctx: ExprContext, first: ExprEval, last: ExprEval) {
+        let gettingSizeSymbol = Symbol.for('_func_size_gettingSize');
         let instructions = ctx.instr.compiler.instructions;
         if (ctx.instr.compiler.initialState) {
             let oldInvalid = ctx.invalid;
             ctx.invalid = false;
-            first = Number(first(ctx));
-            last = Number(last(ctx));
-            if (ctx.invalid || first >= instructions.length || last >= instructions.length || first > last) {
+            let firstValue = Number(first(ctx));
+            let lastValue = Number(last(ctx));
+            if (ctx.invalid || firstValue >= instructions.length || lastValue >= instructions.length || firstValue > lastValue) {
                 throw new ParserError(`${ctx.instr.lineNumber}: Invalid instruction ID used in an argument of the "size()" function!`);
             }
             ctx.invalid = oldInvalid;
             let size = 0;
-            for (let i = first; i < last; i++) {
+            for (let i = firstValue; i < lastValue; i++) {
                 let instr = instructions[i];
                 if (instr instanceof Block) {
                     ctx.invalid = ctx.invalid || instr.discardable;
                 } else if (instr instanceof BlockEnd) {
                     ctx.invalid = ctx.invalid || instr.block.discardable;
-                } else if (instr._func_size_gettingSize) {
+                } else if ((instr as any)[gettingSizeSymbol]) {
                     throw new ExprCycleError(`${ctx.instr.lineNumber}: Cycle in size() function evaluation!`);
                 }
-                instr._func_size_gettingSize = true;
+                (instr as any)[gettingSizeSymbol] = true;
                 size += instr.getSize(ctx);
-                delete instr._func_size_gettingSize;
+                delete (instr as any)[gettingSizeSymbol];
             }
             return BigInt(size);
         } else {
-            first = Number(first(ctx));
-            last = Number(last(ctx));
-            return AsmFunctions.func_addr({ instr: instructions[last] }) - AsmFunctions.func_addr({ instr: instructions[first] });
+            let firstValue = Number(first(ctx));
+            let lastValue = Number(last(ctx));
+            return AsmFunctions.func_pma({ instr: instructions[lastValue] }) - AsmFunctions.func_pma({ instr: instructions[firstValue] });
         }
     }
 
-    static func_if(ctx, cond, ifTrue, ifFalse) {
+    static func_if(ctx: ExprContext, cond: ExprEval, ifTrue: ExprEval, ifFalse: ExprEval) {
         if (ctx.instr.compiler.initialState) {
             let oldInvalid = ctx.invalid;
             ctx.invalid = false;
@@ -140,5 +138,3 @@ class AsmFunctions {
     }
 
 };
-
-export { AsmFunctions };

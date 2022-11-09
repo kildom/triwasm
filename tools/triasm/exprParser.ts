@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { reMatchAll } from './utils.mjs';
+import { reMatchAll } from './utils';
 
 export class ExprParserError extends Error {
     constructor(message: string) {
@@ -27,7 +27,7 @@ enum TOKEN {
 };
 
 
-const oneCharTokenMap = {
+const oneCharTokenMap: { [k: string]: TOKEN } = {
     '~': TOKEN.BIT_NOT,
     '!': TOKEN.NOT,
     '%': TOKEN.MOD,
@@ -48,7 +48,7 @@ const oneCharTokenMap = {
 };
 
 
-const twoCharsTokenMap = {
+const twoCharsTokenMap: { [k: string]: TOKEN } = {
     '<<': TOKEN.SHL,
     '>>': TOKEN.SHR,
     '<=': TOKEN.LE,
@@ -66,7 +66,7 @@ interface Token {
     value?: string;
 };
 
-function tokenize(input: string) : Token[] {
+function tokenize(input: string): Token[] {
     let result: Token[] = [];
     input = input.trim();
     let offset = 0;
@@ -100,7 +100,7 @@ function tokenize(input: string) : Token[] {
     return result;
 }
 
-export interface OutputObject {
+export interface ExprParserOutput {
     onParserTernaryExpr(cond: any, a: any, b: any): any;
     onParserOrExpr(a: any, b: any): any;
     onParserAndExpr(a: any, b: any): any;
@@ -130,14 +130,12 @@ export interface OutputObject {
 
 
 export class ExprParser {
-    outputObject: OutputObject;
-    tokens: Token[];
-    tokenIndex: number;
-    tokenId: number;
+    tokens: Token[] = [];
+    tokenIndex: number = 0;
+    tokenId: number = 0;
     tokenValue: string | undefined;
 
-    constructor(outputObject: OutputObject) {
-        this.outputObject = outputObject;
+    constructor(private outputObject: ExprParserOutput) {
     }
 
     parse(input: string): any[] {
@@ -355,7 +353,7 @@ export class ExprParser {
         if (this.tokenId == TOKEN.OPEN) {
             this.consume();
             result = this.parseExpr();
-            if (this.tokenId as number  != TOKEN.CLOSE) {
+            if (this.tokenId as number != TOKEN.CLOSE) {
                 throw new ExprParserError('Missing closing bracket!');
             }
             this.consume();
@@ -368,7 +366,7 @@ export class ExprParser {
             if (this.tokenId as number == TOKEN.OPEN) {
                 this.consume();
                 let args = this.parseArgs();
-                if (this.tokenId as number  != TOKEN.CLOSE) {
+                if (this.tokenId as number != TOKEN.CLOSE) {
                     throw new ExprParserError('Missing closing bracket!');
                 }
                 this.consume();

@@ -132,11 +132,10 @@ Only built-in functions can be used in expressions.
 
 | Function | Arguments | Description |
 |----------|-----------|-------------|
-| addr | () | Returns the current VMA address. |
-| pma | (addr) | Convert VMA address to PMA address. |
-| lma | (addr) | Convert VMA address to LMA address. |
+| vma | () | Returns the current VMA address. |
+| pma | () | Returns the current PMA address. |
 | pma2vma | (pma) | Convert PMA address to VMA address. |
-| lma2vma | (lma) | Convert LMA address to VMA address. |
+| vma2pma | (vma) | Convert VMA address to PMA address. |
 | line | () | Returns current source code line number. |
 | iid | () | Returns current instruction unique identifier. |
 | size | (first_iid, last_iid) | Returns size of bytecode generated after `first_iid` (inclusive) and before `last_iid` (exclusive). |
@@ -150,25 +149,14 @@ The triASM tracks three addresses:
  * PMA - Program Memory Address.
    Tell the address in program memory which is the address hold by be `PC` register.
    triVM maps it to VMA at offset 0 in single memory configuration or 0x80000000 in dual memory configuration.
- * LMA - Load Memory Address.
-   Tells the address at the output bytecode.
-   Normally, it is the same as PMA, but it can be different if the output is going to be loaded in some unusual way.
+   It is also an address at the output bytecode.
 
-By default, all addresses are the same.
+By default, both addresses are the same.
 Relation between those addresses is constant and can be set up by the `.BASE` directive.
 
 Following example tells the assembler that the bytecode starts at:
  * VMA = 0x80000000
  * PMA = 0x00000000
- * LMA = 0x00000000 (it is always zero and cannot be changed)
 ```
 .BASE 0x80000000
-```
-
-Another example tells the assembler that the bytecode starts at:
- * VMA = 0x80000000
- * PMA = 0x00001000
- * LMA = 0x00000000 (it is always zero and cannot be changed)
-```
-.BASE 0x80000000, 0x00001000
 ```

@@ -13,6 +13,13 @@
  */
 
 
+import { Compiler } from './triasm/compiler';
+import { ExprParser } from './triasm/exprParser';
+import { AsmFunctions } from './triasm/functions';
+import { instrInfoById } from './triasm/instrInfo';
+import { InstrBase } from './triasm/instructions';
+import { ParserError } from './triasm/parser';
+import { reMatchAll } from './triasm/utils';
 import { ArgsParser } from './utils/argparse';
 import { platform } from './utils/platform';
 

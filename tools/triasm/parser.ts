@@ -12,17 +12,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/*
- * Parser output object methods:
- *     onParserLine(lineNumber);
- *     onParserLabel(name);
- *     onParserAssign(name, value);
- *     onParserInstr(id, args, base);
- *     all from exprParser.mjs
- */
-
-import { instrInfoByName, BASE } from './instrInfo.mjs';
-import { ExprParser, ExprParserError } from './exprParser.mjs';
+import { instrInfoByName, BASE, InstrInfo } from './instrInfo';
+import { ExprParser, ExprParserError, ExprParserOutput } from './exprParser';
 
 /* reLine decoding:
  *     #empty       # no group
@@ -44,15 +35,15 @@ const reLine = /^[ \t]*(?:([a-z_\$@\.][a-z_\$@\.0-9]*)[ \t]*(?:(:)[ \t]*|=[ \t]*
 const reBaseReg = /^(?:\[\s*(AMB0|AMB1)\s*\]\s*(?:\+\s*\[\s*(POP)\s*\])?|\[\s*(SP)\s*\]\s*(?:\-\s*\[\s*(POP)\s*\])?|\[\s*(POP)\s*\])\s*(\+|-|$)\s*/i;
 
 
-class ParserError extends Error {
-    constructor(message) {
+export class ParserError extends Error {
+    constructor(message: string) {
         super(message);
         this.name = "ParserError";
     }
 };
 
 
-function parseBase(args) {
+function parseBase(args: string): [BASE, string] {
     let m = args.match(reBaseReg);
     if (m === null) {
         return [BASE.ZERO, args];
@@ -63,7 +54,7 @@ function parseBase(args) {
     } else if (m[6] === '-') {
         args = `0 - ${args}`;
     }
-    let base;
+    let base: BASE;
     switch ((m[1] || m[3] || '').toUpperCase()) {
         case 'AMB0': base = BASE.AMB0; break;
         case 'AMB1': base = BASE.AMB1; break;
@@ -77,7 +68,15 @@ function parseBase(args) {
 }
 
 
-function parse(input, outputObject) {
+export interface ParserOutput extends ExprParserOutput {
+    onParserLine(lineNumber: number): void;
+    onParserLabel(name: string): void;
+    onParserAssign(name: string, value: any): void;
+    onParserInstr(id: number, args: any[] | string, base: BASE): void;
+}
+
+
+export function parse(input: string, outputObject: ParserOutput): void {
     let exprParser = new ExprParser(outputObject);
     let line = 1;
     let offset = 0;
@@ -87,7 +86,7 @@ function parse(input, outputObject) {
             if (input.substring(offset, m.index).trim() !== '') {
                 throw new ParserError(`${line}: Syntax error!`);
             }
-            offset = m.index + m[0].length;
+            offset = (m.index as number) + m[0].length;
             if (m[1] === undefined) {
                 // skip comments and empty lines
             } else if (m[2] !== undefined) {
@@ -104,7 +103,7 @@ function parse(input, outputObject) {
                 if (!info) {
                     throw new ParserError(`${line}: Invalid instruction name!`);
                 }
-                let args = m[4];
+                let args: any[] | string = m[4];
                 let base = BASE.ZERO;
                 if (args === undefined) {
                     if (info.args !== null) {
@@ -141,4 +140,3 @@ function parse(input, outputObject) {
     }
 }
 
-export { parse, ParserError };

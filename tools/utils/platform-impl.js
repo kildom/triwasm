@@ -73,6 +73,9 @@ const _triwasm_platform_impl =
 
 /* ------------------------------------ Unknown platform ------------------------------------ */
 (function() {
+    if (typeof(scriptArgs) == 'object') {
+        throw new Error('Unknown platform. If you are running QuickJS, specify "--std" flag.');
+    }
     throw new Error('Unknown platform');
 })();
 
