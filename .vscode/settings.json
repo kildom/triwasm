@@ -111,7 +111,9 @@
         "cfenv": "cpp",
         "cinttypes": "cpp",
         "filesystem": "cpp",
-        "__memory": "cpp"
+        "__memory": "cpp",
+        "errno.h": "c",
+        "errno-base.h": "c"
     },
     "editor.rulers": [90, 100],
     "terminal.integrated.automationShell.windows": "cmd.exe"

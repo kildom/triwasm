@@ -60,7 +60,16 @@ class TriAsmArgs {
 
 function main() {
     let args = new TriAsmArgs();
-    console.log(`TODO: compile from "${args.input}" to "${args.output}".`);
+    let input:string;
+    try {
+        input = platform.readFile(args.input);
+    } catch (ex) {
+        console.log(`Cannot read "${args.input}" file: ${ex}`);
+        platform.exit(1);
+        return;
+    }
+    let c = new Compiler();
+    c.compile(input);
 }
 
 main();

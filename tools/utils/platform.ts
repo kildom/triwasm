@@ -18,6 +18,9 @@ declare const _triwasm_platform_impl: unknown;
 export interface Platform {
     getArgv(): string[];
     exit(code?: number): void;
+    readFile(path: string, binary: true): Uint8Array;
+    readFile(path: string, binary?: false): string;
+    writeFile(path: string, content: string | Uint8Array): void;
 }
 
-export const platform: Platform = (typeof(_triwasm_platform_impl) === 'object' ? _triwasm_platform_impl : x._triwasm_platform_impl) as Platform;
+export const platform: Platform = (typeof (_triwasm_platform_impl) === 'object' ? _triwasm_platform_impl : x._triwasm_platform_impl) as Platform;

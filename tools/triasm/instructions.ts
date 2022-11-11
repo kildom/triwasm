@@ -17,8 +17,8 @@ import { BASE, instrInfoById, INSTR, InstrInfo } from "./instrInfo";
 import { Compiler } from "./compiler";
 
 export interface ExprContext {
-    instr: InstrBase;
-    invalid?: boolean;
+    instr: InstrBase; // TODO: This should be moved to ExprEval function closure
+    invalid?: boolean; // TODO: This should be renamed to something more accurate, e.g. nonConst or mutable
     deps?: Set<Block>;
 };
 
@@ -96,21 +96,20 @@ export class InstrBase {
 
 
 export class Block extends InstrBase {
-    public discardable: boolean = false;
+    public discarded: boolean = false;
     public moveTo: string | null = null;
     public end: InstrBase | null = null;
     public locals: { [k: string]: string } = {};
     public deps: Set<Block> = new Set();
-    public used: boolean = false;
 
-    constructor(compiler: Compiler, lineNumber: number, index: number, args: string, public block: Block | null) {
+    constructor(compiler: Compiler, lineNumber: number, index: number, args: string, public parent: Block | null) {
         super(compiler, lineNumber, index, null);
         let [blockType, blockArgs] = args.split(/\s+/, 2);
-        blockArgs = blockArgs.trim();
+        blockArgs = (blockArgs || '').trim();
         switch (blockType.toUpperCase()) {
             case 'DISCARDABLE':
                 if (blockArgs != '') throw new ParserError(`${this.lineNumber}: Unexpected string after DISCARDABLE.`);
-                this.discardable = true;
+                this.discarded = true;
                 break;
             case 'MOVABLE':
                 if (blockArgs == '') throw new ParserError(`${this.lineNumber}: Destination name expected.`);
@@ -573,6 +572,24 @@ export class PlaceInstruction extends InstrBase {
     constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, args: string) {
         super(compiler, lineNumber, index, info);
         this.name = args.trim();
-        if (this.name = '') throw new ParserError(`${this.lineNumber}: Expecting name.`);
+        if (this.name == '')
+            throw new ParserError(`${this.lineNumber}: Expecting name.`);
     }
 };
+
+
+export class BaseInstruction extends InstrBase {
+    private arg: ExprEval;
+    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, private args: ExprEval[]) {
+        super(compiler, lineNumber, index, info);
+        this.arg = args[0];
+    }
+    collectDeps(deps: Set<Block>) {
+        let ctx: ExprContext = { instr: this, deps: deps };
+        let base = this.arg(ctx);
+        if (ctx.invalid) {
+            throw new ParserError(`${this.lineNumber}: Expression is not constant.`);
+        }
+        this.compiler.pmaBase = Number(base);
+    }
+}

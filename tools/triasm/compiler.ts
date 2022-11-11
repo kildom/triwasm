@@ -18,8 +18,9 @@ import { AsmFunctions } from './functions';
 import {
     Block, BlockEnd, EmptyInstr, Assign, SimpleCoreInstruction, DataInstruction,
     AlignInstruction, AddrInstruction, RefInstruction, ReadSpInstruction,
-    BranchInstruction, UnwindInstruction, ReadWriteInstruction, PlaceInstruction, InstrBase, ExprEval, ExprContext
+    BranchInstruction, UnwindInstruction, ReadWriteInstruction, PlaceInstruction, InstrBase, ExprEval, ExprContext, BaseInstruction
 } from './instructions'
+import { ObjMarker } from '../utils/common';
 
 const MAX_RERUNS = 50;
 
@@ -36,6 +37,7 @@ const KNOWN_EXTENSIONS = [
     'F64',
 ];
 
+// TODO: This class should be renamed and moved to a different file
 class ParserOutput {
 
     static parserInstrClasses: { [k: string]: any } = {
@@ -45,6 +47,7 @@ class ParserOutput {
         READSP: ReadSpInstruction,
         '.REF': RefInstruction,
         '.PLACE': PlaceInstruction,
+        '.BASE': BaseInstruction,
     };
 
     private lineNumber = 1;
@@ -88,7 +91,7 @@ class ParserOutput {
             if (name in block.locals) {
                 return block.locals[name];
             }
-            block = block.block;
+            block = block.parent;
         }
         return name;
     }
@@ -99,7 +102,7 @@ class ParserOutput {
 
     onParserInstr(id: number, args: ExprEval[] | string, base: BASE): void {
         let info = instrInfoById[id];
-        for (let ext in info.condition) {
+        for (let ext of info.condition) {
             if (!this.extensions[ext]) {
                 throw new ParserError(`${this.lineNumber}: Instruction belongs to disabled extension "${ext}".`);
             }
@@ -108,11 +111,12 @@ class ParserOutput {
         let index = this.instructions.length;
         switch (id) {
             case INSTR._EXT:
-                let extName = (args as string).toUpperCase();
-                if (KNOWN_EXTENSIONS.indexOf(extName) < 0) {
-                    throw new ParserError(`${this.lineNumber}: Unknown extension "${extName}".`);
+                for (let extName of (args as string).toUpperCase().split(/\s*,\s*/)) {
+                    if (KNOWN_EXTENSIONS.indexOf(extName) < 0) {
+                        throw new ParserError(`${this.lineNumber}: Unknown extension "${extName}".`);
+                    }
+                    this.extensions[extName] = true;
                 }
-                this.extensions[extName] = true;
                 instr = new EmptyInstr(this.compiler, this.lineNumber, index);
                 break;
 
@@ -128,7 +132,7 @@ class ParserOutput {
                 }
                 instr = new BlockEnd(this.compiler, this.lineNumber, index, this.currentBlock);
                 this.currentBlock.end = instr;
-                this.currentBlock = this.currentBlock.block as Block;
+                this.currentBlock = this.currentBlock.parent as Block;
                 break;
 
             case INSTR._LOCAL:
@@ -168,6 +172,11 @@ class ParserOutput {
                 break;
 
             default:
+                // TODO: Instruction constructor should parse arguments using method from this class, e.g.
+                // let args = compiler.outputObject.parseExpr(this, args);
+                // OR: let args = compiler.parseExpr(this, args);
+                // The method will set "this" as current instruction and all new ExprEval functions will
+                // have instruction in its closure.
                 let Class = ParserOutput.parserInstrClasses[info.instrClass];
                 if (!Class) {
                     Class = ParserOutput.parserInstrClasses[info.name];
@@ -330,65 +339,61 @@ export class Compiler {
     }
 
     moveBlocks() {
-        let buckets: Map<string, InstrBase[]> = new Map([['', []]]); // TODO: Map should replace Object-based maps with keys from user input (as it was done here).
-        let stack: string[] = [''];
-        let places = new Set(['']);
-        let current = buckets.get('') as InstrBase[];
+        // Place movable blocks into buckets
+        let stackTop: InstrBase[] = [];
+        let buckets: Map<string, InstrBase[] | null> = new Map(); // TODO: Map should replace Object-based maps with keys from user input (as it was done here).
+        let stack: InstrBase[][] = [];
         for (let instr of this.instructions) {
             if ((instr instanceof Block) && instr.moveTo !== null) {
                 let name = instr.moveTo;
+                stack.push(stackTop);
                 if (!buckets.has(name)) {
-                    buckets.set(name, []);
+                    stackTop = [];
+                    buckets.set(name, stackTop);
+                } else {
+                    stackTop = buckets.get(name) as InstrBase[];
                 }
-                stack.push(name);
-                current = buckets.get(name) as InstrBase[];
-            } else if (instr instanceof PlaceInstruction) {
-                if (places.has(instr.name)) {
-                    throw new ParserError(`${instr.lineNumber}: Movable blocks ${instr.name} already placed!`);
-                }
-                places.add(instr.name);
             }
-
-            current.push(instr);
-
+            stackTop.push(instr);
             if ((instr instanceof BlockEnd) && instr.block.moveTo !== null) {
-                stack.pop();
-                current = buckets.get(stack[stack.length - 1]) as InstrBase[];
+                stackTop = stack.pop() as InstrBase[];
             }
         }
 
-        // Throw Parser error if there are any keys in buckets that are not places
-        for (let [key, list] of buckets) {
-            if (!places.has(key)) {
-                throw new ParserError(`${list[0].lineNumber}: Movable block ${key} is not placed anywhere.`);
-            }
-        }
-        // Recursively replace PlaceInstructions in buckets with instructions from bucket with the same name
-        this.instructions = this.replacePlaceInstr(buckets.get('') as InstrBase[], buckets)
-        // Re-index all new instructions
-        for (let i = 0; i < this.instructions.length; i++) {
-            this.instructions[i].index = i;
-        }
-    }
-
-    // Replace PlaceInstructions in buckets with instructions from bucket with the same name
-    replacePlaceInstr(instructions: InstrBase[], buckets: Map<string, InstrBase[]>): InstrBase[] {
-        let newInstructions: InstrBase[] = [];
-        for (let instr of instructions) {
-            if (instr instanceof PlaceInstruction) {
-                let bucket = buckets.get(instr.name) as InstrBase[];
-                buckets.delete(instr.name);
-                for (let instr of this.replacePlaceInstr(bucket, buckets)) {
-                    newInstructions.push(instr);
+        // Walk over each instruction and move instructions after ".place" from associated bucket.
+        // Also, update indexes and block parents.
+        this.instructions = stackTop;
+        let currentBlock = this.rootBlock;
+        for (let index = 0; index < this.instructions.length; index++) {
+            let instr = this.instructions[index];
+            instr.index = index;
+            if (instr instanceof Block) {
+                instr.parent = currentBlock;
+                currentBlock = instr;
+            } else if (instr instanceof BlockEnd) {
+                currentBlock = instr.block.parent;
+            } else if (instr instanceof PlaceInstruction) {
+                let bucket = buckets.get(instr.name);
+                buckets.set(instr.name, null);
+                if (bucket === null) {
+                    throw new ParserError(`${instr.lineNumber}: Movable blocks "${instr.name}" already placed!`);
+                } else if (bucket) {
+                    this.instructions.splice(index + 1, 0, ...bucket);
                 }
-            } else {
-                newInstructions.push(instr);
             }
         }
-        return newInstructions;
+
+        // Check if all buckets were placed
+        for (let [key, bucket] of buckets) {
+            if (bucket !== null && bucket.length > 0) {
+                throw new ParserError(`${bucket[0].lineNumber}: Movable block "${key}" is not placed anywhere.`);
+            }
+        }
     }
 
     resolveBlockDependencies() {
+        let used = new ObjMarker('_func_resolveBlockDependencies_used');
+        // Collect dependencies of each block
         let currentBlock: Block = this.rootBlock as Block;
         for (let instr of this.instructions) {
             if (instr instanceof Block) {
@@ -396,32 +401,25 @@ export class Compiler {
             }
             instr.collectDeps(currentBlock.deps);
             if (instr instanceof BlockEnd) {
-                currentBlock = currentBlock.block as Block;
+                currentBlock = currentBlock.parent as Block;
             }
         }
+        // Starting from root, mark all dependencies as used
         let stack = [this.rootBlock];
         while (stack.length > 0) {
             let block = stack.pop() as Block;
-            if (block.used) {
+            if (used.is(block)) {
                 continue;
             }
-            block.used = true;
+            used.set(block);
+            block.discarded = false;
             for (let dep of block.deps) {
                 let parent: Block | null = dep;
-                while (parent !== null && !parent.used) {
+                while (parent !== null && !used.is(parent)) {
                     stack.push(parent);
-                    parent = parent.block;
+                    parent = parent.parent;
                 }
             }
-        }
-    }
-
-    reserveOutput(bytes: number) {
-        if (this.pma + bytes > this.output.length) {
-            let newSize = (this.pma + bytes) * 2;
-            let newOutput = new Uint8Array(newSize);
-            newOutput.set(this.output);
-            this.output = newOutput;
         }
     }
 
@@ -429,7 +427,7 @@ export class Compiler {
         this.pma = 0;
         for (let index = 0; index < this.instructions.length; index++) {
             let instr = this.instructions[index];
-            if ((instr instanceof Block) && instr.discardable && !instr.used) {
+            if ((instr instanceof Block) && instr.discarded) {
                 index = instr.end!.index;
                 continue;
             }
@@ -459,7 +457,7 @@ export class Compiler {
             rerun = false;
             for (let index = 0; index < this.instructions.length; index++) {
                 let instr = this.instructions[index];
-                if ((instr instanceof Block) && instr.discardable && !instr.used) {
+                if ((instr instanceof Block) && instr.discarded) {
                     index = instr.end!.index;
                     continue;
                 }
@@ -474,6 +472,15 @@ export class Compiler {
         } while (rerun);
         if (this.postPostponedError !== null) {
             throw this.postPostponedError;
+        }
+    }
+
+    reserveOutput(bytes: number) {
+        if (this.pma + bytes > this.output.length) {
+            let newSize = (this.pma + bytes) * 2;
+            let newOutput = new Uint8Array(newSize);
+            newOutput.set(this.output);
+            this.output = newOutput;
         }
     }
 

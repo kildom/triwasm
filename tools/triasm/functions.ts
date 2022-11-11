@@ -14,8 +14,11 @@
 
 import { ParserError } from './parser'
 import { Block, BlockEnd, ExprContext, ExprCycleError, ExprEval } from './instructions'
+import { ObjMarker } from '../utils/common';
 
 type FuncEval = (ctx: ExprContext, ...args: ExprEval[]) => bigint;
+
+const gettingSize = new ObjMarker('_func_size_gettingSize');
 
 export class AsmFunctions {
 
@@ -32,7 +35,7 @@ export class AsmFunctions {
         if (args.length < a[0] || args.length > a[1]) {
             throw new ParserError(`${lineNumber}: Invalid number of arguments for function "${name}()"!`);
         }
-        return this.createFunction(f, args);
+        return AsmFunctions.createFunction(f, args);
     }
 
     static createFunction(f: FuncEval, args: ExprEval[]): ExprEval {
@@ -40,7 +43,7 @@ export class AsmFunctions {
     }
 
     static func_vma(ctx: ExprContext) {
-        return this.func_pma(ctx) + BigInt(ctx.instr.compiler.pmaBase);
+        return AsmFunctions.func_pma(ctx) + BigInt(ctx.instr.compiler.pmaBase);
     }
 
     static func_pma(ctx: ExprContext) {
@@ -77,7 +80,23 @@ export class AsmFunctions {
     }
 
     static func_size(ctx: ExprContext, first: ExprEval, last: ExprEval) {
-        let gettingSizeSymbol = Symbol.for('_func_size_gettingSize');
+        /*
+        TODO: This function should be replaced by block_size(), e.g.:
+        .BLOCK
+        my_block_size = bock_size();
+        ...
+        .END
+        ...
+        ADD my_block_size
+
+        Function will:
+         * go back to ".BEGIN" instruction skipping ".END/.BEGIN" of sub blocks
+            * OR: if it is inside Assign instruction, we can jump to ".BEGIN" at once
+         * in initial state: do something similar to current solution
+         * in generation state: It will create two ExprEval pma() functions associated
+           with ".BEGIN/.END" instructions. Size is difference of their return values.
+            * Creation of ExprEval pma() can be optimized, so it will created once.
+        */
         let instructions = ctx.instr.compiler.instructions;
         if (ctx.instr.compiler.initialState) {
             let oldInvalid = ctx.invalid;
@@ -92,15 +111,15 @@ export class AsmFunctions {
             for (let i = firstValue; i < lastValue; i++) {
                 let instr = instructions[i];
                 if (instr instanceof Block) {
-                    ctx.invalid = ctx.invalid || instr.discardable;
+                    ctx.invalid = ctx.invalid || instr.discarded; // TODO: check if it is valid
                 } else if (instr instanceof BlockEnd) {
-                    ctx.invalid = ctx.invalid || instr.block.discardable;
-                } else if ((instr as any)[gettingSizeSymbol]) {
+                    ctx.invalid = ctx.invalid || instr.block.discarded; // TODO: check if it is valid
+                } else if (gettingSize.is(instr)) {
                     throw new ExprCycleError(`${ctx.instr.lineNumber}: Cycle in size() function evaluation!`);
                 }
-                (instr as any)[gettingSizeSymbol] = true;
+                gettingSize.set(instr);
                 size += instr.getSize(ctx);
-                delete (instr as any)[gettingSizeSymbol];
+                gettingSize.clear(instr);
             }
             return BigInt(size);
         } else {

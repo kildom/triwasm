@@ -5,77 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "triwasm Debug",
-            "type": "cppdbg",
+            "type": "node",
             "request": "launch",
-            "linux": {
-                "program": "${workspaceFolder}/build/linux/debug/triwasm",
-            },
-            "windows": {
-                "program": "${workspaceFolder}/build/windows/debug/triwasm.exe",
-            },
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/linux",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
-            "preLaunchTask": "Build Debug"
+            "name": "triasm",
+            "program": "${workspaceFolder}/tools/triasm.ts",
+            "args": ["-o", "out.trivmb", "in.triasm"],
+            "cwd": "${workspaceFolder}",
+            "--preLaunchTask": "npm: build-triasm",
+            "outFiles": [ "${workspaceFolder}/dist/bin/js/*.js" ]
         },
-        {
-            "type": "pwa-node",
-            "request": "launch",
-            "name": "Generate instructions script",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/scripts/gen_instr.js",
-            "cwd": "${workspaceFolder}/scripts",
-            "linux": {
-                "runtimeExecutable": "${env:HOME}/my/node-v14.17.3-linux-x64/bin/node"
-            },
-            "windows": {
-                "runtimeExecutable": "C:\\node\\node.exe"
-            }
-        },
-        {
-            "type": "pwa-node",
-            "request": "launch",
-            "name": "test tokens",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/triasm/src/main.mjs",
-            "cwd": "${workspaceFolder}/triasm/src",
-            "linux": {
-                "runtimeExecutable": "${env:HOME}/my/node-v14.17.3-linux-x64/bin/node"
-            },
-            "windows": {
-                "runtimeExecutable": "C:\\node\\node.exe"
-            }
-        },
-        {
-            "type": "pwa-node",
-            "request": "launch",
-            "name": "test a",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/triasm/a.mjs",
-            "cwd": "${workspaceFolder}/triasm/src",
-            "linux": {
-                "runtimeExecutable": "${env:HOME}/my/node-v14.17.3-linux-x64/bin/node"
-            },
-            "windows": {
-                "runtimeExecutable": "C:\\node\\node.exe"
-            }
-        }
     ]
 }

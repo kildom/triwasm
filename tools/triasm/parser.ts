@@ -12,6 +12,15 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+/* TODO: Rename to InstrParser and:
+ * It will parse only instructions and BASE. Arguments will be returned as a string.
+ * The output object will be responsible for parsing arguments.
+ * This will allow parsing expressions when instruction object is already created,
+ * so ExprEval functions can have instruction in its closure (instead of context).
+ * 
+ * Reconsider renaming "output object" to "consumer".
+ */
+
 import { instrInfoByName, BASE, InstrInfo } from './instrInfo';
 import { ExprParser, ExprParserError, ExprParserOutput } from './exprParser';
 

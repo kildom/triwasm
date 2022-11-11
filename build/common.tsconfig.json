@@ -1,12 +1,13 @@
 {
     "compilerOptions": {
-		"target": "es2020",
-		"module": "system",
-		"allowJs": true,
-		"sourceMap": true,
-		"removeComments": true,
-		"esModuleInterop": true,
-		"strict": true,
-        "moduleResolution": "nodenext"
+        "target": "es2020",
+        "module": "system",
+        "allowJs": true,
+        "sourceMap": true,
+        "removeComments": true,
+        "esModuleInterop": true,
+        "strict": true,
+        "moduleResolution": "nodenext",
+        "incremental": true
     }
 }

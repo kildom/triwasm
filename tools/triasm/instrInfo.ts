@@ -181,7 +181,6 @@ const instrInfoTextTable = `
 ~>   .DATA64        0-    0    -       data    8                                                                                                  
 ~>   .ADDR          1-1   0    -       -       0                                                                                                 
 ~>   .ALIGN         1-1   0    -       -       0                                                                                                  
-~>   .TRAMPOLINE    1-1   0    -       -       0                                                                                                  
 ~>   .REF           0-    0    -       -       0                                                                                                  
 ~>   .LOCAL         -     0    -       -       0                                                                                                  
 ~>   .BEGIN         -     0    -       -       0                                                                                                  
@@ -190,7 +189,7 @@ const instrInfoTextTable = `
 ~>   .ASSERT        -     0    -       -       0                                                                                                  
 ~>   .UID           -     0    -       -       0                                                                                                  
 ~>   .PLACE         -     0    -       -       0                                                                                                  
-~>   .BASE          1-2   0    -       -       0                                                                                                  
+~>   .BASE          1-1   0    -       -       0                                                                                                  
 ~>   .EXT           -     0    -       -       0                                                                                                  
 # .MTABLE unique_id, min_bits, max_bits, signed, ...
 ~>   .MTABLE        4-    0    -       -       0                                                                                                  
@@ -252,7 +251,7 @@ function createInstrById(): InstrInfo[] {
             name: x[1].toUpperCase(),
             args: x[2] == '-' ? null : (x[2].split('-').map(y => y == '' ? 0x7FFFFFFF : parseInt(y)) as [number, number]),
             withBase: !!parseInt(x[3]),
-            condition: x[4].split(','),
+            condition: x[4] == '-' ? [] : x[4].split(','),
             isDirective: x[1].startsWith('.'),
             instrClass: x[5].split('-')[0],
             instrClassParams: x[5].split('-').slice(1),
