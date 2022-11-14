@@ -1,3 +1,4 @@
+## GROUP <%= Object.entries(ext).map(x => x[0] + '=' + (x[1] ? '1' : '0')).join(', ') %>
 <%
 simpleCoreInstr = {
     add: 0x02,
@@ -26,37 +27,61 @@ simpleCoreInstr = {
 };
 %>
 
-#-GROUP Simple core instructions
-<% for (let [name, code] of Object.enties({...simpleCoreInstr, unwind: ext.unwind ? '28' : ' ERROR '})) { %>
-<%=name%>              #-RESULT 1 6d<%=code%> 11
-<%=name%> 0            #-RESULT 1 6d<%=code%> 10 | 8x00
-<%=name%> 3            #-RESULT 1 6d<%=code%> 10 | 8x03
-<%=name%> -128         #-RESULT 1 6d<%=code%> 10 | 8x80
-<%=name%> 127          #-RESULT 1 6d<%=code%> 10 | 8x7F
-<%=name%> 128          #-RESULT 1 6d<%=code%> 01 | 8x80 | 8x00
-<%=name%> -129         #-RESULT 1 6d<%=code%> 01 | 8x7F | 8xFF
-<%=name%> 32767        #-RESULT 1 6d<%=code%> 01 | 8xFF | 8x7F
-<%=name%> -32768       #-RESULT 1 6d<%=code%> 01 | 8x00 | 8x80
-<%=name%> 32768        #-RESULT 1 6d<%=code%> 00 | 8x00 | 8x80 | 8x00 | 8x00
-<%=name%> -32769       #-RESULT 1 6d<%=code%> 00 | 8xFF | 8x7F | 8xFF | 8xFF
-<%=name%> 2147483647   #-RESULT 1 6d<%=code%> 00 | 8xFF | 8xFF | 8xFF | 8x7F
-<%=name%> -2147483648  #-RESULT 1 6d<%=code%> 00 | 8x00 | 8x00 | 8x00 | 8x80
-<%=name%> 0x80000000   #-RESULT 1 6d<%=code%> 00 | 8x00 | 8x00 | 8x00 | 8x80
-<%=name%> 0xFEDCBA98   #-RESULT 1 6d<%=code%> 00 | 8x98 | 8xBA | 8xDC | 8xFE
-<%=name%> 0x01234567   #-RESULT 1 6d<%=code%> 00 | 8x67 | 8x45 | 8x23 | 8x01
+## GROUP Simple core instructions
+<% for (let [name, code] of Object.entries({...simpleCoreInstr, unwind: ext.unwind ? '28' : ' ERROR '})) { %>
+## GROUP <%=name%>
+<%=name%>              ## RESULT 1 5d<%=code%> 11
+<%=name%> 0            ## RESULT 1 5d<%=code%> 10 | 8x00
+<%=name%> 3            ## RESULT 1 5d<%=code%> 10 | 8x03
+<%=name%> -128         ## RESULT 1 5d<%=code%> 10 | 8x80
+<%=name%> 127          ## RESULT 1 5d<%=code%> 10 | 8x7F
+<%=name%> 128          ## RESULT 1 5d<%=code%> 01 | 8x80 | 8x00
+<%=name%> -129         ## RESULT 1 5d<%=code%> 01 | 8x7F | 8xFF
+<%=name%> 32767        ## RESULT 1 5d<%=code%> 01 | 8xFF | 8x7F
+<%=name%> -32768       ## RESULT 1 5d<%=code%> 01 | 8x00 | 8x80
+<%=name%> 32768        ## RESULT 1 5d<%=code%> 00 | 8x00 | 8x80 | 8x00 | 8x00
+<%=name%> -32769       ## RESULT 1 5d<%=code%> 00 | 8xFF | 8x7F | 8xFF | 8xFF
+<%=name%> 2147483647   ## RESULT 1 5d<%=code%> 00 | 8xFF | 8xFF | 8xFF | 8x7F
+<%=name%> -2147483648  ## RESULT 1 5d<%=code%> 00 | 8x00 | 8x00 | 8x00 | 8x80
+<%=name%> 0x80000000   ## RESULT 1 5d<%=code%> 00 | 8x00 | 8x00 | 8x00 | 8x80
+<%=name%> 0xFEDCBA98   ## RESULT 1 5d<%=code%> 00 | 8x98 | 8xBA | 8xDC | 8xFE
+<%=name%> 0x01234567   ## RESULT 1 5d<%=code%> 00 | 8x67 | 8x45 | 8x23 | 8x01
+## GROUP_END
+<% } %>
+## GROUP_END
+
+<% { let code = ext.unwind ? 0x1C : ' ERROR '; %>
+## GROUP Two-arguments unwind instruction
+unwind 0, 0          ## RESULT 1 5d<%=code%> 10 | 8x00
+unwind 3, 3          ## RESULT 1 5d<%=code%> 10 | 8x33     
+unwind 7, 3          ## RESULT 1 5d<%=code%> 10 | 8x73              
+unwind 8, 3          ## RESULT 1 5d<%=code%> 10 | 8x83               
+unwind 15, 3         ## RESULT 1 5d<%=code%> 10 | 8xF3                 
+unwind 3, 7          ## RESULT 1 5d<%=code%> 10 | 8x37                  
+unwind 3, 8          ## RESULT 1 5d<%=code%> 10 | 8x38                  
+unwind 3, 15         ## RESULT 1 5d<%=code%> 10 | 8x3F                   
+unwind 15, 15        ## RESULT 1 5d<%=code%> 10 | 8xFF
+unwind 65536, 3      ## RESULT ERROR
+unwind 3, 65536      ## RESULT ERROR              
+unwind -1, 3         ## RESULT ERROR              
+unwind 3, -1         ## RESULT ERROR                          
+## GROUP_END
 <% } %>
 
-#-GROUP Two-arguments unwind instruction
-unwind 0, 0          #-RESULT 1 6x1C 10 | 8x00
-unwind 3, 3          #-RESULT 1 6x1C 10 | 8x33     
-unwind 7, 3          #-RESULT 1 6x1C 10 | 8x73              
-unwind 8, 3          #-RESULT 1 6x1C 10 | 8x83               
-unwind 15, 3         #-RESULT 1 6x1C 10 | 8xF3                 
-unwind 3, 7          #-RESULT 1 6x1C 10 | 8x37                  
-unwind 3, 8          #-RESULT 1 6x1C 10 | 8x38                  
-unwind 3, 15         #-RESULT 1 6x1C 10 | 8x3F                   
-unwind 15, 15        #-RESULT 1 6x1C 10 | 8xFF
-unwind 65536, 3      #-RESULT ERROR
-unwind 3, 65536      #-RESULT ERROR              
-unwind -1, 3         #-RESULT ERROR              
-unwind 3, -1         #-RESULT ERROR                          
+## GROUP base instruction
+
+.BASE 0
+.DATA32 vma()          ## RESULT 0
+.BASE 0x80000000
+.DATA32 vma()          ## RESULT 0x00 | 0x00 | 0x00 | 0x80
+.BASE my_base
+.DATA32 vma()
+my_base = 0x10010000   ## RESULT 0x00 | 0x00 | 0x01 | 0x10
+my_base = start_offset
+.BASE my_base
+start_offset:
+.DATA32 vma()          ## RESULT ERROR
+
+## GROUP_END
+
+## GROUP_END

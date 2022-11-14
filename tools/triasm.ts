@@ -67,7 +67,8 @@ function main() {
         return;
     }
     let c = new Compiler();
-    c.compile(input);
+    let output = c.compile(input);
+    platform.writeFile(args.output, output);
 }
 
 main();

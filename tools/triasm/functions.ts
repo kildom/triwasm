@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { ExprContext, ExprEval, InstrBase } from './instructions'
+import { Assign, Block, BlockEnd, ExprContext, ExprEval, InstrBase } from './instructions'
 import { ObjMarker } from '../utils/common';
 import { CompilerError } from './errors';
 
@@ -51,13 +51,13 @@ export class AsmFunctions {
             ctx.mutable = true;
             return 0n;
         } else {
-            if (instr.pma === undefined) {
-                if (instr.pmaEstimated === undefined) {
-                    instr.pmaEstimated = Math.max(instr.pmaOld, instr.compiler.pma);
+            if (instr.pma.current === undefined) {
+                if (instr.pma.estimated === undefined) {
+                    instr.pma.estimated = Math.max(instr.pma.old, instr.generator.pma);
                 }
-                return BigInt(Math.max(instr.pmaEstimated, instr.compiler.pma));
+                return BigInt(Math.max(instr.pma.estimated, instr.generator.pma));
             } else {
-                return BigInt(instr.pma);
+                return BigInt(instr.pma.current);
             }
         }
     }
@@ -78,56 +78,51 @@ export class AsmFunctions {
         return BigInt(instr.index);
     }
 
-    static func_size(instr: InstrBase, ctx: ExprContext, first: ExprEval, last: ExprEval): bigint {
-        /*
-        TODO: This function should be replaced by block_size(), e.g.:
-        .BLOCK
-        my_block_size = bock_size();
-        ...
-        .END
-        ...
-        ADD my_block_size
+    static func_block_size(instr: InstrBase, ctx: ExprContext): bigint {
 
-        Function will:
-         * go back to ".BEGIN" instruction skipping ".END/.BEGIN" of sub blocks
-            * OR: if it is inside Assign instruction, we can jump to ".BEGIN" at once
-         * in initial state: do something similar to current solution
-         * in generation state: It will create two ExprEval pma() functions associated
-           with ".BEGIN/.END" instructions. Size is difference of their return values.
-            * Creation of ExprEval pma() can be optimized, so it will created once.
-        */
-        /*let instructions = instr.compiler.instructions;
-        if (instr.compiler.preparation) {
-            let oldInvalid = ctx.invalid;
-            ctx.invalid = false;
-            let firstValue = Number(first(ctx));
-            let lastValue = Number(last(ctx));
-            if (ctx.invalid || firstValue >= instructions.length || lastValue >= instructions.length || firstValue > lastValue) {
-                throw new CompilerError(instr.lineNumber, `Invalid instruction ID used in an argument of the "size()" function!`);
-            }
-            ctx.invalid = oldInvalid;
-            let size = 0;
-            for (let i = firstValue; i < lastValue; i++) {
-                let instr = instructions[i];
-                if (instr instanceof Block) {
-                    ctx.invalid = ctx.invalid || instr.discarded; // TODO: check if it is valid
-                } else if (instr instanceof BlockEnd) {
-                    ctx.invalid = ctx.invalid || instr.block.discarded; // TODO: check if it is valid
-                } else if (gettingSize.is(instr)) {
-                    throw new ExprCycleError(`${instr.lineNumber}: Cycle in size() function evaluation!`);
+        let block: Block | null = null;
+        if (instr instanceof Assign) {
+            block = instr.block;
+        } else {
+            let blockStack = 0;
+            for (let index = instr.index; index >= 0; index--) {
+                let inner = instr.compiler.instructions[index];
+                if (inner instanceof Block) {
+                    if (blockStack == 0) {
+                        block = inner;
+                        break;
+                    } else {
+                        blockStack--;
+                    }
+                } else if (inner instanceof BlockEnd) {
+                    blockStack++;
                 }
-                gettingSize.set(instr);
-                size += instr.getSize(ctx);
-                gettingSize.clear(instr);
+            }
+        }
+
+        if (block === null) {
+            throw new CompilerError(instr.lineNumber, 'Internal error');
+        }
+
+        if (instr.compiler.preparation) {
+            let size = 0;
+            for (let index = block.index; index <= block.end.index; index++) {
+                let inner = instr.compiler.instructions[index];
+                if (inner instanceof Block) {
+                    ctx.mutable = ctx.mutable || inner.discarded;
+                }
+                if (gettingSize.is(inner)) {
+                    ctx.mutable = true;
+                } else {
+                    gettingSize.set(inner);
+                    size += inner.getSize(ctx);
+                    gettingSize.clear(inner);
+                }
             }
             return BigInt(size);
         } else {
-            let firstValue = Number(first(ctx));
-            let lastValue = Number(last(ctx));
-            let ctx2 = new ExprContext();
-            return AsmFunctions.func_pma(instructions[lastValue], ctx2) - AsmFunctions.func_pma(instructions[firstValue], ctx2);
-        }*/
-        return 0n;
+            return this.func_pma(block.end, ctx) - this.func_pma(block, ctx);
+        }
     }
 
     static func_if(instr: InstrBase, ctx: ExprContext, cond: ExprEval, ifTrue: ExprEval, ifFalse: ExprEval): bigint {
@@ -151,11 +146,12 @@ export class AsmFunctions {
         }
     }
 
-    /*func_unwind_arg(ctx: ExprContext): bigint {
-        let argValue = this.args[0](ctx);
-        if (this.args.length > 1) {
-            let keep = argValue;
-            let reduce = this.args[1](ctx);
+    static args_unwind_arg = [1, 2];
+
+    static func_unwind_arg(instr: InstrBase, ctx: ExprContext, keepExpr: ExprEval, reduceExpr?: ExprEval): bigint {
+        let keep = keepExpr(ctx);
+        if (reduceExpr) {
+            let reduce = reduceExpr(ctx);
             if (reduce <= 15n && keep <= 7n) {
                 return (keep << 4n) | reduce;
             } else if (reduce <= 15n && keep <= 15n) {
@@ -167,11 +163,11 @@ export class AsmFunctions {
             } else if (reduce <= 65535n && keep <= 65535n) {
                 return (keep << 16n) | reduce;
             } else {
-                //this.generator.postponedError(new CompilerError(this.lineNumber, `Too many words to unwind!`));
+                instr.generator.error(new CompilerError(instr.lineNumber, `Too many items to unwind!`));
                 return 0n;
             }
         } else {
-            return argValue;
+            return keep;
         }
-    }*/
+    }
 };

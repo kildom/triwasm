@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "triasm",
             "program": "${workspaceFolder}/tools/triasm.ts",
-            "args": ["-o", "out.trivmb", "in.triasm"],
+            "args": ["-o", "out.trivm", "in.triasm"],
             "cwd": "${workspaceFolder}",
             "--preLaunchTask": "npm: build-triasm",
             "outFiles": [ "${workspaceFolder}/dist/bin/js/*.js" ]

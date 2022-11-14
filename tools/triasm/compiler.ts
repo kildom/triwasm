@@ -17,8 +17,10 @@ import { allowTemporaryNull, ObjMarker } from '../utils/common';
 import { InstrMaker } from './instrMaker';
 import { ExprMaker } from './exprMaker';
 import { CompilerError } from './errors';
+import { BytecodeGenerator } from './generator';
 
 const MAX_RERUNS = 50;
+const MAX_INSTR_SIZE = 32;
 
 export interface EnabledExtensions {
     unwind?: boolean;
@@ -39,12 +41,11 @@ export const KNOWN_EXTENSIONS = [
 
 export class Compiler {
 
+    public generator: BytecodeGenerator = new BytecodeGenerator();
     public preparation = true;
     public instructions: InstrBase[] = [];
     public rootBlock: Block;
-    public pma: number = 0;
     public pmaBase: number = 0;
-    public output: Uint8Array = new Uint8Array(65536);
     public extensions: EnabledExtensions = {};
 
     constructor() {
@@ -52,20 +53,24 @@ export class Compiler {
     }
 
     compile(input: string) {
+        // Parse input and make internal data structures from the input
         this.preparation = true;
         let instrMaker: InstrMaker;
         let exprMaker = new ExprMaker((...args) => instrMaker.getIdentifier(...args));
-        instrMaker = new InstrMaker(this, exprMaker);
+        instrMaker = new InstrMaker(this, this.generator, exprMaker);
         instrMaker.parse(input);
         this.instructions = instrMaker.getInstructions();
         this.rootBlock = instrMaker.getRootBlock();
         this.extensions = instrMaker.getExtensions();
+        // Prepare blocks
         this.moveBlocks();
         this.resolveBlockDependencies();
+        // Prepare initial instruction addresses
         this.initialAddresses();
-        /*this.preparation = false;
+        // Generate and return actual bytecode
+        this.preparation = false;
         this.generateCode();
-        return this.output.subarray(0, this.addr);*/
+        return this.generator.result();
     }
 
     moveBlocks() {
@@ -156,7 +161,7 @@ export class Compiler {
     }
 
     initialAddresses() {
-        this.pma = 0;
+        let pma = 0;
         let ctx = new ExprContext();
         for (let index = 0; index < this.instructions.length; index++) {
             let instr = this.instructions[index];
@@ -164,15 +169,16 @@ export class Compiler {
                 index = instr.end!.index;
                 continue;
             }
-            instr.pma = this.pma;
+            instr.pma.current = pma;
             let size = instr.getSize(ctx);
-            this.pma += size;
-            instr.pmaEnd = this.pma;
+            pma += size;
+            instr.pma.end = pma;
         }
+        this.generator.reset();
+        this.generator.reserve(2 * pma);
     }
 
     generateCode() {
-        this.reserveOutput(8 * this.instructions.length);
         let rerun = true;
         let rerunCounter = 0;
         do {
@@ -181,40 +187,27 @@ export class Compiler {
                 throw new CompilerError(0, 'Maximum number of generating reruns reached!');
             }
             for (let instr of this.instructions) {
-                instr.pmaOld = instr.pma as number;
-                instr.pma = undefined;
-                instr.pmaEstimated = undefined;
+                instr.pma.old = instr.pma.current as number;
+                instr.pma.current = undefined;
+                instr.pma.estimated = undefined;
             }
-            //this.postPostponedError = null;
-            this.pma = 0;
+            this.generator.reset();
             rerun = false;
             for (let index = 0; index < this.instructions.length; index++) {
                 let instr = this.instructions[index];
                 if ((instr instanceof Block) && instr.discarded) {
-                    index = instr.end!.index;
+                    index = instr.end.index;
                     continue;
                 }
-                if (instr.pmaEstimated !== undefined && instr.pmaEstimated != this.pma) {
+                if (instr.pma.estimated !== undefined && instr.pma.estimated != this.generator.pma) {
                     rerun = true;
                 }
-                instr.pma = this.pma;
-                this.reserveOutput(10);
-                instr.generate(Math.max(0, instr.pmaEnd - instr.pma));
-                instr.pmaEnd = this.pma;
+                instr.pma.current = this.generator.pma;
+                this.generator.reserve(MAX_INSTR_SIZE);
+                instr.generate(Math.max(0, instr.pma.end - instr.pma.current));
+                instr.pma.end = this.generator.pma;
             }
         } while (rerun);
-        //if (this.postPostponedError !== null) {
-        //    throw this.postPostponedError;
-        //}
-    }
-
-    reserveOutput(bytes: number) {
-        if (this.pma + bytes > this.output.length) {
-            let newSize = (this.pma + bytes) * 2;
-            let newOutput = new Uint8Array(newSize);
-            newOutput.set(this.output);
-            this.output = newOutput;
-        }
     }
 
     checkDiv0(instr: InstrBase, ctx: ExprContext, expr: ExprEval) {
@@ -233,39 +226,11 @@ export class Compiler {
         } else {
             value = expr(ctx);
             if (value == 0n) {
-                //TODO: this.generator.postponedError(new CompilerError(instr.lineNumber, `Division by zero!`));
+                this.generator.error(new CompilerError(instr.lineNumber, `Division by zero!`));
                 return 1n;
             }
         }
         return value;
     }
-
-    /*
-    generate8(data: number) {
-        this.output[this.pma++] = data & 0xFF;
-    }
-
-    generate16(data: number) {
-        this.output[this.pma++] = data & 0xFF;
-        this.output[this.pma++] = (data >> 8) & 0xFF;
-    }
-
-    generate32(data: number) {
-        this.output[this.pma++] = data & 0xFF;
-        this.output[this.pma++] = (data >> 8) & 0xFF;
-        this.output[this.pma++] = (data >> 16) & 0xFF;
-        this.output[this.pma++] = (data >> 24) & 0xFF;
-    }
-
-    generate64(data: bigint) {
-        this.output[this.pma++] = Number(data & 0xFFn);
-        this.output[this.pma++] = Number((data >> 8n) & 0xFFn);
-        this.output[this.pma++] = Number((data >> 16n) & 0xFFn);
-        this.output[this.pma++] = Number((data >> 24n) & 0xFFn);
-        this.output[this.pma++] = Number((data >> 32n) & 0xFFn);
-        this.output[this.pma++] = Number((data >> 40n) & 0xFFn);
-        this.output[this.pma++] = Number((data >> 48n) & 0xFFn);
-        this.output[this.pma++] = Number((data >> 64n) & 0xFFn);
-    }*/
 
 };

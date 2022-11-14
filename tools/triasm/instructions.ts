@@ -17,6 +17,7 @@ import { Compiler } from "./compiler";
 import { ExprMaker } from "./exprMaker";
 import { CompilerError } from "./errors";
 import { allowTemporaryNull } from "../utils/common";
+import { BytecodeGenerator } from "./generator";
 
 export interface ExprContextModification {
     mutable?: boolean;
@@ -46,7 +47,7 @@ export class ExprCycleError extends Error { };
 
 
 export class InstrParams {
-    constructor(public compiler: Compiler, public lineNumber: number, public index: number, public info: InstrInfo, public exprMaker: ExprMaker) {
+    constructor(public compiler: Compiler, public generator: BytecodeGenerator, public lineNumber: number, public index: number, public info: InstrInfo, public exprMaker: ExprMaker) {
     }
 };
 
@@ -54,18 +55,26 @@ export class InstrParams {
 export class InstrBase {
 
     public compiler: Compiler;
-    public generator: any = {};
+    public generator: BytecodeGenerator;
     public lineNumber: number;
     public index: number;
     public info: InstrInfo;
 
-    public pma: number | undefined;
-    public pmaEnd: number = 0;
-    public pmaOld: number = 0;
-    public pmaEstimated: number | undefined;
+    public pma: {
+        current: number | undefined,
+        estimated: number | undefined,
+        old: number,
+        end: number
+    } = {
+            current: undefined,
+            estimated: undefined,
+            old: 0,
+            end: 0,
+        };
 
     constructor(params: InstrParams) {
         this.compiler = params.compiler;
+        this.generator = params.generator;
         this.lineNumber = params.lineNumber;
         this.index = params.index;
         this.info = params.info;
@@ -81,48 +90,6 @@ export class InstrBase {
     generate(minSize: number) {
     }
 
-    /*generateByte(value: number) {
-        this.compiler.output[this.compiler.pma++] = value;
-    }
-
-    generateData(value: bigint, bytes: number) {
-        let output = this.compiler.output;
-        let addr = this.compiler.pma;
-        for (let i = 0; i < bytes; i++) {
-            output[addr++] = Number(value & 0xFFn);
-            value = value >> 8n;
-        }
-        this.compiler.pma = addr;
-    }
-
-    generateImmediate(value: bigint, minSize: number) {
-        let valueInt = Number(value & 0xFFFFFFFFn);
-        let output = this.compiler.output;
-        let addr = this.compiler.pma;
-        if ((valueInt <= 0x7F || valueInt >= 0xFFFFFF80) && minSize <= 1) {
-            output[addr++] = valueInt & 0xFF;
-        } else if ((valueInt <= 0x7FFF || valueInt >= 0xFFFF8000) && minSize <= 2) {
-            output[addr++] = valueInt & 0xFF;
-            output[addr++] = (valueInt >> 8) & 0xFF;
-        } else {
-            output[addr++] = valueInt & 0xFF;
-            output[addr++] = (valueInt >> 8) & 0xFF;
-            output[addr++] = (valueInt >> 16) & 0xFF;
-            output[addr++] = (valueInt >> 24) & 0xFF;
-        }
-        this.compiler.pma = addr;
-    }
-
-    getImmediateSize(value: bigint) {
-        let valueInt = Number(value & 0xFFFFFFFFn);
-        if (valueInt <= 0x7F || valueInt >= 0xFFFFFF80) {
-            return 1;
-        } else if (valueInt <= 0x7FFF || valueInt >= 0xFFFF8000) {
-            return 2;
-        } else {
-            return 4;
-        }
-    }*/
 };
 
 
@@ -168,7 +135,7 @@ export class Assign extends InstrBase {
     private calculating: boolean = false;
     private value: ExprEval;
 
-    constructor(params: InstrParams, value: string, protected block: Block) {
+    constructor(params: InstrParams, value: string, public block: Block) {
         super(params);
         this.value = params.exprMaker.makeSingleExpression(this, value);
     }
@@ -230,10 +197,10 @@ export class SimpleCoreInstruction extends InstrBase {
         if (this.arg !== null) {
             let argValue = this.arg(new ExprContext());
             let size = this.generator.getImmediateSize(argValue, minSize - 1);
-            this.generator.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
-            this.generator.generateImmediate(argValue, size);
+            this.generator.put8(SimpleCoreInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
+            this.generator.putImmediate(argValue, size);
         } else {
-            this.generator.generateByte(SimpleCoreInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
+            this.generator.put8(SimpleCoreInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
         }
     }
 };
@@ -275,10 +242,10 @@ export class BranchInstruction extends InstrBase {
             while (size < (minSize - 1) && size < 4) {
                 size = size << 1;
             }
-            this.generator.generateByte(BranchInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
-            this.generator.generateImmediate(BigInt(offset - size - 1), size);
+            this.generator.put8(BranchInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
+            this.generator.putImmediate(BigInt(offset - size - 1), size);
         } else {
-            this.generator.generateByte(BranchInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
+            this.generator.put8(BranchInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
         }
     }
 };
@@ -349,11 +316,11 @@ export class ReadWriteInstruction extends InstrBase {
             argValue -= addImm;
             let opcode = instrInfoById[(this.base & BASE.POP) ? INSTR.SUB : INSTR.NEG].opcode;
             addImm = (-addImm) & 0xFFFFFFFFn;
-            let size = this.generator.getImmediateSize(addImm);
+            let size = this.generator.getImmediateSize(addImm); // TODO: if more bytes are needed because of minSize
             totalSize += 1 + size;
             if (!ctx) {
-                this.generator.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (opcode << 2));
-                this.generator.generateImmediate(addImm, size);
+                this.generator.put8(SimpleCoreInstruction.INSTR_CODES[size] | (opcode << 2));
+                this.generator.putImmediate(addImm, size);
             }
             minSize = Math.max(0, minSize - size - 1);
             doPop = true;
@@ -390,7 +357,7 @@ export class ReadWriteInstruction extends InstrBase {
         tailSize = Math.min(Math.max(minSize - 1, tailSize), 5);
         totalSize += 1 + tailSize;
         if (!ctx) {
-            this.generator.generateByte(
+            this.generator.put8(
                 ((this.base & BASE.REG_MASK) << ReadWriteInstruction.BASE_SHIFT) |
                 ((this.write ? 1 : 0) << ReadWriteInstruction.WRITE_SHIFT) |
                 ((doPop ? 1 : 0) << ReadWriteInstruction.POP_SHIFT) |
@@ -398,7 +365,7 @@ export class ReadWriteInstruction extends InstrBase {
                 (rwImm >> (7 * tailSize)));
             while (tailSize > 0) {
                 tailSize--;
-                this.generator.generateByte(
+                this.generator.put8(
                     ((tailSize > 0 ? 1 : 0) << 7) |
                     ((rwImm >> (7 * tailSize)) & 0x7F));
             }
@@ -427,10 +394,10 @@ export class DataInstruction extends InstrBase {
     }
     generate() {
         let ctx = new ExprContext();
-        this.generator.reserveOutput(this.itemBytes * this.args.length);
+        this.generator.reserve(this.itemBytes * this.args.length);
         for (let arg of this.args) {
             let value = arg(ctx);
-            this.generator.generateData(value, this.itemBytes);
+            this.generator.putInt(value, this.itemBytes);
         }
     }
 };
@@ -517,7 +484,7 @@ export class ReadSpInstruction extends InstrBase {
         return 1;
     }
     generate() {
-        this.generator.generateByte(ReadSpInstruction.INSTR_CODE | (this.info.opcode << 2));
+        this.generator.put8(ReadSpInstruction.INSTR_CODE | (this.info.opcode << 2));
     }
 };
 
