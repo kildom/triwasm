@@ -116,5 +116,22 @@
         "errno-base.h": "c"
     },
     "editor.rulers": [90, 100],
-    "terminal.integrated.automationShell.windows": "cmd.exe"
+    "terminal.integrated.automationShell.windows": "cmd.exe",
+	"editor.tokenColorCustomizations": {
+		"comments": "#295029",
+		"textMateRules": [
+			{
+				"scope": "storage.type.class.doxygen.c, storage.type.class.doxygen.cpp",
+				"settings": {
+					"foreground": "#203b37"
+				}
+			},
+			{
+				"scope": "comment.block.documentation.c variable.parameter.c, comment.block.documentation.cpp variable.parameter.cpp",
+				"settings": {
+					"foreground": "#213d25"
+				}
+			}
+		]
+	}
 }

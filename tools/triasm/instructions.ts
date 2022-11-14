@@ -12,14 +12,31 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { ParserError } from "./parser";
 import { BASE, instrInfoById, INSTR, InstrInfo } from "./instrInfo";
 import { Compiler } from "./compiler";
+import { ExprMaker } from "./exprMaker";
+import { CompilerError } from "./errors";
+import { allowTemporaryNull } from "../utils/common";
 
-export interface ExprContext {
-    instr: InstrBase; // TODO: This should be moved to ExprEval function closure
-    invalid?: boolean; // TODO: This should be renamed to something more accurate, e.g. nonConst or mutable
+export interface ExprContextModification {
+    mutable?: boolean;
     deps?: Set<Block>;
+}
+
+export class ExprContext {
+    constructor(public mutable?: boolean, public deps?: Set<Block>, private parent?: ExprContext) {
+    }
+    shallowClone(mod?: ExprContextModification) {
+        return new ExprContext(
+            !mod || mod.mutable === undefined ? this.mutable : mod.mutable,
+            !mod || mod.deps === undefined ? this.deps : mod.deps === null ? undefined : mod.deps,
+            this);
+    }
+    shallowMergeToParent() {
+        if (this.parent) {
+            this.parent.mutable = this.parent.mutable || this.mutable;
+        }
+    }
 };
 
 export type ExprEval = (ctx: ExprContext) => bigint;
@@ -28,29 +45,43 @@ export type ExprEval = (ctx: ExprContext) => bigint;
 export class ExprCycleError extends Error { };
 
 
+export class InstrParams {
+    constructor(public compiler: Compiler, public lineNumber: number, public index: number, public info: InstrInfo, public exprMaker: ExprMaker) {
+    }
+};
+
+
 export class InstrBase {
+
+    public compiler: Compiler;
+    public generator: any = {};
+    public lineNumber: number;
+    public index: number;
+    public info: InstrInfo;
 
     public pma: number | undefined;
     public pmaEnd: number = 0;
     public pmaOld: number = 0;
     public pmaEstimated: number | undefined;
 
-    protected addr: number = 0;
-
-    constructor(public compiler: Compiler, public lineNumber: number, public index: number, protected info: InstrInfo | null) {
+    constructor(params: InstrParams) {
+        this.compiler = params.compiler;
+        this.lineNumber = params.lineNumber;
+        this.index = params.index;
+        this.info = params.info;
     }
 
     getSize(ctx: ExprContext) {
         return 0;
     }
 
-    collectDeps(deps: Set<Block>) {
+    collectDeps(ctx: ExprContext) {
     }
 
     generate(minSize: number) {
     }
 
-    generateByte(value: number) {
+    /*generateByte(value: number) {
         this.compiler.output[this.compiler.pma++] = value;
     }
 
@@ -91,86 +122,61 @@ export class InstrBase {
         } else {
             return 4;
         }
-    }
+    }*/
 };
 
 
 export class Block extends InstrBase {
     public discarded: boolean = false;
     public moveTo: string | null = null;
-    public end: InstrBase | null = null;
+    public end: BlockEnd;
     public locals: { [k: string]: string } = {};
     public deps: Set<Block> = new Set();
 
-    constructor(compiler: Compiler, lineNumber: number, index: number, args: string, public parent: Block | null) {
-        super(compiler, lineNumber, index, null);
+    constructor(params: InstrParams, args: string, public parent: Block | null) {
+        super(params);
+        this.end = allowTemporaryNull as BlockEnd;
         let [blockType, blockArgs] = args.split(/\s+/, 2);
         blockArgs = (blockArgs || '').trim();
         switch (blockType.toUpperCase()) {
             case 'DISCARDABLE':
-                if (blockArgs != '') throw new ParserError(`${this.lineNumber}: Unexpected string after DISCARDABLE.`);
+                if (blockArgs != '') throw new CompilerError(this.lineNumber, `Unexpected string after DISCARDABLE.`);
                 this.discarded = true;
                 break;
             case 'MOVABLE':
-                if (blockArgs == '') throw new ParserError(`${this.lineNumber}: Destination name expected.`);
+                if (blockArgs == '') throw new CompilerError(this.lineNumber, `Destination name expected.`);
                 this.moveTo = blockArgs;
                 break;
             case '':
                 // nothing to do
                 break;
             default:
-                throw new ParserError(`${this.lineNumber}: Unknown type of block.`);
+                throw new CompilerError(this.lineNumber, `Unknown type of block.`);
         }
     }
 };
 
 
 export class BlockEnd extends InstrBase {
-    constructor(compiler: Compiler, lineNumber: number, index: number, public block: Block) {
-        super(compiler, lineNumber, index, null);
+    constructor(params: InstrParams, public block: Block) {
+        super(params);
     }
 };
-
-
-export class EmptyInstr extends InstrBase {
-    constructor(compiler: Compiler, lineNumber: number, index: number) {
-        super(compiler, lineNumber, index, null);
-    }
-};
-
-
-function mergeExprCtx(dst: ExprContext, src: ExprContext) {
-    dst.invalid = dst.invalid || src.invalid;
-    if (dst.deps && src.deps) {
-        for (let b of src.deps) {
-            dst.deps.add(b);
-        }
-    }
-}
 
 
 export class Assign extends InstrBase {
     private calculating: boolean = false;
+    private value: ExprEval;
 
-    constructor(compiler: Compiler, lineNumber: number, index: number, protected value: ExprEval, protected block: Block) {
-        super(compiler, lineNumber, index, null);
+    constructor(params: InstrParams, value: string, protected block: Block) {
+        super(params);
+        this.value = params.exprMaker.makeSingleExpression(this, value);
     }
-    collectDeps(deps: Set<Block>): void {
-        let newDeps: Set<Block> = new Set();
-        let ctx: ExprContext = { instr: this, invalid: false, deps: newDeps };
+    collectDeps(ctx: ExprContext): void {
         this.calculate(ctx);
-        for (let b of newDeps) {
-            deps.add(b);
-        }
     }
     getValue(ctx: ExprContext): bigint {
-        let thisCtx: ExprContext = { ...ctx, instr: this };
-        let result = this.calculate(thisCtx);
-        mergeExprCtx(ctx, thisCtx);
-        if (ctx.deps) {
-            ctx.deps.add(this.block);
-        }
-        return result;
+        return this.calculate(ctx);
     }
     calculate(ctx: ExprContext): bigint {
         let result: bigint;
@@ -197,24 +203,24 @@ export class SimpleCoreInstruction extends InstrBase {
 
     private arg: ExprEval | null;
 
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, args: ExprEval[], base: BASE) {
-        super(compiler, lineNumber, index, info);
-        this.arg = args.length > 0 ? args[0] : null;
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        this.arg = params.exprMaker.makeOptionalExpression(this, args);
     }
-    collectDeps(deps: Set<Block>) {
+    collectDeps(ctx: ExprContext) {
         if (this.arg !== null) {
-            this.arg({ instr: this, deps: deps, invalid: false });
+            this.arg(ctx);
         }
     }
     getSize(ctx: ExprContext): number {
         if (this.arg !== null) {
-            let thisCtx: ExprContext = { instr: this };
-            let argValue = this.arg(thisCtx);
-            mergeExprCtx(ctx, thisCtx);
-            if (thisCtx.invalid) {
+            let ctx2 = ctx.shallowClone({ mutable: false });
+            let argValue = this.arg(ctx2);
+            ctx2.shallowMergeToParent();
+            if (ctx2.mutable) {
                 return 2;
             } else {
-                return 1 + this.getImmediateSize(argValue);
+                return 1 + this.generator.getImmediateSize(argValue);
             }
         } else {
             return 1;
@@ -222,15 +228,12 @@ export class SimpleCoreInstruction extends InstrBase {
     }
     generate(minSize: number) {
         if (this.arg !== null) {
-            let argValue = this.arg({ instr: this });
-            let size = this.getImmediateSize(argValue);
-            while (size < (minSize - 1) && size < 4) {
-                size <<= 1;
-            }
-            this.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (this.info!.opcode << 2));
-            this.generateImmediate(argValue, size);
+            let argValue = this.arg(new ExprContext());
+            let size = this.generator.getImmediateSize(argValue, minSize - 1);
+            this.generator.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
+            this.generator.generateImmediate(argValue, size);
         } else {
-            this.generateByte(SimpleCoreInstruction.INSTR_CODES[0] | (this.info!.opcode << 2));
+            this.generator.generateByte(SimpleCoreInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
         }
     }
 };
@@ -239,34 +242,44 @@ export class BranchInstruction extends InstrBase {
 
     private static INSTR_CODES = [0x83, 0x82, 0x81, 0, 0x80];
 
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, private destExpr: ExprEval, private addrExpr: ExprEval) {
-        super(compiler, lineNumber, index, info);
+    private destExpr: ExprEval | null;
+    private addrExpr: ExprEval;
+
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        this.destExpr = params.exprMaker.makeOptionalExpression(this, args);
+        this.addrExpr = params.exprMaker.makeSingleExpression(this, 'vma()');
     }
-    collectDeps(deps: Set<Block>) {
-        this.destExpr({ instr: this, deps: deps });
-        this.addrExpr({ instr: this, deps: deps });
+    collectDeps(ctx: ExprContext) {
+        if (this.destExpr)
+            this.destExpr(ctx);
     }
     getSize(ctx: ExprContext): number {
-        ctx.invalid = true;
-        return 2;
+        ctx.mutable = !!this.destExpr;
+        return this.destExpr ? 2 : 1;
     }
     generate(minSize: number) {
-        let dest = Number(this.destExpr({ instr: this }));
-        let addr = Number(this.addrExpr({ instr: this }));
-        let offset = dest - addr;
-        let size: number;
-        if (offset >= -126 && offset <= 129) {
-            size = 1;
-        } else if (offset >= -32765 && offset <= 32770) {
-            size = 2;
+        if (this.destExpr) {
+            let ctx = new ExprContext();
+            let dest = Number(this.destExpr(ctx));
+            let addr = Number(this.addrExpr(ctx));
+            let offset = dest - addr;
+            let size: number;
+            if (offset >= -126 && offset <= 129) {
+                size = 1;
+            } else if (offset >= -32765 && offset <= 32770) {
+                size = 2;
+            } else {
+                size = 4;
+            }
+            while (size < (minSize - 1) && size < 4) {
+                size = size << 1;
+            }
+            this.generator.generateByte(BranchInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
+            this.generator.generateImmediate(BigInt(offset - size - 1), size);
         } else {
-            size = 4;
+            this.generator.generateByte(BranchInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
         }
-        while (size < (minSize - 1) && size < 4) {
-            size = size << 1;
-        }
-        this.generateByte(BranchInstruction.INSTR_CODES[size] | (this.info!.opcode << 2));
-        this.generateImmediate(BigInt(offset - size - 1), size);
     }
 };
 
@@ -286,33 +299,30 @@ export class ReadWriteInstruction extends InstrBase {
     private signed: boolean;
     private bytes: number;
 
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, args: ExprEval[], private base: BASE) {
-        super(compiler, lineNumber, index, info);
-        this.arg = args.length > 0 ? args[0] : (ctx => 0n);
-        this.write = info.name.startsWith('W');
-        this.signed = info.name.endsWith('S');
-        this.bytes = info.opcode;
-        if (base == BASE.ZERO && args.length == 0) {
-            throw new ParserError(`${this.lineNumber}: "${info.name}" instruction without arguments!`);
-        }
+    constructor(params: InstrParams, args: string, private base: BASE) {
+        super(params);
+        this.arg = params.exprMaker.makeOptionalExpression(this, args) || (() => 0n);
+        this.write = this.info.name.startsWith('W');
+        this.signed = this.info.name.endsWith('S');
+        this.bytes = this.info.opcode;
     }
-    collectDeps(deps: Set<Block>) {
-        this.arg({ instr: this, deps: deps });
+    collectDeps(ctx: ExprContext) {
+        this.arg(ctx);
     }
     getSize(ctx: ExprContext) {
         return this.genCommon(0, ctx);
     }
     generate(minSize: number) {
-        this.genCommon(minSize, null);
+        this.genCommon(minSize);
     }
-    genCommon(minSize: number, ctx: ExprContext | null) {
+    genCommon(minSize: number, ctx?: ExprContext) {
         let totalSize = 0;
         let argValue: bigint;
-        let thisCtx: ExprContext = { instr: this };
-        argValue = this.arg(thisCtx) & 0xFFFFFFFFn;
+        let ctx2: ExprContext = ctx ? ctx.shallowClone() : new ExprContext();
+        argValue = this.arg(ctx2) & 0xFFFFFFFFn;
         if (ctx) {
-            mergeExprCtx(ctx, thisCtx);
-            if (!thisCtx.invalid) { // TODO: check if "!" is needed here
+            ctx2.shallowMergeToParent();
+            if (ctx2.mutable) {
                 argValue = 0n;
             }
         }
@@ -339,11 +349,11 @@ export class ReadWriteInstruction extends InstrBase {
             argValue -= addImm;
             let opcode = instrInfoById[(this.base & BASE.POP) ? INSTR.SUB : INSTR.NEG].opcode;
             addImm = (-addImm) & 0xFFFFFFFFn;
-            let size = this.getImmediateSize(addImm);
+            let size = this.generator.getImmediateSize(addImm);
             totalSize += 1 + size;
             if (!ctx) {
-                this.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (opcode << 2));
-                this.generateImmediate(addImm, size);
+                this.generator.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (opcode << 2));
+                this.generator.generateImmediate(addImm, size);
             }
             minSize = Math.max(0, minSize - size - 1);
             doPop = true;
@@ -359,7 +369,7 @@ export class ReadWriteInstruction extends InstrBase {
             rwImm = (rwImm << 3) | 0x00 | (this.signed ? 0x02 : 0x00) | 0x01;
         } else if (rwImm < 4 && minSize <= 1) {
             rwImm = rwImm << 0;
-        } else if (this.compiler.extensions.MEM64) {
+        } else if (this.compiler.extensions.mem64) {
             rwImm = rwImm << 2;
         } else {
             rwImm = rwImm << 1;
@@ -380,7 +390,7 @@ export class ReadWriteInstruction extends InstrBase {
         tailSize = Math.min(Math.max(minSize - 1, tailSize), 5);
         totalSize += 1 + tailSize;
         if (!ctx) {
-            this.generateByte(
+            this.generator.generateByte(
                 ((this.base & BASE.REG_MASK) << ReadWriteInstruction.BASE_SHIFT) |
                 ((this.write ? 1 : 0) << ReadWriteInstruction.WRITE_SHIFT) |
                 ((doPop ? 1 : 0) << ReadWriteInstruction.POP_SHIFT) |
@@ -388,7 +398,7 @@ export class ReadWriteInstruction extends InstrBase {
                 (rwImm >> (7 * tailSize)));
             while (tailSize > 0) {
                 tailSize--;
-                this.generateByte(
+                this.generator.generateByte(
                     ((tailSize > 0 ? 1 : 0) << 7) |
                     ((rwImm >> (7 * tailSize)) & 0x7F));
             }
@@ -397,198 +407,141 @@ export class ReadWriteInstruction extends InstrBase {
     }
 };
 
-export class UnwindInstruction extends InstrBase {
-
-    static INSTR_CODES = [0x83, 0x82, 0x81, 0, 0x80];
-
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, private args: ExprEval[]) {
-        super(compiler, lineNumber, index, info);
-    }
-    collectDeps(deps: Set<Block>) {
-        this.args[0]({ instr: this, deps: deps });
-        if (this.args.length > 1) {
-            this.args[1]({ instr: this, deps: deps });
-        }
-    }
-    getSize(ctx: ExprContext): number {
-        let thisCtx: ExprContext = { instr: this };
-        let argValue = this.getArgValue(thisCtx);
-        ctx.invalid = ctx.invalid || thisCtx.invalid || argValue === null;
-        if (thisCtx.invalid) {
-            return 2;
-        } else if (argValue === null) {
-            return 1 + 4;
-        } else {
-            return 1 + this.getImmediateSize(argValue);
-        }
-    }
-    generate(minSize: number) {
-        let argValue = this.getArgValue({ instr: this });
-        if (argValue === null) {
-            this.compiler.postPostponedError = new ParserError(`${this.lineNumber}: Too many words to unwind!`);
-            argValue = 0n;
-        }
-        let size = this.getImmediateSize(argValue);
-        while (size < (minSize - 1) && size < 4) {
-            size = size << 1;
-        }
-        this.generateByte(SimpleCoreInstruction.INSTR_CODES[size] | (this.info!.opcode << 2));
-        this.generateImmediate(argValue, size);
-    }
-    getArgValue(ctx: ExprContext): bigint | null {
-        let argValue = this.args[0](ctx);
-        if (this.args.length > 1) {
-            let keep = argValue;
-            let reduce = this.args[1](ctx);
-            if (reduce <= 15n && keep <= 7n) {
-                return (keep << 4n) | reduce;
-            } else if (reduce <= 15n && keep <= 15n) {
-                return (keep << 4n) | reduce | 0xFFFFFF00n;
-            } else if (reduce <= 255n && keep <= 127n) {
-                return (keep << 8n) | reduce;
-            } else if (reduce <= 255n && keep <= 255n) {
-                return (keep << 8n) | reduce | 0xFFFF0000n;
-            } else if (reduce <= 65535n && keep <= 65535n) {
-                return (keep << 16n) | reduce;
-            } else {
-                return null;
-            }
-        } else {
-            return argValue;
-        }
-    }
-};
 
 export class DataInstruction extends InstrBase {
 
     private itemBytes: number;
+    private args: ExprEval[];
 
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, private args: ExprEval[]) {
-        super(compiler, lineNumber, index, info);
-        this.itemBytes = this.info!.opcode;
-        this.args = args;
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        this.itemBytes = this.info.opcode;
+        this.args = params.exprMaker.makeExpressions(this, args);
     }
-    collectDeps(deps: Set<Block>) {
-        let ctx = { instr: this, deps: deps };
-        for (let arg of this.args) {
+    collectDeps(ctx: ExprContext) {
+        for (let arg of this.args)
             arg(ctx);
-        }
     }
     getSize(): number {
         return this.itemBytes * this.args.length;
     }
     generate() {
-        this.compiler.reserveOutput(this.itemBytes * this.args.length);
+        let ctx = new ExprContext();
+        this.generator.reserveOutput(this.itemBytes * this.args.length);
         for (let arg of this.args) {
-            let value = arg({ instr: this });
-            this.generateData(value, this.itemBytes);
+            let value = arg(ctx);
+            this.generator.generateData(value, this.itemBytes);
         }
     }
 };
 
 export class AlignInstruction extends InstrBase {
 
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, private alignExpr: ExprEval, private addrExpr: ExprEval) {
-        super(compiler, lineNumber, index, info);
+    private alignExpr: ExprEval;
+    private addrExpr: ExprEval;
+
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        this.alignExpr = params.exprMaker.makeSingleExpression(this, args);
+        this.addrExpr = params.exprMaker.makeSingleExpression(this, 'vma()');
     }
-    collectDeps(deps: Set<Block>) {
-        let ctx = { instr: this, deps: deps };
+    collectDeps(ctx: ExprContext) {
         this.alignExpr(ctx);
-        this.addrExpr(ctx);
     }
     getSize(ctx: ExprContext): number {
-        ctx.invalid = true;
+        ctx.mutable = true;
         return 0;
     }
     generate() {
-        let thisCtx = { instr: this };
-        let alignValue = Number(this.alignExpr(thisCtx));
-        let addrValue = Number(this.addrExpr(thisCtx));
+        let ctx = new ExprContext();
+        let alignValue = Number(this.alignExpr(ctx));
+        let addrValue = Number(this.addrExpr(ctx));
         let unaligned = alignValue == 0 ? 0 : addrValue % alignValue;
         if (unaligned != 0) {
             let size = alignValue - unaligned;
-            this.compiler.reserveOutput(size);
-            this.compiler.output.fill(0, this.compiler.pma, this.compiler.pma + size);
-            this.compiler.pma += size;
+            this.generator.fill(0, size);
         }
     }
 };
 
 export class AddrInstruction extends InstrBase {
 
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, private expected: ExprEval, private current: ExprEval) {
-        super(compiler, lineNumber, index, info);
+    private expected: ExprEval;
+    private current: ExprEval;
+
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        this.expected = params.exprMaker.makeSingleExpression(this, args);
+        this.current = this.info.opcode
+            ? params.exprMaker.makeSingleExpression(this, 'pma()')
+            : params.exprMaker.makeSingleExpression(this, 'vma()');
     }
-    collectDeps(deps: Set<Block>) {
-        let ctx = { instr: this, deps: deps };
+    collectDeps(ctx: ExprContext) {
         this.expected(ctx);
-        this.current(ctx);
     }
     getSize(ctx: ExprContext): number {
-        ctx.invalid = true;
+        ctx.mutable = true;
         return 0;
     }
     generate() {
-        let thisCtx = { instr: this };
-        let expectedValue = Number(this.expected(thisCtx));
-        let currentValue = Number(this.current(thisCtx));
+        let ctx = new ExprContext();
+        let expectedValue = Number(this.expected(ctx));
+        let currentValue = Number(this.current(ctx));
         let padding = expectedValue - currentValue;
         if (padding > 0) {
-            this.compiler.reserveOutput(padding);
-            this.compiler.output.fill(0, this.compiler.pma, this.compiler.pma + padding);
-            this.compiler.pma += padding;
+            this.generator.fill(0, padding);
         }
     }
 };
 
 export class RefInstruction extends InstrBase {
 
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, private args: ExprEval[]) {
-        super(compiler, lineNumber, index, info);
+    private args: ExprEval[];
+
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        this.args = params.exprMaker.makeExpressions(this, args);
     }
-    collectDeps(deps: Set<Block>) {
-        let ctx = { instr: this, deps: deps };
-        for (let arg of this.args) {
+    collectDeps(ctx: ExprContext) {
+        for (let arg of this.args)
             arg(ctx);
-        }
     }
 };
 
 export class ReadSpInstruction extends InstrBase {
     static INSTR_CODE = 0x82;
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo) {
-        super(compiler, lineNumber, index, info);
+    constructor(params: InstrParams) {
+        super(params);
     }
     getSize(): number {
         return 1;
     }
     generate() {
-        this.generateByte(ReadSpInstruction.INSTR_CODE | (this.info!.opcode << 2));
+        this.generator.generateByte(ReadSpInstruction.INSTR_CODE | (this.info.opcode << 2));
     }
 };
 
 export class PlaceInstruction extends InstrBase {
     public name: string;
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, args: string) {
-        super(compiler, lineNumber, index, info);
+    constructor(params: InstrParams, args: string) {
+        super(params);
         this.name = args.trim();
         if (this.name == '')
-            throw new ParserError(`${this.lineNumber}: Expecting name.`);
+            throw new CompilerError(this.lineNumber, `Expecting name.`);
     }
 };
 
 
 export class BaseInstruction extends InstrBase {
     private arg: ExprEval;
-    constructor(compiler: Compiler, lineNumber: number, index: number, info: InstrInfo, private args: ExprEval[]) {
-        super(compiler, lineNumber, index, info);
-        this.arg = args[0];
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        this.arg = params.exprMaker.makeSingleExpression(this, args);
     }
-    collectDeps(deps: Set<Block>) {
-        let ctx: ExprContext = { instr: this, deps: deps };
+    collectDeps(ctx: ExprContext) {
         let base = this.arg(ctx);
-        if (ctx.invalid) {
-            throw new ParserError(`${this.lineNumber}: Expression is not constant.`);
+        if (ctx.mutable) {
+            throw new CompilerError(this.lineNumber, `Expression is not constant.`);
         }
         this.compiler.pmaBase = Number(base);
     }

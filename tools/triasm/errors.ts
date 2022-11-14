@@ -12,25 +12,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Compiler } from './compiler.mjs';
-
-import * as fs from 'fs';
-
-
-class Conf {
-    constructor() {
-        this.extI64 = false;
-        this.extMem64 = false;
-        this.extUnwind = true;
-        this.extF32 = false;
-        this.extF64 = false;
+export class CompilerError extends Error {
+    constructor(lineNumber: number, message: string) {
+        super(`${lineNumber}: ${message}`);
+        this.name = 'CompilerError';
     }
-};
-
-
-let conf = new Conf();
-let c = new Compiler();
-
-let src = fs.readFileSync('_test.triasm', { encoding: 'utf-8' });
-let b = c.compile(src, conf);
-fs.writeFileSync('_test.tvmb', b);
+}

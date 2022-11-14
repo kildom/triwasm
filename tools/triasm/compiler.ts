@@ -12,328 +12,58 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { instrInfoById, INSTR, BASE } from './instrInfo';
-import { parse, ParserError } from './parser';
-import { AsmFunctions } from './functions';
-import {
-    Block, BlockEnd, EmptyInstr, Assign, SimpleCoreInstruction, DataInstruction,
-    AlignInstruction, AddrInstruction, RefInstruction, ReadSpInstruction,
-    BranchInstruction, UnwindInstruction, ReadWriteInstruction, PlaceInstruction, InstrBase, ExprEval, ExprContext, BaseInstruction
-} from './instructions'
-import { ObjMarker } from '../utils/common';
+import { Block, BlockEnd, PlaceInstruction, InstrBase, ExprEval, ExprContext } from './instructions';
+import { allowTemporaryNull, ObjMarker } from '../utils/common';
+import { InstrMaker } from './instrMaker';
+import { ExprMaker } from './exprMaker';
+import { CompilerError } from './errors';
 
 const MAX_RERUNS = 50;
 
-interface AssignProxy {
-    assignment: Assign | null;
-    lineNumber: number;
-}
+export interface EnabledExtensions {
+    unwind?: boolean;
+    mem64?: boolean;
+    i64?: boolean;
+    f32?: boolean;
+    f64?: boolean;
+};
 
-const KNOWN_EXTENSIONS = [
-    'UNWIND',
-    'MEM64',
-    'I64',
-    'F32',
-    'F64',
+export const KNOWN_EXTENSIONS = [
+    'unwind',
+    'mem64',
+    'i64',
+    'f32',
+    'f64',
 ];
-
-// TODO: This class should be renamed and moved to a different file
-class ParserOutput {
-
-    static parserInstrClasses: { [k: string]: any } = {
-        sc: SimpleCoreInstruction,
-        rw: ReadWriteInstruction,
-        data: DataInstruction,
-        READSP: ReadSpInstruction,
-        '.REF': RefInstruction,
-        '.PLACE': PlaceInstruction,
-        '.BASE': BaseInstruction,
-    };
-
-    private lineNumber = 1;
-    public instructions: InstrBase[] = [];
-    public blocks: Block[] = [];
-    public rootBlock: Block;
-    private assignProxies: { [k: string]: AssignProxy } = {};
-    public extensions: { [k: string]: boolean } = {};
-    private currentBlock: Block;
-
-    constructor(private compiler: Compiler) {
-        this.rootBlock = new Block(this.compiler, 0, 0, '', null);
-        this.currentBlock = this.rootBlock;
-    }
-
-    public parse(input: string) {
-        this.rootBlock = new Block(this.compiler, 0, 0, '', null);
-        this.blocks.push(this.rootBlock);
-        this.currentBlock = this.rootBlock;
-        this.instructions.push(this.rootBlock);
-
-        parse(input, this);
-
-        if (this.currentBlock !== this.rootBlock) {
-            throw new ParserError(`${this.currentBlock.lineNumber}: Unfinished block!`);
-        }
-
-        this.rootBlock.end = new BlockEnd(this.compiler, this.lineNumber, this.instructions.length, this.rootBlock);
-        this.instructions.push(this.rootBlock.end);
-
-        for (let [name, proxy] of Object.entries(this.assignProxies)) {
-            if (proxy.assignment === null) {
-                throw new ParserError(`${proxy.lineNumber}: Undefined variable "${name}"!`);
-            }
-        }
-    }
-
-    getRealName(name: string): string {
-        let block: Block | null = this.currentBlock;
-        while (block !== null) {
-            if (name in block.locals) {
-                return block.locals[name];
-            }
-            block = block.parent;
-        }
-        return name;
-    }
-
-    onParserLine(lineNumber: number): void {
-        this.lineNumber = lineNumber;
-    }
-
-    onParserInstr(id: number, args: ExprEval[] | string, base: BASE): void {
-        let info = instrInfoById[id];
-        for (let ext of info.condition) {
-            if (!this.extensions[ext]) {
-                throw new ParserError(`${this.lineNumber}: Instruction belongs to disabled extension "${ext}".`);
-            }
-        }
-        let instr: InstrBase;
-        let index = this.instructions.length;
-        switch (id) {
-            case INSTR._EXT:
-                for (let extName of (args as string).toUpperCase().split(/\s*,\s*/)) {
-                    if (KNOWN_EXTENSIONS.indexOf(extName) < 0) {
-                        throw new ParserError(`${this.lineNumber}: Unknown extension "${extName}".`);
-                    }
-                    this.extensions[extName] = true;
-                }
-                instr = new EmptyInstr(this.compiler, this.lineNumber, index);
-                break;
-
-            case INSTR._BEGIN:
-                instr = new Block(this.compiler, this.lineNumber, index, args as string, this.currentBlock);
-                this.blocks.push(instr as Block);
-                this.currentBlock = instr as Block;
-                break;
-
-            case INSTR._END:
-                if (this.currentBlock === this.rootBlock) {
-                    throw new ParserError(`${this.lineNumber}: ".END" directive without matching ".BEGIN".`);
-                }
-                instr = new BlockEnd(this.compiler, this.lineNumber, index, this.currentBlock);
-                this.currentBlock.end = instr;
-                this.currentBlock = this.currentBlock.parent as Block;
-                break;
-
-            case INSTR._LOCAL:
-                if ((args as string) in this.currentBlock.locals) {
-                    throw new ParserError(`${this.lineNumber}: ".LOCAL" variable already defined.`);
-                }
-                let name = `~LOCAL~${index}~${this.currentBlock.index}~${args}`;
-                this.currentBlock.locals[args as string] = name;
-                instr = new EmptyInstr(this.compiler, this.lineNumber, index);
-                break;
-
-            case INSTR._ALIGN:
-                instr = new AlignInstruction(this.compiler, this.lineNumber, index, info, args[0] as ExprEval, this.onParserCallExpr('vma', []));
-                break;
-
-            case INSTR._ADDR:
-                instr = new AddrInstruction(this.compiler, this.lineNumber, index, info, args[0] as ExprEval, this.onParserCallExpr('vma', []));
-                break;
-
-            case INSTR.BRT:
-            case INSTR.BRF:
-            case INSTR.CALL:
-            case INSTR.BR:
-                if (args.length == 0) {
-                    instr = new SimpleCoreInstruction(this.compiler, this.lineNumber, index, info, args as ExprEval[], BASE.ZERO);
-                } else {
-                    instr = new BranchInstruction(this.compiler, this.lineNumber, index, info, args[0] as ExprEval, this.onParserCallExpr('vma', []));
-                }
-                break;
-
-            case INSTR.UNWIND:
-                if (args.length == 0) {
-                    instr = new SimpleCoreInstruction(this.compiler, this.lineNumber, index, info, args as ExprEval[], BASE.ZERO);
-                } else {
-                    instr = new UnwindInstruction(this.compiler, this.lineNumber, index, info, args as ExprEval[]);
-                }
-                break;
-
-            default:
-                // TODO: Instruction constructor should parse arguments using method from this class, e.g.
-                // let args = compiler.outputObject.parseExpr(this, args);
-                // OR: let args = compiler.parseExpr(this, args);
-                // The method will set "this" as current instruction and all new ExprEval functions will
-                // have instruction in its closure.
-                let Class = ParserOutput.parserInstrClasses[info.instrClass];
-                if (!Class) {
-                    Class = ParserOutput.parserInstrClasses[info.name];
-                }
-                instr = new Class(this.compiler, this.lineNumber, index, info, args, base);
-                break;
-        }
-        this.instructions.push(instr);
-    }
-
-    onParserLabel(name: string): void {
-        this.onParserAssign(name, this.onParserCallExpr('vma', []));
-    }
-
-    onParserAssign(name: string, value: any): void {
-        let realName = this.getRealName(name);
-        let instr = new Assign(this.compiler, this.lineNumber, this.instructions.length, value, this.currentBlock);
-        this.instructions.push(instr);
-        if (realName in this.assignProxies) {
-            let proxy = this.assignProxies[realName];
-            if (proxy.assignment === null) {
-                proxy.assignment = instr;
-            } else {
-                this.assignProxies[realName] = { assignment: instr, lineNumber: this.lineNumber }
-            }
-        } else {
-            this.assignProxies[realName] = { assignment: instr, lineNumber: this.lineNumber }
-        }
-    }
-
-    onParserIdExpr(id: string): ExprEval {
-        let realName = this.getRealName(id);
-        if (!(realName in this.assignProxies)) {
-            let proxy: AssignProxy = {
-                assignment: null,
-                lineNumber: this.lineNumber,
-            };
-            this.assignProxies[realName] = proxy;
-        }
-        if (this.assignProxies[realName].assignment !== null) {
-            let assignment = this.assignProxies[realName].assignment;
-            return ctx => assignment!.getValue(ctx);
-        } else {
-            let proxy = this.assignProxies[realName];
-            return ctx => proxy.assignment!.getValue(ctx);
-        }
-    }
-
-    onParserCallExpr(name: string, args: ExprEval[]): ExprEval {
-        return AsmFunctions.createExpr(name, args, this.lineNumber);
-    }
-
-    onParserNumberExpr(valueStr: string): ExprEval {
-        let valueBig = BigInt(valueStr);
-        let value64 = valueBig & 0xFFFFFFFFFFFFFFFFn;
-        if (value64 != valueBig) {
-            throw new ParserError(`${this.lineNumber}: Integer literal out of range!`);
-        }
-        return () => value64;
-    }
-
-    onParserTernaryExpr(a: ExprEval, b: ExprEval, c: ExprEval): ExprEval {
-        return AsmFunctions.createExpr('if', [a, b, c], this.lineNumber);
-    }
-
-    onParserOrExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return this.onParserCallExpr('if', [a, a, b]);
-    }
-    onParserAndExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return this.onParserCallExpr('if', [this.onParserNotExpr(a), a, b]);
-    }
-    onParserBitOrExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) | b(ctx);
-    }
-    onParserBitXorExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) ^ b(ctx);
-    }
-    onParserBitAndExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) & b(ctx);
-    }
-    onParserEqExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) == b(ctx) ? 1n : 0n;
-    }
-    onParserNeExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) != b(ctx) ? 1n : 0n;
-    }
-    onParserLtExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) < b(ctx) ? 1n : 0n;
-    }
-    onParserGtExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) > b(ctx) ? 1n : 0n;
-    }
-    onParserLeExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) <= b(ctx) ? 1n : 0n;
-    }
-    onParserGeExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) >= b(ctx) ? 1n : 0n;
-    }
-    onParserShlExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => (a(ctx) << b(ctx)) & 0xFFFFFFFFFFFFFFFFn;
-    }
-    onParserShrExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) >> b(ctx);
-    }
-    onParserAddExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => (a(ctx) + b(ctx)) & 0xFFFFFFFFFFFFFFFFn;
-    }
-    onParserSubExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => (a(ctx) - b(ctx)) & 0xFFFFFFFFFFFFFFFFn;
-    }
-    onParserMulExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => (a(ctx) * b(ctx)) & 0xFFFFFFFFFFFFFFFFn;
-    }
-    onParserDivExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) / ctx.instr.compiler.checkDiv0(ctx, b);
-    }
-    onParserModExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => a(ctx) % ctx.instr.compiler.checkDiv0(ctx, b);
-    }
-    onParserMinusExpr(a: ExprEval): ExprEval {
-        return ctx => -a(ctx) & 0xFFFFFFFFFFFFFFFFn;
-    }
-    onParserNotExpr(a: ExprEval): ExprEval {
-        return ctx => (a(ctx) == 0n) ? 1n : 0n;
-    }
-    onParserBitNotExpr(a: ExprEval): ExprEval {
-        return ctx => a(ctx) ^ 0xFFFFFFFFFFFFFFFFn;
-    }
-
-}
 
 
 export class Compiler {
 
-    public initialState = true;
+    public preparation = true;
     public instructions: InstrBase[] = [];
-    public rootBlock: Block | null = null;
+    public rootBlock: Block;
     public pma: number = 0;
     public pmaBase: number = 0;
     public output: Uint8Array = new Uint8Array(65536);
-    public postPostponedError: Error | null = null;
-    public extensions: { [k: string]: boolean } = {};
+    public extensions: EnabledExtensions = {};
 
     constructor() {
+        this.rootBlock = allowTemporaryNull as Block;
     }
 
     compile(input: string) {
-        this.initialState = true;
-        let po = new ParserOutput(this);
-        po.parse(input);
-        this.instructions = po.instructions;
-        this.rootBlock = po.rootBlock;
-        this.extensions = po.extensions;
+        this.preparation = true;
+        let instrMaker: InstrMaker;
+        let exprMaker = new ExprMaker((...args) => instrMaker.getIdentifier(...args));
+        instrMaker = new InstrMaker(this, exprMaker);
+        instrMaker.parse(input);
+        this.instructions = instrMaker.getInstructions();
+        this.rootBlock = instrMaker.getRootBlock();
+        this.extensions = instrMaker.getExtensions();
         this.moveBlocks();
         this.resolveBlockDependencies();
-        /*this.initialAddresses();
-        this.initialState = false;
+        this.initialAddresses();
+        /*this.preparation = false;
         this.generateCode();
         return this.output.subarray(0, this.addr);*/
     }
@@ -371,12 +101,12 @@ export class Compiler {
                 instr.parent = currentBlock;
                 currentBlock = instr;
             } else if (instr instanceof BlockEnd) {
-                currentBlock = instr.block.parent;
+                currentBlock = instr.block.parent as Block;
             } else if (instr instanceof PlaceInstruction) {
                 let bucket = buckets.get(instr.name);
                 buckets.set(instr.name, null);
                 if (bucket === null) {
-                    throw new ParserError(`${instr.lineNumber}: Movable blocks "${instr.name}" already placed!`);
+                    throw new CompilerError(instr.lineNumber, `Movable blocks "${instr.name}" already placed!`);
                 } else if (bucket) {
                     this.instructions.splice(index + 1, 0, ...bucket);
                 }
@@ -386,7 +116,7 @@ export class Compiler {
         // Check if all buckets were placed
         for (let [key, bucket] of buckets) {
             if (bucket !== null && bucket.length > 0) {
-                throw new ParserError(`${bucket[0].lineNumber}: Movable block "${key}" is not placed anywhere.`);
+                throw new CompilerError(bucket[0].lineNumber, `Movable block "${key}" is not placed anywhere.`);
             }
         }
     }
@@ -395,11 +125,13 @@ export class Compiler {
         let used = new ObjMarker('_func_resolveBlockDependencies_used');
         // Collect dependencies of each block
         let currentBlock: Block = this.rootBlock as Block;
+        let ctx = new ExprContext();
         for (let instr of this.instructions) {
             if (instr instanceof Block) {
                 currentBlock = instr;
             }
-            instr.collectDeps(currentBlock.deps);
+            ctx.deps = currentBlock.deps;
+            instr.collectDeps(ctx);
             if (instr instanceof BlockEnd) {
                 currentBlock = currentBlock.parent as Block;
             }
@@ -425,6 +157,7 @@ export class Compiler {
 
     initialAddresses() {
         this.pma = 0;
+        let ctx = new ExprContext();
         for (let index = 0; index < this.instructions.length; index++) {
             let instr = this.instructions[index];
             if ((instr instanceof Block) && instr.discarded) {
@@ -432,7 +165,7 @@ export class Compiler {
                 continue;
             }
             instr.pma = this.pma;
-            let size = instr.getSize({ instr });
+            let size = instr.getSize(ctx);
             this.pma += size;
             instr.pmaEnd = this.pma;
         }
@@ -445,14 +178,14 @@ export class Compiler {
         do {
             rerunCounter++;
             if (rerunCounter > MAX_RERUNS) {
-                throw new ParserError('0: Maximum number of generating reruns reached!');
+                throw new CompilerError(0, 'Maximum number of generating reruns reached!');
             }
             for (let instr of this.instructions) {
                 instr.pmaOld = instr.pma as number;
                 instr.pma = undefined;
                 instr.pmaEstimated = undefined;
             }
-            this.postPostponedError = null;
+            //this.postPostponedError = null;
             this.pma = 0;
             rerun = false;
             for (let index = 0; index < this.instructions.length; index++) {
@@ -470,9 +203,9 @@ export class Compiler {
                 instr.pmaEnd = this.pma;
             }
         } while (rerun);
-        if (this.postPostponedError !== null) {
-            throw this.postPostponedError;
-        }
+        //if (this.postPostponedError !== null) {
+        //    throw this.postPostponedError;
+        //}
     }
 
     reserveOutput(bytes: number) {
@@ -484,31 +217,30 @@ export class Compiler {
         }
     }
 
-    checkDiv0(ctx: ExprContext, expr: ExprEval) {
+    checkDiv0(instr: InstrBase, ctx: ExprContext, expr: ExprEval) {
         let value: bigint;
-        if (this.initialState) {
-            let oldInvalid = ctx.invalid;
-            ctx.invalid = false;
-            value = expr(ctx);
-            let invalid = ctx.invalid;
-            ctx.invalid = invalid || oldInvalid;
+        if (this.preparation) {
+            let ctx2 = ctx.shallowClone({ mutable: false });
+            value = expr(ctx2);
+            ctx2.shallowMergeToParent();
             if (value == 0n) {
-                if (invalid) {
+                if (ctx2.mutable) {
                     return 1n;
                 } else {
-                    throw new ParserError(`${ctx.instr.lineNumber}: Division by zero!`);
+                    throw new CompilerError(instr.lineNumber, `Division by zero!`);
                 }
             }
         } else {
             value = expr(ctx);
             if (value == 0n) {
-                this.postPostponedError = new ParserError(`${ctx.instr.lineNumber}: Division by zero!`);
+                //TODO: this.generator.postponedError(new CompilerError(instr.lineNumber, `Division by zero!`));
                 return 1n;
             }
         }
         return value;
     }
 
+    /*
     generate8(data: number) {
         this.output[this.pma++] = data & 0xFF;
     }
@@ -534,6 +266,6 @@ export class Compiler {
         this.output[this.pma++] = Number((data >> 40n) & 0xFFn);
         this.output[this.pma++] = Number((data >> 48n) & 0xFFn);
         this.output[this.pma++] = Number((data >> 64n) & 0xFFn);
-    }
+    }*/
 
 };
