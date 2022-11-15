@@ -30,7 +30,7 @@ jobs:
       - name: Compile QuickJS
         run: |
           cd quickjs
-          make -j`nproc`
+          make -j`nproc` qjs
       - name: Run tests
         run: |
           npx tsc -p test/triasm/vectors.tsconfig.json
