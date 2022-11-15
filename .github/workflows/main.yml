@@ -43,4 +43,4 @@ jobs:
             -flto -fbignum -fno-string-normalize -fno-module-loader -m \
             -o vectors tmp.js
           strip vectors
-          time vectors
+          time ./vectors
