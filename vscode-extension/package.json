@@ -1,0 +1,45 @@
+{
+	"name": "trivm-triasm-syntax-vscode",
+	"displayName": "triVM Assembly",
+	"description": "triVM assembly syntax highlighting",
+	"version": "0.1.0",
+	"preview": false,
+	"icon": "logo.svg",
+	"engines": {
+		"vscode": "^1.0.0"
+	},
+	"author": {
+		"name": "Dominik Kilian"
+	},
+	"publisher": "kildom",
+	"contributes": {
+		"languages": [
+			{
+				"id": "trivm-triasm",
+				"extensions": [
+					".triasm"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "trivm-triasm",
+				"scopeName": "source.asm.trivm",
+				"path": "./syntaxes/language-trivm-triasm.tmGrammar.json"
+			}
+		]
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"repository": {
+		"url": "https://github.com/kildom/trivm/",
+		"type": "git"
+	},
+	"__metadata": {
+		"id": "e75e6d14-2d72-4d68-b6cd-55b71194beb3",
+		"publisherDisplayName": "kildom",
+		"publisherId": "4e4bc677-142b-4484-a651-4b67e50e8016"
+	}
+}

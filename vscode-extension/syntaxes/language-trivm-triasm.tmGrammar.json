@@ -1,0 +1,145 @@
+{
+	"scopeName": "source.asm.trivm",
+	"patterns": [
+		{
+			"include": "#comment"
+		},
+		{
+			"begin": "^\\s*([A-Za-z0-9_\\.]+)\\s*:\\s*",
+			"end": "$",
+			"beginCaptures": {
+				"1": {
+					"name": "entity.name.function"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#comment"
+				},
+				{
+					"begin": ".",
+					"end": "$",
+					"name": "invalid.illegal",
+					"patterns": [
+						{
+							"include": "#comment"
+						}
+					]
+				}
+			]
+		},
+		{
+			"begin": "^\\s*([A-Za-z0-9_\\.]+)\\s*(=)\\s*",
+			"end": "$",
+			"beginCaptures": {
+				"1": {
+					"name": "variable.other"
+				},
+				"2": {
+					"name": "keyword.operator"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#expression"
+				}
+			]
+		},
+		{
+			"begin": "^(?i)\\s*(\\.BASE|\\.PLACE|\\.DATA8|\\.DATA16|\\.DATA32|\\.DATA64|\\.ADDR|\\.ALIGN|\\.TRAMPOLINE|\\.REF|\\.LOCAL|\\.BEGIN|\\.END|\\.PRAGMA|\\.ASSERT|\\.UID|\\.MTABLE|\\.IF|\\.ELSE|\\.GENERATE)(?=\\s|$|#)",
+			"end": "$",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.other"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#expression"
+				}
+			]
+		},
+		{
+			"begin": "^(?i)\\s*(TRUNCF32U64|TRUNCF32S64|TRUNCF64U64|TRUNCF64S64|CONVF32U64|CONVF32S64|CONVF64U64|CONVF64S64|NEARESTF(?:32|64)|TRUNCF32U|TRUNCF32S|CONVF32U|CONVF32S|WRITESP|READ16S|WRITE16|WRITE32|WRITE64|UDIV64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|SDIV64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|UMOD64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|SMOD64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|EXTS64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|USHR64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|SSHR64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|FLOORF(?:32|64)|TRUNCF(?:32|64)|PROMOTE|READSP|UNWIND|READ8S|READ16|READ32|READ64|WRITE8|ADD64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|SUB64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|MUL64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|AND64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|SHL64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|ULT64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|UGT64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|SLT64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|SGT64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|XOR64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|NOT64(?:LH|HL|H|)|NEG64(?:LH|HL|H|)|CEILF(?:32|64)|SQRTF(?:32|64)|DEMOTE|READ8|EQ64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|OR64(?:LLH|LHL|LHH|HLL|HLH|HHL|LH|HL|HH|)|ADDF(?:32|64)|SUBF(?:32|64)|MULF(?:32|64)|DIVF(?:32|64)|UDIV|SDIV|UMOD|SMOD|EXTS|USHR|SSHR|CALL|HOST|LTF(?:32|64)|GTF(?:32|64)|LEF(?:32|64)|GEF(?:32|64)|EQF(?:32|64)|BRT|BRF|ADD|SUB|MUL|AND|XOR|SHL|ULT|UGT|SLT|SGT|NOT|NEG|OR|EQ|BR)(?=\\s|$|#)",
+			"end": "$",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#expression"
+				}
+			]
+		},
+		{
+			"begin": ".",
+			"end": "$",
+			"name": "invalid.illegal",
+			"patterns": [
+				{
+					"include": "#comment"
+				}
+			]
+		}
+	],
+	"repository": {
+		"comment": {
+			"patterns": [
+				{
+					"begin": "#",
+					"end": "$",
+					"name": "comment.line",
+					"patterns": [
+						{
+							"begin": "<%",
+							"end": "%>",
+							"name": "string.interpolated.test.template"
+						}
+					]
+				},
+				{
+					"begin": "<%",
+					"end": "%>",
+					"name": "string.interpolated.test.template"
+				}
+			]
+		},
+		"expression": {
+			"patterns": [
+				{
+					"include": "#comment"
+				},
+				{
+					"match": "-?0[Xx][0-9A-Fa-f]+",
+					"name": "constant.numeric.hex"
+				},
+				{
+					"match": "-?0[Oo][0-7]+",
+					"name": "constant.numeric.oct"
+				},
+				{
+					"match": "-?[0-9]+",
+					"name": "constant.numeric.dec"
+				},
+				{
+					"match": "TMP[0-2]|PC|ASP[LH]?|AMB[01]|SP[LH]",
+					"name": "constant.language"
+				},
+				{
+					"match": "[a-zA-Z_\\.\\$][a-zA-Z_\\.0-9]*(?=\\s*\\()",
+					"name": "support.function"
+				},
+				{
+					"match": "[a-zA-Z_\\.\\$][a-zA-Z_\\.0-9]*",
+					"name": "variable.other"
+				},
+				{
+					"match": "\\[(?:SP|AMB[01]|POP)\\]",
+					"name": "variable.language"
+				}
+			]
+		}
+	}
+}
