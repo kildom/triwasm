@@ -8,21 +8,9 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - name: Build unit tests
-        run: |
-          cd test/unit
-          make -j`nproc`
+      - name: npm update
+        run: npm update
       - name: Run unit tests
         run: |
-          cd test/unit
-          make run
-  unitTestBuidErrors:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: Check compilation errors
-        run: |
-          cd test/unit
-          node test_build_errors.js
+          cd test/triasm
+          npx ts-node vectors.ts
