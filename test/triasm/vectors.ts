@@ -188,7 +188,6 @@ for (let i = 0; i < variants; i++) {
     let arg = { ext };
     let tests = template.render(arg);
     runTests(tests, ext);
-    platform.writeFile('tmp.txt', tests);
 }
 
 let stats: { [key: string]: { ok: number; err: number } } = {};

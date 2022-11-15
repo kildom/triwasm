@@ -1,0 +1,12 @@
+{
+    "extends": "../../build/common.tsconfig.json",
+    "files": [
+        "../../tools/utils/platform-impl.js",
+        "../../tools/utils/build/SystemRegisterBegin.js",
+        "./vectors.ts",
+        "../../tools/utils/build/SystemRegisterEnd.js"
+    ],
+    "compilerOptions": {
+        "outFile": "./vectors.js"
+    }
+}
