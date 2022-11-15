@@ -24,7 +24,8 @@ import {
     Assign, BaseInstruction, Block, BlockEnd, BranchInstruction, DataInstruction, InstrBase,
     InstrParams,
     PlaceInstruction, ReadSpInstruction, ReadWriteInstruction, RefInstruction,
-    SimpleCoreInstruction
+    SimpleCoreInstruction,
+    UnwindInstruction
 } from "./instructions";
 
 
@@ -170,7 +171,7 @@ export class InstrMaker {
                 if (args == '') {
                     instr = new SimpleCoreInstruction(this.params, args);
                 } else {
-                    instr = new SimpleCoreInstruction(this.params, `unwind_arg(${args})`);
+                    instr = new UnwindInstruction(this.params, args);
                 }
                 break;
 

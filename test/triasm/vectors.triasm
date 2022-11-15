@@ -23,7 +23,7 @@ simpleCoreInstr = {
     not: 0x15,
     neg: 0x16,
     writesp: 0x1A,
-    ext: 0x1D,
+    host: 0x1D,
 };
 %>
 
@@ -52,35 +52,162 @@ simpleCoreInstr = {
 
 <% { let code = ext.unwind ? 0x1C : ' ERROR '; %>
 ## GROUP Two-arguments unwind instruction
-unwind 0, 0          ## RESULT 1 5d<%=code%> 10 | 8x00
-unwind 3, 3          ## RESULT 1 5d<%=code%> 10 | 8x33     
-unwind 7, 3          ## RESULT 1 5d<%=code%> 10 | 8x73              
-unwind 8, 3          ## RESULT 1 5d<%=code%> 10 | 8x83               
-unwind 15, 3         ## RESULT 1 5d<%=code%> 10 | 8xF3                 
-unwind 3, 7          ## RESULT 1 5d<%=code%> 10 | 8x37                  
-unwind 3, 8          ## RESULT 1 5d<%=code%> 10 | 8x38                  
-unwind 3, 15         ## RESULT 1 5d<%=code%> 10 | 8x3F                   
-unwind 15, 15        ## RESULT 1 5d<%=code%> 10 | 8xFF
-unwind 65536, 3      ## RESULT ERROR
-unwind 3, 65536      ## RESULT ERROR              
-unwind -1, 3         ## RESULT ERROR              
-unwind 3, -1         ## RESULT ERROR                          
+<%{
+let values = [0, 3, 7, 8, 15, 0x10, 0x45, 0x7F, 0x80, 0xFF, 0x100, 0x1234, 0x7FFF, 0x8000, 0xFFFF, 0x10000];
+for (let keep of values) for (let reduce of values) { %>
+unwind <%=keep%>, <%=reduce%>
+<% if (keep <= 0xF && reduce <= 0xF) { %>
+    ## RESULT 1 5d<%=code%> 10 | 4d<%=keep%> 4d<%=reduce%>
+<% } else if (keep <= 0xFF && reduce <= 0xFF) { %>
+    ## RESULT 1 5d<%=code%> 01 | 8d<%=reduce%> | 8d<%=keep%>
+<% } else if (keep <= 0xFFFF && reduce <= 0xFFFF) { %>
+    ## RESULT 1 5d<%=code%> 00 | 8d<%=reduce&0xFF%> | 8d<%=reduce>>8%> | 8d<%=keep&0xFF%> | 8d<%=keep>>8%>
+<% } else { %>
+    ## RESULT ERROR
+<% } %>
+<% }} %>
 ## GROUP_END
 <% } %>
 
-## GROUP base instruction
+## GROUP .BASE instruction
 
 .BASE 0
-.DATA32 vma()          ## RESULT 0
+.DATA32 vma()          ## RESULT 8x00 | 8x00 | 8x00 | 8x00
 .BASE 0x80000000
-.DATA32 vma()          ## RESULT 0x00 | 0x00 | 0x00 | 0x80
+.DATA32 vma()          ## RESULT 8x00 | 8x00 | 8x00 | 8x80
 .BASE my_base
 .DATA32 vma()
-my_base = 0x10010000   ## RESULT 0x00 | 0x00 | 0x01 | 0x10
+my_base = 0x10010000   ## RESULT 8x00 | 8x00 | 8x01 | 8x10
 my_base = start_offset
 .BASE my_base
 start_offset:
 .DATA32 vma()          ## RESULT ERROR
+
+## GROUP_END
+
+## GROUP Movable blocks
+
+.BEGIN movable test1
+.DATA8 1
+.END
+.DATA8 0
+.PLACE test1        ## RESULT 8d0 | 8d1
+
+.PLACE test2
+.BEGIN movable test1
+.DATA8 1
+.END
+.DATA8 2
+.BEGIN movable test2
+.DATA8 0
+.PLACE test1
+.END              ## RESULT 8d0 | 8d1 | 8d2
+
+.BEGIN discardable
+.DATA8 0
+.PLACE test1
+.END
+.BEGIN discardable
+.DATA8 2
+.BEGIN movable test1
+label:
+.DATA8 1
+.END
+.END
+.REF label      ## RESULT 8d0 | 8d1
+
+.PLACE test2
+.DATA8 2
+.BEGIN movable test1
+.DATA8 0
+.BEGIN movable test2
+.DATA8 1
+.END
+.END
+.DATA8 2
+.PLACE test1    ## RESULT 8d1 | 8d2 | 8d2 | 8d0
+
+.BEGIN movable test1
+.DATA8 0
+.END            ## RESULT ERROR
+
+.PLACE test1
+.BEGIN movable test1
+.DATA8 0
+.END
+.PLACE test1    ## RESULT ERROR
+
+## GROUP_END
+
+## GROUP Discardable blocks
+
+.BEGIN discardable
+.DATA8 1
+.END
+.DATA8 0            ## RESULT 0
+
+.BEGIN discardable
+label1:
+.DATA8 label2
+.END
+.BEGIN discardable
+label2:
+.DATA8 label1
+.END
+.DATA8 0            ## RESULT 0
+
+.BEGIN discardable
+label1:
+.DATA8 0
+.END
+.BEGIN discardable
+.BEGIN
+label2:
+.DATA8 label1
+.END
+.DATA8 2
+.END
+.DATA8 label2            ## RESULT 0 | 0 | 8d2 | 1
+
+.BEGIN discardable
+label:
+.DATA8 1
+.END
+.DATA8 label       ## RESULT 1 | 0
+
+.BEGIN discardable
+.DATA8 0
+.BEGIN discardable
+label:
+.DATA8 1
+.END
+.END
+.DATA8 label       ## RESULT 0 | 1 | 1
+
+<% for (let i = 0; i < 2; i++) { %>
+.BEGIN discardable
+label0:
+.DATA8 0
+.END
+.BEGIN discardable
+label1:
+.DATA8 1
+.END
+const_value = <%=i%>
+.REF const_value ? label1 : label0    ## RESULT <%=i%>
+<% } %>
+
+.BEGIN discardable
+label0:
+.DATA8 0
+.END
+.BEGIN discardable
+label1:
+.DATA8 1
+.END
+non_const_value = label2
+.REF non_const_value ? label1 : label0
+label2:           ## RESULT 0 | 1
 
 ## GROUP_END
 

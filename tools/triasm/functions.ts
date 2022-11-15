@@ -146,28 +146,4 @@ export class AsmFunctions {
         }
     }
 
-    static args_unwind_arg = [1, 2];
-
-    static func_unwind_arg(instr: InstrBase, ctx: ExprContext, keepExpr: ExprEval, reduceExpr?: ExprEval): bigint {
-        let keep = keepExpr(ctx);
-        if (reduceExpr) {
-            let reduce = reduceExpr(ctx);
-            if (reduce <= 15n && keep <= 7n) {
-                return (keep << 4n) | reduce;
-            } else if (reduce <= 15n && keep <= 15n) {
-                return (keep << 4n) | reduce | 0xFFFFFF00n;
-            } else if (reduce <= 255n && keep <= 127n) {
-                return (keep << 8n) | reduce;
-            } else if (reduce <= 255n && keep <= 255n) {
-                return (keep << 8n) | reduce | 0xFFFF0000n;
-            } else if (reduce <= 65535n && keep <= 65535n) {
-                return (keep << 16n) | reduce;
-            } else {
-                instr.generator.error(new CompilerError(instr.lineNumber, `Too many items to unwind!`));
-                return 0n;
-            }
-        } else {
-            return keep;
-        }
-    }
 };

@@ -21,7 +21,7 @@ import { BytecodeGenerator } from "./generator";
 
 export interface ExprContextModification {
     mutable?: boolean;
-    deps?: Set<Block>;
+    deps?: Set<Block> | null;
 }
 
 export class ExprContext {
@@ -143,7 +143,12 @@ export class Assign extends InstrBase {
         this.calculate(ctx);
     }
     getValue(ctx: ExprContext): bigint {
-        return this.calculate(ctx);
+        if (ctx.deps)
+            ctx.deps.add(this.block);
+        let ctx2 = ctx.shallowClone({ deps: null });
+        let result = this.calculate(ctx2);
+        ctx2.shallowMergeToParent();
+        return result;
     }
     calculate(ctx: ExprContext): bigint {
         let result: bigint;
@@ -202,6 +207,72 @@ export class SimpleCoreInstruction extends InstrBase {
         } else {
             this.generator.put8(SimpleCoreInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
         }
+    }
+};
+
+export class UnwindInstruction extends InstrBase {
+
+    private keep: ExprEval;
+    private reduce: ExprEval | null;
+
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        let expr = params.exprMaker.makeExpressions(this, args);
+        this.keep = expr[0];
+        this.reduce = expr[1] || null;
+    }
+    collectDeps(ctx: ExprContext) {
+        this.keep(ctx);
+        if (this.reduce)
+            this.reduce(ctx);
+    }
+    getSize(ctx: ExprContext): number {
+        let ctx2 = ctx.shallowClone({ mutable: false });
+        let keepValue = this.keep(ctx2);
+        let reduceValue = this.reduce ? this.reduce(ctx2) : null;
+        ctx2.shallowMergeToParent();
+        if (ctx2.mutable) {
+            return 2;
+        } else {
+            let size = this.getArgSize(keepValue, reduceValue);
+            if (size == 0)
+                throw new CompilerError(this.lineNumber, `Too many items to unwind!`);
+            return 1 + size;
+        }
+    }
+    private getArgSize(keep: bigint, reduce: bigint | null, minSize?: number): number {
+        if (reduce === null)
+            return this.generator.getImmediateSize(keep, minSize);
+        minSize = minSize || 1;
+        if (reduce <= 15n && keep <= 15n && minSize <= 1) {
+            return 1;
+        } else if (reduce <= 255n && keep <= 255n && minSize <= 2) {
+            return 2;
+        } else if (reduce <= 65535n && keep <= 65535n) {
+            return 4;
+        } else {
+            return 0;
+        }
+    }
+    generate(minSize: number) {
+        let ctx = new ExprContext();
+        let keepValue = this.keep(ctx);
+        let reduceValue = this.reduce ? this.reduce(ctx) : null;
+        let size = this.getArgSize(keepValue, reduceValue);
+        if (size == 0) {
+            this.generator.error(new CompilerError(this.lineNumber, `Too many items to unwind!`));
+            this.generator.fill(0, 5);
+            return;
+        }
+        size = Math.max(minSize - 1, size);
+        this.generator.put8(SimpleCoreInstruction.INSTR_CODES[size] | (this.info.opcode << 2));
+        let value: bigint;
+        if (reduceValue !== null) {
+            value = (keepValue << BigInt(size * 4)) | reduceValue;
+        } else {
+            value = keepValue;
+        }
+        this.generator.putInt(value, size);
     }
 };
 
