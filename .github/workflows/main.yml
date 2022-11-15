@@ -2,7 +2,7 @@ name: Tests
 on:
   workflow_dispatch:
 jobs:
-  unitTests:
+  triasm-node:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -10,7 +10,29 @@ jobs:
           submodules: recursive
       - name: npm update
         run: npm update
-      - name: Run unit tests
+      - name: Run tests
         run: |
           cd test/triasm
           npx ts-node vectors.ts
+  triasm-quickjs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: actions/checkout@v2
+        with:
+          path: quickjs
+          repository: bellard/quickjs
+          submodules: recursive
+      - name: npm update
+        run: npm update
+      - name: Compile QuickJS
+        run: |
+          cd quickjs
+          make -j`nproc`
+      - name: Run tests
+        run: |
+          npx tsc -p test/triasm/vectors.tsconfig.json
+          cd test/triasm
+          ../../quickjs/qjs --std vectors.js
