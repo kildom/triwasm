@@ -528,6 +528,8 @@ export class AddrInstruction extends InstrBase {
         let padding = expectedValue - currentValue;
         if (padding > 0) {
             this.generator.fill(0, padding);
+        } else if (padding < 0) {
+            this.generator.error(new CompilerError(this.lineNumber, `Address directive cannot decrease address.`));
         }
     }
 };

@@ -81,6 +81,7 @@ function parseBase(args: string): [BASE, string] {
 export function instrParse(input: string, consumer: InstrParserConsumer): void {
     let line = 1;
     let offset = 0;
+    input = input.replace(/\r\n/g, '\n');
     for (let m of input.matchAll(reLine)) {
         consumer.onParserLine(line);
         if (input.substring(offset, m.index).trim() !== '') {

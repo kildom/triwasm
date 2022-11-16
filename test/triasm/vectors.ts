@@ -36,11 +36,7 @@ class TestCase {
         return this._errors.length === 0;
     }
     addIndent(text: string, prefix?: string) {
-        return text
-            .split('\n')
-            .filter(x => x.trim())
-            .join('\n')
-            .replace(/\n/g, prefix || '\n    ');
+        return text.replace(/\n/g, prefix || '\n    ');
     }
     show(short: boolean) {
         console.log(`${this._group.join(' » ')}: ${this.isSuccess() ? 'OK' : 'ERROR'}`);
@@ -71,6 +67,10 @@ function bytecodeFromSource(code: string): Uint8Array | null {
         } else if (part == '|') {
             result.push(top & 0xFF);
             top = 0;
+        } else if ((m = part.match(/^x([0-9]+)$/i))) {
+            let n = parseInt(m[1]) - 1;
+            for (let i = 0; i < n; i++)
+                result.push(top);
         } else {
             let bits: number;
             let number: number;
@@ -112,6 +112,11 @@ function toStringBytes(arr: any) {
 
 function runSingleTest(sourceCode: string, ext: { [k: string]: boolean }, result: string, group: string[]) {
     let expected = bytecodeFromSource(result);
+
+    sourceCode = sourceCode
+        .split('\n')
+        .filter(line => line.trim().length)
+        .join('\n');
 
     let tc = new TestCase();
     tc.group(group);

@@ -70,6 +70,7 @@ export class BytecodeGenerator {
     fill(value: number, size: number) {
         this.reserve(size);
         this.output.fill(value & 0xFF, this.pma, this.pma + size);
+        this.pma += size;
     }
 
     putInt(value: bigint, bytes: number) {

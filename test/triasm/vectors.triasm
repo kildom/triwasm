@@ -211,4 +211,35 @@ label2:           ## RESULT 0 | 1
 
 ## GROUP_END
 
+## GROUP Address directives
+
+.DATA8 0x11
+.PMA 5
+.DATA8 0x22          
+.VMA 7
+.DATA8 0x33        ## RESULT 8x11 | 0 | 0 | 0 | 0 | 8x22 | 0 | 8x33
+
+.DATA32 0x11
+.PMA 3
+.DATA8 0x22        ## RESULT ERROR
+
+.DATA32 0x11
+.VMA 3
+.DATA8 0x22        ## RESULT ERROR
+
+.BASE 0x1000
+.DATA8 0x11
+.PMA 4
+.DATA8 0x22
+.VMA 0x1008
+.DATA8 0x33        ## RESULT 8x11 | 0 x3 | 8x22 | 0 x3 | 8x33
+
+ADD test1
+.DATA8 0x22
+.PMA 128
+test1:
+.DATA8 0x11        ## RESULT 1 5x02 01 | 8d128 | 0 | 8x22 | 0 x124 | 8x11
+
+## GROUP_END
+
 ## GROUP_END
