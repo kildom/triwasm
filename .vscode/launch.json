@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/tools/triasm.ts",
             "args": ["-o", "out.trivm", "in.triasm"],
             "cwd": "${workspaceFolder}",
-            "--preLaunchTask": "npm: build-triasm",
+            "preLaunchTask": "npm: build-triasm",
             "outFiles": [ "${workspaceFolder}/dist/bin/js/*.js" ]
         },
     ]

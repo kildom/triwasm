@@ -15,7 +15,7 @@
 
 export class BytecodeGenerator {
     public pma: number = 0;
-    private output: Uint8Array = new Uint8Array(65536);
+    public output: Uint8Array = new Uint8Array(65536);
     private err?: Error;
 
     constructor() {

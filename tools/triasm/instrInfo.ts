@@ -179,6 +179,11 @@ const instrInfoTextTable = `
 ~>   .DATA16        0-    0    -       data    2                                                                                                  
 ~>   .DATA32        0-    0    -       data    4                                                                                                  
 ~>   .DATA64        0-    0    -       data    8                                                                                                  
+~>   .FILL          1-1   0    -       fill    1                                                                                                  
+~>   .FILL8         2-    0    -       fill    1                                                                                                  
+~>   .FILL16        2-    0    -       fill    2                                                                                                  
+~>   .FILL32        2-    0    -       fill    4                                                                                                  
+~>   .FILL64        2-    0    -       fill    8                                                                                                  
 ~>   .VMA           1-1   0    -       -       0                                                                                                 
 ~>   .PMA           1-1   0    -       -       1                                                                                                 
 ~>   .ALIGN         1-1   0    -       -       0                                                                                                  
@@ -239,7 +244,6 @@ export interface InstrInfo {
     condition: string[];
     isDirective: boolean;
     instrClass: string;
-    instrClassParams: string[];
     opcode: number;
 };
 
@@ -256,8 +260,7 @@ function createInstrById(): InstrInfo[] {
             withBase: !!parseInt(x[3]),
             condition: x[4] == '-' ? [] : x[4].split(','),
             isDirective: x[1].startsWith('.'),
-            instrClass: x[5].split('-')[0],
-            instrClassParams: x[5].split('-').slice(1),
+            instrClass: x[5],
             opcode: parseInt(x[6]),
         }));
     let res2: InstrInfo[] = [];

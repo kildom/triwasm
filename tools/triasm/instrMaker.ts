@@ -21,7 +21,7 @@ import { instrParse } from "./instrParser";
 import {
     AddrInstruction,
     AlignInstruction,
-    Assign, BaseInstruction, Block, BlockEnd, BranchInstruction, DataInstruction, InstrBase,
+    Assign, BaseInstruction, Block, BlockEnd, BranchInstruction, DataInstruction, FillInstruction, InstrBase,
     InstrParams,
     PlaceInstruction, ReadSpInstruction, ReadWriteInstruction, RefInstruction,
     SimpleCoreInstruction,
@@ -40,6 +40,7 @@ export class InstrMaker {
         'sc': SimpleCoreInstruction,
         'rw': ReadWriteInstruction,
         'data': DataInstruction,
+        'fill': FillInstruction,
         'br': BranchInstruction,
         'READSP': ReadSpInstruction,
         '.REF': RefInstruction,

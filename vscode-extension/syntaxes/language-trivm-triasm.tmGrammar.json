@@ -46,7 +46,7 @@
 			]
 		},
 		{
-			"begin": "^(?i)\\s*(\\.BASE|\\.PLACE|\\.DATA8|\\.DATA16|\\.DATA32|\\.DATA64|\\.ADDR|\\.ALIGN|\\.TRAMPOLINE|\\.REF|\\.LOCAL|\\.BEGIN|\\.END|\\.PRAGMA|\\.ASSERT|\\.UID|\\.MTABLE|\\.IF|\\.ELSE|\\.GENERATE)(?=\\s|$|#)",
+			"begin": "^(?i)\\s*(\\.BASE|\\.PLACE|\\.FILL(?:8|16|32|64|)|\\.DATA(?:8|16|32|64)|\\.[VP]MA|\\.ALIGN|\\.TRAMPOLINE|\\.REF|\\.LOCAL|\\.BEGIN|\\.END|\\.PRAGMA|\\.ASSERT|\\.UID|\\.MTABLE|\\.IF|\\.ELSE|\\.GENERATE)(?=\\s|$|#)",
 			"end": "$",
 			"beginCaptures": {
 				"1": {

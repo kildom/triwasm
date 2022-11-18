@@ -28,7 +28,7 @@ simpleCoreInstr = {
 %>
 
 ## GROUP Simple core instructions
-<% for (let [name, code] of Object.entries({...simpleCoreInstr, unwind: ext.unwind ? '28' : ' ERROR '})) { %>
+<% for (let [name, code] of Object.entries(simpleCoreInstr)) { %>
 ## GROUP <%=name%>
 <%=name%>              ## RESULT 1 5d<%=code%> 11
 <%=name%> 0            ## RESULT 1 5d<%=code%> 10 | 8x00
@@ -46,8 +46,17 @@ simpleCoreInstr = {
 <%=name%> 0x80000000   ## RESULT 1 5d<%=code%> 00 | 8x00 | 8x00 | 8x00 | 8x80
 <%=name%> 0xFEDCBA98   ## RESULT 1 5d<%=code%> 00 | 8x98 | 8xBA | 8xDC | 8xFE
 <%=name%> 0x01234567   ## RESULT 1 5d<%=code%> 00 | 8x67 | 8x45 | 8x23 | 8x01
+<%=name%> 0, 0         ## RESULT ERROR
 ## GROUP_END
 <% } %>
+## GROUP readsp
+READSP                  ## RESULT 1 5x1B 10
+READSP 1                ## RESULT ERROR
+## GROUP_END
+## GROUP zero-arg unwind
+UNWIND                  ## RESULT 1 5x1C 11 <%= ext.unwind ? '' : ' ERROR ' %>
+UNWIND 0                ## RESULT ERROR
+## GROUP_END
 ## GROUP_END
 
 <% { let code = ext.unwind ? 0x1C : ' ERROR '; %>
@@ -55,7 +64,7 @@ simpleCoreInstr = {
 <%{
 let values = [0, 3, 7, 8, 15, 0x10, 0x45, 0x7F, 0x80, 0xFF, 0x100, 0x1234, 0x7FFF, 0x8000, 0xFFFF, 0x10000];
 for (let keep of values) for (let reduce of values) { %>
-unwind <%=keep%>, <%=reduce%>
+UNWIND <%=keep%>, <%=reduce%>
 <% if (keep <= 0xF && reduce <= 0xF) { %>
     ## RESULT 1 5d<%=code%> 10 | 4d<%=keep%> 4d<%=reduce%>
 <% } else if (keep <= 0xFF && reduce <= 0xFF) { %>
@@ -232,14 +241,170 @@ label2:           ## RESULT 0 | 1
 .PMA 4
 .DATA8 0x22
 .VMA 0x1008
-.DATA8 0x33        ## RESULT 8x11 | 0 x3 | 8x22 | 0 x3 | 8x33
+.DATA8 0x33        ## RESULT 8x11 | 0 *3 | 8x22 | 0 *3 | 8x33
 
 ADD test1
 .DATA8 0x22
 .PMA 128
 test1:
-.DATA8 0x11        ## RESULT 1 5x02 01 | 8d128 | 0 | 8x22 | 0 x124 | 8x11
+.DATA8 0x11        ## RESULT 1 5x02 01 | 8d128 | 0 | 8x22 | 0 *124 | 8x11
 
 ## GROUP_END
+
+## GROUP Branch instructions
+
+<% { let instr={ BR: 0x18, BRT: 0x00, BRF: 0x01, CALL: 0x17 }; %>
+<% for (let [name, code] of Object.entries(instr)) { %>
+## GROUP <%=name%>
+
+<%=name%>           ## RESULT 1 5d<%=code%> 11
+
+<%=name%> 0         ## RESULT 1 5d<%=code%> 10 | 8xFE
+
+<%=name%> next
+next:               ## RESULT 1 5d<%=code%> 10 | 8x00
+
+<%=name%> next
+.DATA8 1
+.PMA 0x82
+next:               ## RESULT 1 5d<%=code%> 01 | 8x7F | 0 | 1 | 0 *126
+
+<%=name%> next
+.DATA8 1
+.PMA 0x81
+next:               ## RESULT 1 5d<%=code%> 10 | 8x7F | 1 | 0 *126
+
+<%=name%> next
+.DATA8 1
+.PMA 0x8004
+next:               ## RESULT 1 5d<%=code%> 00 | 8xFF | 8x7F | 0 | 0 | 1 | 0 *32766
+
+<%=name%> next
+.DATA8 1
+.PMA 0x8003
+next:               ## RESULT 1 5d<%=code%> 00 | 8xFE | 8x7F | 0 | 0 | 1 | 0 *32765
+
+<%=name%> next
+.DATA8 1
+.PMA 0x8002
+next:               ## RESULT 1 5d<%=code%> 01 | 8xFF | 8x7F | 1 | 0 *32766
+
+start:
+.PMA 126
+<%=name%> start     ## RESULT 0 *126 | 1 5d<%=code%> 10 | 8x80
+
+start:
+.PMA 127
+<%=name%> start     ## RESULT 0 *127 | 1 5d<%=code%> 01 | 8x7E | 8xFF
+
+start:
+<%=name%> next
+.DATA8 3
+.FILL 124
+<%=name%> start
+.DATA8 3
+next:               ## RESULT 1 5d<%=code%> 01 | 8x81 | 8x00 | 8x03 | 0 *124 | 1 5d<%=code%> 01 | 8x7D | 8xFF | 8x03
+
+## GROUP_END
+<% } %>
+<% } %>
+
+## GROUP_END
+
+## GROUP .FILL
+
+.FILL 1             ## RESULT 0
+.FILL 2             ## RESULT 0 | 0
+.DATA8 1
+.FILL 5             ## RESULT 1 | 0 | 0 | 0 | 0 | 0
+.DATA16 1
+.FILL32 5, 0x88776655, 0x44332211
+                    ## RESULT 1 | 0 | 8x55 | 8x66 | 8x77 | 8x88 | 8x11
+.FILL8 10, 0x11, 0x22, 0x33
+                    ## RESULT 8x11 | 8x22 | 8x33 | 8x11 | 8x22 | 8x33 | 8x11 | 8x22 | 8x33 | 8x11
+.FILL -1            ## RESULT ERROR
+.FILL               ## RESULT ERROR
+
+## GROUP_END
+
+## GROUP Read/Write
+<%
+{
+let instrArr = ['READ', 'WRITE'];
+let popArr = ['', '[POP]'];
+let baseArr = ['', '[AMB0]', '[SP]', '[AMB1]'];
+let signArr = ['+', '+', '-', '+'];
+for (let op = 0; op < 2; op++) { for (let pop = 0; pop < 2; pop++) { for (let base = 0; base < 4; base++) {
+let instrBase = '';
+instrBase += baseArr[base];
+instrBase += pop && base ? signArr[base] : '';
+instrBase += popArr[pop];
+%>
+
+## GROUP One-byte
+<%for (let offset = -1; offset < 4; offset++) {%>
+    <%= instrArr[op] %>32 <%= instrBase %> <%= (base || pop) && offset >= 0 ? signArr[base] : '' %> <%= offset >= 0 ? 4 * offset : '' %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 0 2d<%= Math.max(0, offset) %>
+<% } %>
+## GROUP_END
+
+## GROUP 2 bytes
+<% if (ext.mem64) { %>
+    <% for (let offset of [ 4, 5, 31, 32, 127 ]) { %>
+        <%= instrArr[op] %>32 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
+        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 5 %> | 0 5d<%= offset %> 10
+        <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
+        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 5 %> | 0 5d<%= offset %> 00
+    <% } %>
+<% } else { %>
+    <% for (let offset of [ 4, 5, 31, 32, 127, 128, 255 ]) { %>
+        <%= instrArr[op] %>32 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
+        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 6 %> | 0 6d<%= offset %> 0
+        <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
+        ## RESULT ERROR
+    <% } %>
+<% } %>
+<% for (let offset of [ 4, 5, 31, 32, 63 ]) { %>
+    <%= instrArr[op] %>8 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= offset %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 4 %> | 0 4d<%= offset %> 101
+    <%= instrArr[op] %>16 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 2 * offset %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 4 %> | 0 4d<%= offset %> 001
+    <%= instrArr[op] %>8S <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= offset %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 4 %> | 0 4d<%= offset %> 111 <%= op ? 'ERROR' : '' %>
+    <%= instrArr[op] %>16S <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 2 * offset %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 4 %> | 0 4d<%= offset %> 011 <%= op ? 'ERROR' : '' %>
+<% } %>
+## GROUP_END
+
+## GROUP 3 bytes
+<% if (ext.mem64) { %>
+    <% for (let offset of [ 128, 129, 1023, 1024, 16383 ]) { %>
+        <%= instrArr[op] %>32 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
+        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 12 %> | 1 7d<%= offset >> 5 %> | 0 5d<%= offset %> 10
+        <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
+        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 12 %> | 1 7d<%= offset >> 5 %> | 0 5d<%= offset %> 00
+    <% } %>
+<% } else { %>
+    <% for (let offset of [ 256, 257, 2047, 2048, 32767 ]) { %>
+        <%= instrArr[op] %>32 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
+        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 13 %> | 1 7d<%= offset >> 6 %> | 0 6d<%= offset %> 0
+        <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
+        ## RESULT ERROR
+    <% } %>
+<% } %>
+<% for (let offset of [ 64, 65, 1000, 3211, 8191 ]) { %>
+    <%= instrArr[op] %>8 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= offset %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 11 %> | 1 7d<%= offset >> 4 %> | 0 4d<%= offset %> 101
+    <%= instrArr[op] %>16 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 2 * offset %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 11 %> | 1 7d<%= offset >> 4 %> | 0 4d<%= offset %> 001
+    <%= instrArr[op] %>8S <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= offset %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 11 %> | 1 7d<%= offset >> 4 %> | 0 4d<%= offset %> 111 <%= op ? 'ERROR' : '' %>
+    <%= instrArr[op] %>16S <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 2 * offset %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 11 %> | 1 7d<%= offset >> 4 %> | 0 4d<%= offset %> 011 <%= op ? 'ERROR' : '' %>
+<% } %>
+## GROUP_END
+
+<% }}} %>
+<% } %>
 
 ## GROUP_END

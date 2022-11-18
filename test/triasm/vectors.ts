@@ -67,7 +67,7 @@ function bytecodeFromSource(code: string): Uint8Array | null {
         } else if (part == '|') {
             result.push(top & 0xFF);
             top = 0;
-        } else if ((m = part.match(/^x([0-9]+)$/i))) {
+        } else if ((m = part.match(/^\*([0-9]+)$/i))) {
             let n = parseInt(m[1]) - 1;
             for (let i = 0; i < n; i++)
                 result.push(top);
@@ -107,7 +107,28 @@ function bytecodeFromSource(code: string): Uint8Array | null {
 function toStringBytes(arr: any) {
     if (arr === null)
         return 'NULL';
-    return [...arr].map(x => (x < 16 ? '0' : '') + x.toString(16).toUpperCase()).join(' ');
+    let last = -1;
+    let count = 0;
+    let copy = [...arr];
+    for (let i = 0; i < copy.length; i++) {
+        if (last == copy[i]) {
+            count++;
+            if (count == 5) {
+                copy[i - 3] = null;
+                copy[i - 2] = null;
+                copy[i - 1] = null;
+                copy[i] = -4;
+            } else if (count > 5) {
+                copy[i] = copy[i - 1] - 1;
+                copy[i - 1] = null;
+            }
+        } else {
+            last = copy[i];
+            count = 0;
+        }
+    }
+    copy = copy.filter(x => x !== null);
+    return copy.map(x => x < 0 ? `... repeat ${-x} ...` : (x < 16 ? '0' : '') + x.toString(16).toUpperCase()).join(' ');
 }
 
 function runSingleTest(sourceCode: string, ext: { [k: string]: boolean }, result: string, group: string[]) {

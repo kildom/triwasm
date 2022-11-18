@@ -8,6 +8,12 @@
             "problemMatcher": [],
             "label": "npm: build-triasm",
             "detail": "npx tsc -p build/triasm.tsconfig.json"
+        },
+        {
+            "type": "shell",
+            "label": "Update extension",
+            "command": "rm -R  ${extensionInstallFolder:kildom.trivm-triasm-syntax-vscode} && cp -fR vscode-extension ${extensionInstallFolder:kildom.trivm-triasm-syntax-vscode}",
+            "problemMatcher": []
         }
     ]
 }
