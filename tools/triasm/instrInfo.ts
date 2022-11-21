@@ -60,6 +60,16 @@ const instrInfoTextTable = `
 ~>   WRITE16        0-1   1    -       rw      2                                                                                                  
 ~>   WRITE32        0-1   1    -       rw      4                                                                                                  
 ~>   WRITE64        0-1   1    mem64   rw      8                                                                                                      
+~>   UREAD8S        0-1   1    -       rw      1                                                                                                  
+~>   UREAD8         0-1   1    -       rw      1                                                                                                  
+~>   UREAD16S       0-1   1    -       rw      2                                                                                                  
+~>   UREAD16        0-1   1    -       rw      2                                                                                                  
+~>   UREAD32        0-1   1    -       rw      4                                                                                                  
+~>   UREAD64        0-1   1    mem64   rw      8                                                                                                      
+~>   UWRITE8        0-1   1    -       rw      1                                                                                                  
+~>   UWRITE16       0-1   1    -       rw      2                                                                                                  
+~>   UWRITE32       0-1   1    -       rw      4                                                                                                  
+~>   UWRITE64       0-1   1    mem64   rw      8                                                                                                      
 
 # 64-bit integer instructions
 ~>   ADD64***       0-0   0    i64     -       0                                                                                                    
@@ -189,14 +199,17 @@ const instrInfoTextTable = `
 ~>   .ALIGN         1-1   0    -       -       0                                                                                                  
 ~>   .REF           0-    0    -       -       0                                                                                                  
 ~>   .LOCAL         -     0    -       -       0                                                                                                  
-~>   .BEGIN         -     0    -       -       0                                                                                                  
-~>   .END           0-0   0    -       -       0                                                                                                  
 ~>   .PRAGMA        -     0    -       -       0                                                                                                  
 ~>   .ASSERT        -     0    -       -       0                                                                                                  
 ~>   .UID           -     0    -       -       0                                                                                                  
 ~>   .PLACE         -     0    -       -       0                                                                                                  
 ~>   .BASE          1-1   0    -       -       0                                                                                                  
 ~>   .EXT           -     0    -       -       0                                                                                                  
+~>   .BEGIN         -     0    -       -       0                                                                                                  
+~>   .END           0-0   0    -       -       0                                                                                                  
+~>   .IF            1-1   0    -       -       0                                                                                                  
+~>   .ELSE          0-0   0    -       -       0                                                                                                  
+~>   .ENDIF         0-0   0    -       -       0                                                                                                  
 # .MTABLE unique_id, min_bits, max_bits, signed, ...
 ~>   .MTABLE        4-    0    -       -       0                                                                                                  
 # Meta directives

@@ -213,6 +213,9 @@ for (let i = 0; i < variants; i++) {
     }
     let arg = { ext };
     let tests = template.render(arg);
+    try {
+        platform.writeFile(`outs/variant.${i}.triasm`, tests);
+    } catch {}
     runTests(tests, ext);
 }
 

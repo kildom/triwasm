@@ -151,14 +151,49 @@ export class InstrMaker {
                 this.blocks.push(this.currentBlock);
                 break;
 
+            case INSTR._ELSE:
+            case INSTR._ENDIF:
             case INSTR._END:
+                this.params.info = instrInfoById[INSTR._END];
                 if (this.currentBlock === this.rootBlock) {
                     throw new CompilerError(this.params.lineNumber, `".END" directive without matching ".BEGIN".`);
                 }
                 this.currentBlock.end = new BlockEnd(this.params, this.currentBlock);
                 instr = this.currentBlock.end;
                 this.currentBlock = this.currentBlock.parent as Block;
+                if (id != INSTR._END) {
+                    let uid = (instr as BlockEnd).block.index - 1;
+                    this.instructions.push(instr);
+                    instr = null;
+                    if (id == INSTR._ELSE) {
+                        // .BEGIN discardable
+                        this.params.info = instrInfoById[INSTR._BEGIN];
+                        this.params.index = this.instructions.length;
+                        this.currentBlock = new Block(this.params, 'discardable', this.currentBlock);
+                        this.blocks.push(this.currentBlock);
+                        this.instructions.push(this.currentBlock);
+                    }
+                    // BlockElse:
+                    this.onParserLabel(`__9s6SshMfvUS6_BlockElse_${uid}`);
+                }
                 break;
+
+            case INSTR._IF: {
+                let uid = this.params.index;
+                // .REF force_const(..) ? BlockThen : BlockElse
+                this.params.info = instrInfoById[INSTR._REF];
+                let ref = new RefInstruction(this.params, `force_const(${args}) ? __9s6SshMfvUS6_BlockThen_${uid} : __9s6SshMfvUS6_BlockElse_${uid}`);
+                this.instructions.push(ref);
+                // .BEGIN discardable
+                this.params.info = instrInfoById[INSTR._BEGIN];
+                this.params.index++;
+                this.currentBlock = new Block(this.params, 'discardable', this.currentBlock);
+                this.blocks.push(this.currentBlock);
+                this.instructions.push(this.currentBlock);
+                // BlockThen:
+                this.onParserLabel(`__9s6SshMfvUS6_BlockThen_${uid}`);
+                break;
+            }
 
             case INSTR._LOCAL:
                 if ((args as string) in this.currentBlock.locals) {

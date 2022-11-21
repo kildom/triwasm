@@ -331,16 +331,19 @@ export class ReadWriteInstruction extends InstrBase {
     private static BYTE_SHIFT = 2;
 
     private arg: ExprEval;
+    private bytes: number;
+    private unaligned: boolean;
     private write: boolean;
     private signed: boolean;
-    private bytes: number;
 
     constructor(params: InstrParams, args: string, private base: BASE) {
         super(params);
+        let name = this.info.name;
         this.arg = params.exprMaker.makeOptionalExpression(this, args) || (() => 0n);
-        this.write = this.info.name.startsWith('W');
-        this.signed = this.info.name.endsWith('S');
         this.bytes = this.info.opcode;
+        this.unaligned = name.startsWith('U') && this.bytes > 1;
+        this.write = name.startsWith('W') || name.startsWith('UW');
+        this.signed = name.endsWith('S');
     }
     collectDeps(ctx: ExprContext) {
         this.arg(ctx);
@@ -366,8 +369,12 @@ export class ReadWriteInstruction extends InstrBase {
             argValue = (-argValue) & 0xFFFFFFFFn;
         }
         let align = this.bytes < 4 ? BigInt(this.bytes) : 4n;
-        let doPop: boolean;
-        if (argValue % align != 0n || minSize >= 7) {
+        let doPop = !!(this.base & BASE.POP);
+        if (!this.unaligned) {
+            if (argValue % align != 0n && !ctx) {
+                this.generator.error(new CompilerError(this.lineNumber, 'Unaligned memory operation offset.'));
+            }
+        } else if (argValue % align != 0n || minSize >= 7) {
             let maxSub: bigint;
             if (this.bytes == 8) {
                 maxSub = 127n * align;
@@ -383,9 +390,9 @@ export class ReadWriteInstruction extends InstrBase {
                 addImm = argValue % align;
             }
             argValue -= addImm;
-            let opcode = instrInfoById[(this.base & BASE.POP) ? INSTR.SUB : INSTR.NEG].opcode;
+            let opcode = instrInfoById[doPop ? INSTR.SUB : INSTR.NEG].opcode;
             addImm = (-addImm) & 0xFFFFFFFFn;
-            let size = this.generator.getImmediateSize(addImm); // TODO: if more bytes are needed because of minSize
+            let size = this.generator.getImmediateSize(addImm);
             totalSize += 1 + size;
             if (!ctx) {
                 this.generator.put8(SimpleCoreInstruction.INSTR_CODES[size] | (opcode << 2));
@@ -393,8 +400,6 @@ export class ReadWriteInstruction extends InstrBase {
             }
             minSize = Math.max(0, minSize - size - 1);
             doPop = true;
-        } else {
-            doPop = !!(this.base & BASE.POP);
         }
         let rwImm = argValue / align;
         if (this.bytes == 8) {

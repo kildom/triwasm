@@ -348,59 +348,43 @@ instrBase += popArr[pop];
 <% } %>
 ## GROUP_END
 
-## GROUP 2 bytes
+## GROUP N bytes
 <% if (ext.mem64) { %>
-    <% for (let offset of [ 4, 5, 31, 32, 127 ]) { %>
+    <% for (let [offset, bytes] of Object.entries({ 4:0, 5:0, 31:0, 32:0, 127:0, 128:1, 129:1, 1023:1, 1024:1, 16383:1, 16384:2, 16385:2, 1000000:2, 2097151:2, 2097152:3, 100000000:3, 268435455:3, 0x10000000:4, 0x10000001:4, 0x3FFFFFFF:4, 0x4000000F:0, 0x40000090:1 })) { %>
         <%= instrArr[op] %>32 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
-        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 5 %> | 0 5d<%= offset %> 10
+        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= (BigInt(offset) & 0x3FFFFFFFn) >> BigInt(5 + 7 * bytes) %> <% for (let i = bytes-1; i >= 0; i--) { %>| 1 7d<%= (BigInt(offset) & 0x3FFFFFFFn) >> BigInt(5 + 7 * i) %> <% } %>| 0 5d<%= offset %> 10
         <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
-        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 5 %> | 0 5d<%= offset %> 00
+        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= (BigInt(offset) & 0x3FFFFFFFn) >> BigInt(5 + 7 * bytes) %> <% for (let i = bytes-1; i >= 0; i--) { %>| 1 7d<%= (BigInt(offset) & 0x3FFFFFFFn) >> BigInt(5 + 7 * i) %> <% } %>| 0 5d<%= offset %> 00
     <% } %>
+    <%= instrArr[op] %>64 <%= instrBase %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d0 | 0 5d0 00
+    <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> 0
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d0 | 0 5d0 00
+    <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> 4
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d0 | 0 5d1 00
+    <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> 8
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d0 | 0 5d2 00
+    <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> 12
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d0 | 0 5d3 00
 <% } else { %>
-    <% for (let offset of [ 4, 5, 31, 32, 127, 128, 255 ]) { %>
+    <% for (let [offset, bytes] of Object.entries({ 4:0, 5:0, 31:0, 32:0, 255:0, 256:1, 257:1, 1023:1, 1024:1, 32767:1, 32768:2, 32769:2, 1000000:2, 4194303:2, 4194304:3, 100000000:3, 268435455:3, 0x20000000:4, 0x20000001:4, 0x3FFFFFFF:4, 0x4000000F:0, 0x40000180:1 })) { %>
         <%= instrArr[op] %>32 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
-        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 6 %> | 0 6d<%= offset %> 0
+        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= (BigInt(offset) & 0x3FFFFFFFn) >> BigInt(6 + 7 * bytes) %> <% for (let i = bytes-1; i >= 0; i--) { %>| 1 7d<%= (BigInt(offset) & 0x3FFFFFFFn) >> BigInt(6 + 7 * i) %> <% } %>| 0 6d<%= offset %> 0
         <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
         ## RESULT ERROR
     <% } %>
 <% } %>
-<% for (let offset of [ 4, 5, 31, 32, 63 ]) { %>
+<% for (let [offset, bytes] of Object.entries({0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 31:0, 32:0, 63:0, 64:1, 65:1, 1000:1, 3211:1, 8191:1, 0x2000:2, 0x2001:2, 0xFFFFF:2, 0x100000:3, 0x100001:3, 0x7FFFFFF:3, 0x8000000:4, 0x8000001:4, 0x7FFFFFFF:4, 0x80000000:4, 0xFFFFFFFF:4, '4294967296':0 })) { %>
     <%= instrArr[op] %>8 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= offset %>
-    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 4 %> | 0 4d<%= offset %> 101
-    <%= instrArr[op] %>16 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 2 * offset %>
-    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 4 %> | 0 4d<%= offset %> 001
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= (BigInt(offset) & 0xFFFFFFFFn) >> BigInt(4 + 7 * bytes) %> <% for (let i = bytes-1; i >= 0; i--) { %>| 1 7d<%= (BigInt(offset) & 0xFFFFFFFFn) >> BigInt(4 + 7 * i) %> <% } %>| 0 4d<%= offset %> 101
     <%= instrArr[op] %>8S <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= offset %>
-    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 4 %> | 0 4d<%= offset %> 111 <%= op ? 'ERROR' : '' %>
-    <%= instrArr[op] %>16S <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 2 * offset %>
-    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 4 %> | 0 4d<%= offset %> 011 <%= op ? 'ERROR' : '' %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= (BigInt(offset) & 0xFFFFFFFFn) >> BigInt(4 + 7 * bytes) %> <% for (let i = bytes-1; i >= 0; i--) { %>| 1 7d<%= (BigInt(offset) & 0xFFFFFFFFn) >> BigInt(4 + 7 * i) %> <% } %>| 0 4d<%= offset %> 111  <%= op ? 'ERROR' : '' %>
 <% } %>
-## GROUP_END
-
-## GROUP 3 bytes
-<% if (ext.mem64) { %>
-    <% for (let offset of [ 128, 129, 1023, 1024, 16383 ]) { %>
-        <%= instrArr[op] %>32 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
-        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 12 %> | 1 7d<%= offset >> 5 %> | 0 5d<%= offset %> 10
-        <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
-        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 12 %> | 1 7d<%= offset >> 5 %> | 0 5d<%= offset %> 00
-    <% } %>
-<% } else { %>
-    <% for (let offset of [ 256, 257, 2047, 2048, 32767 ]) { %>
-        <%= instrArr[op] %>32 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
-        ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 13 %> | 1 7d<%= offset >> 6 %> | 0 6d<%= offset %> 0
-        <%= instrArr[op] %>64 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 4 * offset %>
-        ## RESULT ERROR
-    <% } %>
-<% } %>
-<% for (let offset of [ 64, 65, 1000, 3211, 8191 ]) { %>
-    <%= instrArr[op] %>8 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= offset %>
-    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 11 %> | 1 7d<%= offset >> 4 %> | 0 4d<%= offset %> 101
+<% for (let [offset, bytes] of Object.entries({0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 31:0, 32:0, 63:0, 64:1, 65:1, 1000:1, 3211:1, 8191:1, 0x2000:2, 0x2001:2, 0xFFFFF:2, 0x100000:3, 0x100001:3, 0x7FFFFFF:3, 0x8000000:4, 0x8000001:4, 0x7FFFFFFF:4, 0x80000000:0, 0xFFFFFFFF:4, '4294967296':0 })) { %>
     <%= instrArr[op] %>16 <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 2 * offset %>
-    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 11 %> | 1 7d<%= offset >> 4 %> | 0 4d<%= offset %> 001
-    <%= instrArr[op] %>8S <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= offset %>
-    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 11 %> | 1 7d<%= offset >> 4 %> | 0 4d<%= offset %> 111 <%= op ? 'ERROR' : '' %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= (BigInt(offset) & 0x7FFFFFFFn) >> BigInt(4 + 7 * bytes) %> <% for (let i = bytes-1; i >= 0; i--) { %>| 1 7d<%= (BigInt(offset) & 0x7FFFFFFFn) >> BigInt(4 + 7 * i) %> <% } %>| 0 4d<%= offset %> 001
     <%= instrArr[op] %>16S <%= instrBase %> <%= base || pop ? signArr[base] : '' %> <%= 2 * offset %>
-    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= offset >> 11 %> | 1 7d<%= offset >> 4 %> | 0 4d<%= offset %> 011 <%= op ? 'ERROR' : '' %>
+    ## RESULT 0 2d<%=base%> <%=op%> <%=pop%> 1 2d<%= (BigInt(offset) & 0x7FFFFFFFn) >> BigInt(4 + 7 * bytes) %> <% for (let i = bytes-1; i >= 0; i--) { %>| 1 7d<%= (BigInt(offset) & 0x7FFFFFFFn) >> BigInt(4 + 7 * i) %> <% } %>| 0 4d<%= offset %> 011  <%= op ? 'ERROR' : '' %>
 <% } %>
 ## GROUP_END
 
