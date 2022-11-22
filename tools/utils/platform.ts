@@ -21,6 +21,7 @@ export interface Platform {
     readFile(path: string, binary: true): Uint8Array;
     readFile(path: string, binary?: false): string;
     writeFile(path: string, content: string | Uint8Array): void;
+    info(): string;
 }
 
 export const platform: Platform = (typeof (_triwasm_platform_impl) === 'object' ? _triwasm_platform_impl : x._triwasm_platform_impl) as Platform;

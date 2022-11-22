@@ -14,10 +14,6 @@
 
 
 import { Compiler } from './triasm/compiler';
-import { ExprParser } from './triasm/exprParser';
-import { AsmFunctions } from './triasm/functions';
-import { instrInfoById } from './triasm/instrInfo';
-import { InstrBase } from './triasm/instructions';
 import { ArgsParser } from './utils/argparse';
 import { platform } from './utils/platform';
 
@@ -43,6 +39,7 @@ Compile triASM source code into triVM bytecode.
 const filters = {
     version: () => {
         console.log('TODO: version'); // TODO: print version
+        console.log('JavaScript engine: ' + platform.info());
         platform.exit(0);
     }
 };

@@ -42,6 +42,10 @@ const _triwasm_platform_impl =
         fs.writeFileSync(path, content);
     }
 
+    platform.info = function() {
+        return `Node.js ${process.version} with V8 ${process.versions.v8} running on ${process.platform}, path ${process.execPath}`;
+    }
+
     return platform;
 })():
 
@@ -57,6 +61,26 @@ const _triwasm_platform_impl =
     platform.exit = function(code) {
         Deno.exit(code || 0);
     };
+
+    platform.readFile = function(path, binary) {
+        if (binary) {
+            return Deno.readFileSync(path);
+        } else {
+            return Deno.readTextFileSync(path);
+        }
+    }
+
+    platform.writeFile = function(path, content) {
+        if (typeof(content) === 'string') {
+            Deno.writeTextFileSync(path, content);
+        } else {
+            Deno.writeFileSync(path, content);
+        }
+    }
+
+    platform.info = function() {
+        return `Deno ${Deno.version.deno} with V8 ${Deno.version.v8}, path ${Deno.execPath()}`;
+    }
 
     return platform;
 })():
@@ -182,6 +206,10 @@ const _triwasm_platform_impl =
 
     platform.writeFile = function(path, content) {
         throw new Error("Not implemented");
+    }
+
+    platform.info = function() {
+        return `QuickJS on ${os.platform}`;
     }
 
     if (typeof(console.error) === 'undefined') {
