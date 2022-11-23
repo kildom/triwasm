@@ -1,8 +1,7 @@
 
-This directory contains external project: Electron.
+===== triVM SDK directory information ====
 
-It is used by the "triconf" tool to show a GUI. If it is available the tools will also
-use it for CLI interface.
+This directory can be used to keep local Electron JavaScript runtime.
 
 Home Page: https://www.electronjs.org/
 Releases:  https://github.com/electron/electron/releases/
