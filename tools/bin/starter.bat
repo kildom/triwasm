@@ -71,44 +71,39 @@ goto :EOF
     %LOG% Checking Node.js or Electron at: %1
     %1 "%JS_DIR%\versioncheck.js" %MINIMUM_NODE_VER% > nul 2> nul
     set RES=%ERRORLEVEL%
-    if %RES%==87 (
-        %LOG%     RESULT: Unsupported version
-        exit /b 1
-    )
-    if %RES%==86 (
-        set "ENGINE_BIN=%1"
-        %LOG%     RESULT: OK
-        exit /b 0
-    )
-    %LOG%     RESULT: Error
-    exit /b 1
+    set ENGINE_BIN=
+    if %RES%==87 goto check_result_old
+    if %RES%==86 goto check_result_ok
+    goto check_result_error
 
 :check_deno
     %LOG% Checking deno at: %1
     %1 run "%JS_DIR%\versioncheck.js" %MINIMUM_DENO_VER% > nul 2> nul
     set RES=%ERRORLEVEL%
-    if %RES%==87 (
-        %LOG%     RESULT: Unsupported version
-        exit /b 1
-    )
-    if %RES%==86 (
-        set "ENGINE_BIN=%1 run --allow-read --allow-write"
-        %LOG%     RESULT: OK
-        exit /b 0
-    )
-    %LOG%     RESULT: Error
-    exit /b 1
+    set "ENGINE_BIN=run --allow-read --allow-write"
+    if %RES%==87 goto check_result_old
+    if %RES%==86 goto check_result_ok
+    goto check_result_error
 
 :check_qjs
     %LOG% Checking QuickJS at: %1
     %1 --std -e std.exit(86) > nul 2> nul
     set RES=%ERRORLEVEL%
-    if %RES%==86 (
-        set "ENGINE_BIN=%1 --std"
-        %LOG%     RESULT: OK
-        exit /b 0
-    )
+    set ENGINE_BIN=--std
+    if %RES%==86 goto check_result_ok
+    goto check_result_error
+
+:check_result_ok
+    set "ENGINE_BIN=%1 %ENGINE_BIN%"
+    %LOG%     RESULT: OK
+    exit /b 0
+
+:check_result_error
     %LOG%     RESULT: Error
+    exit /b 1
+
+:check_result_old
+    %LOG%     RESULT: Unsupported version
     exit /b 1
 
 :show_message
@@ -124,6 +119,7 @@ goto :EOF
     exit /b 99
 
 :show_details
+    echo.
     echo You need one of the following JavaScript runtimes to run this tool:
     echo   * Electron (https://www.electronjs.org/) - recommended for GUI tools
     echo   * Node.js (https://nodejs.org/)
