@@ -1,40 +1,148 @@
 @echo off
 
-call :find_node %~dp0..\ext\electron\electron                      && goto node_found
-for /r %%i in (%~dp0..\ext\electron\*) do set TEST_DIR=%%i
-call :find_node %TEST_DIR%\electron                                && goto node_found
-call :find_node %~dp0..\ext\node\node                              && goto node_found
-for /r %%i in (%~dp0..\ext\node\*) do set TEST_DIR=%%i
-call :find_node %TEST_DIR%\node                                    && goto node_found
-call :find_node electron                                           && goto node_found
-call :find_node node                                               && goto node_found
-call :find_node "%ProgramFiles%\nodejs\node"                       && goto node_found
-call :find_node "%ProgramFiles(x86)%\nodejs\node"                  && goto node_found
+set MINIMUM_NODE_VER=1600
+set MINIMUM_DENO_VER=100
+set COMMAND_NAME=%0
 
-call :show_message %~dp0..\ext\node\ %~dp0..\ext\electron\
-exit /b 99
+call :get_dirs %~dp0 %~dp0\..
 
-:show_message
-echo. 1>&2
-echo Cannot find any JavaScript engine. 1>&2
-echo. 1>&2
-echo For both GUI and CLI tools: 1>&2
-echo     Download Electron from https://github.com/electron/electron/releases/latest 2>&1
-echo     and extract archive to %~dpn2 2>&1
-echo. 1>&2
-echo For CLI-only tools: 1>&2
-echo     Download Node.js from https://nodejs.org/en/download/ and install on your system 2>&1
-echo     or extract archive to %~dpn1 2>&1
-echo. 1>&2
-echo If you have any of above, make sure that it is available on PATH environment variable. 2>&1
-goto :eof
+set LOG=rem
+if "%1"=="--js-info" if "%2"=="" set LOG=echo
+if "%1"=="--js-download" if "%2"=="" goto download
 
-:find_node
-"%~1" --version > nul 2> nul
-if ERRORLEVEL 1 goto :EOF
-set NODE_BIN="%~1"
+call :find_engine                                                                 || exit /b
+%ENGINE_BIN% "%~dp0js\%~n0.js" %*
 goto :EOF
 
-:node_found
-%NODE_BIN% "%~dp0js\%~n0.js" %*
-exit /b %ERRORLEVEL%
+:get_dirs
+    set JS_DIR=%~dpnx1\js
+    set EXT_DIR=%~dpnx2\ext
+    goto :EOF
+
+:download
+    echo Downloading Deno...
+    set DENO_INSTALL=%EXT_DIR%\deno
+    :: TODO: Raise an issue in denoland/install_deno repository to add option that
+    :: prevents from changing the PATH environment variable.
+    powershell -command "irm https://deno.land/install.ps1 | iex"                 || exit /b
+    echo Done.
+    echo Version information:
+    call :find_engine                                                             || exit /b
+    echo %ENGINE_BIN%
+    %ENGINE_BIN% --version
+    exit /b
+
+:find_engine
+    :: Electron in ext\
+    call :check_node "%EXT_DIR%\electron\electron"                      && exit /b
+    for /d %%i in ("%EXT_DIR%\electron\*") do set TEST_DIR=%%i
+    call :check_node "%TEST_DIR%\electron"                              && exit /b
+    :: Node.js in ext\
+    call :check_node "%EXT_DIR%\node\node"                              && exit /b
+    for /d %%i in ("%EXT_DIR%\node\*") do set TEST_DIR=%%i
+    call :check_node "%TEST_DIR%\node"                                  && exit /b
+    :: Deno in ext\
+    call :check_deno "%EXT_DIR%\deno\bin\deno"                          && exit /b
+    call :check_deno "%EXT_DIR%\deno\deno"                              && exit /b
+    call :check_deno "%EXT_DIR%\deno"                                   && exit /b
+    for /d %%i in ("%EXT_DIR%\deno\*") do set TEST_DIR=%%i
+    call :check_deno "%TEST_DIR%\bin\deno"                              && exit /b
+    call :check_deno "%TEST_DIR%\deno"                                  && exit /b
+    :: QuickJS in ext\
+    call :check_qjs "%EXT_DIR%\quickjs\qjs"                             && exit /b
+    for /d %%i in ("%EXT_DIR%\quickjs\*") do set TEST_DIR=%%i
+    call :check_qjs "%TEST_DIR%\qjs"                                    && exit /b
+    :: Anything in PATH
+    call :check_node electron                                           && exit /b
+    call :check_node node                                               && exit /b
+    call :check_deno deno                                               && exit /b
+    call :check_qjs qjs                                                 && exit /b
+    :: Anything in its default installation directory
+    call :check_node "%ProgramFiles%\nodejs\node"                       && exit /b
+    call :check_node "%ProgramFiles(x86)%\nodejs\node"                  && exit /b
+    call :check_deno "%HOMEDRIVE%%HOMEPATH%\.deno\bin\deno"             && exit /b
+    goto show_message
+
+:check_node
+    %LOG% Checking Node.js or Electron at: %1
+    %1 "%JS_DIR%\versioncheck.js" %MINIMUM_NODE_VER% > nul 2> nul
+    set RES=%ERRORLEVEL%
+    if %RES%==87 (
+        %LOG%     RESULT: Unsupported version
+        exit /b 1
+    )
+    if %RES%==86 (
+        set "ENGINE_BIN=%1"
+        %LOG%     RESULT: OK
+        exit /b 0
+    )
+    %LOG%     RESULT: Error
+    exit /b 1
+
+:check_deno
+    %LOG% Checking deno at: %1
+    %1 run "%JS_DIR%\versioncheck.js" %MINIMUM_DENO_VER% > nul 2> nul
+    set RES=%ERRORLEVEL%
+    if %RES%==87 (
+        %LOG%     RESULT: Unsupported version
+        exit /b 1
+    )
+    if %RES%==86 (
+        set "ENGINE_BIN=%1 run --allow-read --allow-write"
+        %LOG%     RESULT: OK
+        exit /b 0
+    )
+    %LOG%     RESULT: Error
+    exit /b 1
+
+:check_qjs
+    %LOG% Checking QuickJS at: %1
+    %1 --std -e std.exit(86) > nul 2> nul
+    set RES=%ERRORLEVEL%
+    if %RES%==86 (
+        set "ENGINE_BIN=%1 --std"
+        %LOG%     RESULT: OK
+        exit /b 0
+    )
+    %LOG%     RESULT: Error
+    exit /b 1
+
+:show_message
+    echo.
+    echo Cannot find any JavaScript runtime.
+    echo.
+    echo Use the following command to automatically download Deno JavaScript runtime:
+    echo     %COMMAND_NAME% --js-download
+    if %LOG%==echo goto show_details
+    echo.
+    echo Use the following command to see more details:
+    echo     %COMMAND_NAME% --js-info
+    exit /b 99
+
+:show_details
+    echo You need one of the following JavaScript runtimes to run this tool:
+    echo   * Electron (https://www.electronjs.org/) - recommended for GUI tools
+    echo   * Node.js (https://nodejs.org/)
+    echo   * Deno (https://deno.land/)
+    echo   * QuickJS (https://bellard.org/quickjs/) - only CLI tools
+    echo.
+    echo If you have any of the above runtimes on your system, make sure they are
+    echo available on the PATH environment variable and they have supported version.
+    echo.
+    echo Installation tips:
+    echo   * Electron
+    echo     Download from https://github.com/electron/electron/releases/latest and
+    echo     extract archive to %EXT_DIR%\electron
+    echo   * Node.js
+    echo     Download from https://nodejs.org/en/download/ and install it on your
+    echo     system or extract archive to %EXT_DIR%\node
+    echo   * Deno (user space installation)
+    echo     The instructions on https://deno.land/manual/getting_started/installation
+    echo     will guide you through simple installation process.
+    echo   * Deno (local only installation)
+    echo     Download Deno from https://github.com/denoland/deno/releases/latest
+    echo     and extract archive to %EXT_DIR%\deno
+    echo   * QuickJS
+    echo     Download binaries from https://bellard.org/quickjs/binary_releases/ and
+    echo     extract archive to %EXT_DIR%\quickjs
+    exit /b 99
