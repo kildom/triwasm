@@ -29,7 +29,11 @@ goto :EOF
     echo Version information:
     call :find_engine                                                             || exit /b
     echo %ENGINE_BIN%
-    %ENGINE_BIN% --version
+    call :show_downloaded_ver %ENGINE_BIN%
+    exit /b
+
+:show_downloaded_ver
+    %1 --version
     exit /b
 
 :find_engine
