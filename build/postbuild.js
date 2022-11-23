@@ -1,5 +1,6 @@
 
 const fs = require('fs');
+const path = require('path');
 
 class Tasks {
 
@@ -16,6 +17,7 @@ class Tasks {
     copystatic() {
         for (let file of readdirSyncRecursive('build/static')) {
             if (fs.statSync('build/static/' + file).isFile()) {
+                fs.mkdirSync(path.dirname('dist/' + file), { recursive: true });
                 fs.copyFileSync('build/static/' + file, 'dist/' + file);
             } else {
                 fs.mkdirSync('dist/' + file, { recursive: true });

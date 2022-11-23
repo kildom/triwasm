@@ -43,7 +43,11 @@ const _triwasm_platform_impl =
     }
 
     platform.info = function() {
-        return `Node.js ${process.version} with V8 ${process.versions.v8} running on ${process.platform}, path ${process.execPath}`;
+        if (('electron' in process.versions) && ('chrome' in process.versions)) {
+            return `Electron ${process.versions.electron} with Chromium ${process.versions.chrome}, Node.js ${process.version}, V8 ${process.versions.v8} running on ${process.platform}, path ${process.execPath}`;
+        } else {
+            return `Node.js ${process.version} with V8 ${process.versions.v8} running on ${process.platform}, path ${process.execPath}`;
+        }
     }
 
     return platform;

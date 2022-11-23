@@ -39,7 +39,7 @@ Compile triASM source code into triVM bytecode.
 const filters = {
     version: () => {
         console.log('TODO: version'); // TODO: print version
-        console.log('JavaScript engine: ' + platform.info());
+        console.log('JavaScript runtime: ' + platform.info());
         platform.exit(0);
     }
 };

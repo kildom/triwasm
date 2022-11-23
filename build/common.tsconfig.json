@@ -7,7 +7,6 @@
         "removeComments": true,
         "esModuleInterop": true,
         "strict": true,
-        "moduleResolution": "nodenext",
-        "incremental": true
+        "moduleResolution": "nodenext"
     }
 }
