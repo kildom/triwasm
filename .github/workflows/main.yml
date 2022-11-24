@@ -40,7 +40,7 @@ jobs:
           #time ../../quickjs/qjs --std vectors.js
           echo "import * as std from 'std';" > tmp.txt
           echo "import * as os from 'os';" >> tmp.txt
-          cat tmp.txt vectors.js > tmp.js
+          cat tmp.txt ../output/asm/vectors.js > tmp.js
           ../../quickjs/qjsc \
             -flto -fbignum -fno-string-normalize -fno-module-loader -m \
             -o vectors tmp.js
