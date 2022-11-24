@@ -3,10 +3,10 @@
     "files": [
         "../../tools/utils/platform-impl.js",
         "../../tools/utils/build/SystemRegisterBegin.js",
-        "./vectors.ts",
+        "vectors.ts",
         "../../tools/utils/build/SystemRegisterEnd.js"
     ],
     "compilerOptions": {
-        "outFile": "./vectors.js"
+        "outFile": "../output/asm/vectors.js"
     }
 }

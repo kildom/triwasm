@@ -1,5 +1,5 @@
-import { Compiler, EnabledExtensions, KNOWN_EXTENSIONS } from "../../tools/triasm/compiler";
-import { CompilerError } from "../../tools/triasm/errors";
+import { Compiler, EnabledExtensions, KNOWN_EXTENSIONS } from "../../tools/asm/compiler";
+import { CompilerError } from "../../tools/asm/errors";
 import { reMatchAll } from "../../tools/utils/common";
 import { platform } from "../../tools/utils/platform";
 import { Template } from "../utils";
@@ -201,7 +201,12 @@ function runTests(tests: string, ext: { [k: string]: boolean }) {
 }
 
 
-let input = platform.readFile('vectors.triasm', false);
+let input: string;
+try {
+    input = platform.readFile('vectors.triasm', false);
+} catch (ex) {
+    input = platform.readFile('test/asm/vectors.triasm', false);
+}
 let template = new Template(input);
 
 let variants = 1 << KNOWN_EXTENSIONS.length;
@@ -214,7 +219,7 @@ for (let i = 0; i < variants; i++) {
     let arg = { ext };
     let tests = template.render(arg);
     try {
-        platform.writeFile(`outs/variant.${i}.triasm`, tests);
+        platform.writeFile(`tests-outs/variant.${i}.triasm`, tests);
     } catch {}
     runTests(tests, ext);
 }

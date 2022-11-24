@@ -8,8 +8,8 @@ class Tasks {
         fs.mkdirSync('dist/bin/js', { recursive: true });
         for (let file of fs.readdirSync('dist/bin/js')) {
             if (file.endsWith('.js') && !file.endsWith('versioncheck.js')) {
-                fs.copyFileSync('tools/bin/starter.bat', 'dist/bin/' + file.replace('.js', '.bat'));
-                fs.copyFileSync('tools/bin/starter.sh', 'dist/bin/' + file.replace('.js', ''));
+                fs.copyFileSync('build/starters/starter.bat', 'dist/bin/' + file.replace('.js', '.bat'));
+                fs.copyFileSync('build/starters/starter.sh', 'dist/bin/' + file.replace('.js', ''));
             }
         }
     }

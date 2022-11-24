@@ -12,8 +12,10 @@ jobs:
         run: npm update
       - name: Run tests
         run: |
-          cd test/triasm
+          cd test/asm
           npx ts-node vectors.ts
+      - name: Build
+        run: npm run build
   triasm-quickjs:
     runs-on: ubuntu-latest
     steps:
@@ -33,8 +35,8 @@ jobs:
           make -j`nproc`
       - name: Run tests
         run: |
-          npx tsc -p test/triasm/vectors.tsconfig.json
-          cd test/triasm
+          npx tsc -p test/asm/vectors.tsconfig.json
+          cd test/asm
           #time ../../quickjs/qjs --std vectors.js
           echo "import * as std from 'std';" > tmp.txt
           echo "import * as os from 'os';" >> tmp.txt
