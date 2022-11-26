@@ -22,6 +22,7 @@
   "author": "Dominik Kilian <kontakt@dominik.cc>",
   "license": "GPL-3.0",
   "devDependencies": {
+    "@types/xml2js": "^0.4.11",
     "concurrently": "^7.6.0",
     "extract-zip": "^2.0.1",
     "ncp": "^2.0.0",

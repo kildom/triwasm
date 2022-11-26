@@ -27,6 +27,7 @@
         "tablesec",
         "tabletype",
         "triasm",
+        "TRIVM",
         "triwasm",
         "typesec",
         "uleb",

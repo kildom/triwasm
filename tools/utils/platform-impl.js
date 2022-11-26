@@ -237,3 +237,9 @@ const _triwasm_platform_impl =
 if (typeof(exports) === 'object') {
     exports._triwasm_platform_impl = _triwasm_platform_impl;
 }
+
+if (!Array.prototype.at) {
+    Array.prototype.at = function(index) {
+        return this[index >= 0 ? index : this.length - index];
+    }
+}

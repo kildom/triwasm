@@ -14,5 +14,15 @@
             "preLaunchTask": "npm: build-triasm",
             "outFiles": [ "${workspaceFolder}/dist/bin/js/*.js" ]
         },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "triwasm",
+            "program": "${workspaceFolder}/tools/wasm/triwasm.ts",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "npm: build-triwasm",
+            "outFiles": [ "${workspaceFolder}/dist/bin/js/*.js" ]
+        },
     ]
 }
