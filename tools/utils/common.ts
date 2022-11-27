@@ -1,5 +1,7 @@
 
 
+export const allowTemporaryNull: unknown = null;
+
 export class ObjMarker {
     private sym: symbol;
     public constructor(id: string) {
@@ -23,4 +25,17 @@ export function* reMatchAll(re: RegExp, str: string) {
         yield m;
 }
 
-export const allowTemporaryNull: unknown = null;
+
+export function pick<T>(array: T[], index: number, message?: string): T {
+    if (index < 0 || index >= array.length) {
+        throw new Error(message || 'Index out of range.');
+    }
+    return array[index];
+}
+
+export function enumize<E>(x: number, enumObject?: any): E {
+    if (enumObject && !(x in enumObject)) {
+        throw new Error(`Unsupported value type 0x${x.toString(16)}`);
+    }
+    return x as E;
+}

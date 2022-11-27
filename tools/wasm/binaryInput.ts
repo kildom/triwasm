@@ -37,6 +37,10 @@ export class BinaryInput {
         return res;
     }
 
+    public clone(): BinaryInput {
+        return new BinaryInput(this, this.pos, this.remaining());
+    }
+
     public finalize(): void {
         if (this.pos != this.limit) {
             throw Error(`Unexpected data at the end of module file or its inner container. Expected offset ${this.limit}, got ${this.pos}.`);

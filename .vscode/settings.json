@@ -9,6 +9,7 @@
         "discardable",
         "elemkind",
         "elemsec",
+        "enumize",
         "exportsec",
         "funcsec",
         "functype",

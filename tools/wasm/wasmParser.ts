@@ -1,11 +1,12 @@
-import { allowTemporaryNull } from "../utils/common";
+import { allowTemporaryNull, enumize, pick } from "../utils/common";
 import { BinaryInput } from "./binaryInput";
 import { OP } from "./opcodes";
+import { ConstExpression, ElementKind, FunctionType, GlobalKind, Limits, NumberType, RefType, ValueType, ValueTypeObject, WasmBlock, WasmData, WasmElement, WasmFunction, WasmFunctionKind, WasmGlobal, WasmImport, WasmInstr, WasmInstrWithBlock, WasmInstrWithBlockOP, WasmMemory, WasmModule, WasmTable } from "./wasmModule";
 
 const TRIVM_MAGIC_FUNCTION_TAG = '__trivm_magic_function__';
 
 // modules.html#sections
-export enum SectionId {
+enum SectionId {
     CUSTOM = 0,
     TYPE = 1,
     IMPORT = 2,
@@ -21,29 +22,6 @@ export enum SectionId {
     DATA_COUNT = 12,
 };
 
-// types.html#binary-numtype
-export enum NumberType {
-    I32 = 0x7F,
-    I64 = 0x7E,
-    F32 = 0x7D,
-    F64 = 0x7C,
-};
-
-// types.html#vector-types
-export enum VectorType {
-    V128 = 0x7B,
-};
-
-// types.html#reference-types
-export enum RefType {
-    FUNCREF = 0x70,
-    EXTERNREF = 0x6F,
-};
-
-// types.html#value-types
-export type ValueType = NumberType | VectorType | RefType;
-export const ValueTypeObject = { ...NumberType, ...VectorType, ...RefType };
-
 // modules.html#import-section
 enum EntityKind {
     FUNCTION = 0x00,
@@ -52,52 +30,9 @@ enum EntityKind {
     GLOBAL = 0x03,
 };
 
-export function arrAssert<T>(array: T[], index: number, message?: string): T {
-    if (index < 0 || index >= array.length) {
-        throw new Error(message || 'Index out of range.');
-    }
-    return array[index];
-}
-
-export function toEnum<E>(x: number, enumObject?: any): E {
-    if (enumObject && !(x in enumObject)) {
-        throw new Error(`Unsupported value type 0x${x.toString(16)}`);
-    }
-    return x as E;
-}
-
-export enum Consts {
+enum Consts {
     // types.html#function-types
     FUNCTION_TYPE_START = 0x60,
-};
-
-// types.html#function-types
-export interface FunctionType {
-    params: ValueType[];
-    results: ValueType[];
-};
-
-export enum WasmFunctionKind {
-    WASM,            ///< [WasmFunctionData] Normal WASM function with body
-    ANNOTATION,      ///< [String$$]         Annotation magic function, does not generate a bytecode, call replaced by ".annotation" during triasm generation
-    IMPORT,          ///< [null]             Import function, will be replaced by FUNCTION_HOST_* or FUNCTION_LINK during references resolving
-    HOST_BY_INDEX,   ///< [u32$]             Host function referenced by index
-    HOST_BY_NAME,    ///< [String$$]         Host function referenced by name, trivm runtime startup will resolve its index
-    ASSEMBLY,        ///< [String$$]         Function with triasm body
-    INLINE_ASSEMBLY, ///< [String$$]         Function with triasm body that will be inlined always
-    LINK,            ///< [WasmFunction]     A link to actual function
-    UNUSED,          ///< [null]             Function created as a placeholder, cannot be called, will not be generated
-};
-
-export interface WasmImport {
-    module: string;
-    name: string;
-};
-
-// types.html#binary-globaltype
-enum GlobalKind {
-    CONST = 0x00,
-    MUTABLE = 0x01,
 };
 
 // types.html#binary-limits
@@ -105,239 +40,6 @@ enum LimitKind {
     UNLIMITED = 0x00,
     LIMITED = 0x01,
 };
-
-// types.html#binary-limits
-class Limits {
-    kind: LimitKind;
-    min: number;
-    max: number;
-    constructor(input: BinaryInput) {
-        this.kind = toEnum<LimitKind>(input.byte(), LimitKind);
-        this.min = input.u32();
-        this.max = Infinity;
-        if (this.kind == LimitKind.LIMITED) {
-            this.max = input.u32();
-        }
-    }
-};
-
-type WasmInstrBrOP = OP.BR | OP.BR_IF;
-export interface WasmInstrBr {
-    opcode: WasmInstrBrOP;
-    target: number;
-};
-
-type WasmInstrIndexedOP = OP.LOCAL_GET | OP.LOCAL_SET | OP.LOCAL_TEE | OP.I8X16_EXTRACT_LANE_S | OP.I8X16_EXTRACT_LANE_U | OP.I8X16_REPLACE_LANE | OP.I16X8_EXTRACT_LANE_S | OP.I16X8_EXTRACT_LANE_U | OP.I16X8_REPLACE_LANE | OP.I32X4_EXTRACT_LANE | OP.I32X4_REPLACE_LANE | OP.I64X2_EXTRACT_LANE | OP.I64X2_REPLACE_LANE | OP.F32X4_EXTRACT_LANE | OP.F32X4_REPLACE_LANE | OP.F64X2_EXTRACT_LANE | OP.F64X2_REPLACE_LANE;
-export interface WasmInstrIndexed {
-    opcode: WasmInstrIndexedOP;
-    index: number;
-};
-
-type WasmInstrWithBlockOP = OP.IF | OP.BLOCK | OP.LOOP | OP.TRIVM_FUNCTION;
-export interface WasmInstrWithBlock {
-    opcode: WasmInstrWithBlockOP;
-    block: WasmBlock;
-}
-
-type WasmInstrConst32OP = OP.I32_CONST | OP.F32_CONST;
-export interface WasmInstrConst32 {
-    opcode: WasmInstrConst32OP;
-    value: number;
-};
-
-type WasmInstrConst64OP = OP.I64_CONST | OP.F64_CONST;
-export interface WasmInstrConst64 {
-    opcode: WasmInstrConst64OP;
-    value: bigint;
-};
-
-type WasmInstrBrTableOP = OP.BR_TABLE;
-export interface WasmInstrBrTable {
-    opcode: WasmInstrBrTableOP;
-    targets: number[];
-};
-
-type WasmInstrRefOP = OP.REF_NULL;
-export interface WasmInstrRef {
-    opcode: WasmInstrRefOP;
-    type: RefType;
-};
-
-type WasmInstrCallIndirectOP = OP.CALL_INDIRECT;
-export interface WasmInstrCallIndirect {
-    opcode: WasmInstrCallIndirectOP;
-    type: FunctionType;
-    table: WasmTable;
-};
-
-type WasmInstrFuncOP = OP.CALL | OP.REF_FUNC;
-export interface WasmInstrFunc {
-    opcode: WasmInstrFuncOP;
-    func: WasmFunction;
-};
-
-type WasmInstrGlobalOP = OP.GLOBAL_GET | OP.GLOBAL_SET;
-export interface WasmInstrGlobal {
-    opcode: WasmInstrGlobalOP;
-    global: WasmGlobal;
-};
-
-type WasmInstrTableOP = OP.TABLE_GET | OP.TABLE_SET | OP.TABLE_GROW | OP.TABLE_SIZE | OP.TABLE_FILL;
-export interface WasmInstrTable {
-    opcode: WasmInstrTableOP;
-    table: WasmTable;
-};
-
-type WasmInstrNoArgsOP = Exclude<OP, WasmInstrBrOP | WasmInstrIndexedOP | WasmInstrWithBlockOP | WasmInstrConst32OP | WasmInstrConst64OP | WasmInstrBrTableOP | WasmInstrRefOP | WasmInstrCallIndirectOP | WasmInstrFuncOP | WasmInstrGlobalOP | WasmInstrTableOP>;
-export interface WasmInstrNoArgs {
-    opcode: WasmInstrNoArgsOP;
-};
-
-type WasmInstr = WasmInstrNoArgs | WasmInstrBr | WasmInstrIndexed | WasmInstrWithBlock | WasmInstrConst32 | WasmInstrConst64 | WasmInstrBrTable | WasmInstrRef | WasmInstrCallIndirect | WasmInstrFunc | WasmInstrGlobal | WasmInstrTable;
-
-export class WasmBlock {
-    public body: WasmInstr[] = [];
-    constructor(
-        public type: FunctionType,
-        public parentInstruction: WasmInstr,
-        public parentBlock?: WasmBlock
-    ) {
-    }
-}
-
-export interface ConstExpressionI32Literal {
-    type: NumberType.I32;
-    value: number;
-};
-
-export interface ConstExpressionFuncRefLiteral {
-    type: RefType.FUNCREF;
-    index: number;
-};
-
-
-export interface ConstExpressionExpr {
-    type: undefined;
-    expr: WasmInstr[];
-};
-
-type ConstExpression = ConstExpressionI32Literal | ConstExpressionFuncRefLiteral | ConstExpressionExpr;
-
-export enum ElementKind {
-    ACTIVE,
-    PASSIVE,
-    DECLARATIVE,
-};
-
-export class WasmElement {
-    index: number = 0;
-    kind: ElementKind = ElementKind.ACTIVE;
-    table?: WasmTable;
-    offset?: ConstExpression;
-    items: ConstExpression[] = [];
-};
-
-export enum DataKind {
-    ACTIVE,
-    PASSIVE,
-};
-
-export class WasmData {
-    public index: number = 0;
-    public kind: DataKind;
-    constructor(
-        public content: Uint8Array,
-        public memory?: WasmMemory,
-        public offset?: ConstExpression
-    ) {
-        this.kind = memory ? DataKind.ACTIVE : DataKind.PASSIVE;
-    }
-};
-
-export class WasmEntity {
-    public index: number = 0;
-    public import?: WasmImport;
-    public exports: string[] = [];
-}
-
-export class WasmFunction extends WasmEntity {
-    public data?: string;
-    public locals: ValueType[] = [];
-    public block?: WasmBlock;
-    constructor(
-        public kind: WasmFunctionKind,
-        public type: FunctionType
-    ) {
-        super();
-    }
-}
-
-export class WasmMemory extends WasmEntity {
-    constructor(
-        public limits: Limits
-    ) {
-        super();
-    }
-}
-
-export class WasmTable extends WasmEntity {
-    constructor(
-        public type: RefType,
-        public limits: Limits
-    ) {
-        super();
-    }
-}
-
-export class WasmGlobal extends WasmEntity {
-    constructor(
-        public kind: GlobalKind,
-        public type: ValueType,
-        public expr?: ConstExpression
-    ) {
-        super();
-    }
-}
-
-export class WasmModule {
-    public functions: WasmFunction[] = [];
-    public memories: WasmMemory[] = [];
-    public tables: WasmTable[] = [];
-    public globals: WasmGlobal[] = [];
-    public elements: WasmElement[] = [];
-    public data: WasmData[] = [];
-    public stackPointerDetector?: WasmFunction;
-
-    addFunction(func: WasmFunction) {
-        func.index = this.functions.length;
-        this.functions.push(func);
-    }
-
-    addMemory(mem: WasmMemory) {
-        mem.index = this.memories.length;
-        this.memories.push(mem);
-    }
-
-    addTable(table: WasmTable) {
-        table.index = this.tables.length;
-        this.tables.push(table);
-    }
-
-    addGlobal(global: WasmGlobal) {
-        global.index = this.globals.length;
-        this.globals.push(global);
-    }
-
-    addElement(element: WasmElement) {
-        element.index = this.elements.length;
-        this.elements.push(element);
-    }
-
-    addData(data: WasmData) {
-        data.index = this.data.length;
-        this.data.push(data);
-    }
-}
 
 export class WasmParser {
 
@@ -362,50 +64,63 @@ export class WasmParser {
         if (version != 1) {
             throw new Error('Unsupported version of a module.');
         }
-        let codeSection: BinaryInput | null = null;
+        let sectionsOrdered: [(input: BinaryInput) => void, BinaryInput][][] = [[], [], [], [], []];
         while (input.remaining() > 0) {
             let id = input.byte();
             let size = input.u32();
             let sub = input.slice(size);
             switch (id) {
                 case SectionId.TYPE:
-                    this.parseTypeSection(sub);
+                    sectionsOrdered[0].push([this.parseTypeSection, sub]);
                     break;
                 case SectionId.IMPORT:
-                    this.parseImportSection(sub);
+                    sectionsOrdered[1].push([this.parseImportSection, sub]);
                     break;
                 case SectionId.FUNCTION:
-                    this.parseFunctionSection(sub);
+                    sectionsOrdered[1].push([this.parseFunctionSection, sub]);
                     break;
                 case SectionId.TABLE:
-                    this.parseTableSection(sub);
+                    sectionsOrdered[1].push([this.parseTableSection, sub]);
+                    break;
+                case SectionId.MEMORY:
+                    sectionsOrdered[1].push([this.parseMemorySection, sub]);
                     break;
                 case SectionId.GLOBAL:
-                    this.parseGlobalSection(sub);
-                    break;
-                case SectionId.EXPORT:
-                    this.parseExportSection(sub);
+                    sectionsOrdered[1].push([this.parseGlobalStubs, sub]);
+                    sectionsOrdered[2].push([this.parseGlobalSection, sub.clone()]);
                     break;
                 case SectionId.ELEMENT:
-                    this.parseElementSection(sub);
-                    break;
-                case SectionId.CODE:
-                    codeSection = sub.slice(sub.remaining());
+                    sectionsOrdered[1].push([this.parseElementStubs, sub]);
+                    sectionsOrdered[2].push([this.parseElementSection, sub.clone()]);
                     break;
                 case SectionId.DATA:
-                    this.parseDataSection(sub);
+                    sectionsOrdered[1].push([this.parseDataStubs, sub]);
+                    sectionsOrdered[2].push([this.parseDataSection, sub.clone()]);
+                    break;
+                case SectionId.EXPORT:
+                    sectionsOrdered[3].push([this.parseExportSection, sub]);
+                    break;
+                case SectionId.START:
+                    sectionsOrdered[3].push([this.parseStartSection, sub]);
+                    break;
+                case SectionId.CODE:
+                    sectionsOrdered[4].push([this.parseCodeSection, sub]);
+                    break;
+                case SectionId.CUSTOM:
+                    // Ignore
+                    break;
+                case SectionId.DATA_COUNT:
+                    // Ignore
                     break;
                 default:
                     console.log(id);
-                    sub.raw(sub.remaining()); // TODO throw error
                     break;
             }
-            sub.finalize();
         }
-        //input.finalize(); TODO: uncomment
-        if (codeSection !== null) {
-            this.parseCodeSection(codeSection);
-        }
+        input.finalize();
+    }
+
+    parseDataStubs(input: BinaryInput) {
     }
 
     // modules.html#binary-datasec
@@ -442,6 +157,9 @@ export class WasmParser {
         }
     }
 
+    parseStartSection(input: BinaryInput) {
+    }
+
     // modules.html#binary-codesec
     parseCodeSection(input: BinaryInput) {
         let count = input.u32();
@@ -451,6 +169,7 @@ export class WasmParser {
             let size = input.u32();
             let sub = input.slice(size);
             this.parseFuncCode(sub, func);
+            sub.finalize();
         }
     }
 
@@ -459,7 +178,7 @@ export class WasmParser {
         let localsCount = input.u32();
         for (let i = 0; i < localsCount; i++) {
             let repeatCount = input.u32();
-            let type: ValueType = toEnum(input.byte(), ValueTypeObject);
+            let type: ValueType = enumize(input.byte(), ValueTypeObject);
             for (let k = 0; k < repeatCount; k++) {
                 func.locals.push(type);
             }
@@ -468,6 +187,9 @@ export class WasmParser {
         func.block = instr.block;
         this.blockStack = [instr.block];
         instr.block.body = this.parseExpression(input, func);
+    }
+
+    parseElementStubs(input: BinaryInput) {
     }
 
     // modules.html#binary-elemsec
@@ -527,7 +249,7 @@ export class WasmParser {
         let count = input.u32();
         for (let i = 0; i < count; i++) {
             let name = input.str();
-            let kind = toEnum<EntityKind>(input.byte(), EntityKind);
+            let kind = enumize<EntityKind>(input.byte(), EntityKind);
             let index = input.u32();
             switch (kind) {
                 case EntityKind.FUNCTION:
@@ -552,13 +274,16 @@ export class WasmParser {
         }
     }
 
+    parseGlobalStubs(input: BinaryInput) {
+    }
+
     // modules.html#binary-globalsec
     parseGlobalSection(input: BinaryInput) {
         let count = input.u32();
         for (let i = 0; i < count; i++) {
             // types.html#binary-globaltype
-            let type: ValueType = toEnum(input.byte(), ValueTypeObject);
-            let kind: GlobalKind = toEnum(input.byte(), GlobalKind);
+            let type: ValueType = enumize(input.byte(), ValueTypeObject);
+            let kind: GlobalKind = enumize(input.byte(), GlobalKind);
             let expr = this.parseConstExpression(input);
             if (expr.type != undefined && expr.type != type) {
                 throw new Error('Global type mismatch');
@@ -666,15 +391,15 @@ export class WasmParser {
             case OP.CALL:
             case OP.REF_FUNC: { // funcidx
                 let index = input.u32();
-                let func = arrAssert(this.module.functions, index, 'Invalid function index.');
+                let func = pick(this.module.functions, index, 'Invalid function index.');
                 instr = { opcode, func };
                 break;
             }
             case OP.CALL_INDIRECT: { // typeidx, tableidx
                 let typeIndex = input.u32();
-                let type = arrAssert(this.types, typeIndex, 'Invalid type index');
+                let type = pick(this.types, typeIndex, 'Invalid type index');
                 let tableIndex = input.u32();
-                let table = arrAssert(this.module.tables, tableIndex, 'Invalid table index');
+                let table = pick(this.module.tables, tableIndex, 'Invalid table index');
                 instr = { opcode, type, table };
                 break;
             }
@@ -695,7 +420,7 @@ export class WasmParser {
             case OP.GLOBAL_GET:
             case OP.GLOBAL_SET: { // globalidx
                 let index = input.u32();
-                let global = arrAssert(this.module.globals, index, 'Invalid global index.');
+                let global = pick(this.module.globals, index, 'Invalid global index.');
                 instr = { opcode, global }
                 break;
             }
@@ -705,7 +430,7 @@ export class WasmParser {
             case OP.TABLE_SIZE:
             case OP.TABLE_FILL: { // tableidx
                 let index = input.u32();
-                let table = arrAssert(this.module.tables, index, 'Invalid table index.');
+                let table = pick(this.module.tables, index, 'Invalid table index.');
                 instr = { opcode, table }
                 break;
             }
@@ -773,7 +498,7 @@ export class WasmParser {
             }
             case OP.REF_NULL: { // reftype
                 let reftype = input.byte();
-                let type: RefType = toEnum(reftype, RefType);
+                let type: RefType = enumize(reftype, RefType);
                 instr = { opcode, type };
                 break;
             }
@@ -1199,10 +924,10 @@ export class WasmParser {
             return { params: [], results: [] };
         } else if ((firstByte & 0xC0) == 0x40) {
             input.byte();
-            return { params: [], results: [toEnum(firstByte, ValueTypeObject)] };
+            return { params: [], results: [enumize(firstByte, ValueTypeObject)] };
         } else {
             let index = input.s32();
-            return arrAssert(this.types, index, 'Type index out of range.');
+            return pick(this.types, index, 'Type index out of range.');
         }
     }
 
@@ -1211,11 +936,25 @@ export class WasmParser {
         let count = input.u32();
         for (let i = 0; i < count; i++) {
             // types.html#binary-tabletype
-            let type = toEnum<RefType>(input.byte(), RefType);
-            let limits = new Limits(input);
+            let type = enumize<RefType>(input.byte(), RefType);
+            let limits = this.parseLimits(input);
             let table = new WasmTable(type, limits);
             this.module.addTable(table);
         }
+    }
+
+    parseMemorySection(input: BinaryInput) {
+    }
+
+    // types.html#binary-limits
+    parseLimits(input: BinaryInput): Limits {
+        let kind = enumize<LimitKind>(input.byte(), LimitKind);
+        let min = input.u32();
+        let max = Infinity;
+        if (kind == LimitKind.LIMITED) {
+            max = input.u32();
+        }
+        return { min, max };
     }
 
     // modules.html#binary-funcsec
@@ -1236,7 +975,7 @@ export class WasmParser {
             let module = input.str();
             let name = input.str();
             let imp = { module, name };
-            let kind = toEnum<EntityKind>(input.byte(), EntityKind);
+            let kind = enumize<EntityKind>(input.byte(), EntityKind);
             switch (kind) {
                 case EntityKind.FUNCTION: {
                     let type = this.getType(input.u32());
@@ -1251,7 +990,7 @@ export class WasmParser {
                 }
                 case EntityKind.MEMORY: {
                     // types.html#binary-memtype
-                    let limits = new Limits(input);
+                    let limits = this.parseLimits(input);
                     let memory = new WasmMemory(limits);
                     memory.import = imp;
                     this.module.addMemory(memory);
@@ -1323,7 +1062,7 @@ export class WasmParser {
             for (let j = 0; j < 2; j++) {
                 let paramCount = input.u32();
                 for (let k = 0; k < paramCount; k++) {
-                    vectors[j][k] = toEnum(input.byte(), ValueTypeObject);
+                    vectors[j][k] = enumize(input.byte(), ValueTypeObject);
                 }
             }
             let ft: FunctionType = {
