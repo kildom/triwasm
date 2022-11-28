@@ -12,6 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { allowTemporaryNull } from "../utils/common";
 import { OP } from "./opcodes";
 
 
@@ -39,6 +40,12 @@ export type ValueType = NumberType | VectorType | RefType;
 export const ValueTypeObject = { ...NumberType, ...VectorType, ...RefType };
 
 // types.html#function-types
+
+export enum ModuleKind {
+    MAIN,
+    LINKED,
+};
+
 export interface FunctionType {
     params: ValueType[];
     results: ValueType[];
@@ -46,10 +53,10 @@ export interface FunctionType {
 
 export enum WasmFunctionKind {
     WASM,            ///< [WasmFunctionData] Normal WASM function with body
+    WASM_TYPE_UNKNOWN,//< Normal WASM function with body, but the result is unknown and must be determined using the code.
     ANNOTATION,      ///< [String$$]         Annotation magic function, does not generate a bytecode, call replaced by ".annotation" during triasm generation
-    IMPORT,          ///< [null]             Import function, will be replaced by FUNCTION_HOST_* or FUNCTION_LINK during references resolving
-    HOST_BY_INDEX,   ///< [u32$]             Host function referenced by index
-    HOST_BY_NAME,    ///< [String$$]         Host function referenced by name, trivm runtime startup will resolve its index
+    IMPORT,          ///< [null]             Import function, will be replaced by FUNCTION_HOST or FUNCTION_LINK during references resolving
+    HOST,            ///< [u32$]             Host function referenced by index
     ASSEMBLY,        ///< [String$$]         Function with triasm body
     INLINE_ASSEMBLY, ///< [String$$]         Function with triasm body that will be inlined always
     LINK,            ///< [WasmFunction]     A link to actual function
@@ -60,6 +67,11 @@ export interface WasmImport {
     module: string;
     name: string;
 };
+
+export interface WasmExport {
+    module: string;
+    name: string;
+}
 
 // types.html#binary-globaltype
 export enum GlobalKind {
@@ -76,7 +88,7 @@ export interface Limits {
 export type WasmInstrBrOP = OP.BR | OP.BR_IF;
 export interface WasmInstrBr {
     opcode: WasmInstrBrOP;
-    target: number;
+    target: WasmBlock;
 };
 
 export type WasmInstrIndexedOP = OP.LOCAL_GET | OP.LOCAL_SET | OP.LOCAL_TEE | OP.I8X16_EXTRACT_LANE_S | OP.I8X16_EXTRACT_LANE_U | OP.I8X16_REPLACE_LANE | OP.I16X8_EXTRACT_LANE_S | OP.I16X8_EXTRACT_LANE_U | OP.I16X8_REPLACE_LANE | OP.I32X4_EXTRACT_LANE | OP.I32X4_REPLACE_LANE | OP.I64X2_EXTRACT_LANE | OP.I64X2_REPLACE_LANE | OP.F32X4_EXTRACT_LANE | OP.F32X4_REPLACE_LANE | OP.F64X2_EXTRACT_LANE | OP.F64X2_REPLACE_LANE;
@@ -106,7 +118,7 @@ export interface WasmInstrConst64 {
 export type WasmInstrBrTableOP = OP.BR_TABLE;
 export interface WasmInstrBrTable {
     opcode: WasmInstrBrTableOP;
-    targets: number[];
+    targets: WasmBlock[];
 };
 
 export type WasmInstrRefOP = OP.REF_NULL;
@@ -134,18 +146,83 @@ export interface WasmInstrGlobal {
     global: WasmGlobal;
 };
 
+export type WasmInstrValueV128OP = OP.V128_CONST | OP.I8X16_SHUFFLE;
+export interface WasmInstrValueV128 {
+    opcode: WasmInstrValueV128OP;
+    value: Uint8Array;
+};
+
 export type WasmInstrTableOP = OP.TABLE_GET | OP.TABLE_SET | OP.TABLE_GROW | OP.TABLE_SIZE | OP.TABLE_FILL;
 export interface WasmInstrTable {
     opcode: WasmInstrTableOP;
     table: WasmTable;
 };
 
-export type WasmInstrNoArgsOP = Exclude<OP, WasmInstrBrOP | WasmInstrIndexedOP | WasmInstrWithBlockOP | WasmInstrConst32OP | WasmInstrConst64OP | WasmInstrBrTableOP | WasmInstrRefOP | WasmInstrCallIndirectOP | WasmInstrFuncOP | WasmInstrGlobalOP | WasmInstrTableOP>;
+export type WasmInstrMemArgOP = OP.I32_LOAD | OP.I64_LOAD | OP.F32_LOAD | OP.F64_LOAD | OP.I32_LOAD8_S | OP.I32_LOAD8_U | OP.I32_LOAD16_S | OP.I32_LOAD16_U | OP.I64_LOAD8_S | OP.I64_LOAD8_U | OP.I64_LOAD16_S | OP.I64_LOAD16_U | OP.I64_LOAD32_S | OP.I64_LOAD32_U | OP.I32_STORE | OP.I64_STORE | OP.F32_STORE | OP.F64_STORE | OP.I32_STORE8 | OP.I32_STORE16 | OP.I64_STORE8 | OP.I64_STORE16 | OP.I64_STORE32 | OP.V128_LOAD | OP.V128_LOAD8X8_S | OP.V128_LOAD8X8_U | OP.V128_LOAD16X4_S | OP.V128_LOAD16X4_U | OP.V128_LOAD32X2_S | OP.V128_LOAD32X2_U | OP.V128_LOAD8_SPLAT | OP.V128_LOAD16_SPLAT | OP.V128_LOAD32_SPLAT | OP.V128_LOAD64_SPLAT | OP.V128_STORE;
+export interface WasmInstrMemArg {
+    opcode: WasmInstrMemArgOP;
+    offset: bigint;
+    memory: WasmMemory;
+};
+
+export type WasmInstrMemArgWithIndexOP = OP.V128_LOAD8_LANE | OP.V128_STORE8_LANE | OP.V128_LOAD16_LANE | OP.V128_STORE16_LANE | OP.V128_LOAD32_LANE | OP.V128_STORE32_LANE | OP.V128_LOAD32_ZERO | OP.V128_LOAD64_LANE | OP.V128_STORE64_LANE | OP.V128_LOAD64_ZERO;
+export interface WasmInstrMemArgWithIndex {
+    opcode: WasmInstrMemArgWithIndexOP;
+    offset: bigint;
+    memory: WasmMemory;
+    index: number;
+};
+
+export type WasmInstrMemOP = OP.MEMORY_SIZE | OP.MEMORY_GROW | OP.MEMORY_FILL;
+export interface WasmInstrMem {
+    opcode: WasmInstrMemOP;
+    memory: WasmMemory;
+};
+
+export type WasmInstrMemInitOP = OP.MEMORY_INIT;
+export interface WasmInstrMemInit {
+    opcode: WasmInstrMemInitOP;
+    data: WasmData;
+    memory: WasmMemory;
+};
+
+export type WasmInstrDataDropOP = OP.DATA_DROP;
+export interface WasmInstrDataDrop {
+    opcode: WasmInstrDataDropOP;
+    data: WasmData;
+};
+
+export type WasmInstrMemCopyOP = OP.MEMORY_COPY;
+export interface WasmInstrMemCopy {
+    opcode: WasmInstrMemCopyOP;
+    memories: [WasmMemory, WasmMemory];
+};
+
+export type WasmInstrTableCopyOP = OP.TABLE_COPY;
+export interface WasmInstrTableCopy {
+    opcode: WasmInstrTableCopyOP;
+    tables: [WasmTable, WasmTable];
+};
+
+export type WasmInstrElemDropOP = OP.ELEM_DROP;
+export interface WasmInstrElemDrop {
+    opcode: WasmInstrElemDropOP;
+    element: WasmElement;
+};
+
+export type WasmInstrTableInitOP = OP.TABLE_INIT;
+export interface WasmInstrTableInit {
+    opcode: WasmInstrTableInitOP;
+    element: WasmElement;
+    table: WasmTable;
+};
+
+export type WasmInstrNoArgsOP = Exclude<OP, WasmInstrBrOP | WasmInstrIndexedOP | WasmInstrWithBlockOP | WasmInstrConst32OP | WasmInstrConst64OP | WasmInstrBrTableOP | WasmInstrRefOP | WasmInstrCallIndirectOP | WasmInstrFuncOP | WasmInstrGlobalOP | WasmInstrTableOP | WasmInstrValueV128OP | WasmInstrMemArgOP | WasmInstrMemOP | WasmInstrMemInitOP | WasmInstrDataDropOP | WasmInstrMemCopyOP | WasmInstrMemArgWithIndexOP | WasmInstrElemDropOP | WasmInstrTableInitOP | WasmInstrTableCopyOP>;
 export interface WasmInstrNoArgs {
     opcode: WasmInstrNoArgsOP;
 };
 
-export type WasmInstr = WasmInstrNoArgs | WasmInstrBr | WasmInstrIndexed | WasmInstrWithBlock | WasmInstrConst32 | WasmInstrConst64 | WasmInstrBrTable | WasmInstrRef | WasmInstrCallIndirect | WasmInstrFunc | WasmInstrGlobal | WasmInstrTable;
+export type WasmInstr = WasmInstrNoArgs | WasmInstrBr | WasmInstrIndexed | WasmInstrWithBlock | WasmInstrConst32 | WasmInstrConst64 | WasmInstrBrTable | WasmInstrRef | WasmInstrCallIndirect | WasmInstrFunc | WasmInstrGlobal | WasmInstrTable | WasmInstrValueV128 | WasmInstrMemArg | WasmInstrMem | WasmInstrMemInit | WasmInstrDataDrop | WasmInstrMemCopy | WasmInstrMemArgWithIndex | WasmInstrElemDrop | WasmInstrTableInit | WasmInstrTableCopy;
 
 export class WasmBlock {
     public body: WasmInstr[] = [];
@@ -157,43 +234,6 @@ export class WasmBlock {
     }
 }
 
-export interface ConstExpressionI32Literal {
-    type: NumberType.I32;
-    value: number;
-};
-
-export interface ConstExpressionI64Literal {
-    type: NumberType.I64;
-    value: bigint;
-};
-
-export interface ConstExpressionF32Literal {
-    type: NumberType.F32;
-    value: number;
-};
-
-export interface ConstExpressionF64Literal {
-    type: NumberType.F64;
-    value: number;
-};
-
-export interface ConstExpressionV128Literal {
-    type: VectorType.V128;
-    value: Uint8Array;
-};
-
-export interface ConstExpressionFuncRefLiteral {
-    type: RefType.FUNCREF;
-    index: number;
-};
-
-export interface ConstExpressionExpr {
-    type: undefined;
-    expr: WasmInstr[];
-};
-
-export type ConstExpression = ConstExpressionI32Literal | ConstExpressionI64Literal | ConstExpressionF32Literal | ConstExpressionF64Literal | ConstExpressionV128Literal | ConstExpressionFuncRefLiteral | ConstExpressionExpr;
-
 export enum ElementKind {
     ACTIVE,
     PASSIVE,
@@ -201,11 +241,11 @@ export enum ElementKind {
 };
 
 export class WasmElement {
-    index: number = 0;
+    public deleted = false;
     kind: ElementKind = ElementKind.ACTIVE;
     table?: WasmTable;
-    offset?: ConstExpression;
-    items: ConstExpression[] = [];
+    offset?: WasmFunction;
+    items: WasmFunction[] = [];
 };
 
 export enum DataKind {
@@ -214,21 +254,16 @@ export enum DataKind {
 };
 
 export class WasmData {
-    public index: number = 0;
-    public kind: DataKind;
-    constructor(
-        public content: Uint8Array,
-        public memory?: WasmMemory,
-        public offset?: ConstExpression
-    ) {
-        this.kind = memory ? DataKind.ACTIVE : DataKind.PASSIVE;
-    }
+    public deleted = false;
+    public kind: DataKind = DataKind.ACTIVE;
+    public content: Uint8Array = allowTemporaryNull as Uint8Array; // will be filled during data section parsing
+    public memory?: WasmMemory;
+    public offset?: WasmFunction;
 };
 
 export class WasmEntity {
-    public index: number = 0;
     public import?: WasmImport;
-    public exports: string[] = [];
+    public exports: WasmExport[] = [];
 }
 
 export class WasmFunction extends WasmEntity {
@@ -244,6 +279,7 @@ export class WasmFunction extends WasmEntity {
 }
 
 export class WasmMemory extends WasmEntity {
+    public deleted = false;
     constructor(
         public limits: Limits
     ) {
@@ -252,6 +288,7 @@ export class WasmMemory extends WasmEntity {
 }
 
 export class WasmTable extends WasmEntity {
+    public deleted = false;
     constructor(
         public type: RefType,
         public limits: Limits
@@ -261,13 +298,10 @@ export class WasmTable extends WasmEntity {
 }
 
 export class WasmGlobal extends WasmEntity {
-    constructor(
-        public kind: GlobalKind,
-        public type: ValueType,
-        public expr?: ConstExpression
-    ) {
-        super();
-    }
+    public deleted = false;
+    public kind: GlobalKind = GlobalKind.MUTABLE;
+    public type: ValueType = NumberType.I32;
+    public expr?: WasmFunction;
 }
 
 export class WasmModule {
@@ -278,34 +312,5 @@ export class WasmModule {
     public elements: WasmElement[] = [];
     public data: WasmData[] = [];
     public stackPointerDetector?: WasmFunction;
-
-    addFunction(func: WasmFunction) {
-        func.index = this.functions.length;
-        this.functions.push(func);
-    }
-
-    addMemory(mem: WasmMemory) {
-        mem.index = this.memories.length;
-        this.memories.push(mem);
-    }
-
-    addTable(table: WasmTable) {
-        table.index = this.tables.length;
-        this.tables.push(table);
-    }
-
-    addGlobal(global: WasmGlobal) {
-        global.index = this.globals.length;
-        this.globals.push(global);
-    }
-
-    addElement(element: WasmElement) {
-        element.index = this.elements.length;
-        this.elements.push(element);
-    }
-
-    addData(data: WasmData) {
-        data.index = this.data.length;
-        this.data.push(data);
-    }
+    public startFunction?: WasmFunction;
 }

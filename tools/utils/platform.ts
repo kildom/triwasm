@@ -14,6 +14,9 @@
 
 import * as x from './platform-impl';
 declare const _triwasm_platform_impl: unknown;
+declare global {
+    const trace: boolean;
+}
 
 export interface Platform {
     getArgv(): string[];

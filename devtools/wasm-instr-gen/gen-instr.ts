@@ -118,40 +118,6 @@ function generateEnum(table: Row[]) {
     writeOutput('output/opcodes.ts', '../../tools/wasm/opcodes.ts', out, '');
 }
 
-const IMMEDIATE_PARSERS: { [key: string]: string } = {
-    '': `
-        // Nothing more to parse here`,
-    memarg: `
-        let align = input.u32();
-        let memIndex = 0;
-        if (align & 0x40) {
-            memIndex = input.u32();
-        }
-        if (memIndex >= this.module.memories.length) {
-            throw new Error('Invalid memory index.');
-        }
-        let offset = BigInt(input.u32()) & 0xFFFFFFFFn;
-        instr = { opcode, offset, memIndex };`,
-    memidx: `
-        let index# = input.u32();
-        if (index# >= this.module.memories.length) {
-            throw new Error('Invalid memories index.');
-        }
-        imm.push(this.module.memories[index#]);`,
-    dataidx: `
-        let index# = input.u32();
-        if (index# >= this.module.data.length) {
-            throw new Error('Invalid data index.');
-        }
-        imm.push(this.module.data[index#]);`,
-    elemidx: `
-        let index# = input.u32();
-        if (index# >= this.module.elements.length) {
-            throw new Error('Invalid element index.');
-        }
-        imm.push(this.module.elements[index#]);`,
-}
-
 function generateParser(table: Row[]) {
     let out = '';
 
