@@ -125,5 +125,4 @@ TRIVM_TREE_ADV64: x
 0x2D    CONVF32S64  ONE_ARG   { float r; /**/ r = (float)(int64_t)arg1; /**/ ret = TO_U32(r); }                                                    TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
 0x2E    CONVF64U64  ONE_ARG   { double r; /**/ r = (double)(uint64_t)arg1; /**/ ret = TO_U64(r); }                                                 TRIVM_EXT_FLOAT64
 0x2F    CONVF64S64  ONE_ARG   { double r; /**/ r = (double)(int64_t)arg1; /**/ ret = TO_U64(r); }                                                  TRIVM_EXT_FLOAT64
-0x30    NOT64       ONE_ARG   { ret = !arg1; }                                                                                                     TRIVM_EXT_INT64
-0x31    NEG64       ONE_ARG   { ret = -arg1; }                                                                                                     TRIVM_EXT_INT64
+0x30    NEG64       ONE_ARG   { ret = -arg1; }                                                                                                     TRIVM_EXT_INT64

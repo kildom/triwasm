@@ -12,10 +12,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { ModuleKind, WasmEntity, WasmFunction, WasmModule } from "./wasmModule";
+import { WasmModule } from "./wasmModule";
 
 
 export class ModuleMerger {
+
+    private counter = 0;
 
     public constructor(
         public mainModule: WasmModule
@@ -32,13 +34,14 @@ export class ModuleMerger {
         }
     }
 
-    public merge(module: WasmModule, name: string) {
+    public merge(module: WasmModule, name?: string) {
         let all = [...module.memories, ...module.data, ...module.tables, ...module.elements, ...module.globals];
         for (let entity of all) {
             entity.deleted = true;
         }
-        this.setExportedModuleName(module, name);
+        this.setExportedModuleName(module, name || `__unnamed__module${this.counter}`);
         this.mainModule.functions.push(... module.functions);
+        this.counter++;
     }
 
 }

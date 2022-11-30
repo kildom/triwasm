@@ -454,5 +454,8 @@ export enum OP {
     F64X2_CONVERT_LOW_I32X4_U = 0xFFFD, // f64x2.convert_low_i32x4_u    [ 0xFD 0xFF 0x01 ]
     TRIVM_MULTIBYTE_FIRST = 0xFC, // TRIVM.MULTIBYTE_FIRST    [ 0xFC ]
     TRIVM_FUNCTION = -1, // TRIVM.FUNCTION
+    TRIVM_POP = -2, // TRIVM.POP
+    TRIVM_END_UNREACHABLE = -3, // TRIVM.END_UNREACHABLE
 };
+
 // -- End of source code generated with help of "gen-instr.ts" script --

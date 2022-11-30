@@ -15,7 +15,7 @@
 import { allowTemporaryNull, enumize, pick } from "../utils/common";
 import { BinaryInput } from "./binaryInput";
 import { OP } from "./opcodes";
-import { DataKind, ElementKind, FunctionType, GlobalKind, Limits, ModuleKind, NumberType, RefType, ValueType, ValueTypeObject, VectorType, WasmBlock, WasmData, WasmElement, WasmFunction, WasmFunctionKind, WasmGlobal, WasmImport, WasmInstr, WasmInstrWithBlock, WasmInstrWithBlockOP, WasmMemory, WasmModule, WasmTable } from "./wasmModule";
+import { DataKind, ElementKind, FunctionType, GlobalKind, Limits, NumberType, RefType, ValueType, ValueTypeObject, VectorType, WasmBlock, WasmData, WasmElement, WasmFunction, WasmFunctionKind, WasmGlobal, WasmImport, WasmInstr, WasmInstrWithBlock, WasmInstrWithBlockOP, WasmMemory, WasmModule, WasmTable } from "./wasmModule";
 
 const TRIVM_MAGIC_FUNCTION_TAG = '__trivm_magic_function__';
 
@@ -1051,13 +1051,13 @@ export class WasmParser {
         return this.blockStack.at(-1 - index) as WasmBlock;
     }
 
-    private parseMemArg(input: BinaryInput): { offset: bigint, memory: WasmMemory } {
+    private parseMemArg(input: BinaryInput): { offset: number, memory: WasmMemory } {
         let memory = pick(this.module.memories, 0, 'Memory index out of range.');
         let align = input.u32();
         if (align & 0x40) {
             memory = this.parseEntityIndex(input, this.module.memories, 'Memory index out of range.');
         }
-        let offset = BigInt(input.u32()) & 0xFFFFFFFFn;
+        let offset = input.u32();
         return { offset, memory };
     }
 
@@ -1188,7 +1188,7 @@ export class WasmParser {
 
     private magicFunctionElement(name: string, separator: string = ':'): [string, string] {
         let first = name.split(separator, 1)[0];
-        let second = first.substring(first.length + 1);
+        let second = name.substring(first.length + 1);
         return [first, second];
     }
 

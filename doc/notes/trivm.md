@@ -359,7 +359,9 @@ void host(trivm* vm, int id) {
 
 # JavaScript support idea
 
-[![](doc/triJS.svg)](https://kildom.github.io/drawio/#doc/triJS.drawio)
+It is better to stick with the AssemblyScript.
+
+[![](../trivm/triJS.svg)](https://kildom.github.io/drawio/#doc/triJS.drawio)
 
 # Simple bytecode idea for guest to client data validation
 

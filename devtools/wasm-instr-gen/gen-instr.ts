@@ -8,10 +8,21 @@ interface Row {
     binaryOpcode: string;
     parser: string;
     type: string;
+    reduction: string;
     decOpcode: number;
     hexOpcode: string;
     trivmOnly: boolean;
     id: string;
+};
+
+const TYPES: { [key: string]: string } = {
+    i32: 'NumberType.I32',
+    i64: 'NumberType.I64',
+    f32: 'NumberType.F32',
+    f64: 'NumberType.F64',
+    funcref: 'RefType.FUNCREF',
+    externref: 'RefType.EXTERNREF',
+    v128: 'VectorType.V128',
 };
 
 async function parseOds() {
@@ -42,10 +53,11 @@ async function parseOds() {
         let cells: string[] = [];
         for (let cell of row["table:table-cell"]) {
             let length = !cell.$ ? 1 : !cell.$['table:number-columns-repeated'] ? 1 : parseInt(cell.$['table:number-columns-repeated']);
+            let value = extractText(cell);
             if (1 < length && length < 30) {
-                cells.splice(cells.length, 0, ...Array.from({ length }).map((x) => extractText(cell)));
+                cells.splice(cells.length, 0, ...Array.from({ length }).map((x) => value));
             } else {
-                cells.push(extractText(cell));
+                cells.push(value);
             }
         }
         transformedRows.push(cells);
@@ -121,7 +133,7 @@ function generateEnum(table: Row[]) {
 function generateParser(table: Row[]) {
     let out = '';
 
-    let groups: { [params: string]: Row[] } = { };
+    let groups: { [params: string]: Row[] } = {};
     for (let row of table) {
         if (!row.trivmOnly) {
             groups[row.parser] = groups[row.parser] || [];
@@ -151,6 +163,135 @@ function generateParser(table: Row[]) {
     writeOutput('output/wasmParser.ts', '../../tools/wasm/wasmParser.ts', out, '            ');
 }
 
+function generateReducer(table: Row[]) {
+
+    function replaceExpr(expr: string): string {
+        return expr
+            .trim()
+            .replace(/#([a-z0-9_]+)/gi, 'this.ext.$1')
+            .replace(/\.\./gi, 'instr.')
+            .replace(/\\\,/gi, ',')
+    }
+
+    function sortKey(value: string): number {
+        if (value.trim().startsWith('##')) {
+            return 2;
+        } else if (value.trim().startsWith('!')) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    let out = '';
+
+    for (let row of table) {
+        if (row.reduction === '!') {
+            row.reduction += row.instruction;
+        }
+    }
+
+    let groups: { [reduction: string]: Row[] } = {};
+    for (let row of table) {
+        let key = row.reduction + '```' + row.type;
+        if (!row.trivmOnly) {
+            groups[key] = groups[key] || [];
+            groups[key].push(row);
+        }
+    }
+
+    let sorted = Object.keys(groups).sort((a, b) => sortKey(a) - sortKey(b));
+
+    for (let key of sorted) {
+        let group = groups[key];
+        let [reduction, type] = key.split('```');
+
+        for (let row of group) {
+            out += `\n            case OP.${row.id}:`;
+        }
+        out += ` {`;
+        if (reduction.startsWith('!')) {
+            out += `\n                break;\n            }`;
+            continue;
+        } else if (reduction.trim().startsWith('##')) {
+            // nothing to print
+        } else if (reduction) {
+            out += ` // Generated from expression: ${reduction}`;
+        } else {
+            out += ` // TODO`;
+        }
+        let tokens: string[] = [];
+        let ind = '';
+        while (reduction.trim().length > 0) {
+            let m: RegExpMatchArray | null;
+            if ((m = reduction.match(/^\s*{\s*else\s*}\s*/i))) { // {else}
+                tokens.push(`${ind}} else {`);
+                reduction = reduction.substring(m[0].length);
+            } else if ((m = reduction.match(/^\s*{\s*end\s*}\s*/i))) { // {end}
+                tokens.push(`${ind}}`);
+                reduction = reduction.substring(m[0].length);
+                ind = ind.substring(0, ind.length - 4);
+            } else if ((m = reduction.match(/^\s*{\s*elif\s+(.*?)\s*}\s*/i))) { // {elif cond}
+                tokens.push(`${ind}} else if (${replaceExpr(m[1])}) {`);
+                reduction = reduction.substring(m[0].length);
+            } else if ((m = reduction.match(/^\s*{\s*(?:if\s+)?(.*?)\s*}\s*/i))) { // {if cond}
+                ind += '    ';
+                tokens.push(`${ind}if (${replaceExpr(m[1])}) {`);
+                reduction = reduction.substring(m[0].length);
+            } else if ((m = reduction.match(/^\s*##\s*/i))) { // ##
+                tokens.push(`${ind}    newBody.push(instr);`)
+                reduction = reduction.substring(m[0].length);
+            } else if ((m = reduction.match(/^\s*;\s*/i))) { // ;
+                reduction = reduction.substring(m[0].length);
+            } else if ((m = reduction.match(/^\s*@\s*([a-z0-9_]+)\s*/i))) { // @triwasmlib_func
+                tokens.push(`${ind}    newBody.push(this.createTriWasmLibCall('${m[1]}'));`)
+                reduction = reduction.substring(m[0].length);
+            } else if ((m = reduction.match(/^\s*([a-z0-9_\.]+)(\s+[^;{]+)?/i))) { // other.instr param: value, param2 ...
+                let name = m[1].toUpperCase().replace(/\./g, '_');
+                let params = [`opcode: OP.${name}`];
+                if (m[2]) {
+                    for (let expr of m[2].split(/\s*(?<!\\),\s*/)) {
+                        let mm: RegExpMatchArray | null;
+                        if ((mm = expr.match(/^\s*([a-z0-9_]+)\s*$/))) {
+                            params.push(`${mm[1]}: instr.${mm[1]}`);
+                        } else if ((mm = expr.match(/^\s*([a-z0-9_]+)\s*[:=](.*)$/))) {
+                            params.push(`${mm[1]}: ${replaceExpr(mm[2])}`);
+                        } else {
+                            throw Error(`Unknown parameter in reduction: ${expr}`);
+                        }
+                    }
+                }
+                tokens.push(`${ind}    newBody.push({ ${params.join(', ')} });`);
+                reduction = reduction.substring(m[0].length);
+            } else {
+                throw Error(`Unknown expression in reduction: ${reduction}`);
+            }
+        }
+        while (ind.length > 0) {
+            tokens.push(`${ind}}`);
+            ind = ind.substring(0, ind.length - 4);
+        }
+        type = type.replace(/[^a-z0-9_→]/gi, ' ');
+        let [popTypes, pushTypes] = type.trim().length == 0 ? [[], []] : type
+            .split('→')
+            .map(x => x
+                .trim()
+                .split(/\s+/)
+                .filter(x => x.length)
+                .map(x => TYPES[x.toLowerCase()])
+            );
+        if (popTypes.length) {
+            tokens.push(`    this.popTypes(${popTypes.join(', ')});`);
+        }
+        if (pushTypes.length) {
+            tokens.push(`    this.pushTypes(${pushTypes.join(', ')});`);
+        }
+        out += `\n            ${tokens.join('\n            ')}`;
+        out += `\n                break;\n            }`;
+    }
+
+    writeOutput('output/reducer.ts', '../../tools/wasm/reducer.ts', out, '            ');
+}
 
 function writeOutput(destFile: string, origFile: string, content: string, indent: string) {
     let header = indent + '// -- Begin of source code generated with help of "gen-instr.ts" script --';
@@ -185,7 +326,7 @@ async function main() {
     fs.writeFileSync('temp/content5.json', JSON.stringify(table, null, 4));
     generateEnum(table);
     generateParser(table);
-    // generateReducer(table);
+    generateReducer(table);
     // generateDumper(table);
     // generateOutputNames(table);
     // generateDataDump(table);

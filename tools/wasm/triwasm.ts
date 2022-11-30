@@ -14,7 +14,9 @@
 
 import { platform } from "../utils/platform";
 import { BinaryInput } from "./binaryInput";
+import { LinkResolver } from "./linkResolver";
 import { ModuleMerger } from "./moduleMerger";
+import { Reducer } from "./reducer";
 import { WasmParser } from "./wasmParser";
 
 //let p = new WasmParser("test/__old/test.wasm");
@@ -27,3 +29,8 @@ let m = new ModuleMerger(main);
 m.merge(triwasmlib, '__triwasm__triwasmlib');
 m.merge(softfloatlib, '__triwasm__softfloatlib');
 
+let r = new LinkResolver();
+r.resolve(main);
+
+let red = new Reducer();
+red.reduce(main);

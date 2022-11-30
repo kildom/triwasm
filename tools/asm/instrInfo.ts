@@ -129,14 +129,11 @@ const instrInfoTextTable = `
 ~>   XOR64***       0-0   0    i64     -       0                                                                                                    
 ~>   XOR64**        1-1   0    i64     -       0                                                                                                    
 ~>   XOR64          0-1   0    i64     -       0                                                                                                    
-~>   NOT64LH        0-0   0    i64     -       0                                                                                                    
-~>   NOT64HL        0-0   0    i64     -       0                                                                                                    
-~>   NOT64H         1-1   0    i64     -       0                                                                                                    
-~>   NOT64          0-1   0    i64     -       0                                                                                                    
 ~>   NEG64LH        0-0   0    i64     -       0                                                                                                    
 ~>   NEG64HL        0-0   0    i64     -       0                                                                                                    
 ~>   NEG64H         1-1   0    i64     -       0                                                                                                    
 ~>   NEG64          0-1   0    i64     -       0                                                                                                    
+#    NOT64 - this instruction has no point, because it can be replaced by pair: OR NOT
 
 # 32-bit floating point instructions
 ~>   ADDF32         0-1   0    f32     -       0                                                                                                    

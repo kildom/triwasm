@@ -39,12 +39,24 @@ export enum RefType {
 export type ValueType = NumberType | VectorType | RefType;
 export const ValueTypeObject = { ...NumberType, ...VectorType, ...RefType };
 
-// types.html#function-types
+export function valueTypeWords(type: ValueType) : 1 | 2 | 4 {
+    switch (type) {
+        case NumberType.I32:
+        case NumberType.F32:
+        case RefType.FUNCREF:
+        case RefType.EXTERNREF:
+            return 1;
+        case NumberType.I64:
+        case NumberType.F64:
+            return 2;
+        case VectorType.V128:
+            return 4;
+        default:
+            throw new Error('Invalid value type.');
+    }
+}
 
-export enum ModuleKind {
-    MAIN,
-    LINKED,
-};
+// types.html#function-types
 
 export interface FunctionType {
     params: ValueType[];
@@ -103,7 +115,7 @@ export interface WasmInstrWithBlock {
     block: WasmBlock;
 }
 
-export type WasmInstrConst32OP = OP.I32_CONST | OP.F32_CONST;
+export type WasmInstrConst32OP = OP.I32_CONST | OP.F32_CONST | OP.TRIVM_POP;
 export interface WasmInstrConst32 {
     opcode: WasmInstrConst32OP;
     value: number;
@@ -161,14 +173,14 @@ export interface WasmInstrTable {
 export type WasmInstrMemArgOP = OP.I32_LOAD | OP.I64_LOAD | OP.F32_LOAD | OP.F64_LOAD | OP.I32_LOAD8_S | OP.I32_LOAD8_U | OP.I32_LOAD16_S | OP.I32_LOAD16_U | OP.I64_LOAD8_S | OP.I64_LOAD8_U | OP.I64_LOAD16_S | OP.I64_LOAD16_U | OP.I64_LOAD32_S | OP.I64_LOAD32_U | OP.I32_STORE | OP.I64_STORE | OP.F32_STORE | OP.F64_STORE | OP.I32_STORE8 | OP.I32_STORE16 | OP.I64_STORE8 | OP.I64_STORE16 | OP.I64_STORE32 | OP.V128_LOAD | OP.V128_LOAD8X8_S | OP.V128_LOAD8X8_U | OP.V128_LOAD16X4_S | OP.V128_LOAD16X4_U | OP.V128_LOAD32X2_S | OP.V128_LOAD32X2_U | OP.V128_LOAD8_SPLAT | OP.V128_LOAD16_SPLAT | OP.V128_LOAD32_SPLAT | OP.V128_LOAD64_SPLAT | OP.V128_STORE;
 export interface WasmInstrMemArg {
     opcode: WasmInstrMemArgOP;
-    offset: bigint;
+    offset: number;
     memory: WasmMemory;
 };
 
 export type WasmInstrMemArgWithIndexOP = OP.V128_LOAD8_LANE | OP.V128_STORE8_LANE | OP.V128_LOAD16_LANE | OP.V128_STORE16_LANE | OP.V128_LOAD32_LANE | OP.V128_STORE32_LANE | OP.V128_LOAD32_ZERO | OP.V128_LOAD64_LANE | OP.V128_STORE64_LANE | OP.V128_LOAD64_ZERO;
 export interface WasmInstrMemArgWithIndex {
     opcode: WasmInstrMemArgWithIndexOP;
-    offset: bigint;
+    offset: number;
     memory: WasmMemory;
     index: number;
 };
@@ -262,11 +274,13 @@ export class WasmData {
 };
 
 export class WasmEntity {
+    public index: number = 0;
     public import?: WasmImport;
     public exports: WasmExport[] = [];
 }
 
 export class WasmFunction extends WasmEntity {
+    public resolved: WasmFunction;
     public data?: string;
     public locals: ValueType[] = [];
     public block?: WasmBlock;
@@ -275,6 +289,7 @@ export class WasmFunction extends WasmEntity {
         public type: FunctionType
     ) {
         super();
+        this.resolved = this;
     }
 }
 
@@ -313,4 +328,16 @@ export class WasmModule {
     public data: WasmData[] = [];
     public stackPointerDetector?: WasmFunction;
     public startFunction?: WasmFunction;
+    public exported: Map<string, Map<string, WasmFunction>> = new Map();
+
+    public getExported(module: string, name: string, required: true): WasmFunction;
+    public getExported(module: string, name: string, required: false): WasmFunction | undefined;
+
+    public getExported(module: string, name: string, required: boolean = true): WasmFunction | undefined {
+            let func = this.exported.get(module)?.get(module);
+        if (required && func === undefined) {
+            throw new Error(`Requested function '${name}' from module '${module}' not found.`);
+        }
+        return func?.resolved;
+    }
 }
