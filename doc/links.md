@@ -27,6 +27,7 @@
 
 ## Tests
  * CoreMark 1.0 ported to WebAssembly: https://github.com/wasm3/wasm-coremark
+ * Convert wasm spec test format to a JSON: https://webassembly.github.io/wabt/doc/wast2json.1.html
 
 ## Guest
  * AssemblyScript: https://www.assemblyscript.org/
