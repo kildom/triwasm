@@ -415,3 +415,80 @@ void* getPtr(tri_vm* vm, uint32_t index, int validator) { // TODO: bool readOnly
 
 
 #endif
+
+////////////////////////////////////////////////////// IDEA FOR CONFIGURATION FILE
+
+/* triVM core configuration */
+
+#define TRIVM_EXT_MEM64 1
+#define TRIVM_EXT_I64 1
+#define TRIVM_FAULT_STACK_OVERFLOW 1
+#define TRIVM_FAULT_STACK_UNDERFLOW 1
+
+/* triVM interface description */
+#if 0 // OR inside a comment
+
+/*
+ * This is subset of TypeScript, so it can be parsed to AST with existing libraries.
+ * Other option is to create TypeScript-like IDL, but not fully TypeScript compatible and use own parser.
+ * Benefits of own parser:
+ *   simpler function declaration: `@id(3) export declare function ...` => `export(3)`
+ *   more intuitive pointer syntax `[ASString]` => `*ASString`
+ *   inlined sub-structures and unions
+ *   `union` keyword instead of `@union` decorator
+ *   simpler unnamed unions and structures
+*/
+module("env");
+
+@id(MESSAGE_ID)
+declare function message(text: [ASString]): void;
+
+@align("packed")
+@validator("checkASBuffer")
+class ASString {
+	size: u32;
+	@target
+	data: u16[];
+};
+
+@id(MESSAGEC_ID)
+declare function messageC(text: [CString]): void;
+
+@validator("checkCString")
+type CString = u8[];
+
+@id(3)
+export declare function main(argc: u32, argv: []): u32;
+
+@storageType(u32)
+enum MessageType {
+    MESSAGE_TYPE_NONE = 0,
+    MESSAGE_TYPE_STR = 1,
+    MESSAGE_TYPE_INT = 1,
+    MESSAGE_TYPE_COMPLEX = 1,
+};
+
+class WithUnnamedUnion {
+    type: MessageType;
+    @unnamed
+    _: MessageUnion;
+};
+
+class WithNamedUnion {
+    type: MessageType;
+    content: MessageUnion;
+};
+
+@union
+class MessageUnion {
+    text: [CString];
+    intValue: i32;
+    complexValue: Complex;
+}
+
+class Complex {
+    real: f32;
+    imaginary: f32;
+}
+
+#endif
