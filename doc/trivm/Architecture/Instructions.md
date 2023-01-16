@@ -135,19 +135,21 @@ Following table shows which encodings are used by each instruction set extension
 
 ## Binary operation instructions
 
- * Encoding A
-   ```
-   ..., value1, value2 →
-   ..., result
-   ```
- * Encoding B, C, D
-   ```
-   ..., value1 →
-   ..., result
-   ```
-   `value2 = immediate`
-  
+Performs operation on two values and pushes the result back into the stack.
+
 Division and modullo instructions can raise an [Division By Zero]() VM Fault.
+
+* **Encoding A**
+  | | Stack |
+  |-|-------|
+  | | `...` `value1` `value2` |
+  |⤷| `...` `result` |
+
+* **Encoding B**
+  | | Stack | Immediate |
+  |-|-------|-----------|
+  | | `...` `value1` | `value2` |
+  |⤷| `...` `result` |
 
 Opcode | Name | Operation Pseudo Code
 -------|------|----------
@@ -171,102 +173,116 @@ Opcode | Name | Operation Pseudo Code
 
 ## Unary operation instructions
 
- * Encoding A
-   ```
-   ..., value1 →
-   ..., result
-   ```
- * Encoding B, C, D
-   ```
-   ... →
-   ..., result
-   ```
-   `value1 = immediate`
+Perform operation on one value and pushes the result back into the stack.
 
+* **Encoding A**
+  | | Stack |
+  |-|-------|
+  | | `...` `value` |
+  |⤷| `...` `result` |
+
+* **Encoding B**
+  | | Stack | Immediate |
+  |-|-------|-----------|
+  | | `...` | `value` |
+  |⤷| `...` `result` |
+  
 Opcode | Name | Operation Pseudo Code
 -------|------|----------
-0x13 |   EQZ    | `result = !value1`
-0x14 |   NEG    | `result = -value1`
+0x13 |   EQZ    | `result = !value`
+0x14 |   NEG    | `result = -value`
 
 ## Branch instructions
 
-### BRT, BRF
+**BRT, BRF**
 
- * Encoding A
-   ```
-   ..., value1, value2 →
-   ...
-   ```
- * Encoding B, C, D
-   ```
-   ..., value1 →
-   ...
-   ```
-   `value2 = immediate`
+Do conditional relative branch.
 
-Operation:
+* **Encoding A**
+  | | Stack |
+  |-|-------|
+  | | `...` `condition` `address` |
+  |⤷| `...` |
+
+* **Encoding B**
+  | | Stack | Immediate |
+  |-|-------|-----------|
+  | | `...` `condition` | `address` |
+  |⤷| `...` |
+
+Opcode | Name | Operation Pseudo Code
+-------|------|----------
+0xXX |   BRT    | `if (condition) PC += address`
+0xXX |   BRF    | `if (!condition) PC += address`
+
+**BR**
+
+Do unconditional relative branch.
+
+* **Encoding A**
+  | | Stack |
+  |-|-------|
+  | | `...` `address` |
+  |⤷| `...` |
+
+* **Encoding B**
+  | | Stack | Immediate |
+  |-|-------|-----------|
+  | | `...` | `address` |
+  |⤷| `...` |
+
+Opcode | Name | Operation Pseudo Code
+-------|------|----------
+0xXX |   BR    | `PC += address`
+
+**CALL**
+
+Do unconditional relative branch and push return address into the stack.
+
+* **Encoding A**
+  | | Stack |
+  |-|-------|
+  | | `...` `address` |
+  |⤷| `...` `return_address` |
+
+* **Encoding B**
+  | | Stack | Immediate |
+  |-|-------|-----------|
+  | | `...` | `address` |
+  |⤷| `...` `return_address` |
+
+
+Opcode | Name | Operation Pseudo Code
+-------|------|----------
+0xXX |   CALL    | `return_address = PC, PC += address`
+
+**HOST**
+
+Depending on input value, call host routine or inform host that the guest routine has finished.
+
+* **Encoding A**
+  | | Stack |
+  |-|-------|
+  | | `...` *`(values dependent on routine parameters)`* `index` |
+  |⤷| `...` *`(values dependent on routine results)`* |
+
+* **Encoding B**
+  | | Stack | Immediate |
+  |-|-------|-----------|
+  | | `...` *`(values dependent on routine parameters)`* | `index` |
+  |⤷| `...` *`(values dependent on routine results)`* |
+
+
+Opcode | Name |
+-------|------
+0xXX |   CALL    
+
+Operation Pseudo Code:
 ```
-BRT: if (value1) PC += value2
-BRF: if (value1) PC += value2
-```
-
-### BR
-
- * Encoding A
-   ```
-   ..., value1 →
-   ...
-   ```
- * Encoding B, C, D
-   ```
-   ... →
-   ...
-   ```
-   `value1 = immediate`
-
-Operation:
-```
-PC += value1
-```
-
-### CALL
-
- * Encoding A
-   ```
-   ..., value1 →
-   ..., return_address
-   ```
- * Encoding B, C, D
-   ```
-   ... →
-   ..., return_address
-   ```
-   `value1 = immediate`
-
-Operation:
-```
-return_address = PC
-PC += value1
-```
-
-### EXT
-
- * Encoding A
-   ```
-   ..., value1 →
-   ...
-   ```
- * Encoding B, C, D
-   ```
-   ... →
-   ...
-   ```
-   `value1 = immediate`
-
-Operation:
-```
-if (value1 == 0xFFFFFFFF) inform host that guest routine has finished
-else call external native function with id = value1
+if (index == 0xFFFFFFFF):
+   inform host that guest routine has finished
+else:
+   call external native function with specified index
 ```
 
 ## Memory access instructions
