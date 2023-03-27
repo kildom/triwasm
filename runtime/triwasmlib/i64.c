@@ -33,6 +33,30 @@ uint64_t add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     return make64(ah, al);
 }
 
+EXPORT(ushr64)
+uint64_t ushr64(uint32_t b, uint32_t ah, uint32_t al)
+{
+    b &= 63;
+    if (b >= 32) {
+        al = ah;
+        ah = 0;
+        b -= 32;
+    }
+    if (b != 0) {
+        al = (al >> b) | (ah << (32 - b));
+        ah >>= b;
+    }
+    return make64(ah, al);
+}
+
+EXPORT(ushr64_1)
+uint64_t ushr64_1(uint32_t ah, uint32_t al)
+{
+    al = (al >> 1) | (ah << 31);
+    ah >>= 1;
+    return make64(ah, al);
+}
+
 EXPORT(udiv64)
 uint64_t udivmod64(uint32_t is_mod, uint64_t b, uint64_t a)
 {
