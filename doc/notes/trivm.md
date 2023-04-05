@@ -91,6 +91,10 @@
     }
     ...
     ```
+* Add option to execute code from external source:
+  * ROM is not a memory, but user-defined macro, e.g. `#define TRIVM_USER_ROM_PROG(vm, address, out_value)`, `#define TRIVM_USER_ROM_DATA(vm, address, out_value)`
+  * The macro should have flag indicating type of ROM access (instruction or data)
+  * triWASM compiler should have options `slow-rom` or something similar, which moves some read-only data to RAM.
 * Add READ/WRITE POP+LMP+offset protection
   * When they are optimized to READ/WRTIE offset, protection must be done by the compiler
   * two additional register LMB, LME - linear memory begin, linear memory end
