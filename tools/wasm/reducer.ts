@@ -56,13 +56,14 @@ export class Reducer {
         let newBody: WasmInstr[] = [];
         let unreachable = false;
         for (let instr of body) {
-            if (unreachable && instr.opcode !== OP.ELSE) {
-                if (instr.opcode == OP.END) {
-                    newBody.push({ opcode: OP.TRIVM_END_UNREACHABLE });
-                }
-                // skip unreachable instructions
-            } else {
+            if (!unreachable) {
                 unreachable = this.reduceInstr(func, newBody, instr);
+            } else if (instr.opcode == OP.ELSE) {
+                unreachable = this.reduceInstr(func, newBody, { opcode: OP.ELSE, unreachable: true });
+            } else if (instr.opcode == OP.END) {
+                newBody.push({ opcode: OP.END, unreachable: true });
+            } else {
+                // skip other unreachable instructions
             }
         }
         body.splice(0, Infinity, ...newBody);
@@ -226,11 +227,13 @@ export class Reducer {
                 this.popTypes(NumberType.I32);
                 this.popTypes(...instr.type.params);
                 this.pushTypes(...instr.type.results);
-                if (this.module.tables.length > 1) {
-                    newBody.push({ opcode: OP.I32_CONST, value: instr.table.index });
-                }
                 this.checkDeletedEntity(instr.table); // TODO: Deleted entity references should be checked in the merger
-                newBody.push(this.createTriWasmLibCall('call_indirect'));
+                if (this.module.tables.length > 1) { // TODO: Compare only count of non-deleted tables
+                    newBody.push({ opcode: OP.I32_CONST, value: instr.table.index });
+                    newBody.push(this.createTriWasmLibCall('call_indirect_table'));
+                } else {
+                    newBody.push(this.createTriWasmLibCall('call_indirect'));
+                }
                 break;
             }
             case OP.DROP: {
@@ -291,12 +294,12 @@ export class Reducer {
                     if (this.ext.mem64 && words > 1) {
                         words -= 2;
                         newBody.push({ opcode: OP.TRIVM_DUP64, offset });
-                        newBody.push({ opcode: OP.TRIVM_LOCAL_SET64, index: instr.index, 4 * words });
+                        newBody.push({ opcode: OP.TRIVM_LOCAL_SET64, index: instr.index, offset: 4 * words });
                         offset += 8;
                     } else {
                         words -= 1;
                         newBody.push({ opcode: OP.TRIVM_DUP32, offset });
-                        newBody.push({ opcode: OP.TRIVM_LOCAL_SET32, index: instr.index, 4 * words });
+                        newBody.push({ opcode: OP.TRIVM_LOCAL_SET32, index: instr.index, offset: 4 * words });
                         offset += 4;
                     }
                 }
@@ -469,8 +472,8 @@ export class Reducer {
                 this.pushTypes(NumberType.I32);
                 break;
             }
-            case OP.I64_CONST: { // Generated from expression: {#mem64} ## {else} i32.const value: Number(..value & 0xFFFFFFFFn) & 0xFFFFFFFF ; i32.const value: Number(..value >> 32n) & 0xFFFFFFFF
-                if (this.ext.mem64) {
+            case OP.I64_CONST: { // Generated from expression: {#i64} ## {else} i32.const value: Number(..value & 0xFFFFFFFFn) & 0xFFFFFFFF ; i32.const value: Number(..value >> 32n) & 0xFFFFFFFF
+                if (this.ext.i64) {
                     newBody.push(instr);
                 } else {
                     newBody.push({ opcode: OP.I32_CONST, value: Number(instr.value & 0xFFFFFFFFn) & 0xFFFFFFFF });
@@ -484,8 +487,8 @@ export class Reducer {
                 this.pushTypes(NumberType.F32);
                 break;
             }
-            case OP.F64_CONST: { // Generated from expression: {#mem64} i64.const value {else} i32.const value: Number(..value & 0xFFFFFFFFn) & 0xFFFFFFFF ; i32.const value: Number(..value >> 32n) & 0xFFFFFFFF
-                if (this.ext.mem64) {
+            case OP.F64_CONST: { // Generated from expression: {#i64} i64.const value {else} i32.const value: Number(..value & 0xFFFFFFFFn) & 0xFFFFFFFF ; i32.const value: Number(..value >> 32n) & 0xFFFFFFFF
+                if (this.ext.i64) {
                     newBody.push({ opcode: OP.I64_CONST, value: instr.value });
                 } else {
                     newBody.push({ opcode: OP.I32_CONST, value: Number(instr.value & 0xFFFFFFFFn) & 0xFFFFFFFF });

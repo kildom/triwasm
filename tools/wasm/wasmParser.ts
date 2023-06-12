@@ -135,7 +135,7 @@ export class WasmParser {
                     // Ignore
                     break;
                 default:
-                    console.log(id);
+                    //console.log(id);
                     break;
             }
         }
@@ -364,7 +364,7 @@ export class WasmParser {
         this.module.functions.push(func);
         let instr = this.createInstrWithBlock(OP.TRIVM_FUNCTION, func.type, undefined);
         func.block = instr.block;
-        instr.block.body = [{ opcode: OP.REF_FUNC, func: ref }, { opcode: OP.END }];
+        instr.block.body = [{ opcode: OP.REF_FUNC, func: ref }, { opcode: OP.END, unreachable: false }];
         return func;
     }
 
@@ -409,7 +409,7 @@ export class WasmParser {
                 this.blockStack.push(instr.block);
                 instr.block.body = this.parseExpression(input, func, opcode == OP.IF);
                 this.blockStack.pop();
-                if (trace) console.log(`${OP[opcode]} (${type.params.map(x => NumberType[x] || VectorType[x] || RefType[x]).join(', ')}) => (${type.params.map(x => NumberType[x] || VectorType[x] || RefType[x]).join(', ')})`);
+                //if (trace) console.log(`${OP[opcode]} (${type.params.map(x => NumberType[x] || VectorType[x] || RefType[x]).join(', ')}) => (${type.params.map(x => NumberType[x] || VectorType[x] || RefType[x]).join(', ')})`);
                 break;
             }
             case OP.ELSE: { // else
@@ -417,10 +417,12 @@ export class WasmParser {
                     throw new Error('"else" instruction not expected here');
                 }
                 allowElse = false;
+                instr = { opcode, unreachable: false };
                 break;
             }
             case OP.END: { // end
                 last = true;
+                instr = { opcode, unreachable: false };
                 break;
             }
             case OP.BR:
@@ -1249,7 +1251,7 @@ export class WasmParser {
             }
             this.types.push(ft);
         }
-        console.log(this.types);
+        //console.log(this.types);
     }
 
 }

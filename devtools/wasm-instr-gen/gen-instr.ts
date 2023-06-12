@@ -9,6 +9,8 @@ interface Row {
     parser: string;
     type: string;
     reduction: string;
+    afterReduction: string;
+    dump: string;
     decOpcode: number;
     hexOpcode: string;
     trivmOnly: boolean;
@@ -163,6 +165,124 @@ function generateParser(table: Row[]) {
     writeOutput('output/wasmParser.ts', '../../tools/wasm/wasmParser.ts', out, '            ');
 }
 
+function splitTypes(type: string): [(string | undefined)[], (string | undefined)[]] {
+    type = type.replace(/[^a-z0-9_→]/gi, ' ');
+    return type.trim().length == 0 ? [[], []] : type
+        .split('→')
+        .map(x => x
+            .trim()
+            .split(/\s+/)
+            .filter(x => x.length)
+            .map(x => TYPES[x.toLowerCase()])
+        ) as [(string | undefined)[], (string | undefined)[]];
+}
+
+function generateDumperNames(table: Row[]) {
+    let out = '';
+
+    for (let row of table) {
+        out += `    [OP.${row.id}]: '${row.instruction}',\n`;
+    }
+
+    writeOutput('output/moduleDebug.ts', '../../tools/wasm/moduleDebug.ts', out, '    ', 'Instruction names');
+}
+
+function generateDumperCases(table: Row[]) {
+
+    function sortKey(value: string): number {
+        if (value.trim().startsWith('!')) {
+            return 0;
+        } else if (value.trim().startsWith('```')) {
+            return 2;
+        } else {
+            return 1;
+        }
+    }
+
+    let out = '';
+
+    let groups: { [key: string]: Row[] } = {};
+
+    for (let row of table) {
+        let key: string;
+        if (row.dump) {
+            key = '!' + row.dump;
+        } else {
+            key = row.parser + '```' + row.type;
+        }
+        groups[key] = groups[key] || [];
+        groups[key].push(row);
+    }
+
+    let sorted = Object.keys(groups).sort((a, b) => sortKey(a) - sortKey(b));
+
+    for (let key of sorted) {
+        for (let row of groups[key]) {
+            out += `\n            case OP.${row.id}:`;
+        }
+        out += ` {\n`;
+        if (key.startsWith('!')) {
+
+        } else {
+            let type = key.split('```')[1];
+            let [popTypes, pushTypes] = splitTypes(type);
+            if (popTypes.indexOf(undefined) >= 0 || pushTypes.indexOf(undefined) >= 0) {
+                console.error(`Need custom dumping method for ${key}: ${groups[key].map(row => row.instruction + ':' + row.hexOpcode).join(', ')}`);
+            }
+            if (popTypes.length > 0) {
+                out += `                this.pop(${popTypes.join(', ')});\n`;
+            }
+            if (pushTypes.length > 0) {
+                out += `                this.push(${pushTypes.join(', ')});\n`;
+            }
+        }
+        out += `                break;\n`;
+        out += `            }`;
+    }
+    out += `\n`;
+
+    writeOutput('output/moduleDebug.ts', '../../tools/wasm/moduleDebug.ts', out, '            ', 'Instruction print and verify');
+}
+
+function generateDumper(table: Row[]) {
+
+    generateDumperNames(table);
+    generateDumperCases(table);
+    return;
+
+    let out = '';
+
+    for (let row of table) {
+        let [popTypes, pushTypes] = splitTypes(row.type);
+        out += `            case OP.${row.id}: {\n`;
+        out += `                this.printInstrName(instr, '${row.instruction}'${row.dump == 'block' ? ', true' : ''});\n`;
+        let dumpList = row.dump.split(/\s*,\s*/).filter(x => x);
+        if (dumpList.length > 0) {
+            for (let dump of dumpList) {
+                if (dump == 'block') {
+                    out += `                outStackIndex = this.out.length;\n`;
+                }
+                out += `                this.dumpInstr${dump[0].toUpperCase()}${dump.substring(1)}(instr);\n`;
+            }
+        } else {
+            if (popTypes.indexOf(undefined) >= 0) {
+                out += `                // TODO: custom pop types\n`;
+            } else if (popTypes.length > 0) {
+                out += `                this.pop(${popTypes.join(', ')});\n`;
+            }
+            if (pushTypes.indexOf(undefined) >= 0) {
+                out += `                // TODO: custom push types\n`;
+            } else if (pushTypes.length > 0) {
+                out += `                this.push(${pushTypes.join(', ')});\n`;
+            }
+        }
+        out += `                break;\n`;
+        out += `            }\n`;
+    }
+
+    writeOutput('output/moduleDebug.ts', '../../tools/wasm/moduleDebug.ts', out, '            ');
+}
+
 function generateReducer(table: Row[]) {
 
     function replaceExpr(expr: string): string {
@@ -271,15 +391,7 @@ function generateReducer(table: Row[]) {
             tokens.push(`${ind}}`);
             ind = ind.substring(0, ind.length - 4);
         }
-        type = type.replace(/[^a-z0-9_→]/gi, ' ');
-        let [popTypes, pushTypes] = type.trim().length == 0 ? [[], []] : type
-            .split('→')
-            .map(x => x
-                .trim()
-                .split(/\s+/)
-                .filter(x => x.length)
-                .map(x => TYPES[x.toLowerCase()])
-            );
+        let [popTypes, pushTypes] = splitTypes(type);
         if (popTypes.length) {
             tokens.push(`    this.popTypes(${popTypes.join(', ')});`);
         }
@@ -293,9 +405,13 @@ function generateReducer(table: Row[]) {
     writeOutput('output/reducer.ts', '../../tools/wasm/reducer.ts', out, '            ');
 }
 
-function writeOutput(destFile: string, origFile: string, content: string, indent: string) {
+function writeOutput(destFile: string, origFile: string, content: string, indent: string, title: string = '') {
     let header = indent + '// -- Begin of source code generated with help of "gen-instr.ts" script --';
     let footer = indent + '// -- End of source code generated with help of "gen-instr.ts" script --';
+    if (title) {
+        header = `${indent}// -- ${title} - begin of source code generated with help of "gen-instr.ts" script --`;
+        footer = `${indent}// -- ${title} - end of source code generated with help of "gen-instr.ts" script --`;
+    }
     let begin: string;
     let end: string;
     try {
@@ -327,7 +443,7 @@ async function main() {
     generateEnum(table);
     generateParser(table);
     generateReducer(table);
-    // generateDumper(table);
+    generateDumper(table);
     // generateOutputNames(table);
     // generateDataDump(table);
     // generateGenerator(table);

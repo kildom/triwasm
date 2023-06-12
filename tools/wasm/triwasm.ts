@@ -15,6 +15,7 @@
 import { platform } from "../utils/platform";
 import { BinaryInput } from "./binaryInput";
 import { LinkResolver } from "./linkResolver";
+import { ModuleDebug, ModuleStage } from "./moduleDebug";
 import { ModuleMerger } from "./moduleMerger";
 import { Reducer } from "./reducer";
 import { WasmParser } from "./wasmParser";
@@ -28,6 +29,9 @@ let softfloatlib = p.parse("dist/data/lib/softfloatlib.wasm");
 let m = new ModuleMerger(main);
 m.merge(triwasmlib, '__triwasm__triwasmlib');
 m.merge(softfloatlib, '__triwasm__softfloatlib');
+
+let dbg = new ModuleDebug(main, ModuleStage.AfterParser);
+dbg.diagnose();
 
 let r = new LinkResolver();
 r.resolve(main);

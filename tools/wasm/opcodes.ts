@@ -452,10 +452,15 @@ export enum OP {
     I32X4_TRUNC_SAT_F64X2_U_ZERO = 0xFDFD, // i32x4.trunc_sat_f64x2_u_zero    [ 0xFD 0xFD 0x01 ]
     F64X2_CONVERT_LOW_I32X4_S = 0xFEFD, // f64x2.convert_low_i32x4_s    [ 0xFD 0xFE 0x01 ]
     F64X2_CONVERT_LOW_I32X4_U = 0xFFFD, // f64x2.convert_low_i32x4_u    [ 0xFD 0xFF 0x01 ]
-    TRIVM_MULTIBYTE_FIRST = 0xFB, // TRIVM.MULTIBYTE_FIRST    [ 0xFC ]
+    TRIVM_MULTIBYTE_FIRST = 0xFB, // TRIVM.MULTIBYTE_FIRST    [ 0xFB ]
     TRIVM_FUNCTION = -1, // TRIVM.FUNCTION
     TRIVM_POP = -2, // TRIVM.POP
-    TRIVM_END_UNREACHABLE = -3, // TRIVM.END_UNREACHABLE
+    TRIVM_DUP32 = -3, // TRIVM.DUP32
+    TRIVM_DUP64 = -4, // TRIVM.DUP64
+    TRIVM_LOCAL_GET32 = -5, // TRIVM.LOCAL_GET32
+    TRIVM_LOCAL_GET64 = -6, // TRIVM.LOCAL_GET64
+    TRIVM_LOCAL_SET32 = -7, // TRIVM.LOCAL_SET32
+    TRIVM_LOCAL_SET64 = -8, // TRIVM.LOCAL_SET64
 };
 
 // -- End of source code generated with help of "gen-instr.ts" script --
