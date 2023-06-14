@@ -184,7 +184,7 @@ function generateDumperNames(table: Row[]) {
         out += `    [OP.${row.id}]: '${row.instruction}',\n`;
     }
 
-    writeOutput('output/moduleDebug.ts', '../../tools/wasm/moduleDebug.ts', out, '    ', 'Instruction names');
+    writeOutput('output/moduleDebug-names.ts', '../../tools/wasm/moduleDebug.ts', out, '    ', 'Instruction names');
 }
 
 function generateDumperCases(table: Row[]) {
@@ -364,11 +364,11 @@ function generateReducer(table: Row[]) {
             } else if ((m = reduction.match(/^\s*;\s*/i))) { // ;
                 reduction = reduction.substring(m[0].length);
             } else if ((m = reduction.match(/^\s*@\s*([a-z0-9_]+)\s*/i))) { // @triwasmlib_func
-                tokens.push(`${ind}    newBody.push(this.createTriWasmLibCall('${m[1]}'));`)
+                tokens.push(`${ind}    newBody.push(this.createTriWasmLibCall(instr, '${m[1]}'));`)
                 reduction = reduction.substring(m[0].length);
             } else if ((m = reduction.match(/^\s*([a-z0-9_\.]+)(\s+[^;{]+)?/i))) { // other.instr param: value, param2 ...
                 let name = m[1].toUpperCase().replace(/\./g, '_');
-                let params = [`opcode: OP.${name}`];
+                let params = [`id: instrId(instr), opcode: OP.${name}`];
                 if (m[2]) {
                     for (let expr of m[2].split(/\s*(?<!\\),\s*/)) {
                         let mm: RegExpMatchArray | null;

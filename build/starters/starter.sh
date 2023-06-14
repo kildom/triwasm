@@ -9,7 +9,7 @@ find_engine() {
     check_node() {
         $LOG "Checking Node.js or Electron at: $1"
         set +e
-        "$1" -i <<< "process.exit(process.version.split('.').map(x=>parseInt(x.replace(/[^0-9]/,''))).slice(0,2).reduce((a,x)=>a=100*a+x)<$MINIMUM_NODE_VER?87:86)" 2> /dev/null > /dev/null
+        "$1" --enable-source-maps --expose-gc -i <<< "process.exit(process.version.split('.').map(x=>parseInt(x.replace(/[^0-9]/,''))).slice(0,2).reduce((a,x)=>a=100*a+x)<$MINIMUM_NODE_VER?87:86)" 2> /dev/null > /dev/null
         result=$?
         set -e
         if [ $result == 87 ]; then
@@ -17,7 +17,7 @@ find_engine() {
             return 0
         elif [ $result == 86 ]; then
             $LOG "    RESULT: OK"
-            ENGINE_BIN=$1
+            ENGINE_BIN="$1 --enable-source-maps --expose-gc" # TODO: check if this options work for electron
             return 1
         else
             $LOG "    RESULT: Error"

@@ -39,7 +39,7 @@ export enum RefType {
 export type ValueType = NumberType | VectorType | RefType;
 export const ValueTypeObject = { ...NumberType, ...VectorType, ...RefType };
 
-export function valueTypeWords(type: ValueType) : 1 | 2 | 4 {
+export function valueTypeWords(type: ValueType): 1 | 2 | 4 {
     switch (type) {
         case NumberType.I32:
         case NumberType.F32:
@@ -97,56 +97,103 @@ export interface Limits {
     max: number;
 };
 
+let lastInstrId = 1000000000;
+let instrIdMap: Map<number, number> = new Map();
+
+export function instrId(base?: WasmInstr | number) {
+    let id = ++lastInstrId;
+    if (base !== undefined) {
+        let baseId: number;
+        if (typeof (base) === 'object') {
+            baseId = base.id;
+        } else {
+            baseId = base;
+        }
+        let realBase = baseId;
+        while (instrIdMap.has(realBase)) {
+            realBase = instrIdMap.get(realBase) as number;
+            if (realBase == baseId) {
+                break;
+            }
+        }
+        instrIdMap.set(id, realBase);
+    }
+    return id;
+}
+
+export enum WasmBranchDir {
+    Forward,
+    Backward,
+};
+
 export type WasmInstrBrOP = OP.BR | OP.BR_IF;
 export interface WasmInstrBr {
+    id: number;
     opcode: WasmInstrBrOP;
     target: WasmBlock;
+    direction: WasmBranchDir;
 };
 
 export type WasmInstrIndexedOP = OP.LOCAL_GET | OP.LOCAL_SET | OP.LOCAL_TEE | OP.I8X16_EXTRACT_LANE_S | OP.I8X16_EXTRACT_LANE_U | OP.I8X16_REPLACE_LANE | OP.I16X8_EXTRACT_LANE_S | OP.I16X8_EXTRACT_LANE_U | OP.I16X8_REPLACE_LANE | OP.I32X4_EXTRACT_LANE | OP.I32X4_REPLACE_LANE | OP.I64X2_EXTRACT_LANE | OP.I64X2_REPLACE_LANE | OP.F32X4_EXTRACT_LANE | OP.F32X4_REPLACE_LANE | OP.F64X2_EXTRACT_LANE | OP.F64X2_REPLACE_LANE;
 export interface WasmInstrIndexed {
+    id: number;
     opcode: WasmInstrIndexedOP;
     index: number;
 };
 
-export type WasmInstrWithBlockOP = OP.IF | OP.BLOCK | OP.LOOP | OP.TRIVM_FUNCTION;
+export type WasmInstrWithBlockOP = OP.BLOCK | OP.LOOP | OP.TRIVM_FUNCTION;
 export interface WasmInstrWithBlock {
+    id: number;
     opcode: WasmInstrWithBlockOP;
     block: WasmBlock;
 }
 
+export type WasmInstrIfOP = OP.IF;
+export interface WasmInstrIf {
+    id: number;
+    opcode: WasmInstrIfOP;
+    block: WasmBlock;
+    withElse: boolean;
+}
+
 export type WasmInstrEndOP = OP.END | OP.ELSE;
 export interface WasmInstrEnd {
+    id: number;
     opcode: WasmInstrEndOP;
     unreachable: boolean;
 }
 
 export type WasmInstrConst32OP = OP.I32_CONST | OP.F32_CONST | OP.TRIVM_POP;
 export interface WasmInstrConst32 {
+    id: number;
     opcode: WasmInstrConst32OP;
     value: number;
 };
 
 export type WasmInstrConst64OP = OP.I64_CONST | OP.F64_CONST;
 export interface WasmInstrConst64 {
+    id: number;
     opcode: WasmInstrConst64OP;
     value: bigint;
 };
 
 export type WasmInstrBrTableOP = OP.BR_TABLE;
 export interface WasmInstrBrTable {
+    id: number;
     opcode: WasmInstrBrTableOP;
     targets: WasmBlock[];
 };
 
 export type WasmInstrRefOP = OP.REF_NULL;
 export interface WasmInstrRef {
+    id: number;
     opcode: WasmInstrRefOP;
     type: RefType;
 };
 
 export type WasmInstrCallIndirectOP = OP.CALL_INDIRECT;
 export interface WasmInstrCallIndirect {
+    id: number;
     opcode: WasmInstrCallIndirectOP;
     type: FunctionType;
     table: WasmTable;
@@ -154,30 +201,43 @@ export interface WasmInstrCallIndirect {
 
 export type WasmInstrFuncOP = OP.CALL | OP.REF_FUNC;
 export interface WasmInstrFunc {
+    id: number;
     opcode: WasmInstrFuncOP;
     func: WasmFunction;
 };
 
 export type WasmInstrGlobalOP = OP.GLOBAL_GET | OP.GLOBAL_SET;
 export interface WasmInstrGlobal {
+    id: number;
     opcode: WasmInstrGlobalOP;
     global: WasmGlobal;
 };
 
+export type WasmInstrGlobalOffsetOP = OP.TRIVM_GLOBAL_GET32 | OP.TRIVM_GLOBAL_GET64 | OP.TRIVM_GLOBAL_SET32 | OP.TRIVM_GLOBAL_SET64;
+export interface WasmInstrGlobalOffset {
+    id: number;
+    opcode: WasmInstrGlobalOffsetOP;
+    global: WasmGlobal;
+    offset: number;
+};
+
 export type WasmInstrValueV128OP = OP.V128_CONST | OP.I8X16_SHUFFLE;
 export interface WasmInstrValueV128 {
+    id: number;
     opcode: WasmInstrValueV128OP;
     value: Uint8Array;
 };
 
 export type WasmInstrTableOP = OP.TABLE_GET | OP.TABLE_SET | OP.TABLE_GROW | OP.TABLE_SIZE | OP.TABLE_FILL;
 export interface WasmInstrTable {
+    id: number;
     opcode: WasmInstrTableOP;
     table: WasmTable;
 };
 
 export type WasmInstrMemArgOP = OP.I32_LOAD | OP.I64_LOAD | OP.F32_LOAD | OP.F64_LOAD | OP.I32_LOAD8_S | OP.I32_LOAD8_U | OP.I32_LOAD16_S | OP.I32_LOAD16_U | OP.I64_LOAD8_S | OP.I64_LOAD8_U | OP.I64_LOAD16_S | OP.I64_LOAD16_U | OP.I64_LOAD32_S | OP.I64_LOAD32_U | OP.I32_STORE | OP.I64_STORE | OP.F32_STORE | OP.F64_STORE | OP.I32_STORE8 | OP.I32_STORE16 | OP.I64_STORE8 | OP.I64_STORE16 | OP.I64_STORE32 | OP.V128_LOAD | OP.V128_LOAD8X8_S | OP.V128_LOAD8X8_U | OP.V128_LOAD16X4_S | OP.V128_LOAD16X4_U | OP.V128_LOAD32X2_S | OP.V128_LOAD32X2_U | OP.V128_LOAD8_SPLAT | OP.V128_LOAD16_SPLAT | OP.V128_LOAD32_SPLAT | OP.V128_LOAD64_SPLAT | OP.V128_STORE;
 export interface WasmInstrMemArg {
+    id: number;
     opcode: WasmInstrMemArgOP;
     offset: number;
     memory: WasmMemory;
@@ -185,12 +245,14 @@ export interface WasmInstrMemArg {
 
 export type WasmInstrOffsetOP = OP.TRIVM_DUP32 | OP.TRIVM_DUP64;
 export interface WasmInstrOffset {
+    id: number;
     opcode: WasmInstrOffsetOP;
     offset: number;
 };
 
 export type WasmInstrLocalOP = OP.TRIVM_LOCAL_GET32 | OP.TRIVM_LOCAL_GET64 | OP.TRIVM_LOCAL_SET32 | OP.TRIVM_LOCAL_SET64;
 export interface WasmInstrLocal {
+    id: number;
     opcode: WasmInstrLocalOP;
     index: number;
     offset: number;
@@ -198,6 +260,7 @@ export interface WasmInstrLocal {
 
 export type WasmInstrMemArgWithIndexOP = OP.V128_LOAD8_LANE | OP.V128_STORE8_LANE | OP.V128_LOAD16_LANE | OP.V128_STORE16_LANE | OP.V128_LOAD32_LANE | OP.V128_STORE32_LANE | OP.V128_LOAD32_ZERO | OP.V128_LOAD64_LANE | OP.V128_STORE64_LANE | OP.V128_LOAD64_ZERO;
 export interface WasmInstrMemArgWithIndex {
+    id: number;
     opcode: WasmInstrMemArgWithIndexOP;
     offset: number;
     memory: WasmMemory;
@@ -206,12 +269,14 @@ export interface WasmInstrMemArgWithIndex {
 
 export type WasmInstrMemOP = OP.MEMORY_SIZE | OP.MEMORY_GROW | OP.MEMORY_FILL;
 export interface WasmInstrMem {
+    id: number;
     opcode: WasmInstrMemOP;
     memory: WasmMemory;
 };
 
 export type WasmInstrMemInitOP = OP.MEMORY_INIT;
 export interface WasmInstrMemInit {
+    id: number;
     opcode: WasmInstrMemInitOP;
     data: WasmData;
     memory: WasmMemory;
@@ -219,41 +284,47 @@ export interface WasmInstrMemInit {
 
 export type WasmInstrDataDropOP = OP.DATA_DROP;
 export interface WasmInstrDataDrop {
+    id: number;
     opcode: WasmInstrDataDropOP;
     data: WasmData;
 };
 
 export type WasmInstrMemCopyOP = OP.MEMORY_COPY;
 export interface WasmInstrMemCopy {
+    id: number;
     opcode: WasmInstrMemCopyOP;
     memories: [WasmMemory, WasmMemory];
 };
 
 export type WasmInstrTableCopyOP = OP.TABLE_COPY;
 export interface WasmInstrTableCopy {
+    id: number;
     opcode: WasmInstrTableCopyOP;
     tables: [WasmTable, WasmTable];
 };
 
 export type WasmInstrElemDropOP = OP.ELEM_DROP;
 export interface WasmInstrElemDrop {
+    id: number;
     opcode: WasmInstrElemDropOP;
     element: WasmElement;
 };
 
 export type WasmInstrTableInitOP = OP.TABLE_INIT;
 export interface WasmInstrTableInit {
+    id: number;
     opcode: WasmInstrTableInitOP;
     element: WasmElement;
     table: WasmTable;
 };
 
-export type WasmInstrNoArgsOP = Exclude<OP, WasmInstrBrOP | WasmInstrIndexedOP | WasmInstrWithBlockOP | WasmInstrEndOP | WasmInstrConst32OP | WasmInstrConst64OP | WasmInstrBrTableOP | WasmInstrRefOP | WasmInstrCallIndirectOP | WasmInstrFuncOP | WasmInstrGlobalOP | WasmInstrTableOP | WasmInstrValueV128OP | WasmInstrMemArgOP | WasmInstrOffsetOP | WasmInstrLocalOP | WasmInstrMemOP | WasmInstrMemInitOP | WasmInstrDataDropOP | WasmInstrMemCopyOP | WasmInstrMemArgWithIndexOP | WasmInstrElemDropOP | WasmInstrTableInitOP | WasmInstrTableCopyOP>;
+export type WasmInstrNoArgsOP = Exclude<OP, WasmInstrBrOP | WasmInstrIndexedOP | WasmInstrWithBlockOP | WasmInstrIfOP | WasmInstrEndOP | WasmInstrConst32OP | WasmInstrConst64OP | WasmInstrBrTableOP | WasmInstrRefOP | WasmInstrCallIndirectOP | WasmInstrFuncOP | WasmInstrGlobalOP | WasmInstrGlobalOffsetOP | WasmInstrTableOP | WasmInstrValueV128OP | WasmInstrMemArgOP | WasmInstrOffsetOP | WasmInstrLocalOP | WasmInstrMemOP | WasmInstrMemInitOP | WasmInstrDataDropOP | WasmInstrMemCopyOP | WasmInstrMemArgWithIndexOP | WasmInstrElemDropOP | WasmInstrTableInitOP | WasmInstrTableCopyOP>;
 export interface WasmInstrNoArgs {
+    id: number;
     opcode: WasmInstrNoArgsOP;
 };
 
-export type WasmInstr = WasmInstrNoArgs | WasmInstrBr | WasmInstrIndexed | WasmInstrWithBlock | WasmInstrEnd | WasmInstrConst32 | WasmInstrConst64 | WasmInstrBrTable | WasmInstrRef | WasmInstrCallIndirect | WasmInstrFunc | WasmInstrGlobal | WasmInstrTable | WasmInstrValueV128 | WasmInstrMemArg | WasmInstrOffset | WasmInstrLocal | WasmInstrMem | WasmInstrMemInit | WasmInstrDataDrop | WasmInstrMemCopy | WasmInstrMemArgWithIndex | WasmInstrElemDrop | WasmInstrTableInit | WasmInstrTableCopy;
+export type WasmInstr = WasmInstrNoArgs | WasmInstrBr | WasmInstrIndexed | WasmInstrWithBlock | WasmInstrIf | WasmInstrEnd | WasmInstrConst32 | WasmInstrConst64 | WasmInstrBrTable | WasmInstrRef | WasmInstrCallIndirect | WasmInstrFunc | WasmInstrGlobal | WasmInstrGlobalOffset | WasmInstrTable | WasmInstrValueV128 | WasmInstrMemArg | WasmInstrOffset | WasmInstrLocal | WasmInstrMem | WasmInstrMemInit | WasmInstrDataDrop | WasmInstrMemCopy | WasmInstrMemArgWithIndex | WasmInstrElemDrop | WasmInstrTableInit | WasmInstrTableCopy;
 
 export class WasmBlock {
     public body: WasmInstr[] = [];
@@ -348,12 +419,13 @@ export class WasmModule {
     public stackPointerDetector?: WasmFunction;
     public startFunction?: WasmFunction;
     public exported: Map<string, Map<string, WasmFunction>> = new Map();
+    public logicalOffsets: { start: number, end: number } = { start: 0, end: 0 };
 
     public getExported(module: string, name: string, required: true): WasmFunction;
     public getExported(module: string, name: string, required: false): WasmFunction | undefined;
 
     public getExported(module: string, name: string, required: boolean = true): WasmFunction | undefined {
-            let func = this.exported.get(module)?.get(module);
+        let func = this.exported.get(module)?.get(name);
         if (required && func === undefined) {
             throw new Error(`Requested function '${name}' from module '${module}' not found.`);
         }

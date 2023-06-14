@@ -21,24 +21,26 @@ export class BinaryInput {
     private view: DataView;
     private pos: number;
     private limit: number;
-    // @ts-ignore
-    private dec: TextDecoder; // TODO: Why TS returns error here?
+    private dec: TextDecoder;
+    private idBase: number;
 
-    public constructor(file: string);
-    public constructor(source: BinaryInput, start: number, length: number);
-    constructor(file_or_source: string | BinaryInput, start?: number, length?: number) {
+    public constructor(file: string, idBase: number);
+    public constructor(source: BinaryInput, start: number, length: number, idBase: number);
+    constructor(file_or_source: string | BinaryInput, startOrIdBase: number, length?: number, idBase?: number) {
         if (typeof (file_or_source) === 'string') {
             this.buffer = platform.readFile(file_or_source, true);
             this.view = new DataView(this.buffer.buffer, this.buffer.byteOffset, this.buffer.byteLength);
             this.pos = 0;
             this.limit = this.buffer.length;
             this.dec = new TextDecoder();
+            this.idBase = startOrIdBase;
         } else {
             this.buffer = file_or_source.buffer;
             this.view = file_or_source.view;
-            this.pos = start as number;
+            this.pos = startOrIdBase as number;
             this.limit = this.pos + (length as number);
             this.dec = file_or_source.dec;
+            this.idBase = idBase as number;
         }
     }
 
@@ -46,7 +48,7 @@ export class BinaryInput {
         if (this.pos + length > this.limit) {
             throw Error('Unexpected end of module file.');
         }
-        let res = new BinaryInput(this, this.pos, length);
+        let res = new BinaryInput(this, this.pos, length, this.idBase);
         this.pos += length;
         return res;
     }
@@ -62,7 +64,7 @@ export class BinaryInput {
     }
 
     public clone(): BinaryInput {
-        return new BinaryInput(this, this.pos, this.remaining());
+        return new BinaryInput(this, this.pos, this.remaining(), this.idBase);
     }
 
     public finalize(): void {
@@ -173,6 +175,10 @@ export class BinaryInput {
         let result = this.dec.decode(this.buffer.subarray(this.pos, this.pos + length));
         this.pos += length;
         return result;
+    }
+
+    id() {
+        return this.idBase + this.pos;
     }
 
 }

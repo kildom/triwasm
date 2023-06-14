@@ -22,19 +22,20 @@ import { WasmParser } from "./wasmParser";
 
 //let p = new WasmParser("test/__old/test.wasm");
 let p = new WasmParser();
-let main = p.parse("test/__old/libbzip2-dec.wasm");
-let triwasmlib = p.parse("dist/data/lib/triwasmlib.wasm");
-let softfloatlib = p.parse("dist/data/lib/softfloatlib.wasm");
+let main = p.parse("test/__old/libbzip2-dec.wasm", 0);
+let triwasmlib = p.parse("dist/data/lib/triwasmlib.wasm", main.logicalOffsets.end);
+let softfloatlib = p.parse("dist/data/lib/softfloatlib.wasm", triwasmlib.logicalOffsets.end);
 
 let m = new ModuleMerger(main);
 m.merge(triwasmlib, '__triwasm__triwasmlib');
 m.merge(softfloatlib, '__triwasm__softfloatlib');
 
-let dbg = new ModuleDebug(main, ModuleStage.AfterParser);
-dbg.diagnose();
-
 let r = new LinkResolver();
 r.resolve(main);
 
+new ModuleDebug(main, ModuleStage.AfterResolver).diagnose();
+
 let red = new Reducer();
 red.reduce(main);
+
+new ModuleDebug(main, ModuleStage.AfterReducer).diagnose();

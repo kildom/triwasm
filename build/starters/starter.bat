@@ -71,7 +71,7 @@ goto :EOF
     %LOG% Checking Node.js or Electron at: %1
     %1 "%JS_DIR%\versioncheck.js" %MINIMUM_NODE_VER% > nul 2> nul
     set RES=%ERRORLEVEL%
-    set ENGINE_BIN=
+    set "ENGINE_BIN=--enable-source-maps --expose-gc"
     if %RES%==87 goto check_result_old
     if %RES%==86 goto check_result_ok
     goto check_result_error

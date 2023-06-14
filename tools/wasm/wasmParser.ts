@@ -15,7 +15,7 @@
 import { allowTemporaryNull, enumize, pick } from "../utils/common";
 import { BinaryInput } from "./binaryInput";
 import { OP } from "./opcodes";
-import { DataKind, ElementKind, FunctionType, GlobalKind, Limits, NumberType, RefType, ValueType, ValueTypeObject, VectorType, WasmBlock, WasmData, WasmElement, WasmFunction, WasmFunctionKind, WasmGlobal, WasmImport, WasmInstr, WasmInstrWithBlock, WasmInstrWithBlockOP, WasmMemory, WasmModule, WasmTable } from "./wasmModule";
+import { DataKind, ElementKind, FunctionType, GlobalKind, Limits, NumberType, RefType, ValueType, ValueTypeObject, VectorType, WasmBlock, WasmBranchDir, WasmData, WasmElement, WasmFunction, WasmFunctionKind, WasmGlobal, WasmImport, WasmInstr, WasmInstrIf, WasmInstrIfOP, WasmInstrWithBlock, WasmInstrWithBlockOP, WasmMemory, WasmModule, WasmTable, instrId } from "./wasmModule";
 
 const TRIVM_MAGIC_FUNCTION_TAG = '__trivm_magic_function__';
 
@@ -66,7 +66,7 @@ export class WasmParser {
     private functionsWithCode: WasmFunction[] = [];
     private functionsWithCodePos: number = 0;
 
-    public parse(file: string): WasmModule {
+    public parse(file: string, baseOffset: number): WasmModule {
         this.module = new WasmModule();
         this.types = [];
         this.blockStack = [];
@@ -76,7 +76,9 @@ export class WasmParser {
         this.functionsWithCode = [];
         this.functionsWithCodePos = 0;
 
-        let input = new BinaryInput(file);
+        let input = new BinaryInput(file, baseOffset);
+
+        this.module.logicalOffsets.start = input.id();
 
         let magic = input.rawUint32();
         let version = input.rawUint32();
@@ -147,6 +149,8 @@ export class WasmParser {
                 sub.finalize();
             }
         }
+
+        this.module.logicalOffsets.end = input.id();
 
         return this.module;
     }
@@ -227,7 +231,7 @@ export class WasmParser {
 
     // modules.html#binary-codesec
     private parseFuncExpr(input: BinaryInput, func: WasmFunction) {
-        let instr = this.createInstrWithBlock(OP.TRIVM_FUNCTION, func.type, undefined);
+        let instr = this.createInstrWithBlock(instrId(input.id()), OP.TRIVM_FUNCTION, func.type, undefined);
         func.block = instr.block;
         this.blockStack = [instr.block];
         instr.block.body = this.parseExpression(input, func);
@@ -286,9 +290,10 @@ export class WasmParser {
                 if (tag & 4) {
                     expr = this.parseConstExpression(input);
                 } else {
+                    let baseId = input.id();
                     let index = input.u32();
                     let ref = pick(this.module.functions, index, 'Invalid function index.');
-                    expr = this.createFuncRefConstExpression(ref);
+                    expr = this.createFuncRefConstExpression(baseId, ref);
                 }
                 element.items.push(expr);
             }
@@ -359,12 +364,15 @@ export class WasmParser {
     }
 
     // ../valid/instructions.html#constant-expressions
-    private createFuncRefConstExpression(ref: WasmFunction): WasmFunction {
+    private createFuncRefConstExpression(baseId: number, ref: WasmFunction): WasmFunction {
         let func = new WasmFunction(WasmFunctionKind.WASM, { params: [], results: [RefType.FUNCREF] });
         this.module.functions.push(func);
-        let instr = this.createInstrWithBlock(OP.TRIVM_FUNCTION, func.type, undefined);
+        let instr = this.createInstrWithBlock(instrId(baseId), OP.TRIVM_FUNCTION, func.type, undefined);
         func.block = instr.block;
-        instr.block.body = [{ opcode: OP.REF_FUNC, func: ref }, { opcode: OP.END, unreachable: false }];
+        instr.block.body = [
+            { id: instrId(baseId), opcode: OP.REF_FUNC, func: ref },
+            { id: instrId(baseId), opcode: OP.END, unreachable: false }
+        ];
         return func;
     }
 
@@ -382,6 +390,7 @@ export class WasmParser {
 
     // instructions.html#instructions
     private parseInstr(input: BinaryInput, func: WasmFunction, allowElse: boolean): [boolean, WasmInstr] {
+        let id = input.id();
         let opcode: OP = input.byte();
         if (opcode > OP.TRIVM_MULTIBYTE_FIRST) {
             let extOpcode = input.u32();
@@ -405,7 +414,7 @@ export class WasmParser {
             case OP.LOOP:
             case OP.IF: { // block
                 let type = this.parseCompressedBlockType(input);
-                instr = this.createInstrWithBlock(opcode, type, this.blockStack.at(-1));
+                instr = this.createInstrWithBlock(id, opcode, type, this.blockStack.at(-1));
                 this.blockStack.push(instr.block);
                 instr.block.body = this.parseExpression(input, func, opcode == OP.IF);
                 this.blockStack.pop();
@@ -417,18 +426,19 @@ export class WasmParser {
                     throw new Error('"else" instruction not expected here');
                 }
                 allowElse = false;
-                instr = { opcode, unreachable: false };
+                (this.blockStack.at(-1)!.parentInstruction as WasmInstrIf).withElse = true;
+                instr = { id, opcode, unreachable: false };
                 break;
             }
             case OP.END: { // end
                 last = true;
-                instr = { opcode, unreachable: false };
+                instr = { id, opcode, unreachable: false };
                 break;
             }
             case OP.BR:
             case OP.BR_IF: { // labelidx
                 let target = this.parseBranchTarget(input);
-                instr = { opcode, target };
+                instr = { id, opcode, target, direction: target.parentInstruction.opcode == OP.LOOP ? WasmBranchDir.Backward : WasmBranchDir.Forward };
                 break;
             }
             case OP.BR_TABLE: { // labelidx[]
@@ -437,19 +447,19 @@ export class WasmParser {
                 for (let i = 0; i < count + 1; i++) {
                     targets.push(this.parseBranchTarget(input));
                 }
-                instr = { opcode, targets };
+                instr = { id, opcode, targets };
                 break;
             }
             case OP.CALL:
             case OP.REF_FUNC: { // funcidx
                 let func = this.parseEntityIndex(input, this.module.functions, 'Function index out of range.');
-                instr = { opcode, func };
+                instr = { id, opcode, func };
                 break;
             }
             case OP.CALL_INDIRECT: { // typeidx, tableidx
                 let type = this.parseEntityIndex(input, this.types, 'Invalid type index');
                 let table = this.parseEntityIndex(input, this.module.tables, 'Invalid table index');
-                instr = { opcode, type, table };
+                instr = { id, opcode, type, table };
                 break;
             }
             case OP.SELECT_T: { // valtype[]
@@ -466,13 +476,13 @@ export class WasmParser {
                 if (index >= func.type.params.length + func.locals.length) {
                     throw new Error('Invalid local variable index.');
                 }
-                instr = { opcode, index };
+                instr = { id, opcode, index };
                 break;
             }
             case OP.GLOBAL_GET:
             case OP.GLOBAL_SET: { // globalidx
                 let global = this.parseEntityIndex(input, this.module.globals, 'Global index out of range.');
-                instr = { opcode, global }
+                instr = { id, opcode, global }
                 break;
             }
             case OP.TABLE_GET:
@@ -481,7 +491,7 @@ export class WasmParser {
             case OP.TABLE_SIZE:
             case OP.TABLE_FILL: { // tableidx
                 let table = this.parseEntityIndex(input, this.module.tables, 'Table index out of range.');
-                instr = { opcode, table }
+                instr = { id, opcode, table }
                 break;
             }
             case OP.I32_LOAD:
@@ -520,79 +530,79 @@ export class WasmParser {
             case OP.V128_LOAD64_SPLAT:
             case OP.V128_STORE: { // memarg
                 let memarg = this.parseMemArg(input);
-                instr = { opcode, ...memarg };
+                instr = { id, opcode, ...memarg };
                 break;
             }
             case OP.MEMORY_SIZE:
             case OP.MEMORY_GROW:
             case OP.MEMORY_FILL: { // memidx
                 let memory = this.parseEntityIndex(input, this.module.memories, 'Memory index out of range.');
-                instr = { opcode, memory };
+                instr = { id, opcode, memory };
                 break;
             }
             case OP.I32_CONST: { // s32
                 let value = input.s32();
-                instr = { opcode, value };
+                instr = { id, opcode, value };
                 break;
             }
             case OP.I64_CONST: { // s64
                 let value = input.s64();
-                instr = { opcode, value };
+                instr = { id, opcode, value };
                 break;
             }
             case OP.F32_CONST: { // f32
                 let value = input.rawInt32();
-                instr = { opcode, value };
+                instr = { id, opcode, value };
                 break;
             }
             case OP.F64_CONST: { // f64
                 let value = input.rawInt64();
-                instr = { opcode, value };
+                instr = { id, opcode, value };
                 break;
             }
             case OP.REF_NULL: { // reftype
                 let reftype = input.byte();
                 let type: RefType = enumize(reftype, RefType);
-                instr = { opcode, type };
+                instr = { id, opcode, type };
                 break;
             }
             case OP.MEMORY_INIT: { // dataidx, memidx
                 let data = this.parseEntityIndex(input, this.module.data, 'Data index out of range.');
                 let memory = this.parseEntityIndex(input, this.module.memories, 'Memory index out of range.');
-                instr = { opcode, data, memory };
+                instr = { id, opcode, data, memory };
                 break;
             }
             case OP.DATA_DROP: { // dataidx
                 let data = this.parseEntityIndex(input, this.module.data, 'Data index out of range.');
-                instr = { opcode, data };
+                instr = { id, opcode, data };
                 break;
             }
             case OP.MEMORY_COPY: { // memidx, memidx
                 let memory0 = this.parseEntityIndex(input, this.module.memories, 'Memory index out of range.');
                 let memory1 = this.parseEntityIndex(input, this.module.memories, 'Memory index out of range.');
-                instr = { opcode, memories: [memory0, memory1] };
+                instr = { id, opcode, memories: [memory0, memory1] };
                 break;
             }
             case OP.TABLE_INIT: { // elemidx, tableidx
                 let element = this.parseEntityIndex(input, this.module.elements, 'Element index out of range.');
                 let table = this.parseEntityIndex(input, this.module.tables, 'Table index out of range.');
-                instr = { opcode, element, table };
+                instr = { id, opcode, element, table };
                 break;
             }
             case OP.ELEM_DROP: { // elemidx
                 let element = this.parseEntityIndex(input, this.module.elements, 'Element index out of range.');
-                instr = { opcode, element };
+                instr = { id, opcode, element };
                 break;
             }
             case OP.TABLE_COPY: { // tableidx, tableidx
                 let table0 = this.parseEntityIndex(input, this.module.tables, 'Table index out of range.');
                 let table1 = this.parseEntityIndex(input, this.module.tables, 'Table index out of range.');
-                instr = { opcode, tables: [table0, table1] };
+                instr = { id, opcode, tables: [table0, table1] };
                 break;
             }
             case OP.V128_CONST: { // 16 bytes
                 let value = input.raw(16);
-                instr = { opcode, value };
+                instr = { id, opcode, value };
                 break;
             }
             case OP.I8X16_SHUFFLE: { // 16 x laneidx16
@@ -602,7 +612,7 @@ export class WasmParser {
                         throw new Error('Lane index out of range.');
                     }
                 }
-                instr = { opcode, value };
+                instr = { id, opcode, value };
                 break;
             }
             case OP.I8X16_EXTRACT_LANE_S:
@@ -612,7 +622,7 @@ export class WasmParser {
                 if (index >= 16) {
                     throw new Error('Lane index out of range.');
                 }
-                instr = { opcode, index };
+                instr = { id, opcode, index };
                 break;
             }
             case OP.I16X8_EXTRACT_LANE_S:
@@ -622,7 +632,7 @@ export class WasmParser {
                 if (index >= 8) {
                     throw new Error('Lane index out of range.');
                 }
-                instr = { opcode, index };
+                instr = { id, opcode, index };
                 break;
             }
             case OP.I32X4_EXTRACT_LANE:
@@ -633,7 +643,7 @@ export class WasmParser {
                 if (index >= 4) {
                     throw new Error('Lane index out of range.');
                 }
-                instr = { opcode, index };
+                instr = { id, opcode, index };
                 break;
             }
             case OP.I64X2_EXTRACT_LANE:
@@ -644,7 +654,7 @@ export class WasmParser {
                 if (index >= 2) {
                     throw new Error('Lane index out of range.');
                 }
-                instr = { opcode, index };
+                instr = { id, opcode, index };
                 break;
             }
             case OP.V128_LOAD8_LANE:
@@ -654,7 +664,7 @@ export class WasmParser {
                 if (index >= 16) {
                     throw new Error('Lane index out of range.');
                 }
-                instr = { opcode, ...memarg, index };
+                instr = { id, opcode, ...memarg, index };
                 break;
             }
             case OP.V128_LOAD16_LANE:
@@ -664,7 +674,7 @@ export class WasmParser {
                 if (index >= 8) {
                     throw new Error('Lane index out of range.');
                 }
-                instr = { opcode, ...memarg, index };
+                instr = { id, opcode, ...memarg, index };
                 break;
             }
             case OP.V128_LOAD32_LANE:
@@ -675,7 +685,7 @@ export class WasmParser {
                 if (index >= 4) {
                     throw new Error('Lane index out of range.');
                 }
-                instr = { opcode, ...memarg, index };
+                instr = { id, opcode, ...memarg, index };
                 break;
             }
             case OP.V128_LOAD64_LANE:
@@ -686,7 +696,7 @@ export class WasmParser {
                 if (index >= 2) {
                     throw new Error('Lane index out of range.');
                 }
-                instr = { opcode, ...memarg, index };
+                instr = { id, opcode, ...memarg, index };
                 break;
             }
             case OP.UNREACHABLE:
@@ -1039,7 +1049,7 @@ export class WasmParser {
         }
 
         if (instr === null) {
-            instr = { opcode } as WasmInstr;
+            instr = { id, opcode } as WasmInstr;
         }
 
         return [last, instr];
@@ -1068,8 +1078,13 @@ export class WasmParser {
         return pick(entities, index, errorMessage);
     }
 
-    private createInstrWithBlock(opcode: WasmInstrWithBlockOP, type: FunctionType, parentBlock: WasmBlock | undefined): WasmInstrWithBlock {
-        let instr: WasmInstrWithBlock = { opcode, block: allowTemporaryNull as WasmBlock };
+    private createInstrWithBlock(id: number, opcode: WasmInstrWithBlockOP | WasmInstrIfOP, type: FunctionType, parentBlock: WasmBlock | undefined): WasmInstrWithBlock | WasmInstrIf {
+        let instr: WasmInstrWithBlock | WasmInstrIf;
+        if (opcode != OP.IF) {
+            instr = { id, opcode, block: allowTemporaryNull as WasmBlock };
+        } else {
+            instr = { id, opcode, block: allowTemporaryNull as WasmBlock, withElse: false };
+        }
         instr.block = new WasmBlock(type, instr, parentBlock);
         return instr;
     }

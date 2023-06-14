@@ -1,12 +1,13 @@
 import { platform } from "../utils/platform";
 import { OP } from "./opcodes";
-import { FunctionType, Limits, NumberType, RefType, ValueType, ValueTypeObject, VectorType, WasmBlock, WasmData, WasmElement, WasmEntity, WasmExport, WasmFunction, WasmFunctionKind, WasmGlobal, WasmImport, WasmInstr, WasmInstrBr, WasmInstrEnd, WasmInstrIndexed, WasmInstrWithBlock, WasmMemory, WasmModule, WasmTable, valueTypeWords } from "./wasmModule";
+import { FunctionType, Limits, NumberType, RefType, ValueType, ValueTypeObject, VectorType, WasmBlock, WasmBranchDir, WasmData, WasmElement, WasmEntity, WasmExport, WasmFunction, WasmFunctionKind, WasmGlobal, WasmImport, WasmInstr, WasmInstrBr, WasmInstrEnd, WasmInstrIndexed, WasmInstrWithBlock, WasmMemory, WasmModule, WasmTable, instrId, valueTypeWords } from "./wasmModule";
 
 
 export enum ModuleStage {
-    AfterParser,
-    AfterResolver,
-    AfterReducer,
+    AfterParser = 0,
+    AfterResolver = 1,
+    AfterReducer = 2,
+    AfterOptimization = 3,
 };
 
 
@@ -81,15 +82,36 @@ function formatType(type: FunctionType): string {
 }
 
 
-let lastInstrId = 1;
+let lastErrorId = 1;
 
-function newInstrId() {
-    return ++lastInstrId;
+function newErrorId() {
+    return ++lastErrorId;
 }
 
+class DiagError {
+    public thisRef: string;
+    public constructor(
+        public message: string,
+        public targetRef: string = ''
+    ) {
+        this.thisRef = `error-${newErrorId()}`;
+    }
+
+    getIcon() {
+        return `<div class="error-icon"><div class="error-icon-tip">${html(this.message)}</div></div>`;
+    }
+
+    getOutput() {
+        if (this.thisRef != '') {
+            return `<div class="error"><a href="#${html(this.targetRef)}">#${html(this.targetRef)}</a>: ${html(this.message)}</div>`;
+        } else {
+            return `<div class="error">${html(this.message)}</div>`;
+        }
+    }
+};
+
 class InstructionFormatter {
-    public id: number = newInstrId();
-    public opcode: OP = OP.UNREACHABLE;
+    public instr: WasmInstr = { id: -1, opcode: OP.NOP };
     public params: string[] = [];
     public tools: { [label: string]: string } = {};
     public stackKeep: StackEntry[] = [];
@@ -97,10 +119,15 @@ class InstructionFormatter {
     public stackPush: StackEntry[] = [];
     public unreachable: boolean = false;
     public brLevels: number[] = [];
+    public errors: DiagError[] = [];
 
-    public clear(opcode: OP) {
-        this.id = newInstrId();
-        this.opcode = opcode;
+    constructor(
+        public funcDiag: FunctionDiagnose
+    ) {
+    }
+
+    public clear(instr: WasmInstr) {
+        this.instr = instr;
         this.params = [];
         this.tools = {};
         this.stackKeep = [];
@@ -108,14 +135,30 @@ class InstructionFormatter {
         this.stackPush = [];
         this.unreachable = false;
         this.brLevels = [];
+        this.errors = [];
+    }
+
+    public addParam(value: string) {
+        this.params.push(value);
+    }
+
+    public addTool(label: string, code: string) {
+        this.tools[label] = code;
+    }
+
+    public addError(message: string, targetRef: string = `instr-${this.instr.id}`) {
+        this.errors.push(new DiagError(message, targetRef));
     }
 
     public getOutput() {
-        let out = `<tr id="instr-${this.id}"><td width="1%">`;
+        let out = `<tr id="instr-${this.instr.id}"><td width="1%">`;
         for (let level of this.brLevels) {
             out += `<div class="br-line-${level > 0 ? 'down' : 'up'}"><div style="--levels: ${Math.abs(level)}"></div></div>`;
         }
-        out += html(INSTRUCTION_NAME[this.opcode]);
+        if (this.instr.opcode == OP.ELSE) {
+            out += `<div class="else-line"><div></div></div>`;
+        }
+        out += html(INSTRUCTION_NAME[this.instr.opcode]);
         for (let param of this.params) {
             if (param.startsWith('#')) {
                 out += ` <a href="${html(param)}" class="param">${html(param)}</a>`;
@@ -124,9 +167,13 @@ class InstructionFormatter {
             }
         }
         for (let [label, code] of Object.entries(this.tools)) {
-            out += `<a class="tool" href="javascript://" onclick="${html(code)}">${label}</a>`;
+            if (code.startsWith('#')) {
+                out += `<a class="tool" href="${code}">${label}</a>`;
+            } else {
+                out += `<a class="tool" href="javascript://" onclick="${html(code)}">${label}</a>`;
+            }
         }
-        out += `</td><td width="99%"><div class="stack">`;
+        out += `</td><td width="1%">${this.instr.id}</td><td width="98%"><div class="stack">`;
         if (this.unreachable) {
             out += `<div class="stack-remove"><div class="item-">unreachable</div></div>`;
         } else {
@@ -139,15 +186,27 @@ class InstructionFormatter {
             }
             if (this.stackPop.length > 0) {
                 out += `<div class="stack-remove">`;
+                let underflowError: DiagError | undefined = undefined;
+                let invalidTypeError: DiagError | undefined = undefined;
                 for (let item of this.stackPop) {
                     let prev = '';
                     let underflow = '';
                     if (!item.prev) {
                         underflow = ' underflow';
+                        underflowError = new DiagError(`Stack underflow.`, `instr-${this.instr.id}`);
                     } else if (item.label != item.prev.label) {
                         prev = `<span>${item.prev.label}</span>`;
+                        if (this.funcDiag.stage <= ModuleStage.AfterResolver) {
+                            invalidTypeError = new DiagError(`Unexpected data type on stack.`, `instr-${this.instr.id}`);
+                        }
                     }
                     out += `<div class="item-${item.label}${underflow}">${prev}${item.label}</div>`;
+                }
+                if (underflowError) {
+                    this.errors.push(underflowError);
+                }
+                if (invalidTypeError) {
+                    this.errors.push(invalidTypeError);
                 }
                 out += `</div>`;
             }
@@ -163,6 +222,8 @@ class InstructionFormatter {
             }
         }
         out += `</div></td></tr>`;
+        let err = this.errors.map(error => error.getIcon()).join('');
+        out = out.replace('</td>', `${err}</td>`);
         return out;
     }
 };
@@ -171,10 +232,10 @@ class InstructionFormatter {
 export class FunctionDiagnose {
 
     private module: WasmModule;
-    private stage: ModuleStage;
+    public stage: ModuleStage;
     private stack: StackEntry[] = [];
     private unreachable: boolean = false;
-    private instrFormat: InstructionFormatter = new InstructionFormatter();
+    private instrFormat: InstructionFormatter = new InstructionFormatter(this);
     private block?: WasmBlock;
 
     constructor(
@@ -203,10 +264,12 @@ export class FunctionDiagnose {
         for (let instr of block.body) {
             if (instr.opcode == OP.BR_TABLE) {
                 let stack = this.stack;
-                for (let i = 0; i < instr.targets.length; i++) {
+                for (let i = 0; i < instr.targets.length - 1; i++) {
                     this.stack = [...stack];
-                    this.diagnoseInstr({ opcode: OP.BR_TABLE, targets: [instr.targets[i]] }, i == instr.targets.length - 1);
+                    this.diagnoseInstr({ id: instrId(instr), opcode: OP.BR_TABLE, targets: [instr.targets[i]] }, false);
                 }
+                this.stack = [...stack];
+                this.diagnoseInstr({ id: instr.id, opcode: OP.BR_TABLE, targets: [instr.targets[instr.targets.length - 1]] }, true);
             } else {
                 this.diagnoseInstr(instr);
             }
@@ -217,14 +280,12 @@ export class FunctionDiagnose {
 
     diagnoseInstr(instr: WasmInstr, brTableLast: boolean = false) {
         let writeIndex = this.write('');
-        this.instrFormat.clear(instr.opcode);
+        this.instrFormat.clear(instr);
         this.instrFormat.unreachable = this.unreachable;
         let newStack: ValueType[] | undefined = undefined;
 
-        if (instr.opcode === OP.IF) {
-            console.log('stack: ', this.stack.length, this.instrFormat.stackPush.length);
-        }
         switch (instr.opcode) {
+            // #region Instruction print and verify
             // -- Instruction print and verify - begin of source code generated with help of "gen-instr.ts" script --
 
             case OP.UNREACHABLE: {
@@ -238,13 +299,13 @@ export class FunctionDiagnose {
             case OP.IF: {
                 if (instr.opcode === OP.IF) {
                     this.pop(NumberType.I32);
-                    this.instrFormat.tools['¬'] = 'scrollToBlockElse(this)';
+                    this.instrFormat.addTool('¬', 'scrollToBlockElse(this)');;
                 }
                 this.pop(...instr.block.type.params);
                 this.push(...instr.block.type.results);
-                this.instrFormat.params.push(formatType(instr.block.type));
-                this.instrFormat.tools['⇩'] = 'scrollToBlockEnd(this)';
-                this.instrFormat.tools['±'] = 'toggleBlock(this)';
+                this.instrFormat.addParam(formatType(instr.block.type));
+                this.instrFormat.addTool('⇩', 'scrollToBlockEnd(this)');;
+                this.instrFormat.addTool('±', 'toggleBlock(this)');;
                 break;
             }
             case OP.ELSE: {
@@ -266,13 +327,16 @@ export class FunctionDiagnose {
                     this.pop(NumberType.I32);
                 }
                 let targets = instr.opcode == OP.BR_TABLE ? instr.targets : [instr.target];
+                let direction = instr.opcode != OP.BR_TABLE ? instr.direction : undefined;
                 for (let target of targets) {
-                    let ref = this.moduleDiag.getRef(target);
-                    this.instrFormat.tools['⇨'] = `goToBlock('${ref}')`;
-                    let forward = target.parentInstruction.opcode != OP.LOOP;
+                    let forward = direction != undefined
+                        ? direction == WasmBranchDir.Forward
+                        : target.parentInstruction.opcode != OP.LOOP;
                     let pop = forward ? target.type.results : target.type.params;
                     this.pop(...pop);
-                    this.push(...pop);
+                    if (instr.opcode == OP.BR_IF) {
+                        this.push(...pop);
+                    }
                     let levels = 1;
                     let block = this.block;
                     while (block !== target) {
@@ -282,9 +346,10 @@ export class FunctionDiagnose {
                     }
                     this.instrFormat.brLevels.push(forward ? levels : -levels);
                     if (brTableLast) {
-                        this.instrFormat.params.push('default');
+                        this.instrFormat.addParam('default');
                     }
-                    this.instrFormat.params.push((levels - 1).toString());
+                    this.instrFormat.addParam((levels - 1).toString());
+                    this.instrFormat.addTool('⇨', `#instr-${target.parentInstruction.id}`);
                 }
                 if (instr.opcode == OP.BR || (instr.opcode == OP.BR_TABLE && brTableLast)) {
                     this.unreachable = true;
@@ -301,7 +366,7 @@ export class FunctionDiagnose {
                 this.pop(...instr.func.type.params);
                 this.push(...instr.func.type.results);
                 let ref = this.moduleDiag.getRef(instr.func);
-                this.instrFormat.params.push('#' + ref);
+                this.instrFormat.addParam('#' + ref);
                 break;
             }
             case OP.CALL_INDIRECT: {
@@ -309,11 +374,10 @@ export class FunctionDiagnose {
                 this.pop(...instr.type.params);
                 this.push(...instr.type.results);
                 let ref = this.moduleDiag.getRef(instr.table);
-                this.instrFormat.params.push('#' + ref);
+                this.instrFormat.addParam('#' + ref);
                 break;
             }
             case OP.DROP: {
-                //if (this.stack.length == 0) throw new Error('ASSERT'); // TODO: assert
                 let type = this.stack.at(-1)?.type || NumberType.I32;
                 this.pop(type);
                 break;
@@ -321,7 +385,7 @@ export class FunctionDiagnose {
             case OP.SELECT:
             case OP.SELECT_T: {
                 this.pop(NumberType.I32);
-                let type = this.stack.at(-1)?.type || NumberType.I32; // TODO: assert
+                let type = this.stack.at(-1)?.type || NumberType.I32;
                 this.pop(type, type);
                 this.push(type);
                 break;
@@ -329,13 +393,16 @@ export class FunctionDiagnose {
             case OP.LOCAL_GET:
             case OP.LOCAL_SET:
             case OP.LOCAL_TEE: {
-                let type: ValueType;
+                let type: ValueType = NumberType.I32;
                 if (instr.index < this.func.type.params.length) {
                     type = this.func.type.params[instr.index];
-                    this.instrFormat.params.push(`param-${instr.index}`);
-                } else {
+                    this.instrFormat.addParam(`param-${instr.index}`);
+                } else if (instr.index < this.func.type.params.length + this.func.locals.length) {
                     type = this.func.locals[instr.index - this.func.type.params.length];
-                    this.instrFormat.params.push(`local-${instr.index}`);
+                    this.instrFormat.addParam(`local-${instr.index}`);
+                } else {
+                    this.instrFormat.addError('Local index out of range.');
+                    this.instrFormat.addParam(`local-${instr.index}`);
                 }
                 if (instr.opcode != OP.LOCAL_GET) {
                     this.pop(type);
@@ -347,7 +414,7 @@ export class FunctionDiagnose {
             }
             case OP.GLOBAL_GET:
             case OP.GLOBAL_SET: {
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.global));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.global));
                 if (instr.opcode == OP.GLOBAL_GET) {
                     this.push(instr.global.type);
                 } else {
@@ -376,6 +443,11 @@ export class FunctionDiagnose {
                 throw new Error('Not implemented');
                 break;
             }
+            case OP.TRIVM_MULTIBYTE_FIRST:
+            case OP.TRIVM_FUNCTION: {
+                this.instrFormat.addError('Pseudo instruction used as normal instruction.');
+                break;
+            }
             case OP.I32_LOAD:
             case OP.I32_LOAD8_S:
             case OP.I32_LOAD8_U:
@@ -383,8 +455,8 @@ export class FunctionDiagnose {
             case OP.I32_LOAD16_U: {
                 this.pop(NumberType.I32);
                 this.push(NumberType.I32);
-                this.instrFormat.params.push(instr.offset.toString());
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam(instr.offset.toString());
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 break;
             }
             case OP.I64_LOAD:
@@ -396,30 +468,30 @@ export class FunctionDiagnose {
             case OP.I64_LOAD32_U: {
                 this.pop(NumberType.I32);
                 this.push(NumberType.I64);
-                this.instrFormat.params.push(instr.offset.toString());
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam(instr.offset.toString());
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 break;
             }
             case OP.F32_LOAD: {
                 this.pop(NumberType.I32);
                 this.push(NumberType.F32);
-                this.instrFormat.params.push(instr.offset.toString());
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam(instr.offset.toString());
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 break;
             }
             case OP.F64_LOAD: {
                 this.pop(NumberType.I32);
                 this.push(NumberType.F64);
-                this.instrFormat.params.push(instr.offset.toString());
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam(instr.offset.toString());
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 break;
             }
             case OP.I32_STORE:
             case OP.I32_STORE8:
             case OP.I32_STORE16: {
                 this.pop(NumberType.I32, NumberType.I32);
-                this.instrFormat.params.push(instr.offset.toString());
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam(instr.offset.toString());
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 break;
             }
             case OP.I64_STORE:
@@ -427,40 +499,40 @@ export class FunctionDiagnose {
             case OP.I64_STORE16:
             case OP.I64_STORE32: {
                 this.pop(NumberType.I32, NumberType.I64);
-                this.instrFormat.params.push(instr.offset.toString());
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam(instr.offset.toString());
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 break;
             }
             case OP.F32_STORE: {
                 this.pop(NumberType.I32, NumberType.F32);
-                this.instrFormat.params.push(instr.offset.toString());
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam(instr.offset.toString());
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 break;
             }
             case OP.F64_STORE: {
                 this.pop(NumberType.I32, NumberType.F64);
-                this.instrFormat.params.push(instr.offset.toString());
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam(instr.offset.toString());
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 break;
             }
             case OP.MEMORY_SIZE: {
                 this.push(NumberType.I32);
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 break;
             }
             case OP.MEMORY_GROW: {
                 this.pop(NumberType.I32);
                 this.push(NumberType.I32);
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 break;
             }
             case OP.I32_CONST: {
-                this.instrFormat.params.push(formatValue32(instr.value));
+                this.instrFormat.addParam(formatValue32(instr.value));
                 this.push(NumberType.I32);
                 break;
             }
             case OP.I64_CONST: {
-                this.instrFormat.params.push(formatValue64(instr.value));
+                this.instrFormat.addParam(formatValue64(instr.value));
                 this.push(NumberType.I64);
                 break;
             }
@@ -475,51 +547,51 @@ export class FunctionDiagnose {
                 break;
             }
             case OP.REF_FUNC: {
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.func));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.func));
                 this.push(RefType.FUNCREF);
                 break;
             }
             case OP.MEMORY_INIT: {
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.data));
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.data));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
                 break;
             }
             case OP.DATA_DROP: {
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.data));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.data));
                 break;
             }
             case OP.MEMORY_COPY: {
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memories[0]));
-                this.instrFormat.params.push('->'); // TODO: check direction
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memories[1]));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memories[0]));
+                this.instrFormat.addParam('->'); // TODO: check direction
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memories[1]));
                 this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
                 break;
             }
             case OP.MEMORY_FILL: {
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
                 break;
             }
             case OP.TABLE_INIT: {
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.element));
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.table));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.element));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.table));
                 this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
                 break;
             }
             case OP.ELEM_DROP: {
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.element));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.element));
                 break;
             }
             case OP.TABLE_COPY: {
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.tables[0]));
-                this.instrFormat.params.push('->'); // TODO: check direction
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.tables[1]));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.tables[0]));
+                this.instrFormat.addParam('->'); // TODO: check direction
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.tables[1]));
                 this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
                 break;
             }
             case OP.TABLE_SIZE: {
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.table));
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.table));
                 this.push(NumberType.I32);
                 break;
             }
@@ -534,40 +606,40 @@ export class FunctionDiagnose {
             case OP.V128_LOAD16_SPLAT:
             case OP.V128_LOAD32_SPLAT:
             case OP.V128_LOAD64_SPLAT: {
-                this.instrFormat.params.push(instr.offset.toString());
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam(instr.offset.toString());
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 this.pop(NumberType.I32);
                 this.push(VectorType.V128);
                 break;
             }
             case OP.V128_STORE: {
-                this.instrFormat.params.push(instr.offset.toString());
-                this.instrFormat.params.push('#' + this.moduleDiag.getRef(instr.memory));
+                this.instrFormat.addParam(instr.offset.toString());
+                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
                 this.pop(NumberType.I32, VectorType.V128);
                 break;
             }
             case OP.V128_CONST: {
                 let hex = [...instr.value].map(x => x.toString(16).padStart(2, '0')).join('');
-                this.instrFormat.params.push(hex);
+                this.instrFormat.addParam(hex);
                 this.push(VectorType.V128);
                 break;
             }
             case OP.I8X16_SHUFFLE: {
                 let order = [...instr.value].map(x => x.toString()).join(',');
-                this.instrFormat.params.push(order);
+                this.instrFormat.addParam(order);
                 this.pop(VectorType.V128, VectorType.V128);
                 this.push(VectorType.V128);
                 break;
             }
             case OP.I8X16_EXTRACT_LANE_S:
             case OP.I8X16_EXTRACT_LANE_U: {
-                this.instrFormat.params.push(instr.index.toString());
+                this.instrFormat.addParam(instr.index.toString());
                 this.pop(VectorType.V128);
                 this.push(NumberType.I32);
                 break;
             }
             case OP.I8X16_REPLACE_LANE: {
-                this.instrFormat.params.push(instr.index.toString());
+                this.instrFormat.addParam(instr.index.toString());
                 this.pop(VectorType.V128, NumberType.I32);
                 this.push(VectorType.V128);
                 break;
@@ -1138,29 +1210,48 @@ export class FunctionDiagnose {
                 this.push(VectorType.V128);
                 break;
             }
-            case OP.TRIVM_MULTIBYTE_FIRST:
-            case OP.TRIVM_FUNCTION:
             case OP.TRIVM_POP:
-            case OP.TRIVM_DUP32:
-            case OP.TRIVM_DUP64:
-            case OP.TRIVM_LOCAL_GET32:
-            case OP.TRIVM_LOCAL_GET64:
             case OP.TRIVM_LOCAL_SET32:
-            case OP.TRIVM_LOCAL_SET64: {
+            case OP.TRIVM_GLOBAL_SET32: {
+                this.pop(NumberType.I32);
+                break;
+            }
+            case OP.TRIVM_DUP32: {
+                this.pop(NumberType.I32);
+                this.push(NumberType.I32, NumberType.I32);
+                break;
+            }
+            case OP.TRIVM_DUP64: {
+                this.pop(NumberType.I32, NumberType.I32);
+                this.push(NumberType.I32, NumberType.I32, NumberType.I32, NumberType.I32);
+                break;
+            }
+            case OP.TRIVM_LOCAL_GET32:
+            case OP.TRIVM_GLOBAL_GET32: {
+                this.push(NumberType.I32);
+                break;
+            }
+            case OP.TRIVM_LOCAL_GET64:
+            case OP.TRIVM_GLOBAL_GET64: {
+                this.push(NumberType.I32, NumberType.I32);
+                break;
+            }
+            case OP.TRIVM_LOCAL_SET64:
+            case OP.TRIVM_GLOBAL_SET64: {
+                this.pop(NumberType.I32, NumberType.I32);
                 break;
             }
 
             // -- Instruction print and verify - end of source code generated with help of "gen-instr.ts" script --
+            // #endregion
         }
 
-        if (instr.opcode === OP.IF) {
-            console.log('stack: ', this.stack.length, this.instrFormat.stackPush.length);
-        }
         if (this.stack.length > this.instrFormat.stackPush.length) {
             this.instrFormat.stackKeep = this.stack.slice(0, this.stack.length - this.instrFormat.stackPush.length);
         }
 
         this.write(this.instrFormat.getOutput(), writeIndex);
+        this.moduleDiag.errors.push(...this.instrFormat.errors);
 
         if (newStack) {
             this.stack = [];
@@ -1171,7 +1262,7 @@ export class FunctionDiagnose {
             case OP.BLOCK:
             case OP.LOOP:
             case OP.IF:
-                this.write('<tr><td colspan="2" class="block-container">');
+                this.write('<tr><td colspan="3" class="block-container">');
                 this.diagnoseBlock(instr.block);
                 this.write('</td></tr>');
                 break;
@@ -1219,6 +1310,7 @@ export class ModuleDebug { // TODO: Rename to ModuleDiag
     private out: string[] = []
     private refs: Map<any, string> = new Map<any, string>();
     private usedRefs: Set<string> = new Set<string>();
+    public errors: DiagError[] = [];
 
     constructor(
         public module: WasmModule,
@@ -1241,7 +1333,17 @@ export class ModuleDebug { // TODO: Rename to ModuleDiag
             //if (func == this.module.functions[1]) break;
         }
 
+        this.addErrors();
+
         platform.writeFile('drafts/out.html', this.out.join(''));
+    }
+
+    addErrors() {
+        let out = '';
+        for (let error of this.errors) {
+            out += error.getOutput();
+        }
+        this.out.splice(1, 0, out);
     }
 
     /*    diagnoseInstr(instr: WasmInstr) {
@@ -1764,6 +1866,10 @@ const INSTRUCTION_NAME: { [key in OP]: string } = {
     [OP.TRIVM_LOCAL_GET64]: 'TRIVM.LOCAL_GET64',
     [OP.TRIVM_LOCAL_SET32]: 'TRIVM.LOCAL_SET32',
     [OP.TRIVM_LOCAL_SET64]: 'TRIVM.LOCAL_SET64',
+    [OP.TRIVM_GLOBAL_GET32]: 'TRIVM.GLOBAL_GET32',
+    [OP.TRIVM_GLOBAL_GET64]: 'TRIVM.GLOBAL_GET64',
+    [OP.TRIVM_GLOBAL_SET32]: 'TRIVM.GLOBAL_SET32',
+    [OP.TRIVM_GLOBAL_SET64]: 'TRIVM.GLOBAL_SET64',
 
     // -- Instruction names - end of source code generated with help of "gen-instr.ts" script --
 };

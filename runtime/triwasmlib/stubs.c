@@ -57,7 +57,7 @@ EXPORT(f64_neg)             u64 trivm_f64_neg(u64 a) { return 0; }
 EXPORT(f64_sqrt)            u64 trivm_f64_sqrt(u64 a, u64 b) { return 0; }
 //EXPORT(f64_sub)             u64 trivm_f64_sub(u64 a, u64 b) { return 0; }
 //EXPORT(f64_trunc)           u64 trivm_f64_trunc(u64 a) { return 0; }
-EXPORT(i32_clz)             u32 trivm_i32_clz(u32 a) { return 0; }
+//EXPORT(i32_clz)             u32 trivm_i32_clz(u32 a) { return 0; }
 EXPORT(i32_ctz)             u32 trivm_i32_ctz(u32 a) { return 0; }
 EXPORT(i32_popcnt)          u32 trivm_i32_popcnt(u32 a) { return 0; }
 EXPORT(i32_rotl)            u32 trivm_i32_rotl(u32 a) { return 0; }
@@ -168,8 +168,8 @@ TRIVM_EXPORT_ASSEMBLY(
 );
 
 TRIVM_EXPORT_ASSEMBLY(
-    select_1,
-    "WRITE TMP0\n" 
+    select32,
+    "WRITE TMP0\n"
     "BRT __triwasmlib_select_1_true\n"
     "DUP\n"
     "WRITE [SP] + 4\n"
@@ -180,7 +180,12 @@ TRIVM_EXPORT_ASSEMBLY(
     u32, (u32 a, u32 b, u32 cond));
 
 TRIVM_EXPORT_ASSEMBLY(
-    select_2,
+    call_indirect,
+    "WRITE TMP0\n",
+    void, (void));
+
+TRIVM_EXPORT_ASSEMBLY(
+    select64,
     "WRITE TMP0\n"
     "BRT __triwasmlib_select_2_true\n"
     "WRITE [SP] + 4\n"

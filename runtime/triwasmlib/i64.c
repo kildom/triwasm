@@ -75,6 +75,28 @@ uint64_t udivmod64(uint32_t is_mod, uint64_t b, uint64_t a)
     return is_mod ? a : result;
 }
 
+EXPORT(i32_clz)
+uint32_t i32_clz(uint32_t a)
+{
+    uint32_t res = 0;
+    while (res < 32 && (int32_t)a > 0) {
+        a <<= 1;
+        res++;
+    }
+    return res;
+}
+
+EXPORT(i64_clz32)
+uint32_t i64_clz32(uint32_t ah, uint32_t al)
+{
+    uint32_t res = 0;
+    if (ah == 0) {
+        return 32 + i32_clz(al);
+    } else {
+        return i32_clz(ah);
+    }
+}
+
 TRIVM_ASSEMBLY(
     "READ [SP]\n"
     "PUSH 0\n"

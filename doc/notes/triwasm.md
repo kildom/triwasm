@@ -44,6 +44,10 @@
     https://github.com/wasm3/wasm3/blob/main/docs/Performance.md
   * Soft float library:
     http://www.jhauser.us/arithmetic/SoftFloat.html
+  * Option to allow permissive errors
+    * --permissive-errors=N - error will stop after the first N errors (default 1)
+    * --permissive-errors=all - errors will not stop the compilation
+    * --permissive-errors=stage - compilation will stop between stages if previous stage reported the errors
 
 * Add triVM extensions:
   * Memory mappings:
