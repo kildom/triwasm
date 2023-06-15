@@ -1,7 +1,7 @@
 import { OP } from "./opcodes";
 import { WasmBlock, WasmFunction, WasmInstr, WasmModule } from "./wasmModule";
 
-type WalkResult = boolean | undefined;
+type WalkResult = boolean | undefined | void;
 
 export interface EnterFunctionCtx<ModuleData> {
     module: WasmModule;
@@ -37,12 +37,12 @@ export interface ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData> ex
 
 
 export interface FunctionWalkerListener<ModuleData, FunctionData, BlockData, InstrData> {
-    enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData;
-    exitFunction(ctx: ExitFunctionCtx<ModuleData, FunctionData>): WalkResult;
-    enterBlock(ctx: EnterBlockCtx<ModuleData, FunctionData, BlockData, InstrData>): BlockData; // TODO: Why enterBlock? Listener knows when block is entered and exited in enter/exitInstr (based on instr opcode).
-    exitBlock(ctx: ExitBlockCtx<ModuleData, FunctionData, BlockData, InstrData>): void;
-    enterInstr(ctx: EnterInstrCtx<ModuleData, FunctionData, BlockData, InstrData>): InstrData;
-    exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>): WalkResult;
+    enterFunction: (ctx: EnterFunctionCtx<ModuleData>) => FunctionData;
+    exitFunction?: (ctx: ExitFunctionCtx<ModuleData, FunctionData>) => WalkResult;
+    enterBlock: (ctx: EnterBlockCtx<ModuleData, FunctionData, BlockData, InstrData>) => BlockData;
+    exitBlock?: (ctx: ExitBlockCtx<ModuleData, FunctionData, BlockData, InstrData>) => void;
+    enterInstr: (ctx: EnterInstrCtx<ModuleData, FunctionData, BlockData, InstrData>) => InstrData;
+    exitInstr?: (ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>) => WalkResult;
 };
 
 export function walkFunctions<ModuleData, FunctionData, BlockData, InstrData>(
@@ -50,18 +50,11 @@ export function walkFunctions<ModuleData, FunctionData, BlockData, InstrData>(
     moduleData: ModuleData,
     listener: FunctionWalkerListener<ModuleData, FunctionData, BlockData, InstrData>
 ) {
-    type EnterFunctionT = EnterFunctionCtx<ModuleData>;
-    type ExitFunctionT = ExitFunctionCtx<ModuleData, FunctionData>;
-    type EnterBlockT = EnterBlockCtx<ModuleData, FunctionData, BlockData, InstrData>;
-    type ExitBlockT = ExitBlockCtx<ModuleData, FunctionData, BlockData, InstrData>;
-    type EnterInstrT = EnterInstrCtx<ModuleData, FunctionData, BlockData, InstrData>;
-    type ExitInstrT = ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>;
-
     let next : WalkResult;
 
     for (let i = 0; i < module.functions.length; i++) {
         let func = module.functions[i];
-        let ctx = { module, moduleData, func } as ExitInstrT;
+        let ctx = { module, moduleData, func } as ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>;
         ctx.funcData = listener.enterFunction(ctx);
         if (func.block) {
             ctx.block = func.block;
@@ -88,7 +81,7 @@ export function walkFunctions<ModuleData, FunctionData, BlockData, InstrData>(
                             ctx.block = ctx.instr.block;
                             continue reenter_block;
                         } else {
-                            next = listener.exitInstr(ctx);
+                            next = listener.exitInstr?.call(listener, ctx);
                             if (next === false) {
                                 break;
                             }
@@ -96,7 +89,7 @@ export function walkFunctions<ModuleData, FunctionData, BlockData, InstrData>(
                     }
                     ctx.blockStack.pop();
                     ctx.blockDataStack.pop();
-                    listener.exitBlock(ctx);
+                    listener.exitBlock?.call(listener, ctx);
                     if (ctx.instrIndexStack.length == 0) {
                         break reenter_block;
                     }
@@ -105,14 +98,14 @@ export function walkFunctions<ModuleData, FunctionData, BlockData, InstrData>(
                     ctx.instrIndex = ctx.instrIndexStack.pop() as number;
                     ctx.block = ctx.blockStack.at(-1) as WasmBlock;
                     ctx.blockData = ctx.blockDataStack.at(-1) as BlockData;
-                    next = listener.exitInstr(ctx);
+                    next = listener.exitInstr?.call(listener, ctx);
                     if (next === false) {
                         ctx.instrIndex = ctx.block.body.length - 1;
                     }
                 }
             }
         }
-        next = listener.exitFunction(ctx);
+        next = listener.exitFunction?.call(listener, ctx);
         if (next === false) {
             break;
         }
