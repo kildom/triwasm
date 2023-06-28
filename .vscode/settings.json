@@ -137,5 +137,6 @@
 				}
 			}
 		]
-	}
+    },
+    "html.format.wrapLineLength": 0
 }

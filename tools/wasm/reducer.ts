@@ -243,8 +243,8 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
                 let target = ctx.blockStack.at(-1) as WasmBlock;
                 newBody.push({ id: instrId(instr), opcode: OP.BR, target, direction: WasmBranchDir.Forward });
                 ctx.blockDataStack.at(-1)!.isForwardTarget = true;
-                instrData.nextUnreachable = false;
             }
+            instrData.nextUnreachable = false;
             newBody.push(instr);
             break;
         }
