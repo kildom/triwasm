@@ -270,7 +270,7 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         case OP.BR_IF: {
             let target = instr.target;
             popTypes(ctx, NumberType.I32);
-            handleBranch(ctx, target, instr.direction); // TODO: check if "BR_IF" pops values from the stack if condition is false
+            handleBranch(ctx, target, instr.direction);
             if (instr.direction == WasmBranchDir.Forward) {
                 getBlockData(ctx, target)!.isForwardTarget = true;
             }
