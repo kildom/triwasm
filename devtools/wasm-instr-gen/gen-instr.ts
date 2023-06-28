@@ -288,7 +288,7 @@ function generateReducer(table: Row[]) {
     function replaceExpr(expr: string): string {
         return expr
             .trim()
-            .replace(/#([a-z0-9_]+)/gi, 'this.ext.$1')
+            .replace(/#([a-z0-9_]+)/gi, 'ext.$1')
             .replace(/\.\./gi, 'instr.')
             .replace(/\\\,/gi, ',')
     }
@@ -327,11 +327,11 @@ function generateReducer(table: Row[]) {
         let [reduction, type] = key.split('```');
 
         for (let row of group) {
-            out += `\n            case OP.${row.id}:`;
+            out += `\n        case OP.${row.id}:`;
         }
         out += ` {`;
         if (reduction.startsWith('!')) {
-            out += `\n                break;\n            }`;
+            out += `\n            break;\n        }`;
             continue;
         } else if (reduction.trim().startsWith('##')) {
             // nothing to print
@@ -364,7 +364,7 @@ function generateReducer(table: Row[]) {
             } else if ((m = reduction.match(/^\s*;\s*/i))) { // ;
                 reduction = reduction.substring(m[0].length);
             } else if ((m = reduction.match(/^\s*@\s*([a-z0-9_]+)\s*/i))) { // @triwasmlib_func
-                tokens.push(`${ind}    newBody.push(this.createTriWasmLibCall(instr, '${m[1]}'));`)
+                tokens.push(`${ind}    newBody.push(createTriWasmLibCall(ctx, '${m[1]}'));`)
                 reduction = reduction.substring(m[0].length);
             } else if ((m = reduction.match(/^\s*([a-z0-9_\.]+)(\s+[^;{]+)?/i))) { // other.instr param: value, param2 ...
                 let name = m[1].toUpperCase().replace(/\./g, '_');
@@ -393,16 +393,16 @@ function generateReducer(table: Row[]) {
         }
         let [popTypes, pushTypes] = splitTypes(type);
         if (popTypes.length) {
-            tokens.push(`    this.popTypes(${popTypes.join(', ')});`);
+            tokens.push(`    popTypes(ctx, ${popTypes.join(', ')});`);
         }
         if (pushTypes.length) {
-            tokens.push(`    this.pushTypes(${pushTypes.join(', ')});`);
+            tokens.push(`    pushTypes(ctx, ${pushTypes.join(', ')});`);
         }
-        out += `\n            ${tokens.join('\n            ')}`;
-        out += `\n                break;\n            }`;
+        out += `\n        ${tokens.join('\n        ')}`;
+        out += `\n            break;\n        }`;
     }
 
-    writeOutput('output/reducer.ts', '../../tools/wasm/reducer.ts', out, '            ');
+    writeOutput('output/reducer.ts', '../../tools/wasm/reducer.ts', out, '        ');
 }
 
 function writeOutput(destFile: string, origFile: string, content: string, indent: string, title: string = '') {
@@ -431,10 +431,14 @@ function writeOutput(destFile: string, origFile: string, content: string, indent
         .replace(/(\s*\n)+$/, '');
     fs.writeFileSync(destFile, begin + '\n\n' + content + '\n\n' + end);
     fs.writeFileSync(destFile + '.sh', `#!/bin/sh\nA=$(readlink -f "$0")\nA=$(dirname "$A")\nmeld "$A/../${destFile}" "$A/../${origFile}"\n`, { mode: 0o755 });
+    let bat = (text: string) => text.replace(/\//g, '\\');
+    fs.writeFileSync(destFile + '.bat', `@echo off\r\nC:\\Programs\\vsc\\Code.exe -d "%~dp0\\..\\${bat(destFile)}" "%~dp0\\..\\${bat(origFile)}"\r\n`);
 }
 
 async function main() {
-    fs.rmdirSync('temp', { 'recursive': true });
+    try {
+        fs.rmdirSync('temp', { 'recursive': true });
+    } catch (ex) { }
     fs.mkdirSync('temp', { 'recursive': true });
     fs.mkdirSync('output', { 'recursive': true });
     let table = await parseOds();

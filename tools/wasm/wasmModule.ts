@@ -160,7 +160,6 @@ export type WasmInstrEndOP = OP.END | OP.ELSE;
 export interface WasmInstrEnd {
     id: number;
     opcode: WasmInstrEndOP;
-    unreachable: boolean;
 }
 
 export type WasmInstrConst32OP = OP.I32_CONST | OP.F32_CONST | OP.TRIVM_POP;

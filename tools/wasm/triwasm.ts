@@ -17,8 +17,10 @@ import { BinaryInput } from "./binaryInput";
 import { LinkResolver } from "./linkResolver";
 import { ModuleDebug, ModuleStage } from "./moduleDebug";
 import { ModuleMerger } from "./moduleMerger";
-import { walkFunctions } from "./moduleWalker";
-import { Reducer } from "./reducer";
+import { FunctionWalkerListener, walkFunctions, ExitInstrCtx } from "./moduleWalker";
+import { OP } from "./opcodes";
+import { reduce } from "./reducer";
+import { WasmBlock, WasmFunction, WasmInstr, WasmModule } from "./wasmModule";
 import { WasmParser } from "./wasmParser";
 
 //let p = new WasmParser("test/__old/test.wasm");
@@ -36,33 +38,6 @@ r.resolve(main);
 
 //new ModuleDebug(main, ModuleStage.AfterResolver).diagnose();
 
-let red = new Reducer();
-red.reduce(main);
+reduce(main);
 
 //new ModuleDebug(main, ModuleStage.AfterReducer).diagnose();
-
-let lastId = 0;
-let map:Map<any, number> = new Map();
-
-function id(x: any) : number {
-    if (map.has(x)) return map.get(x) as number;
-    let r = lastId++;
-    map.set(x, r);
-    return r;
-}
-
-walkFunctions(main, 'mod', {
-    enterFunction(ctx) {
-        console.log(`function ${id(ctx.func)} in ${id(ctx.module)} "${ctx.moduleData}"`);
-        return `func ${id(ctx.func)}`;
-    },
-    exitFunction(ctx) {
-        console.log(`function ${ctx.funcData} == ${id(ctx.func)}`);
-    },
-    enterBlock(ctx) {
-        
-    },
-    enterInstr(ctx) {
-        console.log(`instr ${ctx.instr.opcode}`)
-    },
-});

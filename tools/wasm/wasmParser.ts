@@ -371,7 +371,7 @@ export class WasmParser {
         func.block = instr.block;
         instr.block.body = [
             { id: instrId(baseId), opcode: OP.REF_FUNC, func: ref },
-            { id: instrId(baseId), opcode: OP.END, unreachable: false }
+            { id: instrId(baseId), opcode: OP.END }
         ];
         return func;
     }
@@ -427,12 +427,12 @@ export class WasmParser {
                 }
                 allowElse = false;
                 (this.blockStack.at(-1)!.parentInstruction as WasmInstrIf).withElse = true;
-                instr = { id, opcode, unreachable: false };
+                instr = { id, opcode };
                 break;
             }
             case OP.END: { // end
                 last = true;
-                instr = { id, opcode, unreachable: false };
+                instr = { id, opcode };
                 break;
             }
             case OP.BR:
