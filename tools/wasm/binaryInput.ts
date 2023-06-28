@@ -1,4 +1,4 @@
-/*!
+/*
  * Copyright (c) 2023 Dominik Kilian <kontakt@dominik.cc>
  *
  * This program is free software: you can redistribute it and/or modify it under the
