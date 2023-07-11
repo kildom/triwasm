@@ -169,14 +169,15 @@ TRIVM_EXPORT_ASSEMBLY(
 
 TRIVM_EXPORT_ASSEMBLY(
     select32,
+    ".local is_true\n"
     "WRITE TMP0\n"
-    "BRT __triwasmlib_select_1_true\n"
-    "DUP\n"
+    "BRT is_true\n"
+    "READ [SP]\n"
     "WRITE [SP] + 4\n"
-    "__triwasmlib_select_1_true:\n"
-    "POP\n"
+    "is_true:\n"
+    "WRITE TMP1\n"
     "READ TMP0\n"
-    "RETURN\n",
+    "WRITE PC\n",
     u32, (u32 a, u32 b, u32 cond));
 
 TRIVM_EXPORT_ASSEMBLY(

@@ -375,12 +375,19 @@ static void trivm_instr_unwind(struct trivm_instance *vm, uint32_t arg1, uint32_
 	uint32_t keep;
 	uint32_t reduce;
 	uint32_t total;
+	uint32_t mask;
+	uint32_t return_address = vm->pc;
 	uint8_t middle = (32 - arg1_shift) / 2;
 
-	reduce = arg1 & ((1 << middle) - 1);
-	keep = (arg1 >> middle) & ((1 << middle) - 1);
+	mask = (1 << middle) - 1;
+	reduce = (arg1 & mask) + 1;
+	keep = (arg1 >> middle) & mask;
+	if (keep & 1) {
+		keep -= 1;
+		return_address = mem_pop(vm);
+	}
 	reduce *= 4;
-	keep *= 4;
+	keep *= 2;
 	total = reduce + keep;
 
 	if (vm->sp < total || vm->sp - total < vm->spl)
@@ -407,6 +414,7 @@ static void trivm_instr_unwind(struct trivm_instance *vm, uint32_t arg1, uint32_
 #endif
 
 	vm->sp -= reduce;
+	vm->pc = return_address;
 }
 
 

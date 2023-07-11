@@ -2,6 +2,10 @@ import * as fs from 'fs';
 import * as xml2js from 'xml2js';
 import extract from 'extract-zip';
 
+if (fs.existsSync('devtools/wasm-instr-gen/gen-instr.ts')) {
+    process.chdir('devtools/wasm-instr-gen');
+}
+
 interface Row {
     instruction: string;
     immediate: string;
@@ -11,6 +15,7 @@ interface Row {
     reduction: string;
     afterReduction: string;
     dump: string;
+    generate: string;
     decOpcode: number;
     hexOpcode: string;
     trivmOnly: boolean;
@@ -25,6 +30,16 @@ const TYPES: { [key: string]: string } = {
     funcref: 'RefType.FUNCREF',
     externref: 'RefType.EXTERNREF',
     v128: 'VectorType.V128',
+};
+
+const TYPE_WORDS: { [key: string]: number } = {
+    'NumberType.I32': 1,
+    'NumberType.I64': 2,
+    'NumberType.F32': 1,
+    'NumberType.F64': 2,
+    'RefType.FUNCREF': 1,
+    'RefType.EXTERNREF': 1,
+    'VectorType.V128': 4,
 };
 
 async function parseOds() {
@@ -405,6 +420,95 @@ function generateReducer(table: Row[]) {
     writeOutput('output/reducer.ts', '../../tools/wasm/reducer.ts', out, '        ');
 }
 
+export function valueTypeWords(type: string[]): number;
+export function valueTypeWords(type: string): 1 | 2 | 4;
+export function valueTypeWords(type: string[] | string): number {
+    if (typeof (type) === 'object') {
+        return type.reduce((p, c) => p + valueTypeWords(c), 0);
+    }
+    return TYPE_WORDS[type];
+}
+
+function generateGenerator(table: Row[]) {
+
+    function sortKey(value: string): number {
+        if (value.trim().startsWith('!')) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    let out1 = '';
+    let out2 = '';
+
+    table = table.filter(x => x.afterReduction.toLowerCase() != 'n');
+
+    for (let row of table) {
+        if (row.generate === '!') {
+            row.generate += row.instruction;
+        }
+    }
+
+    let groups: { [generate: string]: Row[] } = {};
+    for (let row of table) {
+        let key = row.generate + '```' + row.type;
+        groups[key] = groups[key] || [];
+        groups[key].push(row);
+    }
+
+    let sorted = Object.keys(groups).sort((a, b) => sortKey(a) - sortKey(b));
+
+    for (let key of sorted) {
+        let group = groups[key];
+        let [generate, type] = key.split('```');
+        let out = '';
+
+        for (let row of group) {
+            out += `\n        case OP.${row.id}:`;
+        }
+        out += ` {`;
+        if (generate.startsWith('!')) {
+            out += `\n            break;\n        }`;
+            out1 += out;
+            continue;
+        } else if (!generate) {
+            for (let row of group) {
+                out2 += `    // TODO: [OP.${row.id}]: ['${row.instruction}', ?, ?],\n`;
+            }
+            continue;
+        }
+        let replaced = generate
+            .replace(/\{\s*([a-z0-9_]+)\s*\}/gi, (_, name) => '${ctx.instr.' + name + '}')
+            .replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi, (_, code) => '${' + code + '}')
+            ;
+        let [popTypes, pushTypes] = splitTypes(type);
+        if (popTypes.indexOf(undefined) >= 0 || pushTypes.indexOf(undefined) >= 0) {
+            for (let row of group) {
+                out2 += `    // TODO: [OP.${row.id}]: ['${row.instruction}', ?, ?],\n`;
+            }
+            continue;
+        }
+        for (let row of group) {
+            out2 += `    [OP.${row.id}]: [(ctx: any) => \`${replaced}\`, ${valueTypeWords(popTypes as string[])}, ${valueTypeWords(pushTypes as string[])}],\n`;
+        }
+        continue;
+        if (popTypes.length && pushTypes.length) {
+            out += `\n            popPush(ctx, ${valueTypeWords(popTypes as string[])}, ${valueTypeWords(pushTypes as string[])});`;
+        } else if (pushTypes.length) {
+            out += `\n            push(ctx, ${valueTypeWords(pushTypes as string[])});`;
+        } else if (popTypes.length) {
+            out += `\n            pop(ctx, ${valueTypeWords(popTypes as string[])});`;
+        }
+        out += `\n            output(ctx, \`${replaced}\`)`;
+        out += `\n            break;\n        }`;
+        out1 += out;
+    }
+
+    writeOutput('output/generator.ts', '../../tools/wasm/generator.ts', out1, '        ', 'Generator cases');
+    writeOutput('output/generator-direct.ts', '../../tools/wasm/generator.ts', out2, '    ', 'Simple instructions');
+}
+
 function writeOutput(destFile: string, origFile: string, content: string, indent: string, title: string = '') {
     let header = indent + '// -- Begin of source code generated with help of "gen-instr.ts" script --';
     let footer = indent + '// -- End of source code generated with help of "gen-instr.ts" script --';
@@ -448,6 +552,7 @@ async function main() {
     generateParser(table);
     generateReducer(table);
     generateDumper(table);
+    generateGenerator(table);
     // generateOutputNames(table);
     // generateDataDump(table);
     // generateGenerator(table);

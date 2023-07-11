@@ -17,7 +17,8 @@
     "build-clean": "RmDiR /S /Q dist || rm -Rf dist",
     "rebuild": "npm run build-clean && npm run build",
     "build-tests": "tsc -p test/asm/vectors.tsconfig.json",
-    "run-tests": "node --enable-source-maps test/output/asm/vectors.js"
+    "run-tests": "node --enable-source-maps test/output/asm/vectors.js",
+    "dev-wasm-instr-gen": "npx ts-node devtools/wasm-instr-gen/gen-instr.ts"
   },
   "author": "Dominik Kilian <kontakt@dominik.cc>",
   "license": "GPL-3.0",

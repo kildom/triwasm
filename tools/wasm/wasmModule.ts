@@ -39,7 +39,12 @@ export enum RefType {
 export type ValueType = NumberType | VectorType | RefType;
 export const ValueTypeObject = { ...NumberType, ...VectorType, ...RefType };
 
-export function valueTypeWords(type: ValueType): 1 | 2 | 4 {
+export function valueTypeWords(type: ValueType[]): number;
+export function valueTypeWords(type: ValueType): 1 | 2 | 4;
+export function valueTypeWords(type: ValueType[] | ValueType): number {
+    if (typeof (type) === 'object') {
+        return type.reduce((p, c) => p + valueTypeWords(c), 0);
+    }
     switch (type) {
         case NumberType.I32:
         case NumberType.F32:
@@ -198,11 +203,20 @@ export interface WasmInstrCallIndirect {
     table: WasmTable;
 };
 
-export type WasmInstrFuncOP = OP.CALL | OP.REF_FUNC;
-export interface WasmInstrFunc {
+export type WasmInstrCallOP = OP.CALL;
+export interface WasmInstrCall {
     id: number;
-    opcode: WasmInstrFuncOP;
+    opcode: WasmInstrCallOP;
     func: WasmFunction;
+    type?: FunctionType;
+};
+
+export type WasmInstrRefFuncOP = OP.REF_FUNC;
+export interface WasmInstrRefFunc {
+    id: number;
+    opcode: WasmInstrRefFuncOP;
+    func: WasmFunction;
+    type?: FunctionType;
 };
 
 export type WasmInstrGlobalOP = OP.GLOBAL_GET | OP.GLOBAL_SET;
@@ -317,19 +331,19 @@ export interface WasmInstrTableInit {
     table: WasmTable;
 };
 
-export type WasmInstrNoArgsOP = Exclude<OP, WasmInstrBrOP | WasmInstrIndexedOP | WasmInstrWithBlockOP | WasmInstrIfOP | WasmInstrEndOP | WasmInstrConst32OP | WasmInstrConst64OP | WasmInstrBrTableOP | WasmInstrRefOP | WasmInstrCallIndirectOP | WasmInstrFuncOP | WasmInstrGlobalOP | WasmInstrGlobalOffsetOP | WasmInstrTableOP | WasmInstrValueV128OP | WasmInstrMemArgOP | WasmInstrOffsetOP | WasmInstrLocalOP | WasmInstrMemOP | WasmInstrMemInitOP | WasmInstrDataDropOP | WasmInstrMemCopyOP | WasmInstrMemArgWithIndexOP | WasmInstrElemDropOP | WasmInstrTableInitOP | WasmInstrTableCopyOP>;
+export type WasmInstrNoArgsOP = Exclude<OP, WasmInstrBrOP | WasmInstrIndexedOP | WasmInstrWithBlockOP | WasmInstrIfOP | WasmInstrEndOP | WasmInstrConst32OP | WasmInstrConst64OP | WasmInstrBrTableOP | WasmInstrRefOP | WasmInstrCallIndirectOP | WasmInstrCallOP | WasmInstrRefFuncOP | WasmInstrGlobalOP | WasmInstrGlobalOffsetOP | WasmInstrTableOP | WasmInstrValueV128OP | WasmInstrMemArgOP | WasmInstrOffsetOP | WasmInstrLocalOP | WasmInstrMemOP | WasmInstrMemInitOP | WasmInstrDataDropOP | WasmInstrMemCopyOP | WasmInstrMemArgWithIndexOP | WasmInstrElemDropOP | WasmInstrTableInitOP | WasmInstrTableCopyOP>;
 export interface WasmInstrNoArgs {
     id: number;
     opcode: WasmInstrNoArgsOP;
 };
 
-export type WasmInstr = WasmInstrNoArgs | WasmInstrBr | WasmInstrIndexed | WasmInstrWithBlock | WasmInstrIf | WasmInstrEnd | WasmInstrConst32 | WasmInstrConst64 | WasmInstrBrTable | WasmInstrRef | WasmInstrCallIndirect | WasmInstrFunc | WasmInstrGlobal | WasmInstrGlobalOffset | WasmInstrTable | WasmInstrValueV128 | WasmInstrMemArg | WasmInstrOffset | WasmInstrLocal | WasmInstrMem | WasmInstrMemInit | WasmInstrDataDrop | WasmInstrMemCopy | WasmInstrMemArgWithIndex | WasmInstrElemDrop | WasmInstrTableInit | WasmInstrTableCopy;
+export type WasmInstr = WasmInstrNoArgs | WasmInstrBr | WasmInstrIndexed | WasmInstrWithBlock | WasmInstrIf | WasmInstrEnd | WasmInstrConst32 | WasmInstrConst64 | WasmInstrBrTable | WasmInstrRef | WasmInstrCallIndirect | WasmInstrCall | WasmInstrRefFunc | WasmInstrGlobal | WasmInstrGlobalOffset | WasmInstrTable | WasmInstrValueV128 | WasmInstrMemArg | WasmInstrOffset | WasmInstrLocal | WasmInstrMem | WasmInstrMemInit | WasmInstrDataDrop | WasmInstrMemCopy | WasmInstrMemArgWithIndex | WasmInstrElemDrop | WasmInstrTableInit | WasmInstrTableCopy;
 
 export class WasmBlock {
     public body: WasmInstr[] = [];
     constructor(
         public type: FunctionType,
-        public parentInstruction: WasmInstr,
+        public parentInstruction: WasmInstrIf | WasmInstrWithBlock,
         public parentBlock?: WasmBlock
     ) {
     }
@@ -373,6 +387,7 @@ export class WasmFunction extends WasmEntity {
     public data?: string;
     public locals: ValueType[] = [];
     public block?: WasmBlock;
+    public name: string = '';
     constructor(
         public kind: WasmFunctionKind,
         public type: FunctionType

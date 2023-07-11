@@ -48,6 +48,14 @@
     * --permissive-errors=N - error will stop after the first N errors (default 1)
     * --permissive-errors=all - errors will not stop the compilation
     * --permissive-errors=stage - compilation will stop between stages if previous stage reported the errors
+  * Exported and imported globals and tables are almost the same.
+    * The configuration files decides how they are handled:
+      * slot in exports table: global - direct value, table - triVM pointer to 32-bit length followed by 32-bit entries
+      * imported functions: reading, writing, and for table: querying and changing size
+      * the imported functions can be shared, then first parameter is global/table id.
+    * Only difference is: If global/table is exported and missing in configuration, export attributes is ignored
+      and it is compiled as normal global/table. If global/table is imported and missing in configuration,
+      then compilation error will be reported.
 
 * Add triVM extensions:
   * Memory mappings:
@@ -70,6 +78,95 @@
   * double
 
 * Optimization tips: https://github.com/kildom/triwasm/issues/6
+
+* Improved for big br_tables (if most of targets has UNWIND then this optimization is pointless):
+  ```
+  .BEGIN
+  .LOCAL mtable
+  .LOCAL br_relative
+  mtable = uuid()
+  NEG -(target_default - br_relative)
+  NEG -((mtable_length(mtable) << 3) + mtable_bits(mtable) / 8)
+  CALL __triwasmlib_br_table
+  br_relative:
+  .MTABLE mtable, 8, 32, 1, target1 - br_relative, target2_with_unwind - br_relative, ...
+  .END
+  target2_with_unwind:
+  UNWIND 89
+  BR target2
+  ...
+  ```
+* Improved br_tables with bit tree:
+  * The same br targets can be merged
+  * No need to use `TMP0`, last deciding tree branch can use value on stack instead of duplicating it.
+  * Code
+    ```
+    READ [SP]
+    AND 0xFFFFFFF8
+    BRT bits_1xxx
+    READ [SP]
+    AND 0x4
+    BRT bits_01xx
+    READ [SP]
+    AND 0x2
+    BRT bits_001x
+    AND 0x1
+    BRT bits_0001
+    # bits 0000
+    BR target0
+    bits_0001:
+    BR target1
+    bits_001x:
+    AND 0x1
+    BRT bits_0011
+    # bits 0010
+    BR target2
+    bits_0011:
+    BR target3
+    ...
+    bits_1xxx:
+    ```
+  * Other example:
+    ```
+    # br_table 1, 2, 2, 2, 0, 2
+    # value:   0  1  2  3  4  5+
+    # bits: 000  -> 1
+    # bits: 001  -> 2
+    # bits: 010  -> 2
+    # bits: 011  -> 2
+    # bits: 100  -> 0
+    # bits: 101+ -> 2
+    # Tree:
+    #                xxx
+    #       0xx               1xx
+    #   00x     01x     10x        11x
+    # 000 001   ->2   100 101      ->2
+    # ->1 ->2         ->0 ->2
+    READ [SP]
+    AND 0xFFFFFFFC
+    BRT bits_1xx
+    bits_0xx:
+        READ [SP]
+        AND 0x2
+        BRT target2_skip
+        bits_00x:
+            AND 0x1
+            BRT target2
+            ### target1
+        target2_skip:
+        WRITE TMP0
+        target2:
+        ### target2
+    bits_1xx:
+        READ [SP]
+        AND 0x2
+        BRT target2_skip
+        bits_10x:
+            AND 0x1
+            BRT target2
+            ### target0
+    # Improvement from standard method: 30 -> 24 bytes
+    ```
 
 Compilation flow:
 1. Parse wasm file and check basic integrity *WasmParser* and *WasmReader*

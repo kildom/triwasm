@@ -14,6 +14,7 @@
 
 import { platform } from "../utils/platform";
 import { BinaryInput } from "./binaryInput";
+import { generate } from "./generator";
 import { LinkResolver } from "./linkResolver";
 import { ModuleDebug, ModuleStage } from "./moduleDebug";
 import { ModuleMerger } from "./moduleMerger";
@@ -41,3 +42,5 @@ r.resolve(main);
 reduce(main);
 
 new ModuleDebug(main, ModuleStage.AfterReducer).diagnose();
+
+generate(main);

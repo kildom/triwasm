@@ -247,6 +247,17 @@ export class FunctionDiagnose {
     }
 
     public diagnose() {
+        let func = this.func;
+        this.write(`<h2>Function ${func.index} ${func.name}</h2>`);
+        if (func.import) {
+            this.write(`<div>Import ${[func.import.module, func.import.name].filter(x => x).join('.')}</div>`);
+        }
+        for (let exp of func.exports) {
+            this.write(`<div>Export ${[exp.module, exp.name].filter(x => x).join('.')}</div>`);
+        }
+        if (func != func.resolved) {
+            this.write(`<div>=&gt; ${func.resolved.name}</div>`);
+        }
         if (this.func.block) {
             this.diagnoseBlock(this.func.block);
         }

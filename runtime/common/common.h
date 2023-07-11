@@ -20,17 +20,45 @@ __attribute__((used)) \
 __attribute__((import_module("__trivm_magic_function__"))) \
 __attribute__((import_name("assembly:inline:" code)))
 
-#define TRIVM_EXPORT_ASSEMBLY(name, code, ret_type, params) \
-__attribute__((used)) \
-__attribute__((export_name("__trivm_magic_function__:assembly:export=" #name ":" code))) \
-ret_type __triwasmlib_tmp_assembly2_##name params { __builtin_unreachable(); }
+__attribute__((import_module("__trivm_magic_function__")))
+__attribute__((import_name("unused:dummy_consumer")))
+void __triwasmlib_dummy_consumer(int);
 
-/* TODO: In case TRIVM_EXPORT_ASSEMBLY have to be called locally
-__attribute__((used)) \
-__attribute__((import_module("__trivm_magic_function__"))) \
-__attribute__((import_name("alias:export:" #exp_name))) \
-ret_type c_name params;
-*/
+#define _TRIVM_EXPORT_ASSEMBLY4(name_str, empty_str, index) \
+    if ((name_str empty_str empty_str)[index]) __triwasmlib_dummy_consumer((name_str empty_str empty_str)[index]); \
+    if ((name_str empty_str empty_str)[index + 1]) __triwasmlib_dummy_consumer((name_str empty_str empty_str)[index + 1]); \
+    if ((name_str empty_str empty_str)[index + 2]) __triwasmlib_dummy_consumer((name_str empty_str empty_str)[index + 2]); \
+    if ((name_str empty_str empty_str)[index + 3]) __triwasmlib_dummy_consumer((name_str empty_str empty_str)[index + 3]); \
+
+#define _TRIVM_EXPORT_ASSEMBLY16(name_str, empty_str, index) \
+    _TRIVM_EXPORT_ASSEMBLY4(name_str, empty_str empty_str, index) \
+    _TRIVM_EXPORT_ASSEMBLY4(name_str, empty_str empty_str, index + 4) \
+    _TRIVM_EXPORT_ASSEMBLY4(name_str, empty_str empty_str, index + 8) \
+    _TRIVM_EXPORT_ASSEMBLY4(name_str, empty_str empty_str, index + 12)
+
+#define _TRIVM_EXPORT_ASSEMBLY64(name_str, empty_str, index) \
+    _TRIVM_EXPORT_ASSEMBLY16(name_str, empty_str empty_str, index) \
+    _TRIVM_EXPORT_ASSEMBLY16(name_str, empty_str empty_str, index + 16) \
+    _TRIVM_EXPORT_ASSEMBLY16(name_str, empty_str empty_str, index + 32) \
+    _TRIVM_EXPORT_ASSEMBLY16(name_str, empty_str empty_str, index + 48)
+
+#define _TRIVM_EXPORT_ASSEMBLY256(name_str, empty_str, index) \
+    _TRIVM_EXPORT_ASSEMBLY64(name_str, empty_str empty_str, index) \
+    _TRIVM_EXPORT_ASSEMBLY64(name_str, empty_str empty_str, index + 64) \
+    _TRIVM_EXPORT_ASSEMBLY64(name_str, empty_str empty_str, index + 128) \
+    _TRIVM_EXPORT_ASSEMBLY64(name_str, empty_str empty_str, index + 192)
+
+#define TRIVM_EXPORT_ASSEMBLY(name, code, ret_type, params) \
+    __attribute__((used)) \
+    __attribute__((export_name("__trivm_magic_function__:assembly:export=" #name ":" code))) \
+    ret_type __triwasmlib_tmp_assembly2_##name params { \
+    __triwasmlib_dummy_consumer(1); \
+    _TRIVM_EXPORT_ASSEMBLY256(#name, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 0) \
+    __builtin_unreachable(); } \
+    __attribute__((used)) \
+    __attribute__((import_module("__trivm_this_module__"))) \
+    __attribute__((import_name(#name))) \
+    ret_type name params;
 
 #define TRIVM_EXPORT_INLINE_ASSEMBLY(name, code, ret_type, params) \
 __attribute__((used)) \

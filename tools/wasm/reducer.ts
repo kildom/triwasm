@@ -15,7 +15,7 @@
 import { allowTemporaryNull } from "../utils/common";
 import { EnterBlockCtx, EnterFunctionCtx, EnterInstrCtx, ExitBlockCtx, ExitFunctionCtx, ExitInstrCtx, walkFunctions } from "./moduleWalker";
 import { OP } from "./opcodes";
-import { instrId, NumberType, RefType, ValueType, valueTypeWords, VectorType, WasmBlock, WasmBranchDir, WasmFunction, WasmFunctionKind, WasmInstr, WasmInstrFunc, WasmInstrIf, WasmInstrWithBlock, WasmModule } from "./wasmModule";
+import { instrId, NumberType, RefType, ValueType, valueTypeWords, VectorType, WasmBlock, WasmBranchDir, WasmFunction, WasmFunctionKind, WasmInstr, WasmInstrCall, WasmInstrRefFunc, WasmInstrIf, WasmInstrWithBlock, WasmModule, FunctionType } from "./wasmModule";
 
 class TriVMExtensions {
     public unwind = false;
@@ -113,12 +113,12 @@ export function reduce(module: WasmModule) {
         });
 }
 
-function createTriWasmLibCall(ctx: Ctx, name: string): WasmInstrFunc { // TODO: Add instruction that calls a triwasmlib function with specified type, useful for call_indirect, where parameters and results may be different
+function createTriWasmLibCall(ctx: Ctx, name: string, type?: FunctionType): WasmInstrCall {
     let func = ctx.module.getExported('__triwasm__softfloatlib', name, false);
     if (func === undefined) {
         func = ctx.module.getExported('__triwasm__triwasmlib', name, true);
     }
-    return { id: instrId(ctx.instr), opcode: OP.CALL, func };
+    return { id: instrId(ctx.instr), opcode: OP.CALL, func, type };
 }
 
 function pushTypes(ctx: Ctx, ...args: ValueType[]) {
@@ -220,20 +220,20 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         }
         case OP.BLOCK: {
             popTypes(ctx, ...instr.block.type.params);
-            pushTypes(ctx, ...instr.block.type.results);        
+            pushTypes(ctx, ...instr.block.type.results);
             newBody.push(instr);
             break;
         }
         case OP.LOOP: {
             popTypes(ctx, ...instr.block.type.params);
-            pushTypes(ctx, ...instr.block.type.results);        
+            pushTypes(ctx, ...instr.block.type.results);
             newBody.push(instr);
             break;
         }
         case OP.IF: {
             popTypes(ctx, NumberType.I32);
             popTypes(ctx, ...instr.block.type.params);
-            pushTypes(ctx, ...instr.block.type.results);        
+            pushTypes(ctx, ...instr.block.type.results);
             newBody.push(instr);
             break;
         }
@@ -300,6 +300,9 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         }
         case OP.CALL: {
             let func = instr.func.resolved;
+            if (handleAnnotation(ctx, func)) {
+                break;
+            }
             popTypes(ctx, ...func.type.params);
             pushTypes(ctx, ...func.type.results);
             newBody.push(instr);
@@ -309,12 +312,17 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
             popTypes(ctx, NumberType.I32);
             popTypes(ctx, ...instr.type.params);
             pushTypes(ctx, ...instr.type.results);
-            // TODO: Deleted entity references should be checked in the merger
-            if (ctx.module.tables.length > 1) { // TODO: Compare only count of non-deleted tables
+            if (ctx.module.tables.length > 1) {
                 newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.table.index });
-                newBody.push(createTriWasmLibCall(ctx, 'call_indirect_table'));
+                newBody.push(createTriWasmLibCall(ctx, 'call_indirect_table', {
+                    params:[...instr.type.params, NumberType.I32, NumberType.I32],
+                    results:[...instr.type.results]
+                }));
             } else {
-                newBody.push(createTriWasmLibCall(ctx, 'call_indirect'));
+                newBody.push(createTriWasmLibCall(ctx, 'call_indirect', {
+                    params:[...instr.type.params, NumberType.I32],
+                    results:[...instr.type.results]
+                }));
             }
             break;
         }
@@ -2608,3 +2616,20 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         // -- End of source code generated with help of "gen-instr.ts" script --
     }
 }
+
+function handleAnnotation(ctx: Ctx, func: WasmFunction) {
+    if (func.kind != WasmFunctionKind.ANNOTATION) {
+        return false;
+    }
+    let text = func.data;
+    if (!text) {
+        return false;
+    }
+    if (text.startsWith('triasm_name:')) {
+        ctx.func.name = text.substring(12).trim();
+        return true;
+    } else {
+        return false;
+    }
+}
+

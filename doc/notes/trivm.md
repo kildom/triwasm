@@ -220,6 +220,37 @@ https://gist.github.com/kildom/a741a4e16925ddf0ce14d66dff65caae
     * C stack size: `[      32K ]`
   * [ ] AssemblyScript and uvmwasm build command templates
 
+# triVM parts on host
+
+* Core + extensions
+* Interface helpers
+  * Data validators
+  * Call routers?
+  * Automatically generated user functions calls with fist level of validation.
+* Resource manager
+  * Callbacks manager
+
+# Interface description language
+
+```c
+
+/*
+
+triVM interface:
+
+import(0) id(ID_IMPORT_PRINT) function void print(i32 text);
+import(1) id(ID_IMPORT_INPUT) function i32 input(i32 buffer, i32 buffer_length);
+import(2) id(ID_IMPORT_OPEN) function i32 open(i32 filename, i32 mode);
+import(3) id(ID_IMPORT_CLOSE) function i32 close(i32 file_handle);
+import(4) id(ID_IMPORT_READ) function i32 read(i32 file_handle, i32 buffer, i32 buffer_length);
+
+export(0) id(ID_EXPORT_MAIN) function i32 main(i32 argc, i32 argv);
+
+
+*/
+
+```
+
 # Embedding ideas
 ```c
 

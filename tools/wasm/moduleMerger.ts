@@ -12,7 +12,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { WasmModule } from "./wasmModule";
+import { WasmEntity, WasmModule } from "./wasmModule";
+
+
+const TRIVM_THIS_MODULE_NAME = '__trivm_this_module__';
 
 
 export class ModuleMerger {
@@ -23,6 +26,32 @@ export class ModuleMerger {
         public mainModule: WasmModule
     ) {
         this.setExportedModuleName(mainModule, '__main__');
+        this.orderAllEntities();
+    }
+
+    private resolveThisModule(module: WasmModule, name: string): void {
+        let all = [...module.functions, ...module.tables, ...module.memories, ...module.globals];
+        for (let entity of all) {
+            if (entity.import && entity.import.module == TRIVM_THIS_MODULE_NAME) {
+                entity.import.module = name;
+            }
+        }
+    }
+
+    private orderAllEntities() {
+        this.orderEntities(this.mainModule.functions);
+        this.orderEntities(this.mainModule.memories);
+        this.orderEntities(this.mainModule.tables);
+        this.orderEntities(this.mainModule.globals);
+        for (let i = 0; i < this.mainModule.functions.length; i++) {
+            this.mainModule.functions[i].name = `$_function_${i}`;
+        }
+    }
+
+    private orderEntities(entities: WasmEntity[]) {
+        for (let i = 0; i < entities.length; i++) {
+            entities[i].index = i;
+        }
     }
 
     private setExportedModuleName(module: WasmModule, name: string) {
@@ -32,6 +61,7 @@ export class ModuleMerger {
                 exp.module = name;
             }
         }
+        this.resolveThisModule(module, name);
     }
 
     public merge(module: WasmModule, name?: string) {
@@ -42,6 +72,7 @@ export class ModuleMerger {
         this.setExportedModuleName(module, name || `__unnamed__module${this.counter}`);
         this.mainModule.functions.push(... module.functions);
         this.counter++;
+        this.orderAllEntities();
     }
 
 }

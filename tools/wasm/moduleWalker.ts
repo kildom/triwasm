@@ -7,6 +7,7 @@ export interface EnterFunctionCtx<ModuleData> {
     module: WasmModule;     // Current module
     moduleData: ModuleData; // Current module data (provided in the walk function invocation)
     func: WasmFunction;     // Current function
+    walkFunction: boolean;             // Set to false to prevent from walking the function
 };
 
 export interface ExitFunctionCtx<ModuleData, FunctionData> extends EnterFunctionCtx<ModuleData> {
@@ -55,9 +56,9 @@ export function walkFunctions<ModuleData, FunctionData, BlockData, InstrData>(
 
     for (let i = 0; i < module.functions.length; i++) {
         let func = module.functions[i];
-        let ctx = { module, moduleData, func } as ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>;
+        let ctx = { module, moduleData, func, walkFunction: true} as ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>;
         ctx.funcData = listener.enterFunction(ctx);
-        if (func.block) {
+        if (func.block && ctx.walkFunction) {
             ctx.block = func.block;
             ctx.blockStack = [];
             ctx.blockDataStack = [];
