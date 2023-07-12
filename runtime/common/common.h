@@ -61,9 +61,16 @@ void __triwasmlib_dummy_consumer(int);
     ret_type name params;
 
 #define TRIVM_EXPORT_INLINE_ASSEMBLY(name, code, ret_type, params) \
-__attribute__((used)) \
-__attribute__((export_name("__trivm_magic_function__:assembly:inline,export=" #name ":" code))) \
-ret_type __triwasmlib_tmp_assembly2_##name params { __builtin_unreachable(); }
+    __attribute__((used)) \
+    __attribute__((export_name("__trivm_magic_function__:assembly:inline,export=" #name ":" code))) \
+    ret_type __triwasmlib_tmp_assembly2_##name params { \
+    __triwasmlib_dummy_consumer(2); \
+    _TRIVM_EXPORT_ASSEMBLY256(#name, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 0) \
+    __builtin_unreachable(); } \
+    __attribute__((used)) \
+    __attribute__((import_module("__trivm_this_module__"))) \
+    __attribute__((import_name(#name))) \
+    ret_type name params;
 
 #define _ANNOTATION2(line, counter, file_id, text) do { \
     __attribute__((used)) \
@@ -91,5 +98,12 @@ ret_type __triwasmlib_tmp_assembly2_##name params { __builtin_unreachable(); }
 #ifndef FILE_ID
 #define FILE_ID ,
 #endif
+
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef int32_t s32;
+typedef int64_t s64;
+
+typedef uint32_t v128 __attribute__((ext_vector_type(4)));
 
 #endif

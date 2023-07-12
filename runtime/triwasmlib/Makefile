@@ -5,6 +5,8 @@
 TARGET:=triwasmlib
 
 SRC:=./i64.c \
+	./i32.c \
+	./general.c \
 	./stubs.c
 
 CFLAGS:=

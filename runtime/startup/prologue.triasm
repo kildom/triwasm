@@ -1,5 +1,8 @@
-// Copyright (C) 2023 Dominik Kilian
-// SPDX-License-Identifier: 0BSD
+# Copyright (C) 2023 Dominik Kilian
+# SPDX-License-Identifier: 0BSD
+
+TRIVM_FAULT_WASM_TABLE_INDEX = 17
+TRIVM_HOST_CALLBACK_IMPORT_ID = -1
 
 .annotation license:triwasmlib
 // TODO: Add to triwasm and triasm tools `--allow-licenses` argument that allows inclusion
@@ -85,3 +88,93 @@ Memory organization:
 - detected stack global is in ASP register
 
 */
+
+
+.begin discardable
+    __call_indirect_table0: #> params, index, ret
+    READ32 [SP]
+    NEG -__table0_start
+    WRITE32 [SP] - 4
+    .ref __call_indirect_table_ptr
+.end
+.begin discardable
+    .local invalid_index
+    .local host_callback
+    __call_indirect_table_ptr:
+    READ32 [SP] - 4
+    .if __conf_short_table_length
+        READ16 [POP]
+    .else
+        READ32 [POP]
+    .end
+    READ32 [SP] - 12
+    UGT
+    BRF invalid_index # TODO: different version of code if "table out of bounds" fault is enabled
+    READ32 [SP] - 8
+    .if __conf_short_table_element
+       MUL 2
+    .else
+       MUL 4
+    .end
+    READ32 [SP] - 8
+    .if __conf_short_table_length
+       ADD 2
+    .else
+       ADD 4
+    .end
+    ADD
+    .if __conf_host_callbacks
+        .if __conf_short_table_element
+            READ16 [POP]
+            READ32 [SP]
+            AND 0x7FFF
+        .else
+            READ32 [POP]
+            READ32 [SP]
+            AND 0x7FFFFFFF
+        .end
+        READ32 [SP] - 4
+        READ32 [SP] - 4
+        XOR
+        BRT host_callback
+        # params..., index, table_ptr, ret, entry_value, func_ptr
+        WRITE32 [SP]
+    .else
+        .if __conf_short_table_element
+            READ16 [POP]
+        .else
+            READ32 [POP]
+        .end
+    .end
+    UNWIND 2, 2 # TODO: unwind emulation if needed
+    WRITE32 PC
+    .begin discardable
+    invalid_index:
+        NEG -TRIVM_FAULT_WASM_TABLE_INDEX
+        BR __trigger_fault
+    .end
+    .begin discardable
+    host_callback: # params..., index, table_ptr, ret, entry_value, func_ptr
+        WRITE32 [SP]
+        UNWIND 2, 2 # params..., ret, func_ptr
+        WRITE32 TMP0
+        WRITE32 TMP1
+        HOST TRIVM_HOST_CALLBACK_IMPORT_ID
+    .end
+.end
+
+.begin discardable
+    __trigger_fault:
+    WRITE32 TMP0
+    WRITE32 TMP2
+    BR __exception_handler
+.end
+
+.begin discardable
+    __trigger_fault_with_code:
+    WRITE32 TMP0
+    WRITE32 TMP1
+    WRITE32 TMP2
+    BR __exception_handler
+.end
+
