@@ -13,6 +13,7 @@
  */
 
 import { allowTemporaryNull } from "../utils/common";
+import { Path } from "../utils/path";
 import { EnterBlockCtx, EnterFunctionCtx, EnterInstrCtx, ExitBlockCtx, ExitFunctionCtx, ExitInstrCtx, walkFunctions } from "./moduleWalker";
 import { OP } from "./opcodes";
 import { instrId, NumberType, RefType, ValueType, valueTypeWords, VectorType, WasmBlock, WasmBranchDir, WasmFunction, WasmFunctionKind, WasmInstr, WasmInstrBr, WasmInstrBrTable, WasmInstrRefFunc, WasmInstrCall, WasmInstrIf, WasmInstrWithBlock, WasmModule } from "./wasmModule";
@@ -465,6 +466,11 @@ function enterInstr(ctx: Ctx): InstrData {
             output(ctx, `WRITE64 global_${instr.global.index} + ${instr.offset}`, instr);
             break;
         }
+        case OP.TRIVM_RAW: {
+            popPush(ctx, valueTypeWords(instr.type.params), valueTypeWords(instr.type.results));
+            output(ctx, instr.code);
+            break;
+        }
 
         // -- Generator cases - end of source code generated with help of "gen-instr.ts" script --
 
@@ -487,6 +493,8 @@ function exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrD
 
 export function generate(module: WasmModule) {
     let output: string[] = [];
+    let base: Path = new Path().parent().parent();
+    console.log(base.toString());
     try {
         walkFunctions(module,
             {

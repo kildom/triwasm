@@ -14,6 +14,19 @@ class Tasks {
         }
     }
 
+    jsfixup() {
+        fs.mkdirSync('dist/bin/js', { recursive: true });
+        for (let file of fs.readdirSync('dist/bin/js')) {
+            if (file.endsWith('.js')) {
+                let text = fs.readFileSync('dist/bin/js/' + file, 'utf-8');
+                let replaced = text.replace(/ImPoRT\.meta\.url/g, 'import.meta.url');
+                if (text != replaced) {
+                    fs.writeFileSync('dist/bin/js/' + file, replaced);
+                }
+            }
+        }
+    }
+
     copystatic() {
         for (let file of readdirSyncRecursive('build/static')) {
             if (fs.statSync('build/static/' + file).isFile()) {

@@ -312,26 +312,16 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
             popTypes(ctx, NumberType.I32);
             popTypes(ctx, ...instr.type.params);
             pushTypes(ctx, ...instr.type.results);
-            /*
-            TODO: more cases:
-                if table is table0: call_indirect_table0(...params, index)
-                if table is at constant position: call_indirect_table_ptr(...params, index, table_ptr)
-                if table is movable (placed after growable table): call_indirect_table_ptr_ptr(...params, index, table_ptr_ptr)
-            */
-            if (ctx.module.tables.length > 1) {
-                // TODO: new instruction to push arbitrary expressions into stack
-                // or even entire assembly text with pop and push types and indication if it returns (next instruction is unreachable)
-                //newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.table.index });
-                newBody.push(createTriWasmLibCall(ctx, 'call_indirect_table_ptr', {
-                    params:[...instr.type.params, NumberType.I32, NumberType.I32],
-                    results:[...instr.type.results]
-                }));
-            } else {
-                newBody.push(createTriWasmLibCall(ctx, 'call_indirect_table0', {
-                    params:[...instr.type.params, NumberType.I32],
-                    results:[...instr.type.results]
-                }));
-            }
+            newBody.push({
+                id: instrId(instr),
+                opcode: OP.TRIVM_RAW,
+                code: `CALL __call_indirect_table${ instr.table.index }`,
+                type: {
+                    params: [...instr.type.params, NumberType.I32],
+                    results: [...instr.type.results],
+                },
+                noReturn: false,
+            });
             break;
         }
         case OP.DROP: {

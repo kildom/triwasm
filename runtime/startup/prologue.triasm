@@ -127,7 +127,7 @@ Memory organization:
 #                              * small program model (<= 32K)
 #                              * host callbacks are disabled
 
-<% for (let tableIndex = module.tables.length - 1; index >= 0 ; index--) { %>
+<% for (let tableIndex = module.tables.length - 1; tableIndex >= 0 ; tableIndex--) { %>
     <% let table = module.tables[tableIndex]; %>
     # Call function from table <%= tableIndex %>
     # @stack  function_params..., entry_index, return_address

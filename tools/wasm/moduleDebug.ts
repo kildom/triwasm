@@ -459,6 +459,9 @@ export class FunctionDiagnose {
                 this.instrFormat.addError('Pseudo instruction used as normal instruction.');
                 break;
             }
+            case OP.TRIVM_RAW: {
+                break;
+            }
             case OP.I32_LOAD:
             case OP.I32_LOAD8_S:
             case OP.I32_LOAD8_U:
@@ -1881,6 +1884,7 @@ const INSTRUCTION_NAME: { [key in OP]: string } = {
     [OP.TRIVM_GLOBAL_GET64]: 'TRIVM.GLOBAL_GET64',
     [OP.TRIVM_GLOBAL_SET32]: 'TRIVM.GLOBAL_SET32',
     [OP.TRIVM_GLOBAL_SET64]: 'TRIVM.GLOBAL_SET64',
+    [OP.TRIVM_RAW]: 'TRIVM.RAW',
 
     // -- Instruction names - end of source code generated with help of "gen-instr.ts" script --
 };

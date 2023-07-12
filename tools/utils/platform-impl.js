@@ -42,13 +42,21 @@ const _triwasm_platform_impl =
         fs.writeFileSync(path, content);
     }
 
-    platform.info = function() {
+    platform.scriptFile = (function() {
+        return __filename;
+    })();
+
+    platform.isWindows = (function() {
+        return process.platform.toLowerCase().startsWith('win');
+    })();
+
+    platform.info = (function() {
         if (('electron' in process.versions) && ('chrome' in process.versions)) {
             return `Electron ${process.versions.electron} with Chromium ${process.versions.chrome}, Node.js ${process.version}, V8 ${process.versions.v8} running on ${process.platform}, path ${process.execPath}`;
         } else {
             return `Node.js ${process.version} with V8 ${process.versions.v8} running on ${process.platform}, path ${process.execPath}`;
         }
-    }
+    })();
 
     return platform;
 })():
@@ -82,9 +90,22 @@ const _triwasm_platform_impl =
         }
     }
 
-    platform.info = function() {
+    platform.scriptFile = (function() {
+        let url = ImPoRT.meta.url;
+        url = decodeURIComponent(new URL('', url).pathname);
+        if (Deno.build.os.toLowerCase().startsWith('win')) {
+            url = url.replace(/^\/*([A-Z]:)/gmi, '$1');
+        }
+        return url;
+    })();
+
+    platform.isWindows = (function() {
+        return Deno.build.os.toLowerCase().startsWith('win');
+    })();
+
+    platform.info = (function() {
         return `Deno ${Deno.version.deno} with V8 ${Deno.version.v8}, path ${Deno.execPath()}`;
-    }
+    })();
 
     return platform;
 })():
@@ -212,9 +233,25 @@ const _triwasm_platform_impl =
         throw new Error("Not implemented");
     }
 
-    platform.info = function() {
+    platform.scriptFile = (function() {
+        return scriptArgs[0];
+    })();
+
+    platform.isWindows = (function() {
+        return os.platform.toLowerCase().startsWith('win');
+    })();
+
+    platform.info = (function() {
         return `QuickJS on ${os.platform}`;
-    }
+    })();
+
+    class TextDecoder {
+        decode(array) {
+            
+        }
+    };
+
+    platform.TextDecoder = TextDecoder;
 
     if (typeof(console.error) === 'undefined') {
         console.error = function(...args) {
@@ -242,6 +279,10 @@ if (!Array.prototype.at) {
     Array.prototype.at = function(index) {
         return this[index >= 0 ? index : this.length - index];
     }
+}
+
+if (typeof(TextDecoder) === 'undefined') {
+    var TextDecoder = _triwasm_platform_impl.TextDecoder;
 }
 
 const trace = true;
