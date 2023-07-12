@@ -89,76 +89,128 @@ Memory organization:
 
 */
 
+# Configurations:
+# tableLengthSize - size (in bytes) of the table length field, 0, 2, or 4
+# tableElementSize - size (in bytes) of the table element, 2 or 4
+# hostCallbacks - are the host callbacks enabled
 
+# Table structure:
+#       u32 table_pointer     Anywhere in the memory, if exported/imported then in import-export slot
+#             ^       |       Label: $_tableN_ptr
+#             |       +---+   Can be removed if:
+#             |           |    * not movable table
+#             |           |    * not exported/imported
+#             |           |
+#   u32/16 return_pointer |   Points back to the table pointer, needed for updating table pointers
+#                         |   during table grow.
+#                         |   Can be removed if:
+#                         |    * not movable table
+#                         |   Can be u16 (globally) if:
+#            +------------+    * all tables are not exported/imported
+#            |                 * small memory model (<= 64K)
+#            V
+#  u32/16 length              Number of items in the table.
+#                             Label: $_tableN_start
+#                             Can be removed (globally) if:
+#                              * all tables are not exported/imported
+#                              * all tables are not growable
+#                              * table index faults are disabled
+#                             Can be u16 (globally) if:
+#                              * all tables are not exported/imported
+#                              * small memory model (<= 64K)
+#
+#  u32/16 callbacks[]         Array of callbacks.
+#                             Highest bit indicates host callback if host callbacks are enabled.
+#                             Can be u16 (globally) if:
+#                              * all tables are not exported/imported
+#                              * all tables are funcref
+#                              * small program model (<= 32K)
+#                              * host callbacks are disabled
+
+<% for (let tableIndex = module.tables.length - 1; index >= 0 ; index--) { %>
+    <% let table = module.tables[tableIndex]; %>
+    # Call function from table <%= tableIndex %>
+    # @stack  function_params..., entry_index, return_address
+    #     =>  function_results...
+    .begin discardable
+        __call_indirect_table<%= tableIndex %>:
+        <% if (table.isMovable) { %>
+            NEG -__table<%= tableIndex %>_ptr
+            READ32 [POP] # Read table pointer
+        <% } else { %>
+            NEG -__table<%= tableIndex %>_start
+        <% } %>
+        <% if (tableIndex == 0) { %>
+            # Fall into __call_indirect_common
+            .ref __call_indirect_common
+        <% } else { %>
+            BR __call_indirect_common
+        <% } %>
+    .end
+<% } %>
+
+# Call function from specific table
+# @stack  function_params..., index, return_address, table_start
+#     =>  function_results...
+# @param  table_start
 .begin discardable
-    __call_indirect_table0: #> params, index, ret
-    READ32 [SP]
-    NEG -__table0_start
-    WRITE32 [SP] - 4
-    .ref __call_indirect_table_ptr
-.end
-.begin discardable
+__call_indirect_common:
     .local invalid_index
     .local host_callback
-    __call_indirect_table_ptr:
-    READ32 [SP] - 4
-    .if __conf_short_table_length
-        READ16 [POP]
-    .else
-        READ32 [POP]
-    .end
-    READ32 [SP] - 12
-    UGT
-    BRF invalid_index # TODO: different version of code if "table out of bounds" fault is enabled
-    READ32 [SP] - 8
-    .if __conf_short_table_element
-       MUL 2
-    .else
-       MUL 4
-    .end
-    READ32 [SP] - 8
-    .if __conf_short_table_length
-       ADD 2
-    .else
-       ADD 4
-    .end
-    ADD
-    .if __conf_host_callbacks
-        .if __conf_short_table_element
+    <% if (conf.tableLengthSize > 0 && conf.faults.wasmTableIndex) { %>
+        READ32 [SP]         # ..., index, return_address, table_start, table_start
+        <% if (conf.tableLengthSize == 2) { %>
             READ16 [POP]
-            READ32 [SP]
-            AND 0x7FFF
-        .else
+        <% } else { %>
             READ32 [POP]
-            READ32 [SP]
-            AND 0x7FFFFFFF
-        .end
-        READ32 [SP] - 4
-        READ32 [SP] - 4
-        XOR
-        BRT host_callback
-        # params..., index, table_ptr, ret, entry_value, func_ptr
-        WRITE32 [SP]
-    .else
-        .if __conf_short_table_element
+        <% } %>             # ..., index, return_address, table_start, table_length
+        READ32 [SP] - 12    # ..., table_length, index
+        UGT                 # ..., index, return_address, table_start, (table_length > index)
+        BRF invalid_index
+    <% } %>                 # ..., index, return_address, table_start
+    READ32 [SP] - 8         # ..., index, return_address, table_start, index
+    MUL <%= conf.tableElementSize %> #               ..., table_start, offset
+    <% if (conf.tableLengthSize > 0) { %>
+        ADD <%= conf.tableLengthSize %>
+    <% } %>                 #                        ..., table_start, offset
+    ADD                     #                        ..., item_ptr
+    <% if (conf.hostCallbacks) { %>
+        READ32 [POP]        # ..., callback
+        READ32 [SP]         # ..., callback, callback
+        AND 0x7FFFFFFF      # ..., callback, callback_address
+        READ32 [SP] - 4     # ..., callback, callback_address, callback
+        READ32 [SP] - 4     # ..., callback, callback_address, callback, callback_address
+        XOR                 # ..., callback, callback_address, host_callback_flag
+        BRT host_callback   # ..., callback, callback_address
+        WRITE32 [SP]        # ..., callback_address
+    <% } else { %>
+        <% if (conf.tableElementSize == 2) { %>
             READ16 [POP]
-        .else
+        <% } else { %>
             READ32 [POP]
-        .end
-    .end
-    UNWIND 2, 2 # TODO: unwind emulation if needed
-    WRITE32 PC
+        <% } %>
+    <% } %>                 # params..., index, return_address, callback_address
+    <% if (conf.ext.unwind) { %>
+        UNWIND 48           # jump to callback_address, keep 1, skip 1
+    <% } else { %>
+        NEG -32             # keep 2, skip 1
+        CALL __triwasmlib_unwind # params..., return_address, callback_address
+        WRITE32 PC
+    <% } %>
+
     .begin discardable
-    invalid_index:
-        NEG -TRIVM_FAULT_WASM_TABLE_INDEX
-        BR __trigger_fault
+    invalid_index:                          # ..., index, return_address, table_start
+        READ32 [SP] - 4                     # ..., index, return_address, table_start, index
+        NEG -TRIVM_FAULT_WASM_TABLE_INDEX   # ..., index, return_address, table_start, index, fault_type
+        BR __trigger_fault_with_two_codes
     .end
+
     .begin discardable
-    host_callback: # params..., index, table_ptr, ret, entry_value, func_ptr
-        WRITE32 [SP]
-        UNWIND 2, 2 # params..., ret, func_ptr
-        WRITE32 TMP0
-        WRITE32 TMP1
+    host_callback:      # params..., index, return_address, callback, callback_address
+        WRITE32 TMP0    # params..., index, return_address, callback
+        WRITE32 TMP1    # params..., index, return_address
+        WRITE32 [SP]    # params..., return_address
+        WRITE32 TMP1    # params...
         HOST TRIVM_HOST_CALLBACK_IMPORT_ID
     .end
 .end
@@ -174,6 +226,15 @@ Memory organization:
     __trigger_fault_with_code:
     WRITE32 TMP0
     WRITE32 TMP1
+    WRITE32 TMP2
+    BR __exception_handler
+.end
+
+.begin discardable
+    __trigger_fault_with_two_codes:
+    WRITE32 TMP0
+    WRITE32 TMP1
+    WRITE32 wasm_TMP3
     WRITE32 TMP2
     BR __exception_handler
 .end
