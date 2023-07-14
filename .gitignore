@@ -1,10 +1,7 @@
-/triwasmlib/build/tools
-/triwasmlib/build/obj
-/scripts/temp
-/scripts/output
 package-lock.json
 node_modules
 /.vscode/settings.json
-/dist/
-/devtools/wabt
 .~lock.*
+/ext/*/*
+/ext/*/**/*
+!/ext/*/DIRECTORY-README.txt

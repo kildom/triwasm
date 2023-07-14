@@ -593,6 +593,37 @@ trivm-sdk
 └─📄 README.txt
 ```
 
+## Repo structure
+
+```
+📁 .github
+📁 devtools
+📁 doc
+📁 samples
+📁 test
+📁 tools
+    📁 asm
+    📁 cc
+    📁 conf
+    📁 common
+    📁 runtime
+    📁 wasm
+📁 vm
+    📄 COPYING.txt
+    📄 trivm.c
+    📄 trivm.h
+    📄 trivm_op_tree.h
+    📄 trace.h
+    📄 trace.c
+    📄 trivm_if.h
+    📄 trivm_if.c
+📄 COPYING.txt
+📄 package.json
+📄 .gitignore
+📄 .gitmodules
+📄 README.md
+```
+
 # Idea for mjs modules amalgamation
 
 For TypeScript it is better to allow `tcs` to merge modules and add custom `System.register` function line in [triasm/notes.md](triasm/notes.md)

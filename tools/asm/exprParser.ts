@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { reMatchAll } from "../utils/common";
+import { reMatchAll } from "../common/common";
 
 
 export class ExprParserError extends Error {

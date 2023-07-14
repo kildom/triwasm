@@ -1,10 +1,10 @@
 {
     "extends": "../../build/common.tsconfig.json",
     "files": [
-        "../utils/platform-impl.js",
-        "../utils/build/SystemRegisterBegin.js",
+        "../common/platform-impl.js",
+        "../build/ts-include/build/SystemRegisterBegin.js",
         "tricc.ts",
-        "../utils/build/SystemRegisterEnd.js"
+        "../build/ts-include/build/SystemRegisterEnd.js"
     ],
     "compilerOptions": {
         "outFile": "../../dist/bin/js/tricc.js"

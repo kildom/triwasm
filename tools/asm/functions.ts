@@ -13,7 +13,7 @@
  */
 
 import { Assign, Block, BlockEnd, ExprContext, ExprEval, InstrBase } from './instructions'
-import { ObjMarker } from '../utils/common';
+import { ObjMarker } from '../common/common';
 import { CompilerError } from './errors';
 
 type FuncEval = (instr: InstrBase, ctx: ExprContext, ...args: ExprEval[]) => bigint;

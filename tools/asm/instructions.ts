@@ -16,7 +16,7 @@ import { BASE, instrInfoById, INSTR, InstrInfo } from "./instrInfo";
 import { Compiler } from "./compiler";
 import { ExprMaker } from "./exprMaker";
 import { CompilerError } from "./errors";
-import { allowTemporaryNull } from "../utils/common";
+import { allowTemporaryNull } from "../common/common";
 import { BytecodeGenerator } from "./generator";
 
 const MAX_FILL_SIZE = 128 * 1024 * 1024;

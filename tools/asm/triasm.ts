@@ -14,8 +14,8 @@
 
 
 import { Compiler } from './compiler';
-import { ArgsParser } from '../utils/argparse';
-import { platform } from '../utils/platform';
+import { ArgsParser } from '../common/argparse';
+import { platform } from '../common/platform';
 
 const usage = `
 Usage: triasm [options] <input>

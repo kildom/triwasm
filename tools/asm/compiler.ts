@@ -13,7 +13,7 @@
  */
 
 import { Block, BlockEnd, PlaceInstruction, InstrBase, ExprEval, ExprContext } from './instructions';
-import { allowTemporaryNull, ObjMarker } from '../utils/common';
+import { allowTemporaryNull, ObjMarker } from '../common/common';
 import { InstrMaker } from './instrMaker';
 import { ExprMaker } from './exprMaker';
 import { CompilerError } from './errors';

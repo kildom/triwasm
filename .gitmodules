@@ -1,3 +1,6 @@
 [submodule "triwasmlib/Berkeley-SoftFloat"]
-	path = runtime/softfloatlib/Berkeley-SoftFloat
+	path = tools/runtime/softfloatlib/Berkeley-SoftFloat
 	url = https://github.com/kildom/Berkeley-SoftFloat.git
+[submodule "test/wasm/testsuite/repo"]
+	path = test/wasm/testsuite/repo
+	url = https://github.com/WebAssembly/testsuite.git

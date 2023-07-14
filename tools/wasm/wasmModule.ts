@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { allowTemporaryNull } from "../utils/common";
+import { allowTemporaryNull } from "../common/common";
 import { OP } from "./opcodes";
 
 
