@@ -12,7 +12,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { platform } from "../utils/platform";
+import { Path } from "../common/path";
+import { platform } from "../common/platform";
 import { BinaryInput } from "./binaryInput";
 import { generate } from "./generator";
 import { LinkResolver } from "./linkResolver";
@@ -27,8 +28,8 @@ import { WasmParser } from "./wasmParser";
 //let p = new WasmParser("test/__old/test.wasm");
 let p = new WasmParser();
 let main = p.parse("test/__old/libbzip2-dec.wasm", 0);
-let triwasmlib = p.parse("dist/data/lib/triwasmlib.wasm", main.logicalOffsets.end);
-let softfloatlib = p.parse("dist/data/lib/softfloatlib.wasm", triwasmlib.logicalOffsets.end);
+let triwasmlib = p.parse(Path.runtime.join("triwasmlib.wasm").toString(), main.logicalOffsets.end);
+let softfloatlib = p.parse(Path.runtime.join("softfloatlib.wasm").toString(), triwasmlib.logicalOffsets.end);
 
 let m = new ModuleMerger(main);
 m.merge(triwasmlib, '__triwasm__triwasmlib');

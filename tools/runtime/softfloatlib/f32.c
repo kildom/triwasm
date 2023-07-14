@@ -8,10 +8,10 @@
 #include "softfloat.h"
 
 #define EXP_BINOP32(T, name) \
-EXPORT(trivm_##name) \
+TRIVM_EXPORT(trivm_##name) \
 T trivm_##name( float32_t a, float32_t b ) \
 { \
-    ANNOTATION("license:Berkeley-SoftFloat"); \
+    ANNOTATION(trivm_##name, "license:Berkeley-SoftFloat"); \
     return name(a, b); \
 } \
 
@@ -20,115 +20,112 @@ EXP_BINOP32(float32_t, f32_sub);
 EXP_BINOP32(float32_t, f32_mul);
 EXP_BINOP32(float32_t, f32_div);
 
-EXPORT(trivm_f32_le)
+TRIVM_EXPORT(trivm_f32_le)
 bool trivm_f32_le( float32_t a, float32_t b )
 {
-    ANNOTATION("triasm_name:__triwasmlib_f32_le");
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_le_name, "triasm_name:__triwasmlib_f32_le");
+    ANNOTATION(trivm_f32_le_lic, "license:Berkeley-SoftFloat");
     return f32_le(a, b);
 }
 
-EXPORT(trivm_f32_lt)
+TRIVM_EXPORT(trivm_f32_lt)
 bool trivm_f32_lt( float32_t a, float32_t b )
 {
-    ANNOTATION("triasm_name:__triwasmlib_f32_lt");
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_lt, "triasm_name:__triwasmlib_f32_lt");
+    ANNOTATION(trivm_f32_lt, "license:Berkeley-SoftFloat");
     return f32_lt(a, b);
 }
 
-EXPORT(trivm_f32_eq)
+TRIVM_EXPORT(trivm_f32_eq)
 bool trivm_f32_eq( float32_t a, float32_t b )
 {
-    ANNOTATION("triasm_name:__triwasmlib_f32_eq");
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_eq, "triasm_name:__triwasmlib_f32_eq");
+    ANNOTATION(trivm_f32_eq, "license:Berkeley-SoftFloat");
     return f32_eq(a, b);
 }
 
 TRIVM_EXPORT_ASSEMBLY(
-    trivm_f32_gt,
+    bool, trivm_f32_gt, ( float32_t a, float32_t b ),
     "READ [SP] + 2\n"
     "READ [SP] + 2\n"
     "WRITE [SP] + 3\n"
     "WRITE [SP] + 1\n"
-    "BR __triwasmlib_f32_lt\n",
-    bool, ( float32_t a, float32_t b ));
+    "BR __triwasmlib_f32_lt\n");
 
 TRIVM_EXPORT_ASSEMBLY(
-    trivm_f32_ge,
+    bool, trivm_f32_ge, ( float32_t a, float32_t b ),
     "READ [SP] + 2\n"
     "READ [SP] + 2\n"
     "WRITE [SP] + 3\n"
     "WRITE [SP] + 1\n"
-    "BR __triwasmlib_f32_le\n",
-    bool, ( float32_t a, float32_t b ));
+    "BR __triwasmlib_f32_le\n");
 
 TRIVM_EXPORT_ASSEMBLY( // TODO: This function should not exist, code should be generated during reduce and optimized later: CALL eq, NOT, BRT --> CALL eq, BRF
-    trivm_f32_ne,
+    bool, trivm_f32_ne, ( float32_t a, float32_t b ),
     "CALL __triwasmlib_f32_eq\n"
     "NOT\n"
-    "RET\n",
-    bool, ( float32_t a, float32_t b ));
+    "RET\n");
 
-EXPORT(trivm_f32_ceil)
+TRIVM_EXPORT(trivm_f32_ceil)
 float32_t trivm_f32_ceil( float32_t a )
 {
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_ceil, "license:Berkeley-SoftFloat");
     return f32_roundToInt(a, softfloat_round_max, false);
 }
 
-EXPORT(trivm_f32_floor)
+TRIVM_EXPORT(trivm_f32_floor)
 float32_t trivm_f32_floor( float32_t a )
 {
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_floor, "license:Berkeley-SoftFloat");
     return f32_roundToInt(a, softfloat_round_min, false);
 }
 
-EXPORT(trivm_f32_trunc)
+TRIVM_EXPORT(trivm_f32_trunc)
 float32_t trivm_f32_trunc( float32_t a )
 {
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_trunc, "license:Berkeley-SoftFloat");
     return f32_roundToInt(a, softfloat_round_minMag, false);
 }
 
 
-EXPORT(trivm_f32_nearest)
+TRIVM_EXPORT(trivm_f32_nearest)
 float32_t trivm_f32_nearest( float32_t a )
 {
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_nearest, "license:Berkeley-SoftFloat");
     return f32_roundToInt(a, softfloat_round_near_even, false);
 }
 
-EXPORT(trivm_f32_convert_i32_s)
+TRIVM_EXPORT(trivm_f32_convert_i32_s)
 float32_t trivm_f32_convert_i32_s(int32_t a)
 {
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_convert_i32_s, "license:Berkeley-SoftFloat");
     return i32_to_f32(a);
 }
 
-EXPORT(trivm_f32_convert_i32_u)
+TRIVM_EXPORT(trivm_f32_convert_i32_u)
 float32_t trivm_f32_convert_i32_u(int32_t a)
 {
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_convert_i32_u, "license:Berkeley-SoftFloat");
     return ui32_to_f32(a);
 }
 
-EXPORT(trivm_f32_convert_i64_s)
+TRIVM_EXPORT(trivm_f32_convert_i64_s)
 float32_t trivm_f32_convert_i64_s(int64_t a)
 {
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_convert_i64_s, "license:Berkeley-SoftFloat");
     return i64_to_f32(a);
 }
 
-EXPORT(trivm_f32_convert_i64_u)
+TRIVM_EXPORT(trivm_f32_convert_i64_u)
 float32_t trivm_f32_convert_i64_u(int64_t a)
 {
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_convert_i64_u, "license:Berkeley-SoftFloat");
     return ui64_to_f32(a);
 }
 
-EXPORT(trivm_f32_demote_f64)
+TRIVM_EXPORT(trivm_f32_demote_f64)
 float32_t trivm_f32_demote_f64(float64_t a)
 {
-    ANNOTATION("license:Berkeley-SoftFloat");
+    ANNOTATION(trivm_f32_demote_f64, "license:Berkeley-SoftFloat");
     return f64_to_f32(a);
 }

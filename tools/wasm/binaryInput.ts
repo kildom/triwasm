@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { platform } from '../utils/platform';
+import { platform } from '../common/platform';
 
 
 export class BinaryInput {

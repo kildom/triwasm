@@ -9,7 +9,7 @@ TRIVM_INLINE_ASSEMBLY(
 uint64_t make64(uint32_t h, uint32_t l);
 
 
-EXPORT(sub64)
+TRIVM_EXPORT(sub64)
 uint64_t sub64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
 {
     uint32_t carry = 0;
@@ -21,7 +21,7 @@ uint64_t sub64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     return make64(ah, al);
 }
 
-EXPORT(add64)
+TRIVM_EXPORT(add64)
 uint64_t add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
 {
     uint32_t carry = 0;
@@ -33,7 +33,7 @@ uint64_t add64(uint32_t bh, uint32_t bl, uint32_t ah, uint32_t al)
     return make64(ah, al);
 }
 
-EXPORT(ushr64)
+TRIVM_EXPORT(ushr64)
 uint64_t ushr64(uint32_t b, uint32_t ah, uint32_t al)
 {
     b &= 63;
@@ -49,7 +49,7 @@ uint64_t ushr64(uint32_t b, uint32_t ah, uint32_t al)
     return make64(ah, al);
 }
 
-EXPORT(ushr64_1)
+TRIVM_EXPORT(ushr64_1)
 uint64_t ushr64_1(uint32_t ah, uint32_t al)
 {
     al = (al >> 1) | (ah << 31);
@@ -57,7 +57,7 @@ uint64_t ushr64_1(uint32_t ah, uint32_t al)
     return make64(ah, al);
 }
 
-EXPORT(udiv64)
+TRIVM_EXPORT(udiv64)
 uint64_t udivmod64(uint32_t is_mod, uint64_t b, uint64_t a)
 {
     uint32_t zeros = __builtin_clzll(b);
@@ -75,7 +75,7 @@ uint64_t udivmod64(uint32_t is_mod, uint64_t b, uint64_t a)
     return is_mod ? a : result;
 }
 
-EXPORT(i32_clz)
+TRIVM_EXPORT(i32_clz)
 uint32_t i32_clz(uint32_t a)
 {
     uint32_t res = 0;
@@ -86,7 +86,7 @@ uint32_t i32_clz(uint32_t a)
     return res;
 }
 
-EXPORT(i64_clz32)
+TRIVM_EXPORT(i64_clz32)
 uint32_t i64_clz32(uint32_t ah, uint32_t al)
 {
     uint32_t res = 0;

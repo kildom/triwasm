@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { allowTemporaryNull } from "../utils/common";
+import { allowTemporaryNull } from "../common/common";
 import { EnterBlockCtx, EnterFunctionCtx, EnterInstrCtx, ExitBlockCtx, ExitFunctionCtx, ExitInstrCtx, walkFunctions } from "./moduleWalker";
 import { OP } from "./opcodes";
 import { instrId, NumberType, RefType, ValueType, valueTypeWords, VectorType, WasmBlock, WasmBranchDir, WasmFunction, WasmFunctionKind, WasmInstr, WasmInstrCall, WasmInstrRefFunc, WasmInstrIf, WasmInstrWithBlock, WasmModule, FunctionType } from "./wasmModule";

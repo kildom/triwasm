@@ -8,14 +8,13 @@
 
 
 TRIVM_EXPORT_ASSEMBLY(
-    unreachable,
+    void, unreachable, (),
     "NEG -(" TRIVM_FAULT_WASM_UNREACHABLE ")\n"
-    "BR $_trigger_fault\n",
-    void, ());
+    "BR $_trigger_fault\n");
 
 
 TRIVM_EXPORT_ASSEMBLY(
-    select32,
+    u32, select32, (u32 a, u32 b, u32 cond),
     ".local is_true\n"
     "WRITE32 TMP0\n"
     "BRT is_true\n"
@@ -24,12 +23,11 @@ TRIVM_EXPORT_ASSEMBLY(
     "is_true:\n"
     "WRITE32 TMP1\n"
     "READ32 TMP0\n"
-    "WRITE32 PC\n",
-    u32, (u32 a, u32 b, u32 cond));
+    "WRITE32 PC\n");
 
 
 TRIVM_EXPORT_ASSEMBLY(
-    select64,
+    u64, select64, (u64 a, u64 b, u32 cond),
     ".local is_true\n"
     "WRITE32 TMP0\n"
     "BRT is_true\n"
@@ -41,12 +39,11 @@ TRIVM_EXPORT_ASSEMBLY(
     "WRITE32 TMP1\n"
     "WRITE32 TMP1\n"
     "READ32 TMP0\n"
-    "WRITE32 PC\n",
-    u64, (u64 a, u64 b, u32 cond));
+    "WRITE32 PC\n");
 
 
 TRIVM_EXPORT_ASSEMBLY(
-    select128,
+    v128, select128, (v128 a, v128 b, u32 cond),
     ".local is_true\n"
     "WRITE32 TMP0\n"
     "BRT is_true\n"
@@ -62,26 +59,22 @@ TRIVM_EXPORT_ASSEMBLY(
     "WRITE32 TMP1\n"
     "WRITE32 TMP1\n"
     "READ32 TMP0\n"
-    "WRITE32 PC\n",
-    v128, (v128 a, v128 b, u32 cond));
+    "WRITE32 PC\n");
 
 
 TRIVM_EXPORT_INLINE_ASSEMBLY(
-    call_indirect_table0,
-    "CALL $_call_indirect_table0\n",
-    void, ());
+    void, call_indirect_table0, (),
+    "CALL $_call_indirect_table0\n");
 
 
 TRIVM_EXPORT_INLINE_ASSEMBLY(
-    call_indirect_table_ptr,
-    "CALL $_call_indirect_table_ptr\n",
-    void, ());
+    void, call_indirect_table_ptr, (),
+    "CALL $_call_indirect_table_ptr\n");
 
 
 TRIVM_EXPORT_ASSEMBLY(
-    call_indirect_table_ptr_ptr,
+    void, call_indirect_table_ptr_ptr, (),
     "READ32 [SP] - 4\n"
     "READ32 [POP]\n"
     "WRITE32 [SP] - 4\n"
-    "BR $_call_indirect_table_ptr\n",
-    void, ());
+    "BR $_call_indirect_table_ptr\n");

@@ -5,23 +5,28 @@ const path = require('path');
 class Tasks {
 
     starters() {
-        fs.mkdirSync('dist/bin/js', { recursive: true });
-        for (let file of fs.readdirSync('dist/bin/js')) {
-            if (file.endsWith('.js') && !file.endsWith('versioncheck.js')) {
-                fs.copyFileSync('build/starters/starter.bat', 'dist/bin/' + file.replace('.js', '.bat'));
-                fs.copyFileSync('build/starters/starter.sh', 'dist/bin/' + file.replace('.js', ''));
+        fs.mkdirSync('bin/js', { recursive: true });
+        let skipStarters = new Set();
+        for (let file of fs.readdirSync('tools/build/bin-include')) {
+            fs.copyFileSync('tools/build/bin-include/' + file, 'bin/js/' + file);
+            skipStarters.add(file);
+        }
+        for (let file of fs.readdirSync('bin/js')) {
+            if (file.endsWith('.js') && !skipStarters.has(file)) {
+                fs.copyFileSync('tools/build/starters/starter.bat', 'bin/' + file.replace('.js', '.bat'));
+                fs.copyFileSync('tools/build/starters/starter.sh', 'bin/' + file.replace('.js', ''));
             }
         }
     }
 
     jsfixup() {
-        fs.mkdirSync('dist/bin/js', { recursive: true });
-        for (let file of fs.readdirSync('dist/bin/js')) {
+        fs.mkdirSync('bin/js', { recursive: true });
+        for (let file of fs.readdirSync('bin/js')) {
             if (file.endsWith('.js')) {
-                let text = fs.readFileSync('dist/bin/js/' + file, 'utf-8');
+                let text = fs.readFileSync('bin/js/' + file, 'utf-8');
                 let replaced = text.replace(/ImPoRT/g, 'import');
                 if (text != replaced) {
-                    fs.writeFileSync('dist/bin/js/' + file, replaced);
+                    fs.writeFileSync('bin/js/' + file, replaced);
                 }
             }
         }
@@ -77,7 +82,7 @@ function readdirSyncRecursive(dir) {
     return files;
 }
 
-process.chdir(`${__dirname}/..`);
+process.chdir(`${__dirname}/../..`);
 let tasks = new Tasks();
 let allTasksNames = Object.getOwnPropertyNames(Tasks.prototype).filter(x => x !== 'constructor');
 let list = (process.argv.length > 2) ? process.argv.slice(2) : allTasksNames;

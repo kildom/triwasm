@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { allowTemporaryNull, enumize, pick } from "../utils/common";
+import { allowTemporaryNull, enumize, pick } from "../common/common";
 import { BinaryInput } from "./binaryInput";
 import { OP } from "./opcodes";
 import { DataKind, ElementKind, FunctionType, GlobalKind, Limits, NumberType, RefType, ValueType, ValueTypeObject, VectorType, WasmBlock, WasmBranchDir, WasmData, WasmElement, WasmFunction, WasmFunctionKind, WasmGlobal, WasmImport, WasmInstr, WasmInstrIf, WasmInstrIfOP, WasmInstrWithBlock, WasmInstrWithBlockOP, WasmMemory, WasmModule, WasmTable, instrId } from "./wasmModule";

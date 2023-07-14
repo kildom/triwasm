@@ -69,7 +69,7 @@ goto :EOF
 
 :check_node
     %LOG% Checking Node.js or Electron at: %1
-    %1 "%JS_DIR%\versioncheck.js" %MINIMUM_NODE_VER% > nul 2> nul
+    %1 "%JS_DIR%\versionhelper.js" %MINIMUM_NODE_VER% > nul 2> nul
     set RES=%ERRORLEVEL%
     set "ENGINE_BIN=--enable-source-maps --expose-gc"
     if %RES%==87 goto check_result_old
@@ -78,7 +78,7 @@ goto :EOF
 
 :check_deno
     %LOG% Checking deno at: %1
-    %1 run "%JS_DIR%\versioncheck.js" %MINIMUM_DENO_VER% > nul 2> nul
+    %1 run "%JS_DIR%\versionhelper.js" %MINIMUM_DENO_VER% > nul 2> nul
     set RES=%ERRORLEVEL%
     set "ENGINE_BIN=run --allow-read --allow-write"
     if %RES%==87 goto check_result_old

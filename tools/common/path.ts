@@ -62,9 +62,13 @@ export class Path {
     public readBinary(): Uint8Array {
         return platform.readFile(this.toString(), true);
     }
+    public write(content: string | Uint8Array) {
+        platform.writeFile(this.toString(), content);
+    }
     public static root: Path = new Path(platform.scriptFile).parent().parent().parent();
-    public static wasmLib: Path = new Path(platform.scriptFile).parent().parent().parent().join('data/lib');
-    public static gui: Path = new Path(platform.scriptFile).parent().parent().parent().join('data/gui');
+    public static runtime: Path = new Path(platform.scriptFile).parent().parent().parent().join('tools/runtime');
+    //public static gui: Path = new Path(platform.scriptFile).parent().parent().parent().join('data/gui');
     public static ext: Path = new Path(platform.scriptFile).parent().parent().parent().join('ext');
-    public static src: Path = new Path(platform.scriptFile).parent().parent().parent().join('src');
+    public static vm: Path = new Path(platform.scriptFile).parent().parent().parent().join('vm');
+    public static guest: Path = new Path(platform.scriptFile).parent().parent().parent().join('guest');
 }

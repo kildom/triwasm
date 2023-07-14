@@ -1,12 +1,12 @@
 {
-    "extends": "../../build/common.tsconfig.json",
+    "extends": "../build/common.tsconfig.json",
     "files": [
         "../common/platform-impl.js",
-        "../build/ts-include/build/SystemRegisterBegin.js",
+        "../build/ts-include/SystemRegisterBegin.js",
         "triasm.ts",
-        "../build/ts-include/build/SystemRegisterEnd.js"
+        "../build/ts-include/SystemRegisterEnd.js"
     ],
     "compilerOptions": {
-        "outFile": "../../dist/bin/js/triasm.js"
+        "outFile": "../../bin/js/triasm.js"
     }
 }

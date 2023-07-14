@@ -522,7 +522,7 @@ export function generate(module: WasmModule) {
             unwind: true,
         }
     };
-    output.push(fromTemplate(Path.wasmLib.join('prologue.triasm'), module, conf));
+    output.push(fromTemplate(Path.runtime.join('prologue.triasm'), module, conf));
     try {
         walkFunctions(module,
             {

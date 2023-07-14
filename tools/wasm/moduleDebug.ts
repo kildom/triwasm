@@ -1,4 +1,5 @@
-import { platform } from "../utils/platform";
+import { Path } from "../common/path";
+import { platform } from "../common/platform";
 import { OP } from "./opcodes";
 import { FunctionType, Limits, NumberType, RefType, ValueType, ValueTypeObject, VectorType, WasmBlock, WasmBranchDir, WasmData, WasmElement, WasmEntity, WasmExport, WasmFunction, WasmFunctionKind, WasmGlobal, WasmImport, WasmInstr, WasmInstrBr, WasmInstrEnd, WasmInstrIndexed, WasmInstrWithBlock, WasmMemory, WasmModule, WasmTable, instrId, valueTypeWords } from "./wasmModule";
 
@@ -1349,7 +1350,7 @@ export class ModuleDebug { // TODO: Rename to ModuleDiag
 
         this.addErrors();
 
-        platform.writeFile('drafts/out.html', this.out.join(''));
+        Path.root.join('dump.html').write(this.out.join(''));
     }
 
     addErrors() {
