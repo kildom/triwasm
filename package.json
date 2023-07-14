@@ -12,7 +12,7 @@
     "postbuild-tricc": "node build/postbuild.js starters jsfixup",
     "build-triconf": "tsc -p tools/conf/triconf.tsconfig.json",
     "postbuild-triconf": "node build/postbuild.js starters jsfixup",
-    "build-static": "node build/postbuild.js copystatic licenses",
+    "build-static": "node build/postbuild.js copystatic licenses copystartup",
     "build": "concurrently -c white,red,magenta,yellow,blue npm:build-static npm:build-triasm npm:build-triwasm npm:build-tricc npm:build-triconf",
     "build-clean": "RmDiR /S /Q dist || rm -Rf dist",
     "rebuild": "npm run build-clean && npm run build",

@@ -14,6 +14,7 @@
 
 import { allowTemporaryNull } from "../utils/common";
 import { Path } from "../utils/path";
+import { template } from "../utils/template";
 import { EnterBlockCtx, EnterFunctionCtx, EnterInstrCtx, ExitBlockCtx, ExitFunctionCtx, ExitInstrCtx, walkFunctions } from "./moduleWalker";
 import { OP } from "./opcodes";
 import { instrId, NumberType, RefType, ValueType, valueTypeWords, VectorType, WasmBlock, WasmBranchDir, WasmFunction, WasmFunctionKind, WasmInstr, WasmInstrBr, WasmInstrBrTable, WasmInstrRefFunc, WasmInstrCall, WasmInstrIf, WasmInstrWithBlock, WasmModule } from "./wasmModule";
@@ -490,11 +491,38 @@ function enterInstr(ctx: Ctx): InstrData {
 function exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>): void {
 }
 
+interface TriwasmConf {
+    tableLengthSize: number;
+    tableElementSize: number;
+    hostCallbacks: boolean;
+    faults: {
+        wasmTableIndex: boolean;
+    };
+    ext: {
+        unwind: boolean;
+    };
+};
+
+function fromTemplate(path: Path, module: WasmModule, conf: TriwasmConf) {
+    let data = { module, conf };
+    let templateFunc = template(path.readString(), data);
+    return templateFunc(data);
+}
 
 export function generate(module: WasmModule) {
     let output: string[] = [];
-    let base: Path = new Path().parent().parent();
-    console.log(base.toString());
+    let conf: TriwasmConf = {
+        tableLengthSize: 2,
+        tableElementSize: 2,
+        hostCallbacks: false,
+        faults: {
+            wasmTableIndex: false,
+        },
+        ext: {
+            unwind: true,
+        }
+    };
+    output.push(fromTemplate(Path.wasmLib.join('prologue.triasm'), module, conf));
     try {
         walkFunctions(module,
             {
@@ -510,6 +538,7 @@ export function generate(module: WasmModule) {
                 enterInstr,
                 exitInstr,
             });
+            output.push('.place __triwasm_epilogue');
     } finally {
         console.log(output.join('\n'));
     }

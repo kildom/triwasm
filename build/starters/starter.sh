@@ -45,12 +45,12 @@ find_engine() {
     check_qjs() {
         $LOG "Checking QuickJS at: $1"
         set +e
-        "$1" --std <<< "std.exit(86);" 2> /dev/null > /dev/null
+        "$1" --std -m <<< "std.exit(86);" 2> /dev/null > /dev/null
         result=$?
         set -e
         if [ $result == 86 ]; then
             $LOG "    RESULT: OK"
-            ENGINE_BIN="$1 --std"
+            ENGINE_BIN="$1 --std -m"
             return 1
         else
             $LOG "    RESULT: Error"

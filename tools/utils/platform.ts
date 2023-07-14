@@ -27,6 +27,7 @@ export interface Platform {
     scriptFile: string;
     isWindows: boolean;
     info: string;
+    main(callback: () => void): void;
 }
 
 export const platform: Platform = (typeof (_triwasm_platform_impl) === 'object' ? _triwasm_platform_impl : x._triwasm_platform_impl) as Platform;

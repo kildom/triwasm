@@ -87,9 +87,9 @@ goto :EOF
 
 :check_qjs
     %LOG% Checking QuickJS at: %1
-    %1 --std -e std.exit(86) > nul 2> nul
+    %1 --std -m -e std.exit(86) > nul 2> nul
     set RES=%ERRORLEVEL%
-    set ENGINE_BIN=--std
+    set ENGINE_BIN=--std -m
     if %RES%==86 goto check_result_ok
     goto check_result_error
 

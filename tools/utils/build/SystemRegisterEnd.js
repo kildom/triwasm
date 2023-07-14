@@ -12,4 +12,4 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-System.__execute__();
+_triwasm_platform_impl.main(() => System.__execute__());

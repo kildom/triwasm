@@ -42,13 +42,9 @@ const _triwasm_platform_impl =
         fs.writeFileSync(path, content);
     }
 
-    platform.scriptFile = (function() {
-        return __filename;
-    })();
+    platform.scriptFile = __filename;
 
-    platform.isWindows = (function() {
-        return process.platform.toLowerCase().startsWith('win');
-    })();
+    platform.isWindows = process.platform.toLowerCase().startsWith('win');
 
     platform.info = (function() {
         if (('electron' in process.versions) && ('chrome' in process.versions)) {
@@ -58,6 +54,10 @@ const _triwasm_platform_impl =
         }
     })();
 
+    platform.main = function(callback) {
+        callback();
+    }
+
     return platform;
 })():
 
@@ -65,6 +65,7 @@ const _triwasm_platform_impl =
 (typeof(Deno) == 'object' && typeof(Deno.version) == 'object' && typeof(Deno.version.deno) == 'string') ?
 (function() {
     const platform = {};
+    let mainFunction = null;
 
     platform.getArgv = function() {
         return Deno.args;
@@ -91,21 +92,31 @@ const _triwasm_platform_impl =
     }
 
     platform.scriptFile = (function() {
-        let url = ImPoRT.meta.url;
-        url = decodeURIComponent(new URL('', url).pathname);
-        if (Deno.build.os.toLowerCase().startsWith('win')) {
-            url = url.replace(/^\/*([A-Z]:)/gmi, '$1');
+        ImPoRT('./denohelper.js').then(mod => {
+            let url = mod.importMetaUrl();
+            url = decodeURIComponent(new URL('', url).pathname);
+            if (Deno.build.os.toLowerCase().startsWith('win')) {
+                url = url.replace(/^\/*([A-Z]:)/gmi, '$1');
+            }
+            platform.scriptFile = url;
+            if (mainFunction != null) {
+                mainFunction();
+            }
+        });
+        return null;
+    })();
+
+    platform.isWindows = Deno.build.os.toLowerCase().startsWith('win');
+
+    platform.info = `Deno ${Deno.version.deno} with V8 ${Deno.version.v8}, path ${Deno.execPath()}`;
+
+    platform.main = function(callback) {
+        if (platform.scriptFile === null) {
+            mainFunction = callback;
+        } else {
+            callback();
         }
-        return url;
-    })();
-
-    platform.isWindows = (function() {
-        return Deno.build.os.toLowerCase().startsWith('win');
-    })();
-
-    platform.info = (function() {
-        return `Deno ${Deno.version.deno} with V8 ${Deno.version.v8}, path ${Deno.execPath()}`;
-    })();
+    }
 
     return platform;
 })():
@@ -230,28 +241,106 @@ const _triwasm_platform_impl =
     }
 
     platform.writeFile = function(path, content) {
-        throw new Error("Not implemented");
+        let err = { errno: 0 };
+        let f = std.open(path, 'wb', err);
+        if (!f) {
+            throw new Error(`File open error: ${errstr(err.errno)}`);
+        }
+        try {
+            if (typeof(content) === 'string') {
+                f.puts(content);
+            } else {
+                if (!(content instanceof Uint8Array)) {
+                    content = new Uint8Array(content.buffer, content.byteOffset, content.byteLength);
+                }
+                let offset = 0;
+                while (offset < content.length) {
+                    let res = f.write(content, offset, content.length - offset);
+                    if (res < 0) {
+                        throw new Error(`File write error: ${errstr(res)}`);
+                    } else if (res == 0) {
+                        throw new Error(`File write interrupted`);
+                    }
+                    offset += res;
+                }
+            }
+            if (f.error()) {
+                throw new Error(`File write error`);
+            }
+        } finally {
+            f.close();
+        }
     }
 
-    platform.scriptFile = (function() {
-        return scriptArgs[0];
-    })();
+    platform.scriptFile = scriptArgs[0];
 
-    platform.isWindows = (function() {
-        return os.platform.toLowerCase().startsWith('win');
-    })();
+    platform.isWindows = os.platform.toLowerCase().startsWith('win');
 
-    platform.info = (function() {
-        return `QuickJS on ${os.platform}`;
-    })();
+    platform.info = `QuickJS on ${os.platform}`;
 
-    class TextDecoder {
-        decode(array) {
-            
+    platform.main = function(callback) {
+        callback();
+    }
+
+    class TextDecoderAlt {
+        decode(array, options) {
+            if (options) {
+                throw new Error('Not implemented');
+            }
+            let uint8;
+            if (array instanceof ArrayBuffer) {
+                uint8 = new Uint8Array(array);
+            } else if (array instanceof Uint8Array) {
+                uint8 = array;
+            } else {
+                uint8 = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+            }
+            let inputOffset = 0;
+            let chunk = Array(512);
+            let chunkOffset = 0;
+            let output = [];
+            let secondSurrogate = 0;
+            while (inputOffset < uint8.length || secondSurrogate > 0) {
+                let first = uint8[inputOffset++];
+                if (first < 128) {
+                    chunk[chunkOffset++] = first;
+                } else if ((first & 0xE0) == 0xC0 && inputOffset < uint8.length) {
+                    chunk[chunkOffset++] = (first & 0x1F) << 6 | uint8[inputOffset++] & 0x3F;
+                } else if ((first & 0xF0) == 0xE0 && inputOffset + 1 < uint8.length) {
+                    let val = (first & 0x0F) << 12 | (uint8[inputOffset++] & 0x3F) << 6;
+                    chunk[chunkOffset++] = val | uint8[inputOffset++] & 0x3F;
+                } else if ((first & 0xF8) == 0xF0 && inputOffset + 2 < uint8.length) {
+                    let val = (first & 0x07) << 18 | (uint8[inputOffset++] & 0x3F) << 12;
+                    val |= (uint8[inputOffset++] & 0x3F) << 6;
+                    val |= (uint8[inputOffset++] & 0x3F);
+                    val -= 0x10000;
+                    if (val >= 0) {
+                        chunk[chunkOffset++] = 0xD800 | (val >> 10);
+                        if (chunkOffset == 512) {
+                            secondSurrogate = 0xDC00 | (val & 0x3FF);
+                        } else {
+                            chunk[chunkOffset++] = 0xDC00 | (val & 0x3FF);
+                        }
+                    }
+                }
+                if (chunkOffset == 512) {
+                    if (secondSurrogate > 0) {
+                        output.push(String.fromCharCode(...chunk, secondSurrogate));
+                        secondSurrogate = 0;
+                    } else {
+                        output.push(String.fromCharCode(...chunk));
+                    }
+                    chunkOffset = 0;
+                }
+            }
+            if (chunkOffset > 0) {
+                output.push(String.fromCharCode(...chunk.slice(0, chunkOffset)));
+            }
+            return output.join('');
         }
     };
 
-    platform.TextDecoder = TextDecoder;
+    platform.TextDecoder = TextDecoderAlt;
 
     if (typeof(console.error) === 'undefined') {
         console.error = function(...args) {
@@ -277,12 +366,13 @@ if (typeof(exports) === 'object') {
 
 if (!Array.prototype.at) {
     Array.prototype.at = function(index) {
-        return this[index >= 0 ? index : this.length - index];
+        return this[index >= 0 ? index : this.length + index];
     }
 }
 
 if (typeof(TextDecoder) === 'undefined') {
-    var TextDecoder = _triwasm_platform_impl.TextDecoder;
+    std.exit._triwasm_platform_impl = _triwasm_platform_impl;
+    std.evalScript('var TextDecoder = std.exit._triwasm_platform_impl.TextDecoder;');
 }
 
 const trace = true;

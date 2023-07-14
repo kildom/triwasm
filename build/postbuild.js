@@ -19,7 +19,7 @@ class Tasks {
         for (let file of fs.readdirSync('dist/bin/js')) {
             if (file.endsWith('.js')) {
                 let text = fs.readFileSync('dist/bin/js/' + file, 'utf-8');
-                let replaced = text.replace(/ImPoRT\.meta\.url/g, 'import.meta.url');
+                let replaced = text.replace(/ImPoRT/g, 'import');
                 if (text != replaced) {
                     fs.writeFileSync('dist/bin/js/' + file, replaced);
                 }
@@ -35,6 +35,12 @@ class Tasks {
             } else {
                 fs.mkdirSync('dist/' + file, { recursive: true });
             }
+        }
+    }
+
+    copystartup() {
+        for (let file of readdirSyncRecursive('runtime/startup')) {
+            fs.copyFileSync('runtime/startup/' + file, 'dist/data/lib/' + file);
         }
     }
 
