@@ -1,6 +1,47 @@
 # Copyright (C) 2023 Dominik Kilian
 # SPDX-License-Identifier: 0BSD
 
+# VM Registers
+TMP0 = 0
+PC = 4
+ASP = 8
+TMP1 = 12
+TMP2 = 16
+AMB0 = 20
+AMB1 = 24
+SPL = 28
+SPH = 32
+ASPL = 36
+ASPH = 40
+registers_end = 44
+
+<% if (conf.separateMemory) { %>
+    .base 0x80000000
+    BR main_entry
+    .pma 5
+    BR fault_handler
+    .pma 16
+<% } else { %>
+    .base 0
+    .data32 0 # TMP0
+    .data32 0 # PC
+    .data32 <%= conf.regs.asp %> # ASP
+    .data32 0 # TMP1
+    .data32 0 # TMP2
+    .data32 <%= conf.regs.amb0 %> # AMB0
+    .data32 0 # AMB1
+    .data32 0 # SPL
+    .data32 0xFFFFFFFF # SPH
+    .data32 0 # ASPL
+    .data32 0 # ASPH
+    BR main_entry
+    .pma registers_end + 5
+    BR fault_handler
+    .pma registers_end + 16
+<% } %>
+
+.place export_slots
+
 TRIVM_FAULT_WASM_TABLE_INDEX = 17
 TRIVM_HOST_CALLBACK_IMPORT_ID = -1
 
