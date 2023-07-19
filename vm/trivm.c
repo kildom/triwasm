@@ -88,13 +88,13 @@
 
 /* ================================================== Fault types =================================================== */
 
-#define TRIVM_FAULT_INSTR_OUT_OF_BOUNDS  0
-#define TRIVM_FAULT_INSTR_INVALID        1
-#define TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS 2
-#define TRIVM_FAULT_READ_ONLY            3
-#define TRIVM_FAULT_DIVISION_BY_ZERO     4
-#define TRIVM_FAULT_STACK_OVERFLOW       5
-#define TRIVM_FAULT_STACK_UNDERFLOW      6
+#define TRIVM_FAULT_STACK_OVERFLOW       0
+#define TRIVM_FAULT_STACK_UNDERFLOW      1
+#define TRIVM_FAULT_INSTR_OUT_OF_BOUNDS  2
+#define TRIVM_FAULT_INSTR_INVALID        3
+#define TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS 4
+#define TRIVM_FAULT_READ_ONLY            5
+#define TRIVM_FAULT_DIVISION_BY_ZERO     6
 #define TRIVM_FAULT_AUX_STACK_OVERFLOW   7
 #define TRIVM_FAULT_AUX_STACK_UNDERFLOW  8
 
@@ -707,7 +707,7 @@ static bool trivm_step(struct trivm_instance *vm)
 		TRIGGER_FAULT(AUX_STACK_UNDERFLOW, { vm->asph = 0x7FFFFFFF; return true; });
 	}
 
-	if (TRIVM_ENABLE_FAULT_STACK_OVERFLOW && vm->sph == vm->aspl)
+	if (TRIVM_ENABLE_FAULT_STACK_OVERFLOW && vm->aspl == 0x80000000)
 	{
 		if ((int32_t)vm->sp > (int32_t)(vm->asp - vm->sph))
 		{

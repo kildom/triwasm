@@ -1,0 +1,275 @@
+<%
+/*!
+ * Copyright (c) 2023 Dominik Kilian <kontakt@dominik.cc>
+ * SPDX-License-Identifier: 0BSD
+ */
+
+import { WasmModule } from './wasmModule';
+import { TriwasmConf } from './generator';
+
+export function skeleton(module: WasmModule, conf: TriwasmConf) {
+    const output: string[] = [];
+%>
+
+########################################################################
+#                             CONSTATNS
+########################################################################
+
+
+# General
+TRIVM_FAULT_WASM_TABLE_INDEX = 17
+TRIVM_HOST_CALLBACK_IMPORT_ID = -1
+
+# VM Registers
+TMP0 = 0
+PC = 4
+ASP = 8
+TMP1 = 12
+TMP2 = 16
+AMB0 = 20
+AMB1 = 24
+SPL = 28
+SPH = 32
+ASPL = 36
+ASPH = 40
+registers_end = 44
+
+
+########################################################################
+#                             MAIN ENTRY
+########################################################################
+
+
+<% if (conf.separateMemory) { %>
+    PROGRAM_MEMORY_BASE = 0x80000000
+    .base PROGRAM_MEMORY_BASE
+    # Main and fault entries
+    BR main_entry
+    .pma 3
+    # Fault is next instruction, so no need to do BR
+    <% if (conf.faults.anyVM) { %>
+    .ref fault_handler
+    <% } %>
+    # Slots area start
+    slots_area_start = registers_end
+<% } else { %>
+    PROGRAM_MEMORY_BASE = 0
+    .base PROGRAM_MEMORY_BASE
+    # Registers initial values
+    .data32 0 # TMP0
+    .data32 0 # PC
+    .data32 <%= conf.regs.asp %> # ASP
+    .data32 0 # TMP1
+    .data32 0 # TMP2
+    .data32 <%= conf.regs.amb0 %> # AMB0
+    .data32 0 # AMB1
+    .data32 0 # SPL
+    .data32 0xFFFFFFFF # SPH
+    .data32 0 # ASPL
+    .data32 0 # ASPH
+    # Main and fault entries
+    BR main_entry
+    .pma registers_end + 5
+    <% if (conf.faults.anyVM) { %>
+    BR fault_handler
+    <% } %>
+    .pma registers_end + 8
+    # Slots area
+    slots_area_start = registers_end + 8
+    .data8 <%= conf.slots.memory.join(', ') %>
+<% } %>
+
+.begin discardable
+fault_handler:
+READ32 TMP0
+UGT 1
+BRT skip_sp_restore
+CALL initialize_stack
+.local skip_sp_restore
+skip_sp_restore:
+READ32 TMP0
+READ32 TMP1
+READ32 wasm_TMP3
+READ32 TMP2
+READ32 TMP2
+BR trivm_fault_handler
+.end
+
+
+.begin discardable
+trivm_fault_handler_weak:
+HOST -1
+BR trivm_fault_handler_weak
+.end
+
+.begin movable weak_symbols
+.begin discardable
+trivm_fault_handler = trivm_fault_handler_weak
+.end
+.end
+
+
+main_entry:
+NEG -return_to_host
+READ32 TMP0
+<% if (conf.maxProgramSize <= 65536) { %>
+MUL 2
+READ16 [POP] + export_table + PROGRAM_MEMORY_BASE
+<% } else { %>
+MUL 4
+READ32 [POP] + export_table + PROGRAM_MEMORY_BASE
+<% } %>
+WRITE32 PC
+return_to_host:
+HOST -1
+
+export_table:
+<% if (conf.maxProgramSize <= 65536) { %>
+.data16 startup
+.data16 <%= conf.exportFunctionTable.map(f => f.name) %>
+<% } else { %>
+.data32 startup
+.data32 <%= conf.exportFunctionTable.map(f => f.name) %>
+<% } %>
+
+
+# Configurations:
+# tableLengthSize - size (in bytes) of the table length field, 0, 2, or 4
+# tableElementSize - size (in bytes) of the table element, 2 or 4
+# hostCallbacks - are the host callbacks enabled
+
+<% for (let tableIndex = module.tables.length - 1; tableIndex >= 0 ; tableIndex--) { %>
+    <% let table = module.tables[tableIndex]; %>
+    # Call function from table <%= tableIndex %>
+    # @stack  function_params..., entry_index, return_address
+    #     =>  function_results...
+    .begin discardable
+        __call_indirect_table<%= tableIndex %>:
+        <% if (table.isMovable) { %>
+            NEG -__table<%= tableIndex %>_ptr
+            READ32 [POP] # Read table pointer
+        <% } else { %>
+            NEG -__table<%= tableIndex %>_start
+        <% } %>
+        <% if (tableIndex == 0) { %>
+            # Fall into __call_indirect_common
+            .ref __call_indirect_common
+        <% } else { %>
+            BR __call_indirect_common
+        <% } %>
+    .end
+<% } %>
+
+# Call function from specific table
+# @stack  function_params..., index, return_address, table_start
+#     =>  function_results...
+# @param  table_start
+.begin discardable
+__call_indirect_common:
+    .local invalid_index
+    .local host_callback
+    <% if (conf.tableLengthSize > 0 && conf.faults.wasmTableIndex) { %>
+        READ32 [SP]         # ..., index, return_address, table_start, table_start
+        <% if (conf.tableLengthSize == 2) { %>
+            READ16 [POP]
+        <% } else { %>
+            READ32 [POP]
+        <% } %>             # ..., index, return_address, table_start, table_length
+        READ32 [SP] - 12    # ..., table_length, index
+        UGT                 # ..., index, return_address, table_start, (table_length > index)
+        BRF invalid_index
+    <% } %>                 # ..., index, return_address, table_start
+    READ32 [SP] - 8         # ..., index, return_address, table_start, index
+    MUL <%= conf.tableElementSize %> #               ..., table_start, offset
+    <% if (conf.tableLengthSize > 0) { %>
+        ADD <%= conf.tableLengthSize %>
+    <% } %>                 #                        ..., table_start, offset
+    ADD                     #                        ..., item_ptr
+    <% if (conf.hostCallbacks) { %>
+        READ32 [POP]        # ..., callback
+        READ32 [SP]         # ..., callback, callback
+        AND 0x7FFFFFFF      # ..., callback, callback_address
+        READ32 [SP] - 4     # ..., callback, callback_address, callback
+        READ32 [SP] - 4     # ..., callback, callback_address, callback, callback_address
+        XOR                 # ..., callback, callback_address, host_callback_flag
+        BRT host_callback   # ..., callback, callback_address
+        WRITE32 [SP]        # ..., callback_address
+    <% } else { %>
+        <% if (conf.tableElementSize == 2) { %>
+            READ16 [POP]
+        <% } else { %>
+            READ32 [POP]
+        <% } %>
+    <% } %>                 # params..., index, return_address, callback_address
+    <% if (conf.ext.unwind) { %>
+        UNWIND 48           # jump to callback_address, keep 1, skip 1
+    <% } else { %>
+        NEG -32             # keep 2, skip 1
+        CALL __triwasmlib_unwind # params..., return_address, callback_address
+        WRITE32 PC
+    <% } %>
+
+    .begin discardable
+    invalid_index:                          # ..., index, return_address, table_start
+        READ32 [SP] - 4                     # ..., index, return_address, table_start, index
+        NEG -TRIVM_FAULT_WASM_TABLE_INDEX   # ..., index, return_address, table_start, index, fault_type
+        BR __trigger_fault_with_two_codes
+    .end
+
+    .begin discardable
+    host_callback:      # params..., index, return_address, callback, callback_address
+        WRITE32 TMP0    # params..., index, return_address, callback
+        WRITE32 TMP1    # params..., index, return_address
+        WRITE32 [SP]    # params..., return_address
+        WRITE32 TMP1    # params...
+        HOST TRIVM_HOST_CALLBACK_IMPORT_ID
+    .end
+.end
+
+.begin discardable
+    __trigger_fault:
+    WRITE32 TMP0
+    WRITE32 TMP2
+    BR fault_handler
+.end
+
+.begin discardable
+    __trigger_fault_with_code:
+    WRITE32 TMP0
+    WRITE32 TMP1
+    WRITE32 TMP2
+    BR fault_handler
+.end
+
+.begin discardable
+    __trigger_fault_with_two_codes:
+    WRITE32 TMP0
+    WRITE32 TMP1
+    WRITE32 wasm_TMP3
+    WRITE32 TMP2
+    BR fault_handler
+.end
+
+.begin discardable
+.annotation license:Berkeley-SoftFloat
+softfloat_approxRecip_1k0s_table:
+.data16 0xFFC4, 0xF0BE, 0xE363, 0xD76F, 0xCCAD, 0xC2F0, 0xBA16, 0xB201,
+.data16 0xAA97, 0xA3C6, 0x9D7A, 0x97A6, 0x923C, 0x8D32, 0x887E, 0x8417,
+.end
+.begin discardable
+.annotation license:Berkeley-SoftFloat
+softfloat_approxRecip_1k1s_table:
+.data16 0xF0F1, 0xD62C, 0xBFA1, 0xAC77, 0x9C0A, 0x8DDB, 0x8185, 0x76BA,
+.data16 0x6D3B, 0x64D4, 0x5D5C, 0x56B1, 0x50B6, 0x4B55, 0x4679, 0x4211,
+.end
+
+########################################################################
+#                            WEAK SYMBOLS
+########################################################################
+
+.place weak_symbols
+
+<%
+    return output.join('');
+}
+%>

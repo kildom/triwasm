@@ -6,3 +6,4 @@ node_modules
 /ext/*/**/*
 !/ext/*/DIRECTORY-README.txt
 /bin/
+/tools/wasm/skeleton.ts

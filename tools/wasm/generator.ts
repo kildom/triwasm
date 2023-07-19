@@ -14,7 +14,6 @@
 
 import { allowTemporaryNull } from "../common/common";
 import { Path } from "../common/path";
-import { template } from "../common/template";
 import { EnterBlockCtx, EnterFunctionCtx, EnterInstrCtx, ExitBlockCtx, ExitFunctionCtx, ExitInstrCtx, walkFunctions } from "./moduleWalker";
 import { OP } from "./opcodes";
 import { instrId, NumberType, RefType, ValueType, valueTypeWords, VectorType, WasmBlock, WasmBranchDir, WasmFunction, WasmFunctionKind, WasmInstr, WasmInstrBr, WasmInstrBrTable, WasmInstrRefFunc, WasmInstrCall, WasmInstrIf, WasmInstrWithBlock, WasmModule } from "./wasmModule";
@@ -491,10 +490,11 @@ function enterInstr(ctx: Ctx): InstrData {
 function exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>): void {
 }
 
-interface TriwasmConf {
+export interface TriwasmConf {
     tableLengthSize: number;
     tableElementSize: number;
     hostCallbacks: boolean;
+    separateMemory: boolean;
     faults: {
         wasmTableIndex: boolean;
     };
@@ -503,10 +503,17 @@ interface TriwasmConf {
     };
 };
 
-function fromTemplate(path: Path, module: WasmModule, conf: TriwasmConf) {
-    let data = { module, conf };
-    let templateFunc = template(path.readString(), data);
-    return templateFunc(data);
+
+function generatePrologue(output: string[], module: WasmModule, conf: TriwasmConf) {
+    if (conf.separateMemory) {
+        output.push('.base 0x80000000');
+    } else {
+        output.push('.base 0');
+        output.push('.vma ');
+    }
+    output.push('BR main_entry');
+    output.push('.pma 5');
+    output.push('BR fault_handler');
 }
 
 export function generate(module: WasmModule) {
@@ -520,9 +527,10 @@ export function generate(module: WasmModule) {
         },
         ext: {
             unwind: true,
-        }
+        },
+        separateMemory: true,
     };
-    output.push(fromTemplate(Path.runtime.join('prologue.triasm'), module, conf));
+    generatePrologue(output, module, conf);
     try {
         walkFunctions(module,
             {
@@ -538,7 +546,7 @@ export function generate(module: WasmModule) {
                 enterInstr,
                 exitInstr,
             });
-            output.push('.place __triwasm_epilogue');
+        output.push('.place __triwasm_epilogue');
     } finally {
         console.log(output.join('\n'));
     }

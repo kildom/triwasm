@@ -56,6 +56,10 @@
     * Only difference is: If global/table is exported and missing in configuration, export attributes is ignored
       and it is compiled as normal global/table. If global/table is imported and missing in configuration,
       then compilation error will be reported.
+  * Add to triwasm and triasm tools `--allow-licenses` argument that allows inclusion
+    of the code covered by specific license. `triwasmlib` is always allowed. Special value `all`
+    allows all licenses. Example: --allow-licenses=Berkeley-SoftFloat
+    `--show-licenses` will show list of declared and used licenses.
 
 * Add triVM extensions:
   * Memory mappings:
@@ -78,6 +82,42 @@
   * double
 
 * Optimization tips: https://github.com/kildom/triwasm/issues/6
+
+* Tables:
+  ```
+  # Table structure:
+  #       u32 table_pointer     Anywhere in the memory, if exported/imported then in import-export slot
+  #             ^       |       Label: $_tableN_ptr
+  #             |       +---+   Can be removed if:
+  #             |           |    * not movable table
+  #             |           |    * not exported/imported
+  #             |           |
+  #   u32/16 return_pointer |   Points back to the table pointer, needed for updating table pointers
+  #                         |   during table grow.
+  #                         |   Can be removed if:
+  #                         |    * not movable table
+  #                         |   Can be u16 (globally) if:
+  #            +------------+    * all tables are not exported/imported
+  #            |                 * small memory model (<= 64K)
+  #            V
+  #  u32/16 length              Number of items in the table.
+  #                             Label: $_tableN_start
+  #                             Can be removed (globally) if:
+  #                              * all tables are not exported/imported
+  #                              * all tables are not growable
+  #                              * table index faults are disabled
+  #                             Can be u16 (globally) if:
+  #                              * all tables are not exported/imported
+  #                              * small memory model (<= 64K)
+  #
+  #  u32/16 callbacks[]         Array of callbacks.
+  #                             Highest bit indicates host callback if host callbacks are enabled.
+  #                             Can be u16 (globally) if:
+  #                              * all tables are not exported/imported
+  #                              * all tables are funcref
+  #                              * small program model (<= 32K)
+  #                              * host callbacks are disabled
+  ```
 
 * Improved for big br_tables (if most of targets has UNWIND then this optimization is pointless):
   ```

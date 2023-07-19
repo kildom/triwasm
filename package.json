@@ -6,6 +6,7 @@
   "scripts": {
     "build-triasm": "tsc -p tools/asm/triasm.tsconfig.json",
     "postbuild-triasm": "node tools/build/postbuild.js starters jsfixup",
+    "prebuild-triwasm": "npx ts-node devtools/wasm-instr-gen/template-gen.ts tools/wasm/skeleton.triasm && npx prettier tools/wasm/skeleton.ts --write --ignore-path .prettierignore",
     "build-triwasm": "tsc -p tools/wasm/triwasm.tsconfig.json",
     "postbuild-triwasm": "node tools/build/postbuild.js starters jsfixup",
     "build-tricc": "tsc -p tools/cc/tricc.tsconfig.json",
@@ -25,12 +26,16 @@
   "license": "GPL-3.0",
   "devDependencies": {
     "@types/xml2js": "^0.4.11",
+    "@typescript-eslint/eslint-plugin": "^6.1.0",
+    "@typescript-eslint/parser": "^6.1.0",
     "concurrently": "^7.6.0",
+    "eslint": "^8.45.0",
     "extract-zip": "^2.0.1",
     "ncp": "^2.0.0",
+    "prettier": "3.0.0",
     "ts-node": "^10.9.1",
     "typedoc": "^0.23.20",
-    "typescript": "^4.7.3",
+    "typescript": "^4.9.5",
     "xml2js": "^0.4.23"
   }
 }
