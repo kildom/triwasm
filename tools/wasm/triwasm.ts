@@ -12,24 +12,19 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Path } from "../common/path";
-import { platform } from "../common/platform";
-import { BinaryInput } from "./binaryInput";
-import { generate } from "./generator";
-import { LinkResolver } from "./linkResolver";
-import { ModuleDebug, ModuleStage } from "./moduleDebug";
-import { ModuleMerger } from "./moduleMerger";
-import { FunctionWalkerListener, walkFunctions, ExitInstrCtx } from "./moduleWalker";
-import { OP } from "./opcodes";
-import { reduce } from "./reducer";
-import { WasmBlock, WasmFunction, WasmInstr, WasmModule } from "./wasmModule";
-import { WasmParser } from "./wasmParser";
+import { Path } from '../common/path';
+import { generate } from './generator';
+import { LinkResolver } from './linkResolver';
+import { ModuleDebug, ModuleStage } from './moduleDebug';
+import { ModuleMerger } from './moduleMerger';
+import { reduce } from './reducer';
+import { WasmParser } from './wasmParser';
 
 //let p = new WasmParser("test/__old/test.wasm");
 let p = new WasmParser();
-let main = p.parse("test/__old/libbzip2-dec.wasm", 0);
-let triwasmlib = p.parse(Path.runtime.join("triwasmlib.wasm").toString(), main.logicalOffsets.end);
-let softfloatlib = p.parse(Path.runtime.join("softfloatlib.wasm").toString(), triwasmlib.logicalOffsets.end);
+let main = p.parse('test/__old/libbzip2-dec.wasm', 0);
+let triwasmlib = p.parse(Path.runtime.join('triwasmlib.wasm').toString(), main.logicalOffsets.end);
+let softfloatlib = p.parse(Path.runtime.join('softfloatlib.wasm').toString(), triwasmlib.logicalOffsets.end);
 
 let m = new ModuleMerger(main);
 m.merge(triwasmlib, '__triwasm__triwasmlib');

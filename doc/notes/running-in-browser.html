@@ -1,0 +1,38 @@
+<html>
+
+<body>
+    <script>
+
+        function dec(text) {
+            let r = atob(text);
+            let a = new Uint8Array([...r].map(c => c.charCodeAt(0)));
+            return a;
+        }
+
+        window._triwasm_browser_platform_impl = {
+            getArgv: () => [],
+            exit: (code) => { console.log('exit', code); throw new Error('exited'); },
+            readFile: (path, binary) => { 
+                console.log('readFile', path, binary); 
+                switch (path) {
+                case 'test/__old/libbzip2-dec.wasm':
+                    return dec('');
+                case '/sdk/tools/runtime/triwasmlib.wasm':
+                    return dec('');
+                case '/sdk/tools/runtime/softfloatlib.wasm':
+                    return dec('');
+                }
+                return binary ? new Uint8Array(0) : '';
+            },
+            writeFile: (path, content) => { console.log('writeFile', path, content); },
+            scriptFile: '/sdk/bin/js/file.js',
+            isWindows: false,
+            info: window.navigator.userAgent,
+            main: (callback) => callback(),
+        }
+
+    </script>
+    <script src="triwasm.js"></script>
+</body>
+
+</html>

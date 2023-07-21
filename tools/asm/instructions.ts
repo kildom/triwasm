@@ -12,12 +12,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { BASE, instrInfoById, INSTR, InstrInfo } from "./instrInfo";
-import { Compiler } from "./compiler";
-import { ExprMaker } from "./exprMaker";
-import { CompilerError } from "./errors";
-import { allowTemporaryNull } from "../common/common";
-import { BytecodeGenerator } from "./generator";
+import { BASE, instrInfoById, INSTR, InstrInfo, BASE_REG_MASK } from './instrInfo';
+import { Compiler } from './compiler';
+import { ExprMaker } from './exprMaker';
+import { CompilerError } from './errors';
+import { allowTemporaryNull } from '../common/common';
+import { BytecodeGenerator } from './generator';
 
 const MAX_FILL_SIZE = 128 * 1024 * 1024;
 
@@ -40,18 +40,25 @@ export class ExprContext {
             this.parent.mutable = this.parent.mutable || this.mutable;
         }
     }
-};
+}
 
 export type ExprEval = (ctx: ExprContext) => bigint;
 
 
-export class ExprCycleError extends Error { };
+export class ExprCycleError extends Error { }
 
 
 export class InstrParams {
-    constructor(public compiler: Compiler, public generator: BytecodeGenerator, public lineNumber: number, public index: number, public info: InstrInfo, public exprMaker: ExprMaker) {
+    constructor(
+        public compiler: Compiler,
+        public generator: BytecodeGenerator,
+        public lineNumber: number,
+        public index: number,
+        public info: InstrInfo,
+        public exprMaker: ExprMaker
+    ) {
     }
-};
+}
 
 
 export class InstrBase {
@@ -83,16 +90,19 @@ export class InstrBase {
     }
 
     getSize(ctx: ExprContext) {
+        void(ctx);
         return 0;
     }
 
     collectDeps(ctx: ExprContext) {
+        void(ctx);
     }
 
     generate(minSize: number) {
+        void(minSize);
     }
 
-};
+}
 
 
 export class Block extends InstrBase {
@@ -108,29 +118,29 @@ export class Block extends InstrBase {
         let [blockType, blockArgs] = args.split(/\s+/, 2);
         blockArgs = (blockArgs || '').trim();
         switch (blockType.toUpperCase()) {
-            case 'DISCARDABLE':
-                if (blockArgs != '') throw new CompilerError(this.lineNumber, `Unexpected string after DISCARDABLE.`);
-                this.discarded = true;
-                break;
-            case 'MOVABLE':
-                if (blockArgs == '') throw new CompilerError(this.lineNumber, `Destination name expected.`);
-                this.moveTo = blockArgs;
-                break;
-            case '':
-                // nothing to do
-                break;
-            default:
-                throw new CompilerError(this.lineNumber, `Unknown type of block.`);
+        case 'DISCARDABLE':
+            if (blockArgs != '') throw new CompilerError(this.lineNumber, 'Unexpected string after DISCARDABLE.');
+            this.discarded = true;
+            break;
+        case 'MOVABLE':
+            if (blockArgs == '') throw new CompilerError(this.lineNumber, 'Destination name expected.');
+            this.moveTo = blockArgs;
+            break;
+        case '':
+            // nothing to do
+            break;
+        default:
+            throw new CompilerError(this.lineNumber, 'Unknown type of block.');
         }
     }
-};
+}
 
 
 export class BlockEnd extends InstrBase {
     constructor(params: InstrParams, public block: Block) {
         super(params);
     }
-};
+}
 
 
 export class Assign extends InstrBase {
@@ -169,7 +179,7 @@ export class Assign extends InstrBase {
         }
         return result;
     }
-};
+}
 
 export class SimpleCoreInstruction extends InstrBase {
 
@@ -210,7 +220,7 @@ export class SimpleCoreInstruction extends InstrBase {
             this.generator.put8(SimpleCoreInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
         }
     }
-};
+}
 
 export class UnwindInstruction extends InstrBase {
 
@@ -221,7 +231,7 @@ export class UnwindInstruction extends InstrBase {
         super(params);
         let expr = params.exprMaker.makeExpressions(this, args);
         if (expr.length != 2) {
-            throw new CompilerError(this.lineNumber, `UNWIND instruction requires zero or two arguments.`);
+            throw new CompilerError(this.lineNumber, 'UNWIND instruction requires zero or two arguments.');
         }
         this.keep = expr[0];
         this.reduce = expr[1];
@@ -241,7 +251,7 @@ export class UnwindInstruction extends InstrBase {
         } else {
             let size = this.getArgSize(keepValue, reduceValue);
             if (size == 0)
-                throw new CompilerError(this.lineNumber, `Too many items to unwind!`);
+                throw new CompilerError(this.lineNumber, 'Too many items to unwind!');
             return 1 + size;
         }
     }
@@ -263,7 +273,7 @@ export class UnwindInstruction extends InstrBase {
         let reduceValue = this.reduce(ctx);
         let size = this.getArgSize(keepValue, reduceValue);
         if (size == 0) {
-            this.generator.error(new CompilerError(this.lineNumber, `Too many items to unwind!`));
+            this.generator.error(new CompilerError(this.lineNumber, 'Too many items to unwind!'));
             this.generator.fill(0, 5);
             return;
         }
@@ -272,7 +282,7 @@ export class UnwindInstruction extends InstrBase {
         let value = (keepValue << BigInt(size * 4)) | reduceValue;
         this.generator.putInt(value, size);
     }
-};
+}
 
 export class BranchInstruction extends InstrBase {
 
@@ -317,7 +327,7 @@ export class BranchInstruction extends InstrBase {
             this.generator.put8(BranchInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
         }
     }
-};
+}
 
 export class ReadWriteInstruction extends InstrBase {
 
@@ -365,7 +375,7 @@ export class ReadWriteInstruction extends InstrBase {
                 argValue = 0n;
             }
         }
-        if ((this.base & BASE.REG_MASK) == BASE.SP) {
+        if ((this.base & BASE_REG_MASK) == BASE.SP) {
             argValue = (-argValue) & 0xFFFFFFFFn;
         }
         let align = this.bytes < 4 ? BigInt(this.bytes) : 4n;
@@ -432,7 +442,7 @@ export class ReadWriteInstruction extends InstrBase {
         totalSize += 1 + tailSize;
         if (!ctx) {
             this.generator.put8(
-                ((this.base & BASE.REG_MASK) << ReadWriteInstruction.BASE_SHIFT) |
+                ((this.base & BASE_REG_MASK) << ReadWriteInstruction.BASE_SHIFT) |
                 ((this.write ? 1 : 0) << ReadWriteInstruction.WRITE_SHIFT) |
                 ((doPop ? 1 : 0) << ReadWriteInstruction.POP_SHIFT) |
                 ((tailSize > 0 ? 1 : 0) << ReadWriteInstruction.MORE_SHIFT) |
@@ -446,7 +456,7 @@ export class ReadWriteInstruction extends InstrBase {
         }
         return totalSize;
     }
-};
+}
 
 
 export class DataInstruction extends InstrBase {
@@ -474,7 +484,7 @@ export class DataInstruction extends InstrBase {
             this.generator.putInt(value, this.itemBytes);
         }
     }
-};
+}
 
 
 export class FillInstruction extends InstrBase {
@@ -529,7 +539,7 @@ export class FillInstruction extends InstrBase {
             }
         }
     }
-};
+}
 
 export class AlignInstruction extends InstrBase {
 
@@ -558,7 +568,7 @@ export class AlignInstruction extends InstrBase {
             this.generator.fill(0, size);
         }
     }
-};
+}
 
 export class AddrInstruction extends InstrBase {
 
@@ -587,10 +597,10 @@ export class AddrInstruction extends InstrBase {
         if (padding > 0) {
             this.generator.fill(0, padding);
         } else if (padding < 0) {
-            this.generator.error(new CompilerError(this.lineNumber, `Address directive cannot decrease address.`));
+            this.generator.error(new CompilerError(this.lineNumber, 'Address directive cannot decrease address.'));
         }
     }
-};
+}
 
 export class RefInstruction extends InstrBase {
 
@@ -604,7 +614,7 @@ export class RefInstruction extends InstrBase {
         for (let arg of this.args)
             arg(ctx);
     }
-};
+}
 
 export class ReadSpInstruction extends InstrBase {
     static INSTR_CODE = 0x82;
@@ -618,7 +628,7 @@ export class ReadSpInstruction extends InstrBase {
     generate() {
         this.generator.put8(ReadSpInstruction.INSTR_CODE | (this.info.opcode << 2));
     }
-};
+}
 
 export class PlaceInstruction extends InstrBase {
     public name: string;
@@ -626,9 +636,9 @@ export class PlaceInstruction extends InstrBase {
         super(params);
         this.name = args.trim();
         if (this.name == '')
-            throw new CompilerError(this.lineNumber, `Expecting name.`);
+            throw new CompilerError(this.lineNumber, 'Expecting name.');
     }
-};
+}
 
 
 export class BaseInstruction extends InstrBase {
@@ -640,7 +650,7 @@ export class BaseInstruction extends InstrBase {
     collectDeps(ctx: ExprContext) {
         let base = this.arg(ctx);
         if (ctx.mutable) {
-            throw new CompilerError(this.lineNumber, `Expression is not constant.`);
+            throw new CompilerError(this.lineNumber, 'Expression is not constant.');
         }
         this.compiler.pmaBase = Number(base);
     }

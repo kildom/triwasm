@@ -12,6 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 
 const System = (function () {
     const System = {};

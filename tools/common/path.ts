@@ -1,4 +1,4 @@
-import { platform } from "./platform";
+import { platform } from './platform';
 
 
 export class Path {
@@ -14,8 +14,8 @@ export class Path {
             this.parts = parts;
         } else {
             let p = path_or_root || '.';
-            p = p.replace(/[\\\/]+$/, '');
-            this.parts = p.split(/[\\\/]+/);
+            p = p.replace(/[\\/]+$/, '');
+            this.parts = p.split(/[\\/]+/);
             let isAbsolute = (platform.isWindows ? /^[A-Z]:$/i : /^$/).test(this.parts[0]);
             if (isAbsolute) {
                 this.root = this.parts[0];
@@ -45,7 +45,7 @@ export class Path {
     public join(...newParts: string[]): Path {
         let all: string[] = [];
         for (let part of newParts) {
-            all.push(...part.split(/[\\\/]+/).filter(x => x.length));
+            all.push(...part.split(/[\\/]+/).filter(x => x.length));
         }
         return new Path(this.root, [...this.parts, ...all]);
     }

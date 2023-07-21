@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { WasmFunctionKind, WasmModule } from "./wasmModule";
+import { WasmFunctionKind, WasmModule } from './wasmModule';
 
 
 export class LinkResolver {
@@ -46,7 +46,7 @@ export class LinkResolver {
                 let dest = func.resolved;
                 while (dest?.kind === WasmFunctionKind.LINK) {
                     if (visited.has(dest)) {
-                        throw new Error("Circular link.");
+                        throw new Error('Circular link.');
                     }
                     visited.add(dest);
                     dest = dest?.resolved;

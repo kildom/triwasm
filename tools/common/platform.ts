@@ -30,4 +30,8 @@ export interface Platform {
     main(callback: () => void): void;
 }
 
-export const platform: Platform = (typeof (_triwasm_platform_impl) === 'object' ? _triwasm_platform_impl : x._triwasm_platform_impl) as Platform;
+export const platform: Platform = (
+    typeof (_triwasm_platform_impl) === 'object'
+        ? _triwasm_platform_impl
+        : x._triwasm_platform_impl
+    ) as Platform;

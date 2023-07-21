@@ -466,6 +466,6 @@ export enum OP {
     TRIVM_GLOBAL_SET32 = -11, // TRIVM.GLOBAL_SET32
     TRIVM_GLOBAL_SET64 = -12, // TRIVM.GLOBAL_SET64
     TRIVM_RAW = -13, // TRIVM.RAW
-};
+}
 
 // -- End of source code generated with help of "gen-instr.ts" script --

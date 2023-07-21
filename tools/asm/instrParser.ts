@@ -17,7 +17,7 @@
  * The output object will be responsible for parsing arguments.
  * This will allow parsing expressions when instruction object is already created,
  * so ExprEval functions can have instruction in its closure (instead of context).
- * 
+ *
  * Reconsider renaming "output object" to "consumer".
  */
 
@@ -32,7 +32,7 @@ import { instrInfoByName, BASE } from './instrInfo';
  *     instr 123    # group 1+4
  *     no_arg_instr # group 1
  */
-const reLine = /^[ \t]*(?:([a-z_\$@\.][a-z_\$@\.0-9]*)[ \t]*(?:(:)[ \t]*|=[ \t]*([^\r\n# \t][^\r\n#]*)|[ \t]([^\r\n# \t:=][^\r\n#]*)|))?(?:#.*)?$/gmi;
+const reLine = /^[ \t]*(?:([a-z_$@.][a-z_$@.0-9]*)[ \t]*(?:(:)[ \t]*|=[ \t]*([^\r\n# \t][^\r\n#]*)|[ \t]([^\r\n# \t:=][^\r\n#]*)|))?(?:#.*)?$/gmi;
 
 /* reBaseReg groups:
  *     1: AMBn if AMBn
@@ -42,7 +42,7 @@ const reLine = /^[ \t]*(?:([a-z_\$@\.][a-z_\$@\.0-9]*)[ \t]*(?:(:)[ \t]*|=[ \t]*
  *     5: POP if just POP
  *     6: arg sign: '+', '-', or empty
  */
-const reBaseReg = /^(?:\[\s*(AMB0|AMB1)\s*\]\s*(?:\+\s*\[\s*(POP)\s*\])?|\[\s*(SP)\s*\]\s*(?:\-\s*\[\s*(POP)\s*\])?|\[\s*(POP)\s*\])\s*(\+|-|$)\s*/i;
+const reBaseReg = /^(?:\[\s*(AMB0|AMB1)\s*\]\s*(?:\+\s*\[\s*(POP)\s*\])?|\[\s*(SP)\s*\]\s*(?:-\s*\[\s*(POP)\s*\])?|\[\s*(POP)\s*\])\s*(\+|-|$)\s*/i;
 
 
 export interface InstrParserConsumer {
@@ -66,10 +66,10 @@ function parseBase(args: string): [BASE, string] {
     }
     let base: BASE;
     switch ((m[1] || m[3] || '').toUpperCase()) {
-        case 'AMB0': base = BASE.AMB0; break;
-        case 'AMB1': base = BASE.AMB1; break;
-        case 'SP': base = BASE.SP; break;
-        default: base = BASE.ZERO; break;
+    case 'AMB0': base = BASE.AMB0; break;
+    case 'AMB1': base = BASE.AMB1; break;
+    case 'SP': base = BASE.SP; break;
+    default: base = BASE.ZERO; break;
     }
     if (m[2] || m[4] || m[5]) {
         base |= BASE.POP;
@@ -85,7 +85,7 @@ export function instrParse(input: string, consumer: InstrParserConsumer): void {
     for (let m of input.matchAll(reLine)) {
         consumer.onParserLine(line);
         if (input.substring(offset, m.index).trim() !== '') {
-            throw new CompilerError(line, `Syntax error!`);
+            throw new CompilerError(line, 'Syntax error!');
         }
         offset = (m.index as number) + m[0].length;
         if (m[1] === undefined) {
@@ -98,7 +98,7 @@ export function instrParse(input: string, consumer: InstrParserConsumer): void {
             let name = m[1].toUpperCase();
             let info = instrInfoByName[name];
             if (!info) {
-                throw new CompilerError(line, `Invalid instruction name!`);
+                throw new CompilerError(line, 'Invalid instruction name!');
             }
             let args: string | undefined = m[4];
             let base = BASE.ZERO;
@@ -113,7 +113,7 @@ export function instrParse(input: string, consumer: InstrParserConsumer): void {
         line++;
     }
     if (input.substring(offset, input.length).trim() !== '') {
-        throw new CompilerError(line, `Syntax error!`);
+        throw new CompilerError(line, 'Syntax error!');
     }
 }
 

@@ -1,7 +1,9 @@
-import { Path } from "../common/path";
-import { platform } from "../common/platform";
-import { OP } from "./opcodes";
-import { FunctionType, Limits, NumberType, RefType, ValueType, ValueTypeObject, VectorType, WasmBlock, WasmBranchDir, WasmData, WasmElement, WasmEntity, WasmExport, WasmFunction, WasmFunctionKind, WasmGlobal, WasmImport, WasmInstr, WasmInstrBr, WasmInstrEnd, WasmInstrIndexed, WasmInstrWithBlock, WasmMemory, WasmModule, WasmTable, instrId, valueTypeWords } from "./wasmModule";
+import { Path } from '../common/path';
+import { OP } from './opcodes';
+import {
+    FunctionType, NumberType, RefType, ValueType, ValueTypeObject, VectorType, WasmBlock, WasmBranchDir, WasmData,
+    WasmElement, WasmEntity, WasmFunction, WasmGlobal, WasmInstr, WasmMemory, WasmModule, WasmTable, instrId
+} from './wasmModule';
 
 
 export enum ModuleStage {
@@ -9,7 +11,7 @@ export enum ModuleStage {
     AfterResolver = 1,
     AfterReducer = 2,
     AfterOptimization = 3,
-};
+}
 
 
 const STACK_LABELS: { [key in ValueType]: string[] } = {
@@ -36,15 +38,15 @@ interface StackEntry {
     type: ValueType;
     label: string;
     prev?: StackEntry;
-};
+}
 
 function html(text: string | undefined | null): string {
     return (text || '')
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 function formatValue32(value: number) {
@@ -104,12 +106,13 @@ class DiagError {
 
     getOutput() {
         if (this.thisRef != '') {
-            return `<div class="error"><a href="#${html(this.targetRef)}">#${html(this.targetRef)}</a>: ${html(this.message)}</div>`;
+            return `<div class="error"><a href="#${html(this.targetRef)}">#${html(this.targetRef)}</a>: ` +
+                `${html(this.message)}</div>`;
         } else {
             return `<div class="error">${html(this.message)}</div>`;
         }
     }
-};
+}
 
 class InstructionFormatter {
     public instr: WasmInstr = { id: -1, opcode: OP.NOP };
@@ -157,7 +160,7 @@ class InstructionFormatter {
             out += `<div class="br-line-${level > 0 ? 'down' : 'up'}"><div style="--levels: ${Math.abs(level)}"></div></div>`;
         }
         if (this.instr.opcode == OP.ELSE) {
-            out += `<div class="else-line"><div></div></div>`;
+            out += '<div class="else-line"><div></div></div>';
         }
         out += html(INSTRUCTION_NAME[this.instr.opcode]);
         for (let param of this.params) {
@@ -176,17 +179,17 @@ class InstructionFormatter {
         }
         out += `</td><td width="1%">${this.instr.id}</td><td width="98%"><div class="stack">`;
         if (this.unreachable) {
-            out += `<div class="stack-remove"><div class="item-">unreachable</div></div>`;
+            out += '<div class="stack-remove"><div class="item-">unreachable</div></div>';
         } else {
             if (this.stackKeep.length > 0) {
-                out += `<div class="stack-none">`;
+                out += '<div class="stack-none">';
                 for (let item of this.stackKeep) {
                     out += `<div class="item-${item.label}">${item.label}</div>`;
                 }
-                out += `</div>`;
+                out += '</div>';
             }
             if (this.stackPop.length > 0) {
-                out += `<div class="stack-remove">`;
+                out += '<div class="stack-remove">';
                 let underflowError: DiagError | undefined = undefined;
                 let invalidTypeError: DiagError | undefined = undefined;
                 for (let item of this.stackPop) {
@@ -194,11 +197,11 @@ class InstructionFormatter {
                     let underflow = '';
                     if (!item.prev) {
                         underflow = ' underflow';
-                        underflowError = new DiagError(`Stack underflow.`, `instr-${this.instr.id}`);
+                        underflowError = new DiagError('Stack underflow.', `instr-${this.instr.id}`);
                     } else if (item.label != item.prev.label) {
                         prev = `<span>${item.prev.label}</span>`;
                         if (this.funcDiag.stage <= ModuleStage.AfterResolver) {
-                            invalidTypeError = new DiagError(`Unexpected data type on stack.`, `instr-${this.instr.id}`);
+                            invalidTypeError = new DiagError('Unexpected data type on stack.', `instr-${this.instr.id}`);
                         }
                     }
                     out += `<div class="item-${item.label}${underflow}">${prev}${item.label}</div>`;
@@ -209,25 +212,25 @@ class InstructionFormatter {
                 if (invalidTypeError) {
                     this.errors.push(invalidTypeError);
                 }
-                out += `</div>`;
+                out += '</div>';
             }
             if (this.stackPop.length > 0 && this.stackPush.length > 0) {
-                out += `<div class="stack-tr">⇨</div>`;
+                out += '<div class="stack-tr">⇨</div>';
             }
             if (this.stackPush.length > 0) {
-                out += `<div class="stack-add">`;
+                out += '<div class="stack-add">';
                 for (let item of this.stackPush) {
                     out += `<div class="item-${item.label}">${item.label}</div>`;
                 }
-                out += `</div>`;
+                out += '</div>';
             }
         }
-        out += `</div></td></tr>`;
+        out += '</div></td></tr>';
         let err = this.errors.map(error => error.getIcon()).join('');
         out = out.replace('</td>', `${err}</td>`);
         return out;
     }
-};
+}
 
 
 export class FunctionDiagnose {
@@ -281,7 +284,11 @@ export class FunctionDiagnose {
                     this.diagnoseInstr({ id: instrId(instr), opcode: OP.BR_TABLE, targets: [instr.targets[i]] }, false);
                 }
                 this.stack = [...stack];
-                this.diagnoseInstr({ id: instr.id, opcode: OP.BR_TABLE, targets: [instr.targets[instr.targets.length - 1]] }, true);
+                this.diagnoseInstr({
+                    id: instr.id,
+                    opcode: OP.BR_TABLE,
+                    targets: [instr.targets[instr.targets.length - 1]]
+                }, true);
             } else {
                 this.diagnoseInstr(instr);
             }
@@ -297,968 +304,968 @@ export class FunctionDiagnose {
         let newStack: ValueType[] | undefined = undefined;
 
         switch (instr.opcode) {
-            // #region Instruction print and verify
-            // -- Instruction print and verify - begin of source code generated with help of "gen-instr.ts" script --
+        // #region Instruction print and verify
+        // -- Instruction print and verify - begin of source code generated with help of "gen-instr.ts" script --
 
-            case OP.UNREACHABLE: {
-                this.unreachable = true;
-                this.instrFormat.unreachable = true;
-                newStack = [];
-                break;
-            }
-            case OP.BLOCK:
-            case OP.LOOP:
-            case OP.IF: {
-                if (instr.opcode === OP.IF) {
-                    this.pop(NumberType.I32);
-                    this.instrFormat.addTool('¬', 'scrollToBlockElse(this)');;
-                }
-                this.pop(...instr.block.type.params);
-                this.push(...instr.block.type.results);
-                this.instrFormat.addParam(formatType(instr.block.type));
-                this.instrFormat.addTool('⇩', 'scrollToBlockEnd(this)');;
-                this.instrFormat.addTool('±', 'toggleBlock(this)');;
-                break;
-            }
-            case OP.ELSE: {
-                this.pop(...this.block!.type.results);
-                newStack = this.block!.type.params;
-                this.unreachable = false;
-                break;
-            }
-            case OP.END: {
-                this.pop(...this.block!.type.results);
-                this.unreachable = true;
-                newStack = [];
-                break;
-            }
-            case OP.BR:
-            case OP.BR_IF:
-            case OP.BR_TABLE: {
-                if (instr.opcode != OP.BR) {
-                    this.pop(NumberType.I32);
-                }
-                let targets = instr.opcode == OP.BR_TABLE ? instr.targets : [instr.target];
-                let direction = instr.opcode != OP.BR_TABLE ? instr.direction : undefined;
-                for (let target of targets) {
-                    let forward = direction != undefined
-                        ? direction == WasmBranchDir.Forward
-                        : target.parentInstruction.opcode != OP.LOOP;
-                    let pop = forward ? target.type.results : target.type.params;
-                    this.pop(...pop);
-                    if (instr.opcode == OP.BR_IF) {
-                        this.push(...pop);
-                    }
-                    let levels = 1;
-                    let block = this.block;
-                    while (block !== target) {
-                        levels++;
-                        if (!block) throw new Error('ASSERT');
-                        block = block.parentBlock;
-                    }
-                    this.instrFormat.brLevels.push(forward ? levels : -levels);
-                    if (brTableLast) {
-                        this.instrFormat.addParam('default');
-                    }
-                    this.instrFormat.addParam((levels - 1).toString());
-                    this.instrFormat.addTool('⇨', `#instr-${target.parentInstruction.id}`);
-                }
-                if (instr.opcode == OP.BR || (instr.opcode == OP.BR_TABLE && brTableLast)) {
-                    this.unreachable = true;
-                    newStack = [];
-                }
-                break;
-            }
-            case OP.RETURN: {
-                this.pop(...this.func.type.results);
-                this.unreachable = true;
-                break;
-            }
-            case OP.CALL: {
-                this.pop(...instr.func.type.params);
-                this.push(...instr.func.type.results);
-                let ref = this.moduleDiag.getRef(instr.func);
-                this.instrFormat.addParam('#' + ref);
-                break;
-            }
-            case OP.CALL_INDIRECT: {
+        case OP.UNREACHABLE: {
+            this.unreachable = true;
+            this.instrFormat.unreachable = true;
+            newStack = [];
+            break;
+        }
+        case OP.BLOCK:
+        case OP.LOOP:
+        case OP.IF: {
+            if (instr.opcode === OP.IF) {
                 this.pop(NumberType.I32);
-                this.pop(...instr.type.params);
-                this.push(...instr.type.results);
-                let ref = this.moduleDiag.getRef(instr.table);
-                this.instrFormat.addParam('#' + ref);
-                break;
+                this.instrFormat.addTool('¬', 'scrollToBlockElse(this)');
             }
-            case OP.DROP: {
-                let type = this.stack.at(-1)?.type || NumberType.I32;
+            this.pop(...instr.block.type.params);
+            this.push(...instr.block.type.results);
+            this.instrFormat.addParam(formatType(instr.block.type));
+            this.instrFormat.addTool('⇩', 'scrollToBlockEnd(this)');
+            this.instrFormat.addTool('±', 'toggleBlock(this)');
+            break;
+        }
+        case OP.ELSE: {
+            this.pop(...this.block!.type.results);
+            newStack = this.block!.type.params;
+            this.unreachable = false;
+            break;
+        }
+        case OP.END: {
+            this.pop(...this.block!.type.results);
+            this.unreachable = true;
+            newStack = [];
+            break;
+        }
+        case OP.BR:
+        case OP.BR_IF:
+        case OP.BR_TABLE: {
+            if (instr.opcode != OP.BR) {
+                this.pop(NumberType.I32);
+            }
+            let targets = instr.opcode == OP.BR_TABLE ? instr.targets : [instr.target];
+            let direction = instr.opcode != OP.BR_TABLE ? instr.direction : undefined;
+            for (let target of targets) {
+                let forward = direction != undefined
+                    ? direction == WasmBranchDir.Forward
+                    : target.parentInstruction.opcode != OP.LOOP;
+                let pop = forward ? target.type.results : target.type.params;
+                this.pop(...pop);
+                if (instr.opcode == OP.BR_IF) {
+                    this.push(...pop);
+                }
+                let levels = 1;
+                let block = this.block;
+                while (block !== target) {
+                    levels++;
+                    if (!block) throw new Error('ASSERT');
+                    block = block.parentBlock;
+                }
+                this.instrFormat.brLevels.push(forward ? levels : -levels);
+                if (brTableLast) {
+                    this.instrFormat.addParam('default');
+                }
+                this.instrFormat.addParam((levels - 1).toString());
+                this.instrFormat.addTool('⇨', `#instr-${target.parentInstruction.id}`);
+            }
+            if (instr.opcode == OP.BR || (instr.opcode == OP.BR_TABLE && brTableLast)) {
+                this.unreachable = true;
+                newStack = [];
+            }
+            break;
+        }
+        case OP.RETURN: {
+            this.pop(...this.func.type.results);
+            this.unreachable = true;
+            break;
+        }
+        case OP.CALL: {
+            this.pop(...instr.func.type.params);
+            this.push(...instr.func.type.results);
+            let ref = this.moduleDiag.getRef(instr.func);
+            this.instrFormat.addParam('#' + ref);
+            break;
+        }
+        case OP.CALL_INDIRECT: {
+            this.pop(NumberType.I32);
+            this.pop(...instr.type.params);
+            this.push(...instr.type.results);
+            let ref = this.moduleDiag.getRef(instr.table);
+            this.instrFormat.addParam('#' + ref);
+            break;
+        }
+        case OP.DROP: {
+            let type = this.stack.at(-1)?.type || NumberType.I32;
+            this.pop(type);
+            break;
+        }
+        case OP.SELECT:
+        case OP.SELECT_T: {
+            this.pop(NumberType.I32);
+            let type = this.stack.at(-1)?.type || NumberType.I32;
+            this.pop(type, type);
+            this.push(type);
+            break;
+        }
+        case OP.LOCAL_GET:
+        case OP.LOCAL_SET:
+        case OP.LOCAL_TEE: {
+            let type: ValueType = NumberType.I32;
+            if (instr.index < this.func.type.params.length) {
+                type = this.func.type.params[instr.index];
+                this.instrFormat.addParam(`param-${instr.index}`);
+            } else if (instr.index < this.func.type.params.length + this.func.locals.length) {
+                type = this.func.locals[instr.index - this.func.type.params.length];
+                this.instrFormat.addParam(`local-${instr.index}`);
+            } else {
+                this.instrFormat.addError('Local index out of range.');
+                this.instrFormat.addParam(`local-${instr.index}`);
+            }
+            if (instr.opcode != OP.LOCAL_GET) {
                 this.pop(type);
-                break;
             }
-            case OP.SELECT:
-            case OP.SELECT_T: {
-                this.pop(NumberType.I32);
-                let type = this.stack.at(-1)?.type || NumberType.I32;
-                this.pop(type, type);
+            if (instr.opcode != OP.LOCAL_SET) {
                 this.push(type);
-                break;
             }
-            case OP.LOCAL_GET:
-            case OP.LOCAL_SET:
-            case OP.LOCAL_TEE: {
-                let type: ValueType = NumberType.I32;
-                if (instr.index < this.func.type.params.length) {
-                    type = this.func.type.params[instr.index];
-                    this.instrFormat.addParam(`param-${instr.index}`);
-                } else if (instr.index < this.func.type.params.length + this.func.locals.length) {
-                    type = this.func.locals[instr.index - this.func.type.params.length];
-                    this.instrFormat.addParam(`local-${instr.index}`);
-                } else {
-                    this.instrFormat.addError('Local index out of range.');
-                    this.instrFormat.addParam(`local-${instr.index}`);
-                }
-                if (instr.opcode != OP.LOCAL_GET) {
-                    this.pop(type);
-                }
-                if (instr.opcode != OP.LOCAL_SET) {
-                    this.push(type);
-                }
-                break;
-            }
-            case OP.GLOBAL_GET:
-            case OP.GLOBAL_SET: {
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.global));
-                if (instr.opcode == OP.GLOBAL_GET) {
-                    this.push(instr.global.type);
-                } else {
-                    this.pop(instr.global.type);
-                }
-                break;
-            }
-            case OP.TABLE_GET:
-            case OP.TABLE_SET: {
-                throw new Error('Not implemented');
-                break;
-            }
-            case OP.REF_NULL: {
-                throw new Error('Not implemented');
-                break;
-            }
-            case OP.REF_IS_NULL: {
-                throw new Error('Not implemented');
-                break;
-            }
-            case OP.TABLE_GROW: {
-                throw new Error('Not implemented');
-                break;
-            }
-            case OP.TABLE_FILL: {
-                throw new Error('Not implemented');
-                break;
-            }
-            case OP.TRIVM_MULTIBYTE_FIRST:
-            case OP.TRIVM_FUNCTION: {
-                this.instrFormat.addError('Pseudo instruction used as normal instruction.');
-                break;
-            }
-            case OP.TRIVM_RAW: {
-                break;
-            }
-            case OP.I32_LOAD:
-            case OP.I32_LOAD8_S:
-            case OP.I32_LOAD8_U:
-            case OP.I32_LOAD16_S:
-            case OP.I32_LOAD16_U: {
-                this.pop(NumberType.I32);
-                this.push(NumberType.I32);
-                this.instrFormat.addParam(instr.offset.toString());
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                break;
-            }
-            case OP.I64_LOAD:
-            case OP.I64_LOAD8_S:
-            case OP.I64_LOAD8_U:
-            case OP.I64_LOAD16_S:
-            case OP.I64_LOAD16_U:
-            case OP.I64_LOAD32_S:
-            case OP.I64_LOAD32_U: {
-                this.pop(NumberType.I32);
-                this.push(NumberType.I64);
-                this.instrFormat.addParam(instr.offset.toString());
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                break;
-            }
-            case OP.F32_LOAD: {
-                this.pop(NumberType.I32);
-                this.push(NumberType.F32);
-                this.instrFormat.addParam(instr.offset.toString());
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                break;
-            }
-            case OP.F64_LOAD: {
-                this.pop(NumberType.I32);
-                this.push(NumberType.F64);
-                this.instrFormat.addParam(instr.offset.toString());
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                break;
-            }
-            case OP.I32_STORE:
-            case OP.I32_STORE8:
-            case OP.I32_STORE16: {
-                this.pop(NumberType.I32, NumberType.I32);
-                this.instrFormat.addParam(instr.offset.toString());
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                break;
-            }
-            case OP.I64_STORE:
-            case OP.I64_STORE8:
-            case OP.I64_STORE16:
-            case OP.I64_STORE32: {
-                this.pop(NumberType.I32, NumberType.I64);
-                this.instrFormat.addParam(instr.offset.toString());
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                break;
-            }
-            case OP.F32_STORE: {
-                this.pop(NumberType.I32, NumberType.F32);
-                this.instrFormat.addParam(instr.offset.toString());
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                break;
-            }
-            case OP.F64_STORE: {
-                this.pop(NumberType.I32, NumberType.F64);
-                this.instrFormat.addParam(instr.offset.toString());
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                break;
-            }
-            case OP.MEMORY_SIZE: {
-                this.push(NumberType.I32);
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                break;
-            }
-            case OP.MEMORY_GROW: {
-                this.pop(NumberType.I32);
-                this.push(NumberType.I32);
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                break;
-            }
-            case OP.I32_CONST: {
-                this.instrFormat.addParam(formatValue32(instr.value));
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I64_CONST: {
-                this.instrFormat.addParam(formatValue64(instr.value));
-                this.push(NumberType.I64);
-                break;
-            }
-            case OP.F32_CONST: {
-                throw new Error('Not implemented');
-                this.push(NumberType.F32);
-                break;
-            }
-            case OP.F64_CONST: {
-                throw new Error('Not implemented');
-                this.push(NumberType.F64);
-                break;
-            }
-            case OP.REF_FUNC: {
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.func));
-                this.push(RefType.FUNCREF);
-                break;
-            }
-            case OP.MEMORY_INIT: {
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.data));
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
-                break;
-            }
-            case OP.DATA_DROP: {
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.data));
-                break;
-            }
-            case OP.MEMORY_COPY: {
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memories[0]));
-                this.instrFormat.addParam('->'); // TODO: check direction
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memories[1]));
-                this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
-                break;
-            }
-            case OP.MEMORY_FILL: {
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
-                break;
-            }
-            case OP.TABLE_INIT: {
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.element));
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.table));
-                this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
-                break;
-            }
-            case OP.ELEM_DROP: {
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.element));
-                break;
-            }
-            case OP.TABLE_COPY: {
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.tables[0]));
-                this.instrFormat.addParam('->'); // TODO: check direction
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.tables[1]));
-                this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
-                break;
-            }
-            case OP.TABLE_SIZE: {
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.table));
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.V128_LOAD:
-            case OP.V128_LOAD8X8_S:
-            case OP.V128_LOAD8X8_U:
-            case OP.V128_LOAD16X4_S:
-            case OP.V128_LOAD16X4_U:
-            case OP.V128_LOAD32X2_S:
-            case OP.V128_LOAD32X2_U:
-            case OP.V128_LOAD8_SPLAT:
-            case OP.V128_LOAD16_SPLAT:
-            case OP.V128_LOAD32_SPLAT:
-            case OP.V128_LOAD64_SPLAT: {
-                this.instrFormat.addParam(instr.offset.toString());
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                this.pop(NumberType.I32);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.V128_STORE: {
-                this.instrFormat.addParam(instr.offset.toString());
-                this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
-                this.pop(NumberType.I32, VectorType.V128);
-                break;
-            }
-            case OP.V128_CONST: {
-                let hex = [...instr.value].map(x => x.toString(16).padStart(2, '0')).join('');
-                this.instrFormat.addParam(hex);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.I8X16_SHUFFLE: {
-                let order = [...instr.value].map(x => x.toString()).join(',');
-                this.instrFormat.addParam(order);
-                this.pop(VectorType.V128, VectorType.V128);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.I8X16_EXTRACT_LANE_S:
-            case OP.I8X16_EXTRACT_LANE_U: {
-                this.instrFormat.addParam(instr.index.toString());
-                this.pop(VectorType.V128);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I8X16_REPLACE_LANE: {
-                this.instrFormat.addParam(instr.index.toString());
-                this.pop(VectorType.V128, NumberType.I32);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.I16X8_EXTRACT_LANE_S:
-            case OP.I16X8_EXTRACT_LANE_U: {
-                throw new Error('Not implemented');
-                this.pop(VectorType.V128);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I16X8_REPLACE_LANE: {
-                throw new Error('Not implemented');
-                this.pop(VectorType.V128, NumberType.I32);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.I32X4_EXTRACT_LANE: {
-                throw new Error('Not implemented');
-                this.pop(VectorType.V128);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I32X4_REPLACE_LANE: {
-                throw new Error('Not implemented');
-                this.pop(VectorType.V128, NumberType.I32);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.I64X2_EXTRACT_LANE: {
-                throw new Error('Not implemented');
-                this.pop(VectorType.V128);
-                this.push(NumberType.I64);
-                break;
-            }
-            case OP.I64X2_REPLACE_LANE: {
-                throw new Error('Not implemented');
-                this.pop(VectorType.V128, NumberType.I64);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.F32X4_EXTRACT_LANE: {
-                throw new Error('Not implemented');
-                this.pop(VectorType.V128);
-                this.push(NumberType.F32);
-                break;
-            }
-            case OP.F32X4_REPLACE_LANE: {
-                throw new Error('Not implemented');
-                this.pop(VectorType.V128, NumberType.F32);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.F64X2_EXTRACT_LANE: {
-                throw new Error('Not implemented');
-                this.pop(VectorType.V128);
-                this.push(NumberType.F64);
-                break;
-            }
-            case OP.F64X2_REPLACE_LANE: {
-                throw new Error('Not implemented');
-                this.pop(VectorType.V128, NumberType.F64);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.V128_LOAD8_LANE:
-            case OP.V128_STORE8_LANE: {
-                throw new Error('Not implemented');
-                this.pop(NumberType.I32, VectorType.V128);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.V128_LOAD16_LANE:
-            case OP.V128_STORE16_LANE: {
-                throw new Error('Not implemented');
-                this.pop(NumberType.I32, VectorType.V128);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.V128_LOAD32_LANE:
-            case OP.V128_STORE32_LANE: {
-                throw new Error('Not implemented');
-                this.pop(NumberType.I32, VectorType.V128);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.V128_LOAD64_LANE:
-            case OP.V128_STORE64_LANE: {
-                throw new Error('Not implemented');
-                this.pop(NumberType.I32, VectorType.V128);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.V128_LOAD32_ZERO: {
-                throw new Error('Not implemented');
-                this.pop(NumberType.I32);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.V128_LOAD64_ZERO: {
-                throw new Error('Not implemented');
-                this.pop(NumberType.I32);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.NOP: {
-                break;
-            }
-            case OP.I32_EQZ:
-            case OP.I32_CLZ:
-            case OP.I32_CTZ:
-            case OP.I32_POPCNT:
-            case OP.I32_EXTEND8_S:
-            case OP.I32_EXTEND16_S: {
-                this.pop(NumberType.I32);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I32_EQ:
-            case OP.I32_NE:
-            case OP.I32_LT_S:
-            case OP.I32_LT_U:
-            case OP.I32_GT_S:
-            case OP.I32_GT_U:
-            case OP.I32_LE_S:
-            case OP.I32_LE_U:
-            case OP.I32_GE_S:
-            case OP.I32_GE_U:
-            case OP.I32_ADD:
-            case OP.I32_SUB:
-            case OP.I32_MUL:
-            case OP.I32_DIV_S:
-            case OP.I32_DIV_U:
-            case OP.I32_REM_S:
-            case OP.I32_REM_U:
-            case OP.I32_AND:
-            case OP.I32_OR:
-            case OP.I32_XOR:
-            case OP.I32_SHL:
-            case OP.I32_SHR_S:
-            case OP.I32_SHR_U:
-            case OP.I32_ROTL:
-            case OP.I32_ROTR: {
-                this.pop(NumberType.I32, NumberType.I32);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I64_EQZ:
-            case OP.I32_WRAP_I64: {
-                this.pop(NumberType.I64);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I64_EQ:
-            case OP.I64_NE:
-            case OP.I64_LT_S:
-            case OP.I64_LT_U:
-            case OP.I64_GT_S:
-            case OP.I64_GT_U:
-            case OP.I64_LE_S:
-            case OP.I64_LE_U:
-            case OP.I64_GE_S:
-            case OP.I64_GE_U: {
-                this.pop(NumberType.I64, NumberType.I64);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.F32_EQ:
-            case OP.F32_NE:
-            case OP.F32_LT:
-            case OP.F32_GT:
-            case OP.F32_LE:
-            case OP.F32_GE: {
-                this.pop(NumberType.F32, NumberType.F32);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.F64_EQ:
-            case OP.F64_NE:
-            case OP.F64_LT:
-            case OP.F64_GT:
-            case OP.F64_LE:
-            case OP.F64_GE: {
-                this.pop(NumberType.F64, NumberType.F64);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I64_CLZ:
-            case OP.I64_CTZ:
-            case OP.I64_POPCNT:
-            case OP.I64_EXTEND8_S:
-            case OP.I64_EXTEND16_S:
-            case OP.I64_EXTEND32_S: {
-                this.pop(NumberType.I64);
-                this.push(NumberType.I64);
-                break;
-            }
-            case OP.I64_ADD:
-            case OP.I64_SUB:
-            case OP.I64_MUL:
-            case OP.I64_DIV_S:
-            case OP.I64_DIV_U:
-            case OP.I64_REM_S:
-            case OP.I64_REM_U:
-            case OP.I64_AND:
-            case OP.I64_OR:
-            case OP.I64_XOR:
-            case OP.I64_SHL:
-            case OP.I64_SHR_S:
-            case OP.I64_SHR_U:
-            case OP.I64_ROTL:
-            case OP.I64_ROTR: {
-                this.pop(NumberType.I64, NumberType.I64);
-                this.push(NumberType.I64);
-                break;
-            }
-            case OP.F32_ABS:
-            case OP.F32_NEG:
-            case OP.F32_CEIL:
-            case OP.F32_FLOOR:
-            case OP.F32_TRUNC:
-            case OP.F32_NEAREST:
-            case OP.F32_SQRT: {
-                this.pop(NumberType.F32);
-                this.push(NumberType.F32);
-                break;
-            }
-            case OP.F32_ADD:
-            case OP.F32_SUB:
-            case OP.F32_MUL:
-            case OP.F32_DIV:
-            case OP.F32_MIN:
-            case OP.F32_MAX:
-            case OP.F32_COPYSIGN: {
-                this.pop(NumberType.F32, NumberType.F32);
-                this.push(NumberType.F32);
-                break;
-            }
-            case OP.F64_ABS:
-            case OP.F64_NEG:
-            case OP.F64_CEIL:
-            case OP.F64_FLOOR:
-            case OP.F64_TRUNC:
-            case OP.F64_NEAREST:
-            case OP.F64_SQRT: {
-                this.pop(NumberType.F64);
-                this.push(NumberType.F64);
-                break;
-            }
-            case OP.F64_ADD:
-            case OP.F64_SUB:
-            case OP.F64_MUL:
-            case OP.F64_DIV:
-            case OP.F64_MIN:
-            case OP.F64_MAX:
-            case OP.F64_COPYSIGN: {
-                this.pop(NumberType.F64, NumberType.F64);
-                this.push(NumberType.F64);
-                break;
-            }
-            case OP.I32_TRUNC_F32_S:
-            case OP.I32_TRUNC_F32_U:
-            case OP.I32_REINTERPRET_F32:
-            case OP.I32_TRUNC_SAT_F32_S:
-            case OP.I32_TRUNC_SAT_F32_U: {
-                this.pop(NumberType.F32);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I32_TRUNC_F64_S:
-            case OP.I32_TRUNC_F64_U:
-            case OP.I32_TRUNC_SAT_F64_S:
-            case OP.I32_TRUNC_SAT_F64_U: {
-                this.pop(NumberType.F64);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I64_EXTEND_I32_S:
-            case OP.I64_EXTEND_I32_U: {
-                this.pop(NumberType.I32);
-                this.push(NumberType.I64);
-                break;
-            }
-            case OP.I64_TRUNC_F32_S:
-            case OP.I64_TRUNC_F32_U:
-            case OP.I64_TRUNC_SAT_F32_S:
-            case OP.I64_TRUNC_SAT_F32_U: {
-                this.pop(NumberType.F32);
-                this.push(NumberType.I64);
-                break;
-            }
-            case OP.I64_TRUNC_F64_S:
-            case OP.I64_TRUNC_F64_U:
-            case OP.I64_REINTERPRET_F64:
-            case OP.I64_TRUNC_SAT_F64_S:
-            case OP.I64_TRUNC_SAT_F64_U: {
-                this.pop(NumberType.F64);
-                this.push(NumberType.I64);
-                break;
-            }
-            case OP.F32_CONVERT_I32_S:
-            case OP.F32_CONVERT_I32_U:
-            case OP.F32_REINTERPRET_I32: {
-                this.pop(NumberType.I32);
-                this.push(NumberType.F32);
-                break;
-            }
-            case OP.F32_CONVERT_I64_S:
-            case OP.F32_CONVERT_I64_U: {
-                this.pop(NumberType.I64);
-                this.push(NumberType.F32);
-                break;
-            }
-            case OP.F32_DEMOTE_F64: {
-                this.pop(NumberType.F64);
-                this.push(NumberType.F32);
-                break;
-            }
-            case OP.F64_CONVERT_I32_S:
-            case OP.F64_CONVERT_I32_U: {
-                this.pop(NumberType.I32);
-                this.push(NumberType.F64);
-                break;
-            }
-            case OP.F64_CONVERT_I64_S:
-            case OP.F64_CONVERT_I64_U:
-            case OP.F64_REINTERPRET_I64: {
-                this.pop(NumberType.I64);
-                this.push(NumberType.F64);
-                break;
-            }
-            case OP.F64_PROMOTE_F32: {
-                this.pop(NumberType.F32);
-                this.push(NumberType.F64);
-                break;
-            }
-            case OP.I8X16_SWIZZLE:
-            case OP.I8X16_EQ:
-            case OP.I8X16_NE:
-            case OP.I8X16_LT_S:
-            case OP.I8X16_LT_U:
-            case OP.I8X16_GT_S:
-            case OP.I8X16_GT_U:
-            case OP.I8X16_LE_S:
-            case OP.I8X16_LE_U:
-            case OP.I8X16_GE_S:
-            case OP.I8X16_GE_U:
-            case OP.I16X8_EQ:
-            case OP.I16X8_NE:
-            case OP.I16X8_LT_S:
-            case OP.I16X8_LT_U:
-            case OP.I16X8_GT_S:
-            case OP.I16X8_GT_U:
-            case OP.I16X8_LE_S:
-            case OP.I16X8_LE_U:
-            case OP.I16X8_GE_S:
-            case OP.I16X8_GE_U:
-            case OP.I32X4_EQ:
-            case OP.I32X4_NE:
-            case OP.I32X4_LT_S:
-            case OP.I32X4_LT_U:
-            case OP.I32X4_GT_S:
-            case OP.I32X4_GT_U:
-            case OP.I32X4_LE_S:
-            case OP.I32X4_LE_U:
-            case OP.I32X4_GE_S:
-            case OP.I32X4_GE_U:
-            case OP.F32X4_EQ:
-            case OP.F32X4_NE:
-            case OP.F32X4_LT:
-            case OP.F32X4_GT:
-            case OP.F32X4_LE:
-            case OP.F32X4_GE:
-            case OP.F64X2_EQ:
-            case OP.F64X2_NE:
-            case OP.F64X2_LT:
-            case OP.F64X2_GT:
-            case OP.F64X2_LE:
-            case OP.F64X2_GE:
-            case OP.V128_AND:
-            case OP.V128_ANDNOT:
-            case OP.V128_OR:
-            case OP.V128_XOR:
-            case OP.I8X16_NARROW_I16X8_S:
-            case OP.I8X16_NARROW_I16X8_U:
-            case OP.I8X16_ADD:
-            case OP.I8X16_ADD_SAT_S:
-            case OP.I8X16_ADD_SAT_U:
-            case OP.I8X16_SUB:
-            case OP.I8X16_SUB_SAT_S:
-            case OP.I8X16_SUB_SAT_U:
-            case OP.I8X16_MIN_S:
-            case OP.I8X16_MIN_U:
-            case OP.I8X16_MAX_S:
-            case OP.I8X16_MAX_U:
-            case OP.I8X16_AVGR_U:
-            case OP.I16X8_Q15MULR_SAT_S:
-            case OP.I16X8_NARROW_I32X4_S:
-            case OP.I16X8_NARROW_I32X4_U:
-            case OP.I16X8_ADD:
-            case OP.I16X8_ADD_SAT_S:
-            case OP.I16X8_ADD_SAT_U:
-            case OP.I16X8_SUB:
-            case OP.I16X8_SUB_SAT_S:
-            case OP.I16X8_SUB_SAT_U:
-            case OP.I16X8_MUL:
-            case OP.I16X8_MIN_S:
-            case OP.I16X8_MIN_U:
-            case OP.I16X8_MAX_S:
-            case OP.I16X8_MAX_U:
-            case OP.I16X8_AVGR_U:
-            case OP.I16X8_EXTMUL_LOW_I8X16_S:
-            case OP.I16X8_EXTMUL_HIGH_I8X16_S:
-            case OP.I16X8_EXTMUL_LOW_I8X16_U:
-            case OP.I16X8_EXTMUL_HIGH_I8X16_U:
-            case OP.I32X4_ADD:
-            case OP.I32X4_SUB:
-            case OP.I32X4_MUL:
-            case OP.I32X4_MIN_S:
-            case OP.I32X4_MIN_U:
-            case OP.I32X4_MAX_S:
-            case OP.I32X4_MAX_U:
-            case OP.I32X4_DOT_I16X8_S:
-            case OP.I32X4_EXTMUL_LOW_I16X8_S:
-            case OP.I32X4_EXTMUL_HIGH_I16X8_S:
-            case OP.I32X4_EXTMUL_LOW_I16X8_U:
-            case OP.I32X4_EXTMUL_HIGH_I16X8_U:
-            case OP.I64X2_ADD:
-            case OP.I64X2_SUB:
-            case OP.I64X2_MUL:
-            case OP.I64X2_EQ:
-            case OP.I64X2_NE:
-            case OP.I64X2_LT_S:
-            case OP.I64X2_GT_S:
-            case OP.I64X2_LE_S:
-            case OP.I64X2_GE_S:
-            case OP.I64X2_EXTMUL_LOW_I32X4_S:
-            case OP.I64X2_EXTMUL_HIGH_I32X4_S:
-            case OP.I64X2_EXTMUL_LOW_I32X4_U:
-            case OP.I64X2_EXTMUL_HIGH_I32X4_U:
-            case OP.F32X4_ADD:
-            case OP.F32X4_SUB:
-            case OP.F32X4_MUL:
-            case OP.F32X4_DIV:
-            case OP.F32X4_MIN:
-            case OP.F32X4_MAX:
-            case OP.F32X4_PMIN:
-            case OP.F32X4_PMAX:
-            case OP.F64X2_ADD:
-            case OP.F64X2_SUB:
-            case OP.F64X2_MUL:
-            case OP.F64X2_DIV:
-            case OP.F64X2_MIN:
-            case OP.F64X2_MAX:
-            case OP.F64X2_PMIN:
-            case OP.F64X2_PMAX: {
-                this.pop(VectorType.V128, VectorType.V128);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.I8X16_SPLAT:
-            case OP.I16X8_SPLAT:
-            case OP.I32X4_SPLAT: {
-                this.pop(NumberType.I32);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.I64X2_SPLAT: {
-                this.pop(NumberType.I64);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.F32X4_SPLAT: {
-                this.pop(NumberType.F32);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.F64X2_SPLAT: {
-                this.pop(NumberType.F64);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.V128_NOT:
-            case OP.F32X4_DEMOTE_F64X2_ZERO:
-            case OP.F64X2_PROMOTE_LOW_F32X4:
-            case OP.I8X16_ABS:
-            case OP.I8X16_NEG:
-            case OP.I8X16_POPCNT:
-            case OP.F32X4_CEIL:
-            case OP.F32X4_FLOOR:
-            case OP.F32X4_TRUNC:
-            case OP.F32X4_NEAREST:
-            case OP.F64X2_CEIL:
-            case OP.F64X2_FLOOR:
-            case OP.F64X2_TRUNC:
-            case OP.I16X8_EXTADD_PAIRWISE_I8X16_S:
-            case OP.I16X8_EXTADD_PAIRWISE_I8X16_U:
-            case OP.I32X4_EXTADD_PAIRWISE_I16X8_S:
-            case OP.I32X4_EXTADD_PAIRWISE_I16X8_U:
-            case OP.I16X8_ABS:
-            case OP.I16X8_NEG:
-            case OP.I16X8_EXTEND_LOW_I8X16_S:
-            case OP.I16X8_EXTEND_HIGH_I8X16_S:
-            case OP.I16X8_EXTEND_LOW_I8X16_U:
-            case OP.I16X8_EXTEND_HIGH_I8X16_U:
-            case OP.F64X2_NEAREST:
-            case OP.I32X4_ABS:
-            case OP.I32X4_NEG:
-            case OP.I32X4_EXTEND_LOW_I16X8_S:
-            case OP.I32X4_EXTEND_HIGH_I16X8_S:
-            case OP.I32X4_EXTEND_LOW_I16X8_U:
-            case OP.I32X4_EXTEND_HIGH_I16X8_U:
-            case OP.I64X2_ABS:
-            case OP.I64X2_NEG:
-            case OP.I64X2_EXTEND_LOW_I32X4_S:
-            case OP.I64X2_EXTEND_HIGH_I32X4_S:
-            case OP.I64X2_EXTEND_LOW_I32X4_U:
-            case OP.I64X2_EXTEND_HIGH_I32X4_U:
-            case OP.F32X4_ABS:
-            case OP.F32X4_NEG:
-            case OP.F32X4_SQRT:
-            case OP.F64X2_ABS:
-            case OP.F64X2_NEG:
-            case OP.F64X2_SQRT:
-            case OP.I32X4_TRUNC_SAT_F32X4_S:
-            case OP.I32X4_TRUNC_SAT_F32X4_U:
-            case OP.F32X4_CONVERT_I32X4_S:
-            case OP.F32X4_CONVERT_I32X4_U:
-            case OP.I32X4_TRUNC_SAT_F64X2_S_ZERO:
-            case OP.I32X4_TRUNC_SAT_F64X2_U_ZERO:
-            case OP.F64X2_CONVERT_LOW_I32X4_S:
-            case OP.F64X2_CONVERT_LOW_I32X4_U: {
-                this.pop(VectorType.V128);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.V128_BITSELECT: {
-                this.pop(VectorType.V128, VectorType.V128, VectorType.V128);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.V128_ANY_TRUE:
-            case OP.I8X16_ALL_TRUE:
-            case OP.I8X16_BITMASK:
-            case OP.I16X8_ALL_TRUE:
-            case OP.I16X8_BITMASK:
-            case OP.I32X4_ALL_TRUE:
-            case OP.I32X4_BITMASK:
-            case OP.I64X2_ALL_TRUE:
-            case OP.I64X2_BITMASK: {
-                this.pop(VectorType.V128);
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.I8X16_SHL:
-            case OP.I8X16_SHR_S:
-            case OP.I8X16_SHR_U:
-            case OP.I16X8_SHL:
-            case OP.I16X8_SHR_S:
-            case OP.I16X8_SHR_U:
-            case OP.I32X4_SHL:
-            case OP.I32X4_SHR_S:
-            case OP.I32X4_SHR_U:
-            case OP.I64X2_SHL:
-            case OP.I64X2_SHR_S:
-            case OP.I64X2_SHR_U: {
-                this.pop(VectorType.V128, NumberType.I32);
-                this.push(VectorType.V128);
-                break;
-            }
-            case OP.TRIVM_POP:
-            case OP.TRIVM_LOCAL_SET32:
-            case OP.TRIVM_GLOBAL_SET32: {
-                this.pop(NumberType.I32);
-                break;
-            }
-            case OP.TRIVM_DUP32: {
-                this.pop(NumberType.I32);
-                this.push(NumberType.I32, NumberType.I32);
-                break;
-            }
-            case OP.TRIVM_DUP64: {
-                this.pop(NumberType.I32, NumberType.I32);
-                this.push(NumberType.I32, NumberType.I32, NumberType.I32, NumberType.I32);
-                break;
-            }
-            case OP.TRIVM_LOCAL_GET32:
-            case OP.TRIVM_GLOBAL_GET32: {
-                this.push(NumberType.I32);
-                break;
-            }
-            case OP.TRIVM_LOCAL_GET64:
-            case OP.TRIVM_GLOBAL_GET64: {
-                this.push(NumberType.I32, NumberType.I32);
-                break;
-            }
-            case OP.TRIVM_LOCAL_SET64:
-            case OP.TRIVM_GLOBAL_SET64: {
-                this.pop(NumberType.I32, NumberType.I32);
-                break;
-            }
+            break;
+        }
+        case OP.GLOBAL_GET:
+        case OP.GLOBAL_SET: {
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.global));
+            if (instr.opcode == OP.GLOBAL_GET) {
+                this.push(instr.global.type);
+            } else {
+                this.pop(instr.global.type);
+            }
+            break;
+        }
+        case OP.TABLE_GET:
+        case OP.TABLE_SET: {
+            throw new Error('Not implemented');
+            break;
+        }
+        case OP.REF_NULL: {
+            throw new Error('Not implemented');
+            break;
+        }
+        case OP.REF_IS_NULL: {
+            throw new Error('Not implemented');
+            break;
+        }
+        case OP.TABLE_GROW: {
+            throw new Error('Not implemented');
+            break;
+        }
+        case OP.TABLE_FILL: {
+            throw new Error('Not implemented');
+            break;
+        }
+        case OP.TRIVM_MULTIBYTE_FIRST:
+        case OP.TRIVM_FUNCTION: {
+            this.instrFormat.addError('Pseudo instruction used as normal instruction.');
+            break;
+        }
+        case OP.TRIVM_RAW: {
+            break;
+        }
+        case OP.I32_LOAD:
+        case OP.I32_LOAD8_S:
+        case OP.I32_LOAD8_U:
+        case OP.I32_LOAD16_S:
+        case OP.I32_LOAD16_U: {
+            this.pop(NumberType.I32);
+            this.push(NumberType.I32);
+            this.instrFormat.addParam(instr.offset.toString());
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            break;
+        }
+        case OP.I64_LOAD:
+        case OP.I64_LOAD8_S:
+        case OP.I64_LOAD8_U:
+        case OP.I64_LOAD16_S:
+        case OP.I64_LOAD16_U:
+        case OP.I64_LOAD32_S:
+        case OP.I64_LOAD32_U: {
+            this.pop(NumberType.I32);
+            this.push(NumberType.I64);
+            this.instrFormat.addParam(instr.offset.toString());
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            break;
+        }
+        case OP.F32_LOAD: {
+            this.pop(NumberType.I32);
+            this.push(NumberType.F32);
+            this.instrFormat.addParam(instr.offset.toString());
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            break;
+        }
+        case OP.F64_LOAD: {
+            this.pop(NumberType.I32);
+            this.push(NumberType.F64);
+            this.instrFormat.addParam(instr.offset.toString());
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            break;
+        }
+        case OP.I32_STORE:
+        case OP.I32_STORE8:
+        case OP.I32_STORE16: {
+            this.pop(NumberType.I32, NumberType.I32);
+            this.instrFormat.addParam(instr.offset.toString());
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            break;
+        }
+        case OP.I64_STORE:
+        case OP.I64_STORE8:
+        case OP.I64_STORE16:
+        case OP.I64_STORE32: {
+            this.pop(NumberType.I32, NumberType.I64);
+            this.instrFormat.addParam(instr.offset.toString());
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            break;
+        }
+        case OP.F32_STORE: {
+            this.pop(NumberType.I32, NumberType.F32);
+            this.instrFormat.addParam(instr.offset.toString());
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            break;
+        }
+        case OP.F64_STORE: {
+            this.pop(NumberType.I32, NumberType.F64);
+            this.instrFormat.addParam(instr.offset.toString());
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            break;
+        }
+        case OP.MEMORY_SIZE: {
+            this.push(NumberType.I32);
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            break;
+        }
+        case OP.MEMORY_GROW: {
+            this.pop(NumberType.I32);
+            this.push(NumberType.I32);
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            break;
+        }
+        case OP.I32_CONST: {
+            this.instrFormat.addParam(formatValue32(instr.value));
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I64_CONST: {
+            this.instrFormat.addParam(formatValue64(instr.value));
+            this.push(NumberType.I64);
+            break;
+        }
+        case OP.F32_CONST: {
+            throw new Error('Not implemented');
+            this.push(NumberType.F32);
+            break;
+        }
+        case OP.F64_CONST: {
+            throw new Error('Not implemented');
+            this.push(NumberType.F64);
+            break;
+        }
+        case OP.REF_FUNC: {
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.func));
+            this.push(RefType.FUNCREF);
+            break;
+        }
+        case OP.MEMORY_INIT: {
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.data));
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
+            break;
+        }
+        case OP.DATA_DROP: {
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.data));
+            break;
+        }
+        case OP.MEMORY_COPY: {
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memories[0]));
+            this.instrFormat.addParam('->'); // TODO: check direction
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memories[1]));
+            this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
+            break;
+        }
+        case OP.MEMORY_FILL: {
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
+            break;
+        }
+        case OP.TABLE_INIT: {
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.element));
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.table));
+            this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
+            break;
+        }
+        case OP.ELEM_DROP: {
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.element));
+            break;
+        }
+        case OP.TABLE_COPY: {
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.tables[0]));
+            this.instrFormat.addParam('->'); // TODO: check direction
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.tables[1]));
+            this.pop(NumberType.I32, NumberType.I32, NumberType.I32);
+            break;
+        }
+        case OP.TABLE_SIZE: {
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.table));
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.V128_LOAD:
+        case OP.V128_LOAD8X8_S:
+        case OP.V128_LOAD8X8_U:
+        case OP.V128_LOAD16X4_S:
+        case OP.V128_LOAD16X4_U:
+        case OP.V128_LOAD32X2_S:
+        case OP.V128_LOAD32X2_U:
+        case OP.V128_LOAD8_SPLAT:
+        case OP.V128_LOAD16_SPLAT:
+        case OP.V128_LOAD32_SPLAT:
+        case OP.V128_LOAD64_SPLAT: {
+            this.instrFormat.addParam(instr.offset.toString());
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            this.pop(NumberType.I32);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.V128_STORE: {
+            this.instrFormat.addParam(instr.offset.toString());
+            this.instrFormat.addParam('#' + this.moduleDiag.getRef(instr.memory));
+            this.pop(NumberType.I32, VectorType.V128);
+            break;
+        }
+        case OP.V128_CONST: {
+            let hex = [...instr.value].map(x => x.toString(16).padStart(2, '0')).join('');
+            this.instrFormat.addParam(hex);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.I8X16_SHUFFLE: {
+            let order = [...instr.value].map(x => x.toString()).join(',');
+            this.instrFormat.addParam(order);
+            this.pop(VectorType.V128, VectorType.V128);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.I8X16_EXTRACT_LANE_S:
+        case OP.I8X16_EXTRACT_LANE_U: {
+            this.instrFormat.addParam(instr.index.toString());
+            this.pop(VectorType.V128);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I8X16_REPLACE_LANE: {
+            this.instrFormat.addParam(instr.index.toString());
+            this.pop(VectorType.V128, NumberType.I32);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.I16X8_EXTRACT_LANE_S:
+        case OP.I16X8_EXTRACT_LANE_U: {
+            throw new Error('Not implemented');
+            this.pop(VectorType.V128);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I16X8_REPLACE_LANE: {
+            throw new Error('Not implemented');
+            this.pop(VectorType.V128, NumberType.I32);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.I32X4_EXTRACT_LANE: {
+            throw new Error('Not implemented');
+            this.pop(VectorType.V128);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I32X4_REPLACE_LANE: {
+            throw new Error('Not implemented');
+            this.pop(VectorType.V128, NumberType.I32);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.I64X2_EXTRACT_LANE: {
+            throw new Error('Not implemented');
+            this.pop(VectorType.V128);
+            this.push(NumberType.I64);
+            break;
+        }
+        case OP.I64X2_REPLACE_LANE: {
+            throw new Error('Not implemented');
+            this.pop(VectorType.V128, NumberType.I64);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.F32X4_EXTRACT_LANE: {
+            throw new Error('Not implemented');
+            this.pop(VectorType.V128);
+            this.push(NumberType.F32);
+            break;
+        }
+        case OP.F32X4_REPLACE_LANE: {
+            throw new Error('Not implemented');
+            this.pop(VectorType.V128, NumberType.F32);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.F64X2_EXTRACT_LANE: {
+            throw new Error('Not implemented');
+            this.pop(VectorType.V128);
+            this.push(NumberType.F64);
+            break;
+        }
+        case OP.F64X2_REPLACE_LANE: {
+            throw new Error('Not implemented');
+            this.pop(VectorType.V128, NumberType.F64);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.V128_LOAD8_LANE:
+        case OP.V128_STORE8_LANE: {
+            throw new Error('Not implemented');
+            this.pop(NumberType.I32, VectorType.V128);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.V128_LOAD16_LANE:
+        case OP.V128_STORE16_LANE: {
+            throw new Error('Not implemented');
+            this.pop(NumberType.I32, VectorType.V128);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.V128_LOAD32_LANE:
+        case OP.V128_STORE32_LANE: {
+            throw new Error('Not implemented');
+            this.pop(NumberType.I32, VectorType.V128);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.V128_LOAD64_LANE:
+        case OP.V128_STORE64_LANE: {
+            throw new Error('Not implemented');
+            this.pop(NumberType.I32, VectorType.V128);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.V128_LOAD32_ZERO: {
+            throw new Error('Not implemented');
+            this.pop(NumberType.I32);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.V128_LOAD64_ZERO: {
+            throw new Error('Not implemented');
+            this.pop(NumberType.I32);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.NOP: {
+            break;
+        }
+        case OP.I32_EQZ:
+        case OP.I32_CLZ:
+        case OP.I32_CTZ:
+        case OP.I32_POPCNT:
+        case OP.I32_EXTEND8_S:
+        case OP.I32_EXTEND16_S: {
+            this.pop(NumberType.I32);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I32_EQ:
+        case OP.I32_NE:
+        case OP.I32_LT_S:
+        case OP.I32_LT_U:
+        case OP.I32_GT_S:
+        case OP.I32_GT_U:
+        case OP.I32_LE_S:
+        case OP.I32_LE_U:
+        case OP.I32_GE_S:
+        case OP.I32_GE_U:
+        case OP.I32_ADD:
+        case OP.I32_SUB:
+        case OP.I32_MUL:
+        case OP.I32_DIV_S:
+        case OP.I32_DIV_U:
+        case OP.I32_REM_S:
+        case OP.I32_REM_U:
+        case OP.I32_AND:
+        case OP.I32_OR:
+        case OP.I32_XOR:
+        case OP.I32_SHL:
+        case OP.I32_SHR_S:
+        case OP.I32_SHR_U:
+        case OP.I32_ROTL:
+        case OP.I32_ROTR: {
+            this.pop(NumberType.I32, NumberType.I32);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I64_EQZ:
+        case OP.I32_WRAP_I64: {
+            this.pop(NumberType.I64);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I64_EQ:
+        case OP.I64_NE:
+        case OP.I64_LT_S:
+        case OP.I64_LT_U:
+        case OP.I64_GT_S:
+        case OP.I64_GT_U:
+        case OP.I64_LE_S:
+        case OP.I64_LE_U:
+        case OP.I64_GE_S:
+        case OP.I64_GE_U: {
+            this.pop(NumberType.I64, NumberType.I64);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.F32_EQ:
+        case OP.F32_NE:
+        case OP.F32_LT:
+        case OP.F32_GT:
+        case OP.F32_LE:
+        case OP.F32_GE: {
+            this.pop(NumberType.F32, NumberType.F32);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.F64_EQ:
+        case OP.F64_NE:
+        case OP.F64_LT:
+        case OP.F64_GT:
+        case OP.F64_LE:
+        case OP.F64_GE: {
+            this.pop(NumberType.F64, NumberType.F64);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I64_CLZ:
+        case OP.I64_CTZ:
+        case OP.I64_POPCNT:
+        case OP.I64_EXTEND8_S:
+        case OP.I64_EXTEND16_S:
+        case OP.I64_EXTEND32_S: {
+            this.pop(NumberType.I64);
+            this.push(NumberType.I64);
+            break;
+        }
+        case OP.I64_ADD:
+        case OP.I64_SUB:
+        case OP.I64_MUL:
+        case OP.I64_DIV_S:
+        case OP.I64_DIV_U:
+        case OP.I64_REM_S:
+        case OP.I64_REM_U:
+        case OP.I64_AND:
+        case OP.I64_OR:
+        case OP.I64_XOR:
+        case OP.I64_SHL:
+        case OP.I64_SHR_S:
+        case OP.I64_SHR_U:
+        case OP.I64_ROTL:
+        case OP.I64_ROTR: {
+            this.pop(NumberType.I64, NumberType.I64);
+            this.push(NumberType.I64);
+            break;
+        }
+        case OP.F32_ABS:
+        case OP.F32_NEG:
+        case OP.F32_CEIL:
+        case OP.F32_FLOOR:
+        case OP.F32_TRUNC:
+        case OP.F32_NEAREST:
+        case OP.F32_SQRT: {
+            this.pop(NumberType.F32);
+            this.push(NumberType.F32);
+            break;
+        }
+        case OP.F32_ADD:
+        case OP.F32_SUB:
+        case OP.F32_MUL:
+        case OP.F32_DIV:
+        case OP.F32_MIN:
+        case OP.F32_MAX:
+        case OP.F32_COPYSIGN: {
+            this.pop(NumberType.F32, NumberType.F32);
+            this.push(NumberType.F32);
+            break;
+        }
+        case OP.F64_ABS:
+        case OP.F64_NEG:
+        case OP.F64_CEIL:
+        case OP.F64_FLOOR:
+        case OP.F64_TRUNC:
+        case OP.F64_NEAREST:
+        case OP.F64_SQRT: {
+            this.pop(NumberType.F64);
+            this.push(NumberType.F64);
+            break;
+        }
+        case OP.F64_ADD:
+        case OP.F64_SUB:
+        case OP.F64_MUL:
+        case OP.F64_DIV:
+        case OP.F64_MIN:
+        case OP.F64_MAX:
+        case OP.F64_COPYSIGN: {
+            this.pop(NumberType.F64, NumberType.F64);
+            this.push(NumberType.F64);
+            break;
+        }
+        case OP.I32_TRUNC_F32_S:
+        case OP.I32_TRUNC_F32_U:
+        case OP.I32_REINTERPRET_F32:
+        case OP.I32_TRUNC_SAT_F32_S:
+        case OP.I32_TRUNC_SAT_F32_U: {
+            this.pop(NumberType.F32);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I32_TRUNC_F64_S:
+        case OP.I32_TRUNC_F64_U:
+        case OP.I32_TRUNC_SAT_F64_S:
+        case OP.I32_TRUNC_SAT_F64_U: {
+            this.pop(NumberType.F64);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I64_EXTEND_I32_S:
+        case OP.I64_EXTEND_I32_U: {
+            this.pop(NumberType.I32);
+            this.push(NumberType.I64);
+            break;
+        }
+        case OP.I64_TRUNC_F32_S:
+        case OP.I64_TRUNC_F32_U:
+        case OP.I64_TRUNC_SAT_F32_S:
+        case OP.I64_TRUNC_SAT_F32_U: {
+            this.pop(NumberType.F32);
+            this.push(NumberType.I64);
+            break;
+        }
+        case OP.I64_TRUNC_F64_S:
+        case OP.I64_TRUNC_F64_U:
+        case OP.I64_REINTERPRET_F64:
+        case OP.I64_TRUNC_SAT_F64_S:
+        case OP.I64_TRUNC_SAT_F64_U: {
+            this.pop(NumberType.F64);
+            this.push(NumberType.I64);
+            break;
+        }
+        case OP.F32_CONVERT_I32_S:
+        case OP.F32_CONVERT_I32_U:
+        case OP.F32_REINTERPRET_I32: {
+            this.pop(NumberType.I32);
+            this.push(NumberType.F32);
+            break;
+        }
+        case OP.F32_CONVERT_I64_S:
+        case OP.F32_CONVERT_I64_U: {
+            this.pop(NumberType.I64);
+            this.push(NumberType.F32);
+            break;
+        }
+        case OP.F32_DEMOTE_F64: {
+            this.pop(NumberType.F64);
+            this.push(NumberType.F32);
+            break;
+        }
+        case OP.F64_CONVERT_I32_S:
+        case OP.F64_CONVERT_I32_U: {
+            this.pop(NumberType.I32);
+            this.push(NumberType.F64);
+            break;
+        }
+        case OP.F64_CONVERT_I64_S:
+        case OP.F64_CONVERT_I64_U:
+        case OP.F64_REINTERPRET_I64: {
+            this.pop(NumberType.I64);
+            this.push(NumberType.F64);
+            break;
+        }
+        case OP.F64_PROMOTE_F32: {
+            this.pop(NumberType.F32);
+            this.push(NumberType.F64);
+            break;
+        }
+        case OP.I8X16_SWIZZLE:
+        case OP.I8X16_EQ:
+        case OP.I8X16_NE:
+        case OP.I8X16_LT_S:
+        case OP.I8X16_LT_U:
+        case OP.I8X16_GT_S:
+        case OP.I8X16_GT_U:
+        case OP.I8X16_LE_S:
+        case OP.I8X16_LE_U:
+        case OP.I8X16_GE_S:
+        case OP.I8X16_GE_U:
+        case OP.I16X8_EQ:
+        case OP.I16X8_NE:
+        case OP.I16X8_LT_S:
+        case OP.I16X8_LT_U:
+        case OP.I16X8_GT_S:
+        case OP.I16X8_GT_U:
+        case OP.I16X8_LE_S:
+        case OP.I16X8_LE_U:
+        case OP.I16X8_GE_S:
+        case OP.I16X8_GE_U:
+        case OP.I32X4_EQ:
+        case OP.I32X4_NE:
+        case OP.I32X4_LT_S:
+        case OP.I32X4_LT_U:
+        case OP.I32X4_GT_S:
+        case OP.I32X4_GT_U:
+        case OP.I32X4_LE_S:
+        case OP.I32X4_LE_U:
+        case OP.I32X4_GE_S:
+        case OP.I32X4_GE_U:
+        case OP.F32X4_EQ:
+        case OP.F32X4_NE:
+        case OP.F32X4_LT:
+        case OP.F32X4_GT:
+        case OP.F32X4_LE:
+        case OP.F32X4_GE:
+        case OP.F64X2_EQ:
+        case OP.F64X2_NE:
+        case OP.F64X2_LT:
+        case OP.F64X2_GT:
+        case OP.F64X2_LE:
+        case OP.F64X2_GE:
+        case OP.V128_AND:
+        case OP.V128_ANDNOT:
+        case OP.V128_OR:
+        case OP.V128_XOR:
+        case OP.I8X16_NARROW_I16X8_S:
+        case OP.I8X16_NARROW_I16X8_U:
+        case OP.I8X16_ADD:
+        case OP.I8X16_ADD_SAT_S:
+        case OP.I8X16_ADD_SAT_U:
+        case OP.I8X16_SUB:
+        case OP.I8X16_SUB_SAT_S:
+        case OP.I8X16_SUB_SAT_U:
+        case OP.I8X16_MIN_S:
+        case OP.I8X16_MIN_U:
+        case OP.I8X16_MAX_S:
+        case OP.I8X16_MAX_U:
+        case OP.I8X16_AVGR_U:
+        case OP.I16X8_Q15MULR_SAT_S:
+        case OP.I16X8_NARROW_I32X4_S:
+        case OP.I16X8_NARROW_I32X4_U:
+        case OP.I16X8_ADD:
+        case OP.I16X8_ADD_SAT_S:
+        case OP.I16X8_ADD_SAT_U:
+        case OP.I16X8_SUB:
+        case OP.I16X8_SUB_SAT_S:
+        case OP.I16X8_SUB_SAT_U:
+        case OP.I16X8_MUL:
+        case OP.I16X8_MIN_S:
+        case OP.I16X8_MIN_U:
+        case OP.I16X8_MAX_S:
+        case OP.I16X8_MAX_U:
+        case OP.I16X8_AVGR_U:
+        case OP.I16X8_EXTMUL_LOW_I8X16_S:
+        case OP.I16X8_EXTMUL_HIGH_I8X16_S:
+        case OP.I16X8_EXTMUL_LOW_I8X16_U:
+        case OP.I16X8_EXTMUL_HIGH_I8X16_U:
+        case OP.I32X4_ADD:
+        case OP.I32X4_SUB:
+        case OP.I32X4_MUL:
+        case OP.I32X4_MIN_S:
+        case OP.I32X4_MIN_U:
+        case OP.I32X4_MAX_S:
+        case OP.I32X4_MAX_U:
+        case OP.I32X4_DOT_I16X8_S:
+        case OP.I32X4_EXTMUL_LOW_I16X8_S:
+        case OP.I32X4_EXTMUL_HIGH_I16X8_S:
+        case OP.I32X4_EXTMUL_LOW_I16X8_U:
+        case OP.I32X4_EXTMUL_HIGH_I16X8_U:
+        case OP.I64X2_ADD:
+        case OP.I64X2_SUB:
+        case OP.I64X2_MUL:
+        case OP.I64X2_EQ:
+        case OP.I64X2_NE:
+        case OP.I64X2_LT_S:
+        case OP.I64X2_GT_S:
+        case OP.I64X2_LE_S:
+        case OP.I64X2_GE_S:
+        case OP.I64X2_EXTMUL_LOW_I32X4_S:
+        case OP.I64X2_EXTMUL_HIGH_I32X4_S:
+        case OP.I64X2_EXTMUL_LOW_I32X4_U:
+        case OP.I64X2_EXTMUL_HIGH_I32X4_U:
+        case OP.F32X4_ADD:
+        case OP.F32X4_SUB:
+        case OP.F32X4_MUL:
+        case OP.F32X4_DIV:
+        case OP.F32X4_MIN:
+        case OP.F32X4_MAX:
+        case OP.F32X4_PMIN:
+        case OP.F32X4_PMAX:
+        case OP.F64X2_ADD:
+        case OP.F64X2_SUB:
+        case OP.F64X2_MUL:
+        case OP.F64X2_DIV:
+        case OP.F64X2_MIN:
+        case OP.F64X2_MAX:
+        case OP.F64X2_PMIN:
+        case OP.F64X2_PMAX: {
+            this.pop(VectorType.V128, VectorType.V128);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.I8X16_SPLAT:
+        case OP.I16X8_SPLAT:
+        case OP.I32X4_SPLAT: {
+            this.pop(NumberType.I32);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.I64X2_SPLAT: {
+            this.pop(NumberType.I64);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.F32X4_SPLAT: {
+            this.pop(NumberType.F32);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.F64X2_SPLAT: {
+            this.pop(NumberType.F64);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.V128_NOT:
+        case OP.F32X4_DEMOTE_F64X2_ZERO:
+        case OP.F64X2_PROMOTE_LOW_F32X4:
+        case OP.I8X16_ABS:
+        case OP.I8X16_NEG:
+        case OP.I8X16_POPCNT:
+        case OP.F32X4_CEIL:
+        case OP.F32X4_FLOOR:
+        case OP.F32X4_TRUNC:
+        case OP.F32X4_NEAREST:
+        case OP.F64X2_CEIL:
+        case OP.F64X2_FLOOR:
+        case OP.F64X2_TRUNC:
+        case OP.I16X8_EXTADD_PAIRWISE_I8X16_S:
+        case OP.I16X8_EXTADD_PAIRWISE_I8X16_U:
+        case OP.I32X4_EXTADD_PAIRWISE_I16X8_S:
+        case OP.I32X4_EXTADD_PAIRWISE_I16X8_U:
+        case OP.I16X8_ABS:
+        case OP.I16X8_NEG:
+        case OP.I16X8_EXTEND_LOW_I8X16_S:
+        case OP.I16X8_EXTEND_HIGH_I8X16_S:
+        case OP.I16X8_EXTEND_LOW_I8X16_U:
+        case OP.I16X8_EXTEND_HIGH_I8X16_U:
+        case OP.F64X2_NEAREST:
+        case OP.I32X4_ABS:
+        case OP.I32X4_NEG:
+        case OP.I32X4_EXTEND_LOW_I16X8_S:
+        case OP.I32X4_EXTEND_HIGH_I16X8_S:
+        case OP.I32X4_EXTEND_LOW_I16X8_U:
+        case OP.I32X4_EXTEND_HIGH_I16X8_U:
+        case OP.I64X2_ABS:
+        case OP.I64X2_NEG:
+        case OP.I64X2_EXTEND_LOW_I32X4_S:
+        case OP.I64X2_EXTEND_HIGH_I32X4_S:
+        case OP.I64X2_EXTEND_LOW_I32X4_U:
+        case OP.I64X2_EXTEND_HIGH_I32X4_U:
+        case OP.F32X4_ABS:
+        case OP.F32X4_NEG:
+        case OP.F32X4_SQRT:
+        case OP.F64X2_ABS:
+        case OP.F64X2_NEG:
+        case OP.F64X2_SQRT:
+        case OP.I32X4_TRUNC_SAT_F32X4_S:
+        case OP.I32X4_TRUNC_SAT_F32X4_U:
+        case OP.F32X4_CONVERT_I32X4_S:
+        case OP.F32X4_CONVERT_I32X4_U:
+        case OP.I32X4_TRUNC_SAT_F64X2_S_ZERO:
+        case OP.I32X4_TRUNC_SAT_F64X2_U_ZERO:
+        case OP.F64X2_CONVERT_LOW_I32X4_S:
+        case OP.F64X2_CONVERT_LOW_I32X4_U: {
+            this.pop(VectorType.V128);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.V128_BITSELECT: {
+            this.pop(VectorType.V128, VectorType.V128, VectorType.V128);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.V128_ANY_TRUE:
+        case OP.I8X16_ALL_TRUE:
+        case OP.I8X16_BITMASK:
+        case OP.I16X8_ALL_TRUE:
+        case OP.I16X8_BITMASK:
+        case OP.I32X4_ALL_TRUE:
+        case OP.I32X4_BITMASK:
+        case OP.I64X2_ALL_TRUE:
+        case OP.I64X2_BITMASK: {
+            this.pop(VectorType.V128);
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.I8X16_SHL:
+        case OP.I8X16_SHR_S:
+        case OP.I8X16_SHR_U:
+        case OP.I16X8_SHL:
+        case OP.I16X8_SHR_S:
+        case OP.I16X8_SHR_U:
+        case OP.I32X4_SHL:
+        case OP.I32X4_SHR_S:
+        case OP.I32X4_SHR_U:
+        case OP.I64X2_SHL:
+        case OP.I64X2_SHR_S:
+        case OP.I64X2_SHR_U: {
+            this.pop(VectorType.V128, NumberType.I32);
+            this.push(VectorType.V128);
+            break;
+        }
+        case OP.TRIVM_POP:
+        case OP.TRIVM_LOCAL_SET32:
+        case OP.TRIVM_GLOBAL_SET32: {
+            this.pop(NumberType.I32);
+            break;
+        }
+        case OP.TRIVM_DUP32: {
+            this.pop(NumberType.I32);
+            this.push(NumberType.I32, NumberType.I32);
+            break;
+        }
+        case OP.TRIVM_DUP64: {
+            this.pop(NumberType.I32, NumberType.I32);
+            this.push(NumberType.I32, NumberType.I32, NumberType.I32, NumberType.I32);
+            break;
+        }
+        case OP.TRIVM_LOCAL_GET32:
+        case OP.TRIVM_GLOBAL_GET32: {
+            this.push(NumberType.I32);
+            break;
+        }
+        case OP.TRIVM_LOCAL_GET64:
+        case OP.TRIVM_GLOBAL_GET64: {
+            this.push(NumberType.I32, NumberType.I32);
+            break;
+        }
+        case OP.TRIVM_LOCAL_SET64:
+        case OP.TRIVM_GLOBAL_SET64: {
+            this.pop(NumberType.I32, NumberType.I32);
+            break;
+        }
 
-            // -- Instruction print and verify - end of source code generated with help of "gen-instr.ts" script --
-            // #endregion
+        // -- Instruction print and verify - end of source code generated with help of "gen-instr.ts" script --
+        // #endregion
         }
 
         if (this.stack.length > this.instrFormat.stackPush.length) {
@@ -1274,15 +1281,15 @@ export class FunctionDiagnose {
         }
 
         switch (instr.opcode) {
-            case OP.BLOCK:
-            case OP.LOOP:
-            case OP.IF:
-                this.write('<tr><td colspan="3" class="block-container">');
-                this.diagnoseBlock(instr.block);
-                this.write('</td></tr>');
-                break;
-            default:
-                break;
+        case OP.BLOCK:
+        case OP.LOOP:
+        case OP.IF:
+            this.write('<tr><td colspan="3" class="block-container">');
+            this.diagnoseBlock(instr.block);
+            this.write('</td></tr>');
+            break;
+        default:
+            break;
         }
     }
 
@@ -1322,7 +1329,7 @@ export class FunctionDiagnose {
 
 export class ModuleDebug { // TODO: Rename to ModuleDiag
 
-    private out: string[] = []
+    private out: string[] = [];
     private refs: Map<any, string> = new Map<any, string>();
     private usedRefs: Set<string> = new Set<string>();
     public errors: DiagError[] = [];
@@ -1335,7 +1342,10 @@ export class ModuleDebug { // TODO: Rename to ModuleDiag
 
     public diagnose() {
 
-        this.out = ['<html><head><link rel="stylesheet" href="style.css" type="text/css" /><script type="text/javascript" src="debug.js"></script></head><body>'];
+        this.out = [
+            '<html><head><link rel="stylesheet" href="style.css" type="text/css" />',
+            '<script type="text/javascript" src="debug.js"></script></head><body>'
+        ];
 
         /*for (let mem of this.module.memories) {
             this.diagnoseMem(mem)
@@ -1366,7 +1376,7 @@ export class ModuleDebug { // TODO: Rename to ModuleDiag
             this.dumpInstr = dump;
             this.instructions.push(dump);
             dump.opcode = instr.opcode;
-    
+
             this.dumpInstr = undefined;
         }*/
 
@@ -1380,7 +1390,7 @@ export class ModuleDebug { // TODO: Rename to ModuleDiag
         return index;
     }
 
-    getRef(obj: any): string {
+    getRef(obj: WasmFunction | WasmMemory | WasmTable | WasmData | WasmElement | WasmGlobal | WasmBlock): string {
         let prefix = 'obj';
         if (obj instanceof WasmFunction) {
             prefix = 'func';
@@ -1397,7 +1407,7 @@ export class ModuleDebug { // TODO: Rename to ModuleDiag
         } else if (obj instanceof WasmBlock) {
             prefix = 'block';
         } else {
-            throw new Error(`Not implemented`);
+            throw new Error('Not implemented');
         }
         if (!this.refs.has(obj)) {
             let name: string | undefined = undefined;
@@ -1420,7 +1430,7 @@ export class ModuleDebug { // TODO: Rename to ModuleDiag
                     ref = prefix;
                     ref += postfix;
                 }
-                postfix = 1 * (postfix as any) - 1;
+                postfix = 1 * (postfix as number) - 1;
             } while (this.usedRefs.has(ref.toLowerCase()));
             this.usedRefs.add(ref.toLowerCase());
             this.refs.set(obj, ref);
@@ -1429,7 +1439,7 @@ export class ModuleDebug { // TODO: Rename to ModuleDiag
     }
 
 
-};
+}
 
 
 const INSTRUCTION_NAME: { [key in OP]: string } = {

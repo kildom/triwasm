@@ -12,20 +12,20 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { reMatchAll } from "../common/common";
+import { reMatchAll } from '../common/common';
 
 
 export class ExprParserError extends Error {
     constructor(message: string) {
         super(message);
-        this.name = "ExprParserError";
+        this.name = 'ExprParserError';
     }
-};
+}
 
 enum TOKEN {
     END, ID, NUMBER, BIT_NOT, NOT, MOD, DIV, MUL, OPEN, CLOSE, SUB, ADD, COMMA, COLON,
     QUESTION, BIT_OR, BIT_XOR, BIT_AND, LT, GT, SHL, SHR, LE, GE, OR, AND, EQ, NE,
-};
+}
 
 
 const oneCharTokenMap: { [k: string]: TOKEN } = {
@@ -60,12 +60,12 @@ const twoCharsTokenMap: { [k: string]: TOKEN } = {
     '!=': TOKEN.NE,
 };
 
-const reToken = /(?:([a-z_\$@\.][a-z_\$@\.0-9]*)|(<<|>>|<=|>=|\|\||&&|==|!=)|([~!%/\*\(\)\-\+,:=\?\|\^&<>])|(0x[0-9a-f]+)|(0o[0-7]+)|([0-9]+))[\t ]*/gi
+const reToken = /(?:([a-z_$@.][a-z_$@.0-9]*)|(<<|>>|<=|>=|\|\||&&|==|!=)|([~!%/*()+,:=?|^&<>-])|(0x[0-9a-f]+)|(0o[0-7]+)|([0-9]+))[\t ]*/gi;
 
 interface Token {
     id: number;
     value?: string;
-};
+}
 
 function tokenize(input: string): Token[] {
     let result: Token[] = [];
@@ -73,7 +73,7 @@ function tokenize(input: string): Token[] {
     let offset = 0;
     for (let m of reMatchAll(reToken, input)) {
         if (input.substring(offset, m.index).trim() !== '') {
-            throw new ExprParserError(`Syntax error!`);
+            throw new ExprParserError('Syntax error!');
         }
         offset = m.index + m[0].length;
         if (m[1] !== undefined) {
@@ -127,7 +127,7 @@ export interface ExprParserConsumer {
     onParserNumberExpr(valueStr: string): any;
     onParserCallExpr(name: string, args: any[]): any;
     onParserIdExpr(name: string): any;
-};
+}
 
 
 export class ExprParser {
@@ -188,7 +188,7 @@ export class ExprParser {
             this.consume();
             let second = this.parseTernaryExpr();
             if (this.tokenId as number != TOKEN.COLON) {
-                throw new ExprParserError(`Expecting ":"!`);
+                throw new ExprParserError('Expecting ":"!');
             }
             this.consume();
             let third = this.parseTernaryExpr();
@@ -376,10 +376,10 @@ export class ExprParser {
                 result = this.consumer.onParserIdExpr(id);
             }
         } else {
-            throw new ExprParserError(`Invalid expression!`);
+            throw new ExprParserError('Invalid expression!');
         }
         return result;
     }
 
-};
+}
 

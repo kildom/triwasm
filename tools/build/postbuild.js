@@ -1,8 +1,20 @@
 
+/* eslint-disable no-undef, @typescript-eslint/no-var-requires */
+
 const fs = require('fs');
 const path = require('path');
+const process = require('process');
 
 class Tasks {
+
+    clean() {
+        let opt = { recursive: true, force: true };
+        fs.rmSync('bin', opt);
+        fs.rmSync('tools/runtime/softfloatlib/obj', opt);
+        fs.rmSync('tools/runtime/triwasmlib/obj', opt);
+        fs.rmSync('tools/runtime/softfloatlib.wasm', opt);
+        fs.rmSync('tools/runtime/triwasmlib.wasm', opt);
+    }
 
     starters() {
         fs.mkdirSync('bin/js', { recursive: true });

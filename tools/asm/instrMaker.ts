@@ -12,12 +12,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Compiler, EnabledExtensions, KNOWN_EXTENSIONS } from "./compiler";
-import { CompilerError } from "./errors";
-import { ExprMaker } from "./exprMaker";
-import { BytecodeGenerator } from "./generator";
-import { BASE, INSTR, instrInfoById } from "./instrInfo";
-import { instrParse } from "./instrParser";
+import { Compiler, EnabledExtensions, KNOWN_EXTENSIONS } from './compiler';
+import { CompilerError } from './errors';
+import { ExprMaker } from './exprMaker';
+import { BytecodeGenerator } from './generator';
+import { BASE, INSTR, instrInfoById } from './instrInfo';
+import { instrParse } from './instrParser';
 import {
     AddrInstruction,
     AlignInstruction,
@@ -26,13 +26,13 @@ import {
     PlaceInstruction, ReadSpInstruction, ReadWriteInstruction, RefInstruction,
     SimpleCoreInstruction,
     UnwindInstruction
-} from "./instructions";
+} from './instructions';
 
 
 interface AssignProxy {
     assignment: Assign | null;
     lineNumber: number;
-};
+}
 
 export class InstrMaker {
 
@@ -90,7 +90,7 @@ export class InstrMaker {
 
         // Check if all blocks were finished
         if (this.currentBlock !== this.rootBlock) {
-            throw new CompilerError(this.currentBlock.lineNumber, `Unfinished block!`);
+            throw new CompilerError(this.currentBlock.lineNumber, 'Unfinished block!');
         }
 
         // Finish root block
@@ -136,88 +136,91 @@ export class InstrMaker {
         this.params.info = info;
         let instr: InstrBase | null = null;
         switch (id) {
-            case INSTR._EXT:
-                for (let extName of args.toLowerCase().split(/\s*,\s*/)) {
-                    if (KNOWN_EXTENSIONS.indexOf(extName) < 0) {
-                        throw new CompilerError(this.params.lineNumber, `Unknown extension "${extName}".`);
-                    }
-                    (this.extensions as any)[extName] = true;
+        case INSTR._EXT:
+            for (let extName of args.toLowerCase().split(/\s*,\s*/)) {
+                if (KNOWN_EXTENSIONS.indexOf(extName) < 0) {
+                    throw new CompilerError(this.params.lineNumber, `Unknown extension "${extName}".`);
                 }
-                break;
-
-            case INSTR._BEGIN:
-                this.currentBlock = new Block(this.params, args, this.currentBlock);
-                instr = this.currentBlock;
-                this.blocks.push(this.currentBlock);
-                break;
-
-            case INSTR._ELSE:
-            case INSTR._ENDIF:
-            case INSTR._END:
-                this.params.info = instrInfoById[INSTR._END];
-                if (this.currentBlock === this.rootBlock) {
-                    throw new CompilerError(this.params.lineNumber, `".END" directive without matching ".BEGIN".`);
-                }
-                this.currentBlock.end = new BlockEnd(this.params, this.currentBlock);
-                instr = this.currentBlock.end;
-                this.currentBlock = this.currentBlock.parent as Block;
-                if (id != INSTR._END) {
-                    let uid = (instr as BlockEnd).block.index - 1;
-                    this.instructions.push(instr);
-                    instr = null;
-                    if (id == INSTR._ELSE) {
-                        // .BEGIN discardable
-                        this.params.info = instrInfoById[INSTR._BEGIN];
-                        this.params.index = this.instructions.length;
-                        this.currentBlock = new Block(this.params, 'discardable', this.currentBlock);
-                        this.blocks.push(this.currentBlock);
-                        this.instructions.push(this.currentBlock);
-                    }
-                    // BlockElse:
-                    this.onParserLabel(`__9s6SshMfvUS6_BlockElse_${uid}`);
-                }
-                break;
-
-            case INSTR._IF: {
-                let uid = this.params.index;
-                // .REF force_const(..) ? BlockThen : BlockElse
-                this.params.info = instrInfoById[INSTR._REF];
-                let ref = new RefInstruction(this.params, `force_const(${args}) ? __9s6SshMfvUS6_BlockThen_${uid} : __9s6SshMfvUS6_BlockElse_${uid}`);
-                this.instructions.push(ref);
-                // .BEGIN discardable
-                this.params.info = instrInfoById[INSTR._BEGIN];
-                this.params.index++;
-                this.currentBlock = new Block(this.params, 'discardable', this.currentBlock);
-                this.blocks.push(this.currentBlock);
-                this.instructions.push(this.currentBlock);
-                // BlockThen:
-                this.onParserLabel(`__9s6SshMfvUS6_BlockThen_${uid}`);
-                break;
+                (this.extensions as any)[extName] = true;
             }
+            break;
 
-            case INSTR._LOCAL:
-                if ((args as string) in this.currentBlock.locals) {
-                    throw new CompilerError(this.params.lineNumber, `".LOCAL" variable already defined.`);
-                }
-                let name = `~LOCAL~${this.params.index}~${this.currentBlock.index}~${args}`;
-                this.currentBlock.locals[args] = name;
-                break;
+        case INSTR._BEGIN:
+            this.currentBlock = new Block(this.params, args, this.currentBlock);
+            instr = this.currentBlock;
+            this.blocks.push(this.currentBlock);
+            break;
 
-            case INSTR.UNWIND:
-                if (args == '') {
-                    instr = new SimpleCoreInstruction(this.params, args);
-                } else {
-                    instr = new UnwindInstruction(this.params, args);
+        case INSTR._ELSE:
+        case INSTR._ENDIF:
+        case INSTR._END:
+            this.params.info = instrInfoById[INSTR._END];
+            if (this.currentBlock === this.rootBlock) {
+                throw new CompilerError(this.params.lineNumber, '".END" directive without matching ".BEGIN".');
+            }
+            this.currentBlock.end = new BlockEnd(this.params, this.currentBlock);
+            instr = this.currentBlock.end;
+            this.currentBlock = this.currentBlock.parent as Block;
+            if (id != INSTR._END) {
+                let uid = (instr as BlockEnd).block.index - 1;
+                this.instructions.push(instr);
+                instr = null;
+                if (id == INSTR._ELSE) {
+                    // .BEGIN discardable
+                    this.params.info = instrInfoById[INSTR._BEGIN];
+                    this.params.index = this.instructions.length;
+                    this.currentBlock = new Block(this.params, 'discardable', this.currentBlock);
+                    this.blocks.push(this.currentBlock);
+                    this.instructions.push(this.currentBlock);
                 }
-                break;
+                // BlockElse:
+                this.onParserLabel(`__9s6SshMfvUS6_BlockElse_${uid}`);
+            }
+            break;
 
-            default:
-                let Class = InstrMaker.parserInstrClasses[info.instrClass];
-                if (!Class) {
-                    Class = InstrMaker.parserInstrClasses[info.name];
-                }
-                instr = new Class(this.params, args, base);
-                break;
+        case INSTR._IF: {
+            let uid = this.params.index;
+            // .REF force_const(..) ? BlockThen : BlockElse
+            this.params.info = instrInfoById[INSTR._REF];
+            let ref = new RefInstruction(this.params,
+                `force_const(${args}) ? __9s6SshMfvUS6_BlockThen_${uid} : __9s6SshMfvUS6_BlockElse_${uid}`);
+            this.instructions.push(ref);
+            // .BEGIN discardable
+            this.params.info = instrInfoById[INSTR._BEGIN];
+            this.params.index++;
+            this.currentBlock = new Block(this.params, 'discardable', this.currentBlock);
+            this.blocks.push(this.currentBlock);
+            this.instructions.push(this.currentBlock);
+            // BlockThen:
+            this.onParserLabel(`__9s6SshMfvUS6_BlockThen_${uid}`);
+            break;
+        }
+
+        case INSTR._LOCAL: {
+            if ((args as string) in this.currentBlock.locals) {
+                throw new CompilerError(this.params.lineNumber, '".LOCAL" variable already defined.');
+            }
+            let name = `~LOCAL~${this.params.index}~${this.currentBlock.index}~${args}`;
+            this.currentBlock.locals[args] = name;
+            break;
+        }
+
+        case INSTR.UNWIND:
+            if (args == '') {
+                instr = new SimpleCoreInstruction(this.params, args);
+            } else {
+                instr = new UnwindInstruction(this.params, args);
+            }
+            break;
+
+        default: {
+            let Class = InstrMaker.parserInstrClasses[info.instrClass];
+            if (!Class) {
+                Class = InstrMaker.parserInstrClasses[info.name];
+            }
+            instr = new Class(this.params, args, base);
+            break;
+        }
         }
         if (instr !== null) {
             this.instructions.push(instr);

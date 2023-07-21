@@ -46,7 +46,7 @@ export enum OptionType {
     LONG,
     /** Positional option e.g. `<file>` */
     POSITIONAL,
-};
+}
 
 
 /** Function type for filtering input arguments during command line parsing.
@@ -72,7 +72,7 @@ export interface Option {
     tag: string | null;
     /** Group of options that this option belongs to. */
     group: OptionsGroup;
-};
+}
 
 
 /** Group of aliased options.
@@ -99,7 +99,7 @@ export class OptionsGroup {
     public filterEarly: boolean = false;
     /** Help text, one line per array item. Common indentation is removed. */
     public help: string[] = [];
-};
+}
 
 
 /** Error that can be thrown to indicate problem with the arguments.
@@ -119,7 +119,7 @@ const stdFilters = {
         parser.printUsage();
         platform.exit(0);
     }
-}
+};
 
 
 /** Command line arguments parser class.
@@ -159,7 +159,7 @@ const stdFilters = {
  *      option-description
  * ...
  * ```
- * 
+ *
  * Where:
  *  * `header-text` and `option-description` are multiline strings. Line cannot start
  *    with `-`, `<`, `:`, `=` or `[`.
@@ -324,15 +324,15 @@ export class ArgsParser {
             for (let option of group.options) {
                 let text: string;
                 switch (option.type) {
-                    case OptionType.POSITIONAL:
-                        text = '';
-                        break;
-                    case OptionType.SHORT:
-                        text = `${option.name} `;
-                        break;
-                    case OptionType.LONG:
-                        text = `${option.name}=`;
-                        break;
+                case OptionType.POSITIONAL:
+                    text = '';
+                    break;
+                case OptionType.SHORT:
+                    text = `${option.name} `;
+                    break;
+                case OptionType.LONG:
+                    text = `${option.name}=`;
+                    break;
                 }
                 if (option.tag) {
                     text += `<${option.tag}>`;
@@ -347,7 +347,7 @@ export class ArgsParser {
     }
 
     /** Parse command line parameters.
-     * 
+     *
      * @param output Output object where output fields will be saved. If not provided or `null`,
      *               new object will be created.
      * @param args   Command line arguments. Program name is not included,
@@ -372,7 +372,7 @@ export class ArgsParser {
                     if (this.parseOptionalArg(container, arg, args[i + 1]))
                         i++;
                 } else if (arg.startsWith('-')) {
-                    let strLast = arg.length - 1
+                    let strLast = arg.length - 1;
                     for (let k = 1; k < strLast; k++)
                         this.parseOptionalArg(container, `-${arg[k]}`, undefined);
                     if (this.parseOptionalArg(container, `-${arg[strLast]}`, args[i + 1]))
@@ -384,9 +384,11 @@ export class ArgsParser {
             for (let group of this.groups) {
                 let value = container[group.name] || [];
                 if (value.length < group.minCount) {
-                    throw new ArgsParserError(`Argument "${group.displayName}" must be provided at least ${group.minCount} time(s).`);
+                    throw new ArgsParserError(`Argument "${group.displayName}" must be provided at least ` +
+                        `${group.minCount} time(s).`);
                 } else if (value.length > group.maxCount) {
-                    throw new ArgsParserError(`Argument "${group.displayName}" must be provided at most ${group.minCount} time(s).`);
+                    throw new ArgsParserError(`Argument "${group.displayName}" must be provided at most ` +
+                        `${group.minCount} time(s).`);
                 }
                 if (group.hasValue) {
                     if (!group.arrayValue) {
@@ -468,7 +470,7 @@ export class ArgsParser {
      */
     private parsePositionalArg(container: { [k: string]: any }, arg: string) {
         if (this.posOptionIndex >= this.posOptions.length) {
-            throw new ArgsParserError(`Too many arguments.`);
+            throw new ArgsParserError('Too many arguments.');
         }
         let option = this.posOptions[this.posOptionIndex];
         let group = option.group;
@@ -493,7 +495,8 @@ export class ArgsParser {
      * @param args    See {@link (parse:instance)}.
      * @returns       See {@link (parse:instance)}.
      */
-    public static parse(usage: string, output?: { [k: string]: any } | null, filters?: { [k: string]: FilterFunction }, args?: string[]) {
+    public static parse(usage: string, output?: { [k: string]: any } | null, filters?: { [k: string]: FilterFunction },
+                        args?: string[]) {
         let a = new ArgsParser(usage, filters);
         return a.parse(output, args);
     }

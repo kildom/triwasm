@@ -12,10 +12,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+type FuncType = (__arg: { [key: string]: any }) => string;
 
 export class Template {
 
-    private func: Function;
+    private func: FuncType;
 
     constructor(text: string) {
         let source = `
@@ -30,7 +31,7 @@ export class Template {
         source = source.replace(/%>([\s\S]*?)<%(=)?/g, (_, literal: string, isPrint?: string) => {
             return '; __r += ' + JSON.stringify(literal) + ';\n' + (isPrint ? '__r += ' : '');
         });
-        this.func = new Function('__arg', source);
+        this.func = new Function('__arg', source) as FuncType;
     }
 
     public render(arg?: any) {

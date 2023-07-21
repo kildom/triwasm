@@ -28,7 +28,7 @@ export interface EnabledExtensions {
     i64?: boolean;
     f32?: boolean;
     f64?: boolean;
-};
+}
 
 export const KNOWN_EXTENSIONS = [
     'unwind',
@@ -76,7 +76,8 @@ export class Compiler {
     moveBlocks() {
         // Place movable blocks into buckets
         let stackTop: InstrBase[] = [];
-        let buckets: Map<string, InstrBase[] | null> = new Map(); // TODO: Map should replace Object-based maps with keys from user input (as it was done here).
+        // TODO: Map should replace Object-based maps with keys from user input (as it was done here).
+        let buckets: Map<string, InstrBase[] | null> = new Map();
         let stack: InstrBase[][] = [];
         for (let instr of this.instructions) {
             if ((instr instanceof Block) && instr.moveTo !== null) {
@@ -220,17 +221,17 @@ export class Compiler {
                 if (ctx2.mutable) {
                     return 1n;
                 } else {
-                    throw new CompilerError(instr.lineNumber, `Division by zero!`);
+                    throw new CompilerError(instr.lineNumber, 'Division by zero!');
                 }
             }
         } else {
             value = expr(ctx);
             if (value == 0n) {
-                this.generator.error(new CompilerError(instr.lineNumber, `Division by zero!`));
+                this.generator.error(new CompilerError(instr.lineNumber, 'Division by zero!'));
                 return 1n;
             }
         }
         return value;
     }
 
-};
+}

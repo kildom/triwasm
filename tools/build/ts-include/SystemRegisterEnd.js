@@ -12,4 +12,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+/* eslint-disable no-undef */
+
 _triwasm_platform_impl.main(() => System.__execute__());

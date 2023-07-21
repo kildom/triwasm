@@ -220,7 +220,9 @@ for (let i = 0; i < variants; i++) {
     let tests = template.render(arg);
     try {
         platform.writeFile(`tests-outs/variant.${i}.triasm`, tests);
-    } catch {}
+    } catch {
+        // TODO: why ignore?
+    }
     runTests(tests, ext);
 }
 
@@ -229,7 +231,7 @@ let stats: { [key: string]: { ok: number; err: number } } = {};
 for (let testCase of testCases) {
     let name = testCase._group.join(' » ');
     if (!(name in stats)) {
-        stats[name] = { ok: 0, err: 0 }
+        stats[name] = { ok: 0, err: 0 };
     }
     if (testCase.isSuccess()) {
         stats[name].ok++;

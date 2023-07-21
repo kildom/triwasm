@@ -30,8 +30,16 @@ module.exports = {
     ],
     'rules': {
         'indent': [
-            'error',
-            4
+            'warn',
+            4,
+            {
+                'FunctionDeclaration': {
+                    'parameters': 'first'
+                },
+                'FunctionExpression': {
+                    'parameters': 'first'
+                },
+            }
         ],
         'linebreak-style': [
             'error',
@@ -44,6 +52,17 @@ module.exports = {
         'semi': [
             'error',
             'always'
-        ]
+        ],
+        'max-len': [
+            'error',
+            130,
+            {
+                'ignoreRegExpLiterals': true
+            }
+        ],
+        'no-trailing-spaces': 'error',
+        'prefer-const': 'off',
+        'no-constant-condition': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
     }
 };

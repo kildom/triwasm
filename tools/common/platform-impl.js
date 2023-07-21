@@ -12,7 +12,13 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+/* eslint-disable */
+
 const _triwasm_platform_impl =
+
+/* ----------------------- Custom implementation for browser ----------------------- */
+(typeof(window) == 'object' && typeof(window._triwasm_browser_platform_impl) == 'object') ?
+window._triwasm_browser_platform_impl :
 
 /* ------------------------------------ Node.js ------------------------------------ */
 (typeof(process) == 'object' && typeof(process.versions) == 'object' && typeof(process.versions.node) == 'string') ?

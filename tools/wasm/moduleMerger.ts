@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { WasmEntity, WasmModule } from "./wasmModule";
+import { WasmEntity, WasmModule } from './wasmModule';
 
 
 const TRIVM_THIS_MODULE_NAME = '__trivm_this_module__';

@@ -16,7 +16,7 @@ export class ObjMarker {
     public clear(obj: any) {
         delete obj[this.sym];
     }
-};
+}
 
 export function* reMatchAll(re: RegExp, str: string) {
     let m: RegExpExecArray | null;

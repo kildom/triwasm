@@ -12,11 +12,13 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { allowTemporaryNull } from "../common/common";
-import { Path } from "../common/path";
-import { EnterBlockCtx, EnterFunctionCtx, EnterInstrCtx, ExitBlockCtx, ExitFunctionCtx, ExitInstrCtx, walkFunctions } from "./moduleWalker";
-import { OP } from "./opcodes";
-import { instrId, NumberType, RefType, ValueType, valueTypeWords, VectorType, WasmBlock, WasmBranchDir, WasmFunction, WasmFunctionKind, WasmInstr, WasmInstrBr, WasmInstrBrTable, WasmInstrRefFunc, WasmInstrCall, WasmInstrIf, WasmInstrWithBlock, WasmModule } from "./wasmModule";
+import { OP } from './opcodes';
+import {
+    EnterBlockCtx, EnterFunctionCtx, EnterInstrCtx, ExitBlockCtx, ExitFunctionCtx, walkFunctions
+} from './moduleWalker';
+import {
+    valueTypeWords, WasmBlock, WasmBranchDir, WasmFunctionKind, WasmInstr, WasmInstrBr, WasmInstrBrTable, WasmModule
+} from './wasmModule';
 
 class TriVMExtensions {
     public unwind = false;
@@ -33,23 +35,23 @@ interface ModuleData {
     ext: TriVMExtensions;
     output: string[];
     uniqueCounter: number;
-};
+}
 
 interface FunctionData {
     stackSize: number;
     localsOffsets: number[];
     returnAddressOffset: number;
     frameSize: number;
-};
+}
 
 interface BlockData {
     stackBase: number;
     paramsWords: number;
     resultsWords: number;
-};
+}
 
 interface InstrData {
-};
+}
 
 type Ctx = EnterInstrCtx<ModuleData, FunctionData, BlockData, InstrData>;
 type AnyCtx = EnterFunctionCtx<ModuleData> |
@@ -86,26 +88,26 @@ function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
     }
 
     switch (ctx.func.kind) {
-        case WasmFunctionKind.ANNOTATION:
-        case WasmFunctionKind.LINK:
-        case WasmFunctionKind.INLINE_ASSEMBLY:
-        case WasmFunctionKind.UNUSED:
-        case WasmFunctionKind.IMPORT:
-            ctx.walkFunction = false;
-            break;
-        case WasmFunctionKind.WASM:
-            output(ctx, '.BEGIN');
-            output(ctx, ctx.func.name + ':');
-            ctx.walkFunction = true;
-            break;
-        case WasmFunctionKind.ASSEMBLY:
-            output(ctx, '.BEGIN');
-            output(ctx, ctx.func.name + ':');
-            outputAssembly(ctx, ctx.func.data);
-            ctx.walkFunction = false;
-            break;
-        default:
-            throw new Error(`This kind of function should not be here: ${WasmFunctionKind[ctx.func.kind]}!`);
+    case WasmFunctionKind.ANNOTATION:
+    case WasmFunctionKind.LINK:
+    case WasmFunctionKind.INLINE_ASSEMBLY:
+    case WasmFunctionKind.UNUSED:
+    case WasmFunctionKind.IMPORT:
+        ctx.walkFunction = false;
+        break;
+    case WasmFunctionKind.WASM:
+        output(ctx, '.BEGIN');
+        output(ctx, ctx.func.name + ':');
+        ctx.walkFunction = true;
+        break;
+    case WasmFunctionKind.ASSEMBLY:
+        output(ctx, '.BEGIN');
+        output(ctx, ctx.func.name + ':');
+        outputAssembly(ctx, ctx.func.data);
+        ctx.walkFunction = false;
+        break;
+    default:
+        throw new Error(`This kind of function should not be here: ${WasmFunctionKind[ctx.func.kind]}!`);
     }
 
     return {
@@ -134,7 +136,8 @@ function enterBlock(ctx: EnterBlockCtx<ModuleData, FunctionData, BlockData, Inst
 
     let stackBase = ctx.funcData.stackSize - paramsWords;
 
-    output(ctx, `block_${ctx.block.parentInstruction.id}_begin:`, undefined, `base: ${stackBase}, ${paramsWords} => ${resultsWords}`);
+    output(ctx, `block_${ctx.block.parentInstruction.id}_begin:`, undefined,
+        `base: ${stackBase}, ${paramsWords} => ${resultsWords}`);
 
     return {
         stackBase,
@@ -181,7 +184,7 @@ function toIntLiteral(value: number, bits: number): number {
 function generateUnwind(ctx: Ctx, keepWords: number, skipWords: number, ret: boolean | number) {
     if (skipWords == 0) {
         if (ret === true) {
-            output(ctx, `WRITE32 PC`);
+            output(ctx, 'WRITE32 PC');
         }
         return;
     }
@@ -239,9 +242,10 @@ enum BranchCondition {
     NONE = 'BR',
     POSITIVE = 'BRT',
     NEGATIVE = 'BRF',
-};
+}
 
-function generateBranch(ctx: Ctx, target: WasmBlock, direction: WasmBranchDir | undefined, condition: BranchCondition, allowFallback: boolean): boolean {
+function generateBranch(ctx: Ctx, target: WasmBlock, direction: WasmBranchDir | undefined, condition: BranchCondition,
+                        allowFallback: boolean): boolean {
     let targetData = getBlockData(ctx, target);
     let instr = target.parentInstruction;
     let conditionDone = false;
@@ -260,7 +264,8 @@ function generateBranch(ctx: Ctx, target: WasmBlock, direction: WasmBranchDir | 
         skipWords = (ctx.funcData.frameSize / 4) + ctx.funcData.stackSize - keepWords;
         let wordsAboveRetAddr = ctx.funcData.frameSize / 4 - ctx.funcData.returnAddressOffset / 4 - 1 + ctx.funcData.stackSize;
         if (wordsAboveRetAddr > 0) {
-            generateUnwind(ctx, keepWords, skipWords, 4 * ctx.funcData.stackSize + ctx.funcData.frameSize - ctx.funcData.returnAddressOffset - 4);
+            generateUnwind(ctx, keepWords, skipWords,
+                4 * ctx.funcData.stackSize + ctx.funcData.frameSize - ctx.funcData.returnAddressOffset - 4);
         } else {
             generateUnwind(ctx, keepWords, skipWords - 1, true);
         }
@@ -296,7 +301,8 @@ function generateBranch(ctx: Ctx, target: WasmBlock, direction: WasmBranchDir | 
     return conditionDone;
 }
 
-function generateIf(ctx: Ctx, instr: WasmInstrBr | WasmInstrBrTable, target: WasmBlock, direction: WasmBranchDir | undefined, condition: BranchCondition, allowFallback: boolean) {
+function generateIf(ctx: Ctx, instr: WasmInstrBr | WasmInstrBrTable, target: WasmBlock,
+                    direction: WasmBranchDir | undefined, condition: BranchCondition, allowFallback: boolean) {
     pop(ctx, 1);
     let outStart = ctx.moduleData.output.length;
     let conditionDone = generateBranch(ctx, target, direction, condition, allowFallback);
@@ -315,179 +321,184 @@ function enterInstr(ctx: Ctx): InstrData {
     };
     let instr = ctx.instr;
     switch (instr.opcode) {
-        // -- Generator cases - begin of source code generated with help of "gen-instr.ts" script --
+    // -- Generator cases - begin of source code generated with help of "gen-instr.ts" script --
 
-        case OP.UNREACHABLE: {
-            output(ctx, '# TODO ELSE');
+    case OP.UNREACHABLE: {
+        output(ctx, '# TODO ELSE');
+        break;
+    }
+    case OP.BLOCK: {
+        // Handled by enterBlock
+        break;
+    }
+    case OP.LOOP: {
+        // Handled by enterBlock
+        break;
+    }
+    case OP.IF: {
+        pop(ctx, 1);
+        output(ctx, `BRF block_${instr.id}_else`);
+        break;
+    }
+    case OP.ELSE: {
+        output(ctx, `block_${ctx.block.parentInstruction.id}_else:`);
+        ctx.funcData.stackSize = ctx.blockData.stackBase + valueTypeWords(ctx.block.type.params);
+        break;
+    }
+    case OP.END: {
+        // not generate code, handled by BR added by reducer
+        break;
+    }
+    case OP.BR: {
+        generateBranch(ctx, instr.target, instr.direction, BranchCondition.NONE, true);
+        break;
+    }
+    case OP.BR_IF: {
+        generateIf(ctx, instr, instr.target, instr.direction, BranchCondition.POSITIVE, true);
+        break;
+    }
+    case OP.BR_TABLE: {
+        if (instr.targets.length == 1) {
+            generateBranch(ctx, instr.targets[0], undefined, BranchCondition.NONE, true);
+            break;
+        } else if (instr.targets.length == 2) {
+            generateIf(ctx, instr, instr.targets[0], undefined, BranchCondition.NEGATIVE, false);
+            generateBranch(ctx, instr.targets[1], undefined, BranchCondition.NONE, true);
             break;
         }
-        case OP.BLOCK: {
-            // Handled by enterBlock
-            break;
-        }
-        case OP.LOOP: {
-            // Handled by enterBlock
-            break;
-        }
-        case OP.IF: {
-            pop(ctx, 1);
-            output(ctx, `BRF block_${instr.id}_else`);
-            break;
-        }
-        case OP.ELSE: {
-            output(ctx, `block_${ctx.block.parentInstruction.id}_else:`);
-            ctx.funcData.stackSize = ctx.blockData.stackBase + valueTypeWords(ctx.block.type.params);
-            break;
-        }
-        case OP.END: {
-            // not generate code, handled by BR added by reducer
-            break;
-        }
-        case OP.BR: {
-            generateBranch(ctx, instr.target, instr.direction, BranchCondition.NONE, true);
-            break;
-        }
-        case OP.BR_IF: {
-            generateIf(ctx, instr, instr.target, instr.direction, BranchCondition.POSITIVE, true);
-            break;
-        }
-        case OP.BR_TABLE: {
-            if (instr.targets.length == 1) {
-                generateBranch(ctx, instr.targets[0], undefined, BranchCondition.NONE, true);
-                break;
-            } else if (instr.targets.length == 2) {
-                generateIf(ctx, instr, instr.targets[0], undefined, BranchCondition.NEGATIVE, false);
-                generateBranch(ctx, instr.targets[1], undefined, BranchCondition.NONE, true);
-                break;
-            }
-            output(ctx, 'WRITE TMP0');
-            pop(ctx, 1);
-            let valueOffset = 0;
-            for (let i = 0; i < instr.targets.length - 1; i++) {
-                let target = instr.targets[i];
-                if (i - valueOffset == 128 && instr.targets.length - i > 4) {
-                    valueOffset += 128;
-                    output(ctx, 'READ TMP0');
-                    output(ctx, 'ADD -128');
-                    output(ctx, 'WRITE TMP0');
-                }
+        output(ctx, 'WRITE TMP0');
+        pop(ctx, 1);
+        let valueOffset = 0;
+        for (let i = 0; i < instr.targets.length - 1; i++) {
+            let target = instr.targets[i];
+            if (i - valueOffset == 128 && instr.targets.length - i > 4) {
+                valueOffset += 128;
                 output(ctx, 'READ TMP0');
-                push(ctx, 1);
-                if (i - valueOffset == 0) {
-                    generateIf(ctx, instr, target, undefined, BranchCondition.NEGATIVE, false);
-                } else {
-                    output(ctx, `EQ ${i - valueOffset}`);
-                    generateIf(ctx, instr, target, undefined, BranchCondition.POSITIVE, false);
-                }
+                output(ctx, 'ADD -128');
+                output(ctx, 'WRITE TMP0');
             }
-            generateBranch(ctx, instr.targets.at(-1) as WasmBlock, undefined, BranchCondition.NONE, true);
-            break;
-        }
-        case OP.CALL: {
-            let target = instr.func.resolved;
-            let comments: string[] = [];
-            for (let exp of [...target.exports, target.import]) {
-                if (exp) {
-                    comments.push(exp.module + '.' + exp.name);
-                }
-            }
-            switch (target.kind) {
-                case WasmFunctionKind.ANNOTATION:
-                    output(ctx, `.ANNOTATION ${JSON.stringify(target.data)}`);
-                    break;
-                case WasmFunctionKind.ASSEMBLY:
-                case WasmFunctionKind.WASM: {
-                    output(ctx, `CALL ${target.name}`, undefined, comments.filter(x => x.indexOf('__trivm_magic_function__') < 0).join(', '));
-                    popPush(ctx, valueTypeWords(instr.type?.params || target.type.params), valueTypeWords(instr.type?.results || target.type.results));
-                    break;
-                }
-                case WasmFunctionKind.INLINE_ASSEMBLY:
-                    outputAssembly(ctx, target.data);
-                    popPush(ctx, valueTypeWords(target.type.params), valueTypeWords(target.type.results));
-                    break;
-                case WasmFunctionKind.HOST:
-                    output(ctx, `HOST 0`, instr, 'TODO: get index');
-                    break;
-                default:
-                    output(ctx, `# CALL TODO: ${comments}`);
-                    break;
-            }
-            break;
-        }
-        case OP.CALL_INDIRECT: {
-            output(ctx, '# TODO CALL_INDIRECT');
-            break;
-        }
-        case OP.TABLE_GET: {
-            output(ctx, '# TODO TABLE_GET');
-            break;
-        }
-        case OP.TABLE_SET: {
-            output(ctx, '# TODO TABLE_SET');
-            break;
-        }
-        case OP.TRIVM_FUNCTION: {
-            throw Error('This should not happen');
-            break;
-        }
-        case OP.TRIVM_LOCAL_GET32: {
+            output(ctx, 'READ TMP0');
             push(ctx, 1);
-            output(ctx, `READ32 [SP] - ${4 * ctx.funcData.stackSize + ctx.funcData.frameSize - ctx.funcData.localsOffsets[instr.index] - instr.offset}`, instr);
-            break;
-        }
-        case OP.TRIVM_LOCAL_GET64: {
-            break;
-        }
-        case OP.TRIVM_LOCAL_SET32: {
-            pop(ctx, 1);
-            output(ctx, `WRITE32 [SP] - ${4 * ctx.funcData.stackSize + ctx.funcData.frameSize - ctx.funcData.localsOffsets[instr.index] - instr.offset}`, instr);
-            break;
-        }
-        case OP.TRIVM_LOCAL_SET64: {
-            break;
-        }
-        case OP.TRIVM_GLOBAL_GET32: {
-            push(ctx, 1);
-            output(ctx, `READ32 global_${instr.global.index} + ${instr.offset}`, instr);
-            break;
-        }
-        case OP.TRIVM_GLOBAL_GET64: {
-            push(ctx, 2);
-            output(ctx, `READ64 global_${instr.global.index} + ${instr.offset}`, instr);
-            break;
-        }
-        case OP.TRIVM_GLOBAL_SET32: {
-            pop(ctx, 1);
-            output(ctx, `WRITE32 global_${instr.global.index} + ${instr.offset}`, instr);
-            break;
-        }
-        case OP.TRIVM_GLOBAL_SET64: {
-            pop(ctx, 2);
-            output(ctx, `WRITE64 global_${instr.global.index} + ${instr.offset}`, instr);
-            break;
-        }
-        case OP.TRIVM_RAW: {
-            popPush(ctx, valueTypeWords(instr.type.params), valueTypeWords(instr.type.results));
-            output(ctx, instr.code);
-            break;
-        }
-
-        // -- Generator cases - end of source code generated with help of "gen-instr.ts" script --
-
-        default:
-            if (instr.opcode in simpleGenerators) {
-                let gen = simpleGenerators[instr.opcode];
-                popPush(ctx, gen[1], gen[2]);
-                output(ctx, gen[0](ctx));
+            if (i - valueOffset == 0) {
+                generateIf(ctx, instr, target, undefined, BranchCondition.NEGATIVE, false);
             } else {
-                output(ctx, `# TODO: ${instr.opcode}`, instr);
+                output(ctx, `EQ ${i - valueOffset}`);
+                generateIf(ctx, instr, target, undefined, BranchCondition.POSITIVE, false);
             }
+        }
+        generateBranch(ctx, instr.targets.at(-1) as WasmBlock, undefined, BranchCondition.NONE, true);
+        break;
+    }
+    case OP.CALL: {
+        let target = instr.func.resolved;
+        let comments: string[] = [];
+        for (let exp of [...target.exports, target.import]) {
+            if (exp) {
+                comments.push(exp.module + '.' + exp.name);
+            }
+        }
+        switch (target.kind) {
+        case WasmFunctionKind.ANNOTATION:
+            output(ctx, `.ANNOTATION ${JSON.stringify(target.data)}`);
             break;
+        case WasmFunctionKind.ASSEMBLY:
+        case WasmFunctionKind.WASM: {
+            output(ctx, `CALL ${target.name}`, undefined,
+                comments.filter(x => x.indexOf('__trivm_magic_function__') < 0).join(', '));
+            pop(ctx, valueTypeWords(instr.type?.params || target.type.params));
+            push(ctx, valueTypeWords(instr.type?.results || target.type.results));
+            break;
+        }
+        case WasmFunctionKind.INLINE_ASSEMBLY:
+            outputAssembly(ctx, target.data);
+            popPush(ctx, valueTypeWords(target.type.params), valueTypeWords(target.type.results));
+            break;
+        case WasmFunctionKind.HOST:
+            output(ctx, 'HOST 0', instr, 'TODO: get index');
+            break;
+        default:
+            output(ctx, `# CALL TODO: ${comments}`);
+            break;
+        }
+        break;
+    }
+    /* eslint-disable max-len */
+    case OP.CALL_INDIRECT: {
+        output(ctx, '# TODO CALL_INDIRECT');
+        break;
+    }
+    case OP.TABLE_GET: {
+        output(ctx, '# TODO TABLE_GET');
+        break;
+    }
+    case OP.TABLE_SET: {
+        output(ctx, '# TODO TABLE_SET');
+        break;
+    }
+    case OP.TRIVM_FUNCTION: {
+        throw Error('This should not happen');
+        break;
+    }
+    case OP.TRIVM_LOCAL_GET32: {
+        push(ctx, 1);
+        output(ctx, `READ32 [SP] - ${4 * ctx.funcData.stackSize + ctx.funcData.frameSize - ctx.funcData.localsOffsets[instr.index] - instr.offset}`, instr);
+        break;
+    }
+    case OP.TRIVM_LOCAL_GET64: {
+        break;
+    }
+    case OP.TRIVM_LOCAL_SET32: {
+        pop(ctx, 1);
+        output(ctx, `WRITE32 [SP] - ${4 * ctx.funcData.stackSize + ctx.funcData.frameSize - ctx.funcData.localsOffsets[instr.index] - instr.offset}`, instr);
+        break;
+    }
+    case OP.TRIVM_LOCAL_SET64: {
+        break;
+    }
+    case OP.TRIVM_GLOBAL_GET32: {
+        push(ctx, 1);
+        output(ctx, `READ32 global_${instr.global.index} + ${instr.offset}`, instr);
+        break;
+    }
+    case OP.TRIVM_GLOBAL_GET64: {
+        push(ctx, 2);
+        output(ctx, `READ64 global_${instr.global.index} + ${instr.offset}`, instr);
+        break;
+    }
+    case OP.TRIVM_GLOBAL_SET32: {
+        pop(ctx, 1);
+        output(ctx, `WRITE32 global_${instr.global.index} + ${instr.offset}`, instr);
+        break;
+    }
+    case OP.TRIVM_GLOBAL_SET64: {
+        pop(ctx, 2);
+        output(ctx, `WRITE64 global_${instr.global.index} + ${instr.offset}`, instr);
+        break;
+    }
+    case OP.TRIVM_RAW: {
+        popPush(ctx, valueTypeWords(instr.type.params), valueTypeWords(instr.type.results));
+        output(ctx, instr.code);
+        break;
+    }
+
+    /* eslint-enable max-len */
+
+    // -- Generator cases - end of source code generated with help of "gen-instr.ts" script --
+
+    default:
+        if (instr.opcode in simpleGenerators) {
+            let gen = simpleGenerators[instr.opcode];
+            popPush(ctx, gen[1], gen[2]);
+            output(ctx, gen[0](ctx));
+        } else {
+            output(ctx, `# TODO: ${instr.opcode}`, instr);
+        }
+        break;
     }
     return instrData;
 }
 
-function exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>): void {
+function exitInstr(/*ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>*/): void {
 }
 
 export interface TriwasmConf {
@@ -501,7 +512,7 @@ export interface TriwasmConf {
     ext: {
         unwind: boolean;
     };
-};
+}
 
 
 function generatePrologue(output: string[], module: WasmModule, conf: TriwasmConf) {
@@ -553,12 +564,12 @@ export function generate(module: WasmModule) {
 }
 
 function error(obj: any, message: string) {
-    let instr: WasmInstr;
+    /*let instr: WasmInstr;
     if (obj.instr) {
         instr = obj.instr;
     } else {
         instr = obj;
-    }
+    }*/
     throw new Error(message); // TODO: handle errors properly
 }
 
@@ -582,7 +593,9 @@ function popPush(ctx: Ctx, popCount: number, pushCount: number) {
 let simpleGenerators: { [key: number]: [((ctx: any) => string), number, number] } = {
     // -- Simple instructions - begin of source code generated with help of "gen-instr.ts" script --
 
-    [OP.NOP]: [(ctx: any) => `# NOP`, 0, 0],
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+
+    [OP.NOP]: [(ctx: any) => '# NOP', 0, 0],
     [OP.I32_LOAD]: [(ctx: any) => `READ32 [AMB0] + [POP] + ${ctx.instr.offset}`, 1, 1],
     [OP.I64_LOAD]: [(ctx: any) => `READ64 [AMB0] + [POP] + ${ctx.instr.offset}`, 1, 2],
     [OP.I32_LOAD8_S]: [(ctx: any) => `READ8S [AMB0] + [POP] + ${ctx.instr.offset}`, 1, 1],
@@ -595,71 +608,71 @@ let simpleGenerators: { [key: number]: [((ctx: any) => string), number, number] 
     [OP.I32_STORE16]: [(ctx: any) => `WRITE16 [AMB0] + [POP] + ${ctx.instr.offset}`, 2, 0],
     [OP.I32_CONST]: [(ctx: any) => `NEG -(${ctx.instr.value})`, 0, 1],
     [OP.I64_CONST]: [(ctx: any) => `NEG64 -(${ctx.instr.value})`, 0, 2],
-    [OP.I32_EQZ]: [(ctx: any) => `NOT`, 1, 1],
-    [OP.I32_EQ]: [(ctx: any) => `EQ`, 2, 1],
-    [OP.I32_LT_S]: [(ctx: any) => `SLT`, 2, 1],
-    [OP.I32_LT_U]: [(ctx: any) => `ULT`, 2, 1],
-    [OP.I32_GT_S]: [(ctx: any) => `SGT`, 2, 1],
-    [OP.I32_GT_U]: [(ctx: any) => `UGT`, 2, 1],
-    [OP.I64_EQ]: [(ctx: any) => `EQ64`, 4, 1],
-    [OP.I64_LT_S]: [(ctx: any) => `SLT64`, 4, 1],
-    [OP.I64_LT_U]: [(ctx: any) => `ULT64`, 4, 1],
-    [OP.I64_GT_S]: [(ctx: any) => `SGT64`, 4, 1],
-    [OP.I64_GT_U]: [(ctx: any) => `UGT64`, 4, 1],
-    [OP.F32_EQ]: [(ctx: any) => `EQF32`, 2, 1],
-    [OP.F32_LT]: [(ctx: any) => `LTF32`, 2, 1],
-    [OP.F32_GT]: [(ctx: any) => `GTF32`, 2, 1],
-    [OP.F32_LE]: [(ctx: any) => `LEF32`, 2, 1],
-    [OP.F32_GE]: [(ctx: any) => `GEF32`, 2, 1],
-    [OP.F64_EQ]: [(ctx: any) => `EQF64`, 4, 1],
-    [OP.F64_LT]: [(ctx: any) => `LTF64`, 4, 1],
-    [OP.F64_GT]: [(ctx: any) => `GTF64`, 4, 1],
-    [OP.F64_LE]: [(ctx: any) => `LEF64`, 4, 1],
-    [OP.F64_GE]: [(ctx: any) => `GEF64`, 4, 1],
-    [OP.I32_ADD]: [(ctx: any) => `ADD`, 2, 1],
-    [OP.I32_SUB]: [(ctx: any) => `SUB`, 2, 1],
-    [OP.I32_MUL]: [(ctx: any) => `MUL`, 2, 1],
-    [OP.I32_DIV_S]: [(ctx: any) => `SDIV`, 2, 1],
-    [OP.I32_DIV_U]: [(ctx: any) => `UDIV`, 2, 1],
-    [OP.I32_REM_S]: [(ctx: any) => `SMOD`, 2, 1],
-    [OP.I32_REM_U]: [(ctx: any) => `UMOD`, 2, 1],
-    [OP.I32_AND]: [(ctx: any) => `AND`, 2, 1],
-    [OP.I32_OR]: [(ctx: any) => `OR`, 2, 1],
-    [OP.I32_XOR]: [(ctx: any) => `XOR`, 2, 1],
-    [OP.I32_SHL]: [(ctx: any) => `SHL`, 2, 1],
-    [OP.I32_SHR_S]: [(ctx: any) => `SSHR`, 2, 1],
-    [OP.I32_SHR_U]: [(ctx: any) => `USHR`, 2, 1],
-    [OP.I64_ADD]: [(ctx: any) => `ADD64`, 4, 2],
-    [OP.I64_SUB]: [(ctx: any) => `SUB64`, 4, 2],
-    [OP.I64_MUL]: [(ctx: any) => `MUL64`, 4, 2],
-    [OP.I64_DIV_S]: [(ctx: any) => `SDIV64`, 4, 2],
-    [OP.I64_DIV_U]: [(ctx: any) => `UDIV64`, 4, 2],
-    [OP.I64_REM_S]: [(ctx: any) => `SMOD64`, 4, 2],
-    [OP.I64_REM_U]: [(ctx: any) => `UMOD64`, 4, 2],
-    [OP.I64_AND]: [(ctx: any) => `AND64`, 4, 2],
-    [OP.I64_OR]: [(ctx: any) => `OR64`, 4, 2],
-    [OP.I64_XOR]: [(ctx: any) => `XOR64`, 4, 2],
-    [OP.I64_SHL]: [(ctx: any) => `SHL64`, 4, 2],
-    [OP.I64_SHR_S]: [(ctx: any) => `SSHR64`, 4, 2],
-    [OP.I64_SHR_U]: [(ctx: any) => `USHR64`, 4, 2],
-    [OP.F32_CEIL]: [(ctx: any) => `CEILF32`, 1, 1],
-    [OP.F32_FLOOR]: [(ctx: any) => `FLOORF32`, 1, 1],
-    [OP.F32_TRUNC]: [(ctx: any) => `TRUNCF32`, 1, 1],
-    [OP.F32_NEAREST]: [(ctx: any) => `NEARESTF32`, 1, 1],
-    [OP.F32_SQRT]: [(ctx: any) => `SQRTF32`, 1, 1],
-    [OP.F32_ADD]: [(ctx: any) => `ADDF32`, 2, 1],
-    [OP.F32_SUB]: [(ctx: any) => `SUBF32`, 2, 1],
-    [OP.F32_MUL]: [(ctx: any) => `MULF32`, 2, 1],
-    [OP.F32_DIV]: [(ctx: any) => `DIVF32`, 2, 1],
-    [OP.F64_CEIL]: [(ctx: any) => `CEILF64`, 2, 2],
-    [OP.F64_FLOOR]: [(ctx: any) => `FLOORF64`, 2, 2],
-    [OP.F64_TRUNC]: [(ctx: any) => `TRUNCF64`, 2, 2],
-    [OP.F64_NEAREST]: [(ctx: any) => `NEARESTF64`, 2, 2],
-    [OP.F64_SQRT]: [(ctx: any) => `SQRTF64`, 2, 2],
-    [OP.F64_ADD]: [(ctx: any) => `ADDF64`, 4, 2],
-    [OP.F64_SUB]: [(ctx: any) => `SUBF64`, 4, 2],
-    [OP.F64_MUL]: [(ctx: any) => `MULF64`, 4, 2],
-    [OP.F64_DIV]: [(ctx: any) => `DIVF64`, 4, 2],
+    [OP.I32_EQZ]: [(ctx: any) => 'NOT', 1, 1],
+    [OP.I32_EQ]: [(ctx: any) => 'EQ', 2, 1],
+    [OP.I32_LT_S]: [(ctx: any) => 'SLT', 2, 1],
+    [OP.I32_LT_U]: [(ctx: any) => 'ULT', 2, 1],
+    [OP.I32_GT_S]: [(ctx: any) => 'SGT', 2, 1],
+    [OP.I32_GT_U]: [(ctx: any) => 'UGT', 2, 1],
+    [OP.I64_EQ]: [(ctx: any) => 'EQ64', 4, 1],
+    [OP.I64_LT_S]: [(ctx: any) => 'SLT64', 4, 1],
+    [OP.I64_LT_U]: [(ctx: any) => 'ULT64', 4, 1],
+    [OP.I64_GT_S]: [(ctx: any) => 'SGT64', 4, 1],
+    [OP.I64_GT_U]: [(ctx: any) => 'UGT64', 4, 1],
+    [OP.F32_EQ]: [(ctx: any) => 'EQF32', 2, 1],
+    [OP.F32_LT]: [(ctx: any) => 'LTF32', 2, 1],
+    [OP.F32_GT]: [(ctx: any) => 'GTF32', 2, 1],
+    [OP.F32_LE]: [(ctx: any) => 'LEF32', 2, 1],
+    [OP.F32_GE]: [(ctx: any) => 'GEF32', 2, 1],
+    [OP.F64_EQ]: [(ctx: any) => 'EQF64', 4, 1],
+    [OP.F64_LT]: [(ctx: any) => 'LTF64', 4, 1],
+    [OP.F64_GT]: [(ctx: any) => 'GTF64', 4, 1],
+    [OP.F64_LE]: [(ctx: any) => 'LEF64', 4, 1],
+    [OP.F64_GE]: [(ctx: any) => 'GEF64', 4, 1],
+    [OP.I32_ADD]: [(ctx: any) => 'ADD', 2, 1],
+    [OP.I32_SUB]: [(ctx: any) => 'SUB', 2, 1],
+    [OP.I32_MUL]: [(ctx: any) => 'MUL', 2, 1],
+    [OP.I32_DIV_S]: [(ctx: any) => 'SDIV', 2, 1],
+    [OP.I32_DIV_U]: [(ctx: any) => 'UDIV', 2, 1],
+    [OP.I32_REM_S]: [(ctx: any) => 'SMOD', 2, 1],
+    [OP.I32_REM_U]: [(ctx: any) => 'UMOD', 2, 1],
+    [OP.I32_AND]: [(ctx: any) => 'AND', 2, 1],
+    [OP.I32_OR]: [(ctx: any) => 'OR', 2, 1],
+    [OP.I32_XOR]: [(ctx: any) => 'XOR', 2, 1],
+    [OP.I32_SHL]: [(ctx: any) => 'SHL', 2, 1],
+    [OP.I32_SHR_S]: [(ctx: any) => 'SSHR', 2, 1],
+    [OP.I32_SHR_U]: [(ctx: any) => 'USHR', 2, 1],
+    [OP.I64_ADD]: [(ctx: any) => 'ADD64', 4, 2],
+    [OP.I64_SUB]: [(ctx: any) => 'SUB64', 4, 2],
+    [OP.I64_MUL]: [(ctx: any) => 'MUL64', 4, 2],
+    [OP.I64_DIV_S]: [(ctx: any) => 'SDIV64', 4, 2],
+    [OP.I64_DIV_U]: [(ctx: any) => 'UDIV64', 4, 2],
+    [OP.I64_REM_S]: [(ctx: any) => 'SMOD64', 4, 2],
+    [OP.I64_REM_U]: [(ctx: any) => 'UMOD64', 4, 2],
+    [OP.I64_AND]: [(ctx: any) => 'AND64', 4, 2],
+    [OP.I64_OR]: [(ctx: any) => 'OR64', 4, 2],
+    [OP.I64_XOR]: [(ctx: any) => 'XOR64', 4, 2],
+    [OP.I64_SHL]: [(ctx: any) => 'SHL64', 4, 2],
+    [OP.I64_SHR_S]: [(ctx: any) => 'SSHR64', 4, 2],
+    [OP.I64_SHR_U]: [(ctx: any) => 'USHR64', 4, 2],
+    [OP.F32_CEIL]: [(ctx: any) => 'CEILF32', 1, 1],
+    [OP.F32_FLOOR]: [(ctx: any) => 'FLOORF32', 1, 1],
+    [OP.F32_TRUNC]: [(ctx: any) => 'TRUNCF32', 1, 1],
+    [OP.F32_NEAREST]: [(ctx: any) => 'NEARESTF32', 1, 1],
+    [OP.F32_SQRT]: [(ctx: any) => 'SQRTF32', 1, 1],
+    [OP.F32_ADD]: [(ctx: any) => 'ADDF32', 2, 1],
+    [OP.F32_SUB]: [(ctx: any) => 'SUBF32', 2, 1],
+    [OP.F32_MUL]: [(ctx: any) => 'MULF32', 2, 1],
+    [OP.F32_DIV]: [(ctx: any) => 'DIVF32', 2, 1],
+    [OP.F64_CEIL]: [(ctx: any) => 'CEILF64', 2, 2],
+    [OP.F64_FLOOR]: [(ctx: any) => 'FLOORF64', 2, 2],
+    [OP.F64_TRUNC]: [(ctx: any) => 'TRUNCF64', 2, 2],
+    [OP.F64_NEAREST]: [(ctx: any) => 'NEARESTF64', 2, 2],
+    [OP.F64_SQRT]: [(ctx: any) => 'SQRTF64', 2, 2],
+    [OP.F64_ADD]: [(ctx: any) => 'ADDF64', 4, 2],
+    [OP.F64_SUB]: [(ctx: any) => 'SUBF64', 4, 2],
+    [OP.F64_MUL]: [(ctx: any) => 'MULF64', 4, 2],
+    [OP.F64_DIV]: [(ctx: any) => 'DIVF64', 4, 2],
     // TODO: [OP.I32_TRUNC_F32_S]: ['i32.trunc_f32_s', ?, ?],
     // TODO: [OP.I32_TRUNC_F32_U]: ['i32.trunc_f32_u', ?, ?],
     // TODO: [OP.I32_REINTERPRET_F32]: ['i32.reinterpret_f32', ?, ?],
@@ -946,9 +959,11 @@ let simpleGenerators: { [key: number]: [((ctx: any) => string), number, number] 
     // TODO: [OP.V128_STORE16_LANE]: ['v128.store16_lane', ?, ?],
     // TODO: [OP.V128_STORE32_LANE]: ['v128.store32_lane', ?, ?],
     // TODO: [OP.V128_STORE64_LANE]: ['v128.store64_lane', ?, ?],
-    [OP.TRIVM_POP]: [(ctx: any) => `READ32 TMP0`, 1, 0],
-    [OP.TRIVM_DUP32]: [(ctx: any) => `READ32 [SP]`, 1, 2],
-    [OP.TRIVM_DUP64]: [(ctx: any) => `READ64 [SP] - 4`, 2, 4],
+    [OP.TRIVM_POP]: [(ctx: any) => 'READ32 TMP0', 1, 0],
+    [OP.TRIVM_DUP32]: [(ctx: any) => 'READ32 [SP]', 1, 2],
+    [OP.TRIVM_DUP64]: [(ctx: any) => 'READ64 [SP] - 4', 2, 4],
+
+    /* eslint-enable @typescript-eslint/no-unused-vars */
 
     // -- Simple instructions - end of source code generated with help of "gen-instr.ts" script --
 };

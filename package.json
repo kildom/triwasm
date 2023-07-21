@@ -6,20 +6,29 @@
   "scripts": {
     "build-triasm": "tsc -p tools/asm/triasm.tsconfig.json",
     "postbuild-triasm": "node tools/build/postbuild.js starters jsfixup",
+
     "prebuild-triwasm": "npx ts-node devtools/wasm-instr-gen/template-gen.ts tools/wasm/skeleton.triasm && npx prettier tools/wasm/skeleton.ts --write --ignore-path .prettierignore",
     "build-triwasm": "tsc -p tools/wasm/triwasm.tsconfig.json",
     "postbuild-triwasm": "node tools/build/postbuild.js starters jsfixup",
+
     "build-tricc": "tsc -p tools/cc/tricc.tsconfig.json",
     "postbuild-tricc": "node tools/build/postbuild.js starters jsfixup",
+
     "build-triconf": "tsc -p tools/conf/triconf.tsconfig.json",
     "postbuild-triconf": "node tools/build/postbuild.js starters jsfixup",
+
     "prebuild-runtime": "make -C tools/runtime/triwasmlib get-tools && make -C tools/runtime/softfloatlib get-tools",
     "build-runtime": "make -C tools/runtime/triwasmlib && make -C tools/runtime/softfloatlib",
+
     "build": "concurrently -c white,red,magenta,yellow,blue npm:build-runtime npm:build-triasm npm:build-triwasm npm:build-tricc npm:build-triconf",
-    "build-clean": "RmDiR /S /Q dist || rm -Rf dist",
+    "build-clean": "node tools/build/postbuild.js clean",
     "rebuild": "npm run build-clean && npm run build",
+
     "build-tests": "tsc -p test/asm/vectors.tsconfig.json",
     "run-tests": "node --enable-source-maps test/output/asm/vectors.js",
+
+    "lint": "npx eslint tools",
+
     "dev-wasm-instr-gen": "npx ts-node devtools/wasm-instr-gen/gen-instr.ts"
   },
   "author": "Dominik Kilian <kontakt@dominik.cc>",

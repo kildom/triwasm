@@ -9,6 +9,7 @@ import { TriwasmConf } from './generator';
 
 export function skeleton(module: WasmModule, conf: TriwasmConf) {
     const output: string[] = [];
+    /* eslint-disable max-len */
 %>
 
 ########################################################################

@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Assign, Block, BlockEnd, ExprContext, ExprEval, InstrBase } from './instructions'
+import { Assign, Block, BlockEnd, ExprContext, ExprEval, InstrBase } from './instructions';
 import { ObjMarker } from '../common/common';
 import { CompilerError } from './errors';
 
@@ -70,11 +70,11 @@ export class AsmFunctions {
         return pma(ctx) + BigInt(instr.compiler.pmaBase);
     }
 
-    static func_line(instr: InstrBase, ctx: ExprContext): bigint {
+    static func_line(instr: InstrBase/*, ctx: ExprContext*/): bigint {
         return BigInt(instr.lineNumber);
     }
 
-    static func_iid(instr: InstrBase, ctx: ExprContext): bigint {
+    static func_iid(instr: InstrBase/*, ctx: ExprContext*/): bigint {
         return BigInt(instr.index);
     }
 
@@ -146,4 +146,4 @@ export class AsmFunctions {
         }
     }
 
-};
+}

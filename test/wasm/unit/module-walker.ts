@@ -12,6 +12,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+/* eslint-disable */
+
 import { platform } from "../../tools/utils/platform";
 import { BinaryInput } from "../../tools/wasm/binaryInput";
 import { LinkResolver } from "../../tools/wasm/linkResolver";

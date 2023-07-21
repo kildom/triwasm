@@ -12,11 +12,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { allowTemporaryNull } from "../common/common";
-import { CompilerError } from "./errors";
-import { ExprParser, ExprParserConsumer, ExprParserError } from "./exprParser";
-import { AsmFunctions } from "./functions";
-import { Assign, ExprContext, ExprEval, InstrBase } from "./instructions";
+import { allowTemporaryNull } from '../common/common';
+import { CompilerError } from './errors';
+import { ExprParser, ExprParserConsumer, ExprParserError } from './exprParser';
+import { AsmFunctions } from './functions';
+import { Assign, ExprContext, ExprEval, InstrBase } from './instructions';
 
 
 export type IdentifierProvider = (name: string) => { assignment: Assign | null };
@@ -58,7 +58,7 @@ export class ExprMaker implements ExprParserConsumer {
             throw new Error('Internal error');
         }
         if (res.length < info.args[0] || res.length > info.args[1]) {
-            throw new CompilerError(instr.lineNumber, `Invalid number of arguments`);
+            throw new CompilerError(instr.lineNumber, 'Invalid number of arguments');
         }
         return res;
     }
@@ -81,7 +81,7 @@ export class ExprMaker implements ExprParserConsumer {
         let valueBig = BigInt(valueStr);
         let value64 = valueBig & 0xFFFFFFFFFFFFFFFFn;
         if (value64 != valueBig) {
-            throw new CompilerError(this.instr.lineNumber, `Integer literal out of range!`);
+            throw new CompilerError(this.instr.lineNumber, 'Integer literal out of range!');
         }
         return () => value64;
     }
@@ -176,4 +176,4 @@ export class ExprMaker implements ExprParserConsumer {
         return ctx => a(ctx) ^ 0xFFFFFFFFFFFFFFFFn;
     }
 
-};
+}

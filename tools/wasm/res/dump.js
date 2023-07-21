@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars */
 
 function collapse(instrElement) {
     console.log(instrElement);
@@ -14,7 +15,7 @@ function collapse(instrElement) {
 }
 
 function goToBlockTop(event) {
-    let block = event.target; 
+    let block = event.target;
     let rect = block.getBoundingClientRect();
     let x = event.clientX - rect.left;
     let y = event.clientY - rect.top;

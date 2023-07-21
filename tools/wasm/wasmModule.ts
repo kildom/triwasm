@@ -12,8 +12,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { allowTemporaryNull } from "../common/common";
-import { OP } from "./opcodes";
+import { allowTemporaryNull } from '../common/common';
+import { OP } from './opcodes';
 
 
 // types.html#binary-numtype
@@ -22,18 +22,18 @@ export enum NumberType {
     I64 = 0x7E,
     F32 = 0x7D,
     F64 = 0x7C,
-};
+}
 
 // types.html#vector-types
 export enum VectorType {
     V128 = 0x7B,
-};
+}
 
 // types.html#reference-types
 export enum RefType {
     FUNCREF = 0x70,
     EXTERNREF = 0x6F,
-};
+}
 
 // types.html#value-types
 export type ValueType = NumberType | VectorType | RefType;
@@ -46,18 +46,18 @@ export function valueTypeWords(type: ValueType[] | ValueType): number {
         return type.reduce((p, c) => p + valueTypeWords(c), 0);
     }
     switch (type) {
-        case NumberType.I32:
-        case NumberType.F32:
-        case RefType.FUNCREF:
-        case RefType.EXTERNREF:
-            return 1;
-        case NumberType.I64:
-        case NumberType.F64:
-            return 2;
-        case VectorType.V128:
-            return 4;
-        default:
-            throw new Error('Invalid value type.');
+    case NumberType.I32:
+    case NumberType.F32:
+    case RefType.FUNCREF:
+    case RefType.EXTERNREF:
+        return 1;
+    case NumberType.I64:
+    case NumberType.F64:
+        return 2;
+    case VectorType.V128:
+        return 4;
+    default:
+        throw new Error('Invalid value type.');
     }
 }
 
@@ -66,24 +66,24 @@ export function valueTypeWords(type: ValueType[] | ValueType): number {
 export interface FunctionType {
     params: ValueType[];
     results: ValueType[];
-};
+}
 
 export enum WasmFunctionKind {
-    WASM,            ///< [WasmFunctionData] Normal WASM function with body
-    WASM_TYPE_UNKNOWN,//< Normal WASM function with body, but the result is unknown and must be determined using the code.
-    ANNOTATION,      ///< [String$$]         Annotation magic function, does not generate a bytecode, call replaced by ".annotation" during triasm generation
-    IMPORT,          ///< [null]             Import function, will be replaced by FUNCTION_HOST or FUNCTION_LINK during references resolving
-    HOST,            ///< [u32$]             Host function referenced by index
-    ASSEMBLY,        ///< [String$$]         Function with triasm body
-    INLINE_ASSEMBLY, ///< [String$$]         Function with triasm body that will be inlined always
-    LINK,            ///< [WasmFunction]     A link to actual function
-    UNUSED,          ///< [null]             Function created as a placeholder, cannot be called, will not be generated
-};
+    WASM,            ///< Normal WASM function with body
+    WASM_TYPE_UNKNOWN,//< Normal WASM function with body, but the result is unknown and must be determined from the code
+    ANNOTATION,      ///< Annotation magic function, call replaced by ".annotation" during triasm generation
+    IMPORT,          ///< Import function, will be replaced by FUNCTION_HOST or FUNCTION_LINK during ref resolving
+    HOST,            ///< Host function referenced by index
+    ASSEMBLY,        ///< Function with triasm body
+    INLINE_ASSEMBLY, ///< Function with triasm body that will be inlined always
+    LINK,            ///< A link to actual function
+    UNUSED,          ///< Function created as a placeholder, cannot be called, will not be generated
+}
 
 export interface WasmImport {
     module: string;
     name: string;
-};
+}
 
 export interface WasmExport {
     module: string;
@@ -94,13 +94,13 @@ export interface WasmExport {
 export enum GlobalKind {
     CONST = 0x00,
     MUTABLE = 0x01,
-};
+}
 
 // types.html#binary-limits
 export interface Limits {
     min: number;
     max: number;
-};
+}
 
 let lastInstrId = 1000000000;
 let instrIdMap: Map<number, number> = new Map();
@@ -129,7 +129,7 @@ export function instrId(base?: WasmInstr | number) {
 export enum WasmBranchDir {
     Forward,
     Backward,
-};
+}
 
 export type WasmInstrBrOP = OP.BR | OP.BR_IF;
 export interface WasmInstrBr {
@@ -137,14 +137,18 @@ export interface WasmInstrBr {
     opcode: WasmInstrBrOP;
     target: WasmBlock;
     direction: WasmBranchDir;
-};
+}
 
-export type WasmInstrIndexedOP = OP.LOCAL_GET | OP.LOCAL_SET | OP.LOCAL_TEE | OP.I8X16_EXTRACT_LANE_S | OP.I8X16_EXTRACT_LANE_U | OP.I8X16_REPLACE_LANE | OP.I16X8_EXTRACT_LANE_S | OP.I16X8_EXTRACT_LANE_U | OP.I16X8_REPLACE_LANE | OP.I32X4_EXTRACT_LANE | OP.I32X4_REPLACE_LANE | OP.I64X2_EXTRACT_LANE | OP.I64X2_REPLACE_LANE | OP.F32X4_EXTRACT_LANE | OP.F32X4_REPLACE_LANE | OP.F64X2_EXTRACT_LANE | OP.F64X2_REPLACE_LANE;
+export type WasmInstrIndexedOP = OP.LOCAL_GET | OP.LOCAL_SET | OP.LOCAL_TEE | OP.I8X16_EXTRACT_LANE_S |
+    OP.I8X16_EXTRACT_LANE_U | OP.I8X16_REPLACE_LANE | OP.I16X8_EXTRACT_LANE_S | OP.I16X8_EXTRACT_LANE_U |
+    OP.I16X8_REPLACE_LANE | OP.I32X4_EXTRACT_LANE | OP.I32X4_REPLACE_LANE | OP.I64X2_EXTRACT_LANE |
+    OP.I64X2_REPLACE_LANE | OP.F32X4_EXTRACT_LANE | OP.F32X4_REPLACE_LANE | OP.F64X2_EXTRACT_LANE |
+    OP.F64X2_REPLACE_LANE;
 export interface WasmInstrIndexed {
     id: number;
     opcode: WasmInstrIndexedOP;
     index: number;
-};
+}
 
 export type WasmInstrWithBlockOP = OP.BLOCK | OP.LOOP | OP.TRIVM_FUNCTION;
 export interface WasmInstrWithBlock {
@@ -172,28 +176,28 @@ export interface WasmInstrConst32 {
     id: number;
     opcode: WasmInstrConst32OP;
     value: number;
-};
+}
 
 export type WasmInstrConst64OP = OP.I64_CONST | OP.F64_CONST;
 export interface WasmInstrConst64 {
     id: number;
     opcode: WasmInstrConst64OP;
     value: bigint;
-};
+}
 
 export type WasmInstrBrTableOP = OP.BR_TABLE;
 export interface WasmInstrBrTable {
     id: number;
     opcode: WasmInstrBrTableOP;
     targets: WasmBlock[];
-};
+}
 
 export type WasmInstrRefOP = OP.REF_NULL;
 export interface WasmInstrRef {
     id: number;
     opcode: WasmInstrRefOP;
     type: RefType;
-};
+}
 
 export type WasmInstrCallIndirectOP = OP.CALL_INDIRECT;
 export interface WasmInstrCallIndirect {
@@ -201,7 +205,7 @@ export interface WasmInstrCallIndirect {
     opcode: WasmInstrCallIndirectOP;
     type: FunctionType;
     table: WasmTable;
-};
+}
 
 export type WasmInstrCallOP = OP.CALL;
 export interface WasmInstrCall {
@@ -209,7 +213,7 @@ export interface WasmInstrCall {
     opcode: WasmInstrCallOP;
     func: WasmFunction;
     type?: FunctionType;
-};
+}
 
 export type WasmInstrRefFuncOP = OP.REF_FUNC;
 export interface WasmInstrRefFunc {
@@ -217,75 +221,85 @@ export interface WasmInstrRefFunc {
     opcode: WasmInstrRefFuncOP;
     func: WasmFunction;
     type?: FunctionType;
-};
+}
 
 export type WasmInstrGlobalOP = OP.GLOBAL_GET | OP.GLOBAL_SET;
 export interface WasmInstrGlobal {
     id: number;
     opcode: WasmInstrGlobalOP;
     global: WasmGlobal;
-};
+}
 
-export type WasmInstrGlobalOffsetOP = OP.TRIVM_GLOBAL_GET32 | OP.TRIVM_GLOBAL_GET64 | OP.TRIVM_GLOBAL_SET32 | OP.TRIVM_GLOBAL_SET64;
+export type WasmInstrGlobalOffsetOP = OP.TRIVM_GLOBAL_GET32 | OP.TRIVM_GLOBAL_GET64 | OP.TRIVM_GLOBAL_SET32 |
+    OP.TRIVM_GLOBAL_SET64;
 export interface WasmInstrGlobalOffset {
     id: number;
     opcode: WasmInstrGlobalOffsetOP;
     global: WasmGlobal;
     offset: number;
-};
+}
 
 export type WasmInstrValueV128OP = OP.V128_CONST | OP.I8X16_SHUFFLE;
 export interface WasmInstrValueV128 {
     id: number;
     opcode: WasmInstrValueV128OP;
     value: Uint8Array;
-};
+}
 
 export type WasmInstrTableOP = OP.TABLE_GET | OP.TABLE_SET | OP.TABLE_GROW | OP.TABLE_SIZE | OP.TABLE_FILL;
 export interface WasmInstrTable {
     id: number;
     opcode: WasmInstrTableOP;
     table: WasmTable;
-};
+}
 
-export type WasmInstrMemArgOP = OP.I32_LOAD | OP.I64_LOAD | OP.F32_LOAD | OP.F64_LOAD | OP.I32_LOAD8_S | OP.I32_LOAD8_U | OP.I32_LOAD16_S | OP.I32_LOAD16_U | OP.I64_LOAD8_S | OP.I64_LOAD8_U | OP.I64_LOAD16_S | OP.I64_LOAD16_U | OP.I64_LOAD32_S | OP.I64_LOAD32_U | OP.I32_STORE | OP.I64_STORE | OP.F32_STORE | OP.F64_STORE | OP.I32_STORE8 | OP.I32_STORE16 | OP.I64_STORE8 | OP.I64_STORE16 | OP.I64_STORE32 | OP.V128_LOAD | OP.V128_LOAD8X8_S | OP.V128_LOAD8X8_U | OP.V128_LOAD16X4_S | OP.V128_LOAD16X4_U | OP.V128_LOAD32X2_S | OP.V128_LOAD32X2_U | OP.V128_LOAD8_SPLAT | OP.V128_LOAD16_SPLAT | OP.V128_LOAD32_SPLAT | OP.V128_LOAD64_SPLAT | OP.V128_STORE;
+export type WasmInstrMemArgOP = OP.I32_LOAD | OP.I64_LOAD | OP.F32_LOAD | OP.F64_LOAD | OP.I32_LOAD8_S |
+    OP.I32_LOAD8_U | OP.I32_LOAD16_S | OP.I32_LOAD16_U | OP.I64_LOAD8_S | OP.I64_LOAD8_U | OP.I64_LOAD16_S |
+    OP.I64_LOAD16_U | OP.I64_LOAD32_S | OP.I64_LOAD32_U | OP.I32_STORE | OP.I64_STORE | OP.F32_STORE | OP.F64_STORE |
+    OP.I32_STORE8 | OP.I32_STORE16 | OP.I64_STORE8 | OP.I64_STORE16 | OP.I64_STORE32 | OP.V128_LOAD |
+    OP.V128_LOAD8X8_S | OP.V128_LOAD8X8_U | OP.V128_LOAD16X4_S | OP.V128_LOAD16X4_U | OP.V128_LOAD32X2_S |
+    OP.V128_LOAD32X2_U | OP.V128_LOAD8_SPLAT | OP.V128_LOAD16_SPLAT | OP.V128_LOAD32_SPLAT | OP.V128_LOAD64_SPLAT |
+    OP.V128_STORE;
 export interface WasmInstrMemArg {
     id: number;
     opcode: WasmInstrMemArgOP;
     offset: number;
     memory: WasmMemory;
-};
+}
 
 export type WasmInstrOffsetOP = OP.TRIVM_DUP32 | OP.TRIVM_DUP64;
 export interface WasmInstrOffset {
     id: number;
     opcode: WasmInstrOffsetOP;
     offset: number;
-};
+}
 
-export type WasmInstrLocalOP = OP.TRIVM_LOCAL_GET32 | OP.TRIVM_LOCAL_GET64 | OP.TRIVM_LOCAL_SET32 | OP.TRIVM_LOCAL_SET64;
+export type WasmInstrLocalOP = OP.TRIVM_LOCAL_GET32 | OP.TRIVM_LOCAL_GET64 | OP.TRIVM_LOCAL_SET32 |
+    OP.TRIVM_LOCAL_SET64;
 export interface WasmInstrLocal {
     id: number;
     opcode: WasmInstrLocalOP;
     index: number;
     offset: number;
-};
+}
 
-export type WasmInstrMemArgWithIndexOP = OP.V128_LOAD8_LANE | OP.V128_STORE8_LANE | OP.V128_LOAD16_LANE | OP.V128_STORE16_LANE | OP.V128_LOAD32_LANE | OP.V128_STORE32_LANE | OP.V128_LOAD32_ZERO | OP.V128_LOAD64_LANE | OP.V128_STORE64_LANE | OP.V128_LOAD64_ZERO;
+export type WasmInstrMemArgWithIndexOP = OP.V128_LOAD8_LANE | OP.V128_STORE8_LANE | OP.V128_LOAD16_LANE |
+    OP.V128_STORE16_LANE | OP.V128_LOAD32_LANE | OP.V128_STORE32_LANE | OP.V128_LOAD32_ZERO | OP.V128_LOAD64_LANE |
+    OP.V128_STORE64_LANE | OP.V128_LOAD64_ZERO;
 export interface WasmInstrMemArgWithIndex {
     id: number;
     opcode: WasmInstrMemArgWithIndexOP;
     offset: number;
     memory: WasmMemory;
     index: number;
-};
+}
 
 export type WasmInstrMemOP = OP.MEMORY_SIZE | OP.MEMORY_GROW | OP.MEMORY_FILL;
 export interface WasmInstrMem {
     id: number;
     opcode: WasmInstrMemOP;
     memory: WasmMemory;
-};
+}
 
 export type WasmInstrMemInitOP = OP.MEMORY_INIT;
 export interface WasmInstrMemInit {
@@ -293,35 +307,35 @@ export interface WasmInstrMemInit {
     opcode: WasmInstrMemInitOP;
     data: WasmData;
     memory: WasmMemory;
-};
+}
 
 export type WasmInstrDataDropOP = OP.DATA_DROP;
 export interface WasmInstrDataDrop {
     id: number;
     opcode: WasmInstrDataDropOP;
     data: WasmData;
-};
+}
 
 export type WasmInstrMemCopyOP = OP.MEMORY_COPY;
 export interface WasmInstrMemCopy {
     id: number;
     opcode: WasmInstrMemCopyOP;
     memories: [WasmMemory, WasmMemory];
-};
+}
 
 export type WasmInstrTableCopyOP = OP.TABLE_COPY;
 export interface WasmInstrTableCopy {
     id: number;
     opcode: WasmInstrTableCopyOP;
     tables: [WasmTable, WasmTable];
-};
+}
 
 export type WasmInstrElemDropOP = OP.ELEM_DROP;
 export interface WasmInstrElemDrop {
     id: number;
     opcode: WasmInstrElemDropOP;
     element: WasmElement;
-};
+}
 
 export type WasmInstrTableInitOP = OP.TABLE_INIT;
 export interface WasmInstrTableInit {
@@ -329,7 +343,7 @@ export interface WasmInstrTableInit {
     opcode: WasmInstrTableInitOP;
     element: WasmElement;
     table: WasmTable;
-};
+}
 
 export type WasmInstrRawOP = OP.TRIVM_RAW;
 export interface WasmInstrRaw {
@@ -338,15 +352,26 @@ export interface WasmInstrRaw {
     code: string;
     type: FunctionType;
     noReturn: boolean;
-};
+}
 
-export type WasmInstrNoArgsOP = Exclude<OP, WasmInstrBrOP | WasmInstrIndexedOP | WasmInstrWithBlockOP | WasmInstrIfOP | WasmInstrEndOP | WasmInstrConst32OP | WasmInstrConst64OP | WasmInstrBrTableOP | WasmInstrRefOP | WasmInstrCallIndirectOP | WasmInstrCallOP | WasmInstrRefFuncOP | WasmInstrGlobalOP | WasmInstrGlobalOffsetOP | WasmInstrTableOP | WasmInstrValueV128OP | WasmInstrMemArgOP | WasmInstrOffsetOP | WasmInstrLocalOP | WasmInstrMemOP | WasmInstrMemInitOP | WasmInstrDataDropOP | WasmInstrMemCopyOP | WasmInstrMemArgWithIndexOP | WasmInstrElemDropOP | WasmInstrTableInitOP | WasmInstrTableCopyOP | WasmInstrRawOP>;
+export type WasmInstrNoArgsOP = Exclude<OP, WasmInstrBrOP | WasmInstrIndexedOP | WasmInstrWithBlockOP | WasmInstrIfOP |
+    WasmInstrEndOP | WasmInstrConst32OP | WasmInstrConst64OP | WasmInstrBrTableOP | WasmInstrRefOP |
+    WasmInstrCallIndirectOP | WasmInstrCallOP | WasmInstrRefFuncOP | WasmInstrGlobalOP | WasmInstrGlobalOffsetOP |
+    WasmInstrTableOP | WasmInstrValueV128OP | WasmInstrMemArgOP | WasmInstrOffsetOP | WasmInstrLocalOP |
+    WasmInstrMemOP | WasmInstrMemInitOP | WasmInstrDataDropOP | WasmInstrMemCopyOP | WasmInstrMemArgWithIndexOP |
+    WasmInstrElemDropOP | WasmInstrTableInitOP | WasmInstrTableCopyOP | WasmInstrRawOP>;
+
 export interface WasmInstrNoArgs {
     id: number;
     opcode: WasmInstrNoArgsOP;
-};
+}
 
-export type WasmInstr = WasmInstrNoArgs | WasmInstrBr | WasmInstrIndexed | WasmInstrWithBlock | WasmInstrIf | WasmInstrEnd | WasmInstrConst32 | WasmInstrConst64 | WasmInstrBrTable | WasmInstrRef | WasmInstrCallIndirect | WasmInstrCall | WasmInstrRefFunc | WasmInstrGlobal | WasmInstrGlobalOffset | WasmInstrTable | WasmInstrValueV128 | WasmInstrMemArg | WasmInstrOffset | WasmInstrLocal | WasmInstrMem | WasmInstrMemInit | WasmInstrDataDrop | WasmInstrMemCopy | WasmInstrMemArgWithIndex | WasmInstrElemDrop | WasmInstrTableInit | WasmInstrTableCopy | WasmInstrRaw;
+export type WasmInstr = WasmInstrNoArgs | WasmInstrBr | WasmInstrIndexed | WasmInstrWithBlock | WasmInstrIf |
+    WasmInstrEnd | WasmInstrConst32 | WasmInstrConst64 | WasmInstrBrTable | WasmInstrRef | WasmInstrCallIndirect |
+    WasmInstrCall | WasmInstrRefFunc | WasmInstrGlobal | WasmInstrGlobalOffset | WasmInstrTable | WasmInstrValueV128 |
+    WasmInstrMemArg | WasmInstrOffset | WasmInstrLocal | WasmInstrMem | WasmInstrMemInit | WasmInstrDataDrop |
+    WasmInstrMemCopy | WasmInstrMemArgWithIndex | WasmInstrElemDrop | WasmInstrTableInit | WasmInstrTableCopy |
+    WasmInstrRaw;
 
 export class WasmBlock {
     public body: WasmInstr[] = [];
@@ -362,7 +387,7 @@ export enum ElementKind {
     ACTIVE,
     PASSIVE,
     DECLARATIVE,
-};
+}
 
 export class WasmElement {
     public deleted = false;
@@ -370,12 +395,12 @@ export class WasmElement {
     table?: WasmTable;
     offset?: WasmFunction;
     items: WasmFunction[] = [];
-};
+}
 
 export enum DataKind {
     ACTIVE,
     PASSIVE,
-};
+}
 
 export class WasmData {
     public deleted = false;
@@ -383,7 +408,7 @@ export class WasmData {
     public content: Uint8Array = allowTemporaryNull as Uint8Array; // will be filled during data section parsing
     public memory?: WasmMemory;
     public offset?: WasmFunction;
-};
+}
 
 export class WasmEntity {
     public index: number = 0;
