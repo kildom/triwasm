@@ -61,6 +61,19 @@ export function valueTypeWords(type: ValueType[] | ValueType): number {
     }
 }
 
+export function valueTypeFromString(type: string): ValueType {
+    switch (type.trim().toUpperCase()) {
+    case 'I32': return NumberType.I32;
+    case 'F32': return NumberType.F32;
+    case 'FUNCREF': return RefType.FUNCREF;
+    case 'EXTERNREF': return RefType.EXTERNREF;
+    case 'I64': return NumberType.I64;
+    case 'F64': return NumberType.F64;
+    case 'V128': return VectorType.V128;
+    default: throw new Error(`Invalid value type ${type}.`);
+    }
+}
+
 // types.html#function-types
 
 export interface FunctionType {

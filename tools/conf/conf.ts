@@ -1,3 +1,4 @@
+import { ValueType } from '../wasm/wasmModule';
 
 export interface ConfExtensions {
     unwind: boolean;
@@ -58,6 +59,44 @@ export interface ConfWasm {
     entryFunction?: string;
 }
 
+export enum ConfInterfaceDirection {
+    IMPORT,
+    EXPORT,
+}
+
+export enum ConfFunctionAttributes {
+    NONE = 0,
+    REGCALL = 1,
+}
+
+export interface ConfParameter {
+    type: ValueType;
+    name?: string;
+}
+
+export interface ConfInterfaceEntry {
+    name: string;
+    module?: string;
+    fullName: string;
+    direction: ConfInterfaceDirection;
+    index: number;
+    configText: string;
+}
+
+export interface ConfFunction extends ConfInterfaceEntry {
+    attributes: ConfFunctionAttributes;
+    results: ConfParameter[];
+    params: ConfParameter[];
+}
+
+export interface ConfGlobal extends ConfInterfaceEntry {
+    type: ValueType;
+}
+
+export interface ConfTable extends ConfInterfaceEntry {
+    type: ValueType;
+}
+
 export interface Conf {
     extensions: ConfExtensions;
     faults: ConfFaults;
@@ -65,6 +104,9 @@ export interface Conf {
     program: ConfProgram;
     host: ConfHost;
     wasm: ConfWasm;
+    functions: ConfFunction[];
+    globals: ConfGlobal[];
+    tables: ConfTable[];
 }
 
 /*

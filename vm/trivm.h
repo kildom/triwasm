@@ -25,8 +25,8 @@ struct trivm_instance
 	uint32_t ram_size; /**< Size of the RAM memory */
 	uint32_t sp;       /**< triVM Stack pointer - offset in RAM */
 #if TRIVM_ENABLE_ROM
-	const uint8_t *rom;   /**< Pointer to ROM memory */
 	uint32_t rom_size; /**< Size of the ROM memory */
+	const uint8_t *rom;   /**< Pointer to ROM memory */
 #endif
 	/* Start of area accessible by the triVM bytecode */
 	union {

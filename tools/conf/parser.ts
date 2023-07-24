@@ -1,7 +1,8 @@
 
 
 import { platform } from '../common/platform';
-import { Conf, ConfExtensions, ConfFaults, ConfHost, ConfMemory, ConfProgram, ConfWasm } from './conf';
+import { NumberType, RefType, ValueType, VectorType, valueTypeFromString, valueTypeWords } from '../wasm/wasmModule';
+import { Conf, ConfExtensions, ConfFaults, ConfFunction, ConfFunctionAttributes, ConfGlobal, ConfHost, ConfInterfaceDirection, ConfInterfaceEntry, ConfMemory, ConfParameter, ConfProgram, ConfTable, ConfWasm } from './conf';
 
 const MAX_MEMORY_SIZE = 0x70000000;
 const MIN_MEMORY_SIZE = 0x00000080;
@@ -40,7 +41,7 @@ function getBool(defs: { [name: string]: string | undefined }, name: string, def
 }
 
 function getInt(defs: { [name: string]: string | undefined }, name: string, defaultValue: number, minValue?: number,
-                maxValue?: number): number {
+    maxValue?: number): number {
     if (!(name in defs)) {
         return defaultValue;
     }
@@ -60,7 +61,7 @@ function getInt(defs: { [name: string]: string | undefined }, name: string, defa
     return value;
 }
 
-function getString<T>(defs: { [name: string]: string | undefined }, name: string, defaultValue: T): string|T {
+function getString<T>(defs: { [name: string]: string | undefined }, name: string, defaultValue: T): string | T {
     if (!(name in defs)) {
         return defaultValue;
     }
@@ -71,7 +72,117 @@ function getString<T>(defs: { [name: string]: string | undefined }, name: string
     return defs[name]!.trim();
 }
 
-function parseInterface(text: string) {
+function splitFullName(fullName: string): [string | undefined, string] {
+    let index = fullName.indexOf('.');
+    if (index < 0) {
+        return [undefined, fullName];
+    } else {
+        return [fullName.substring(0, index), fullName.substring(index + 1)];
+    }
+}
+
+function parseIndex(index: string, configText: string): number {
+    let norm = index
+        .replace(/(^0x|\s)/gi, '')
+        .replace(/0/g, ' ')
+        .trimStart()
+        .replace(/(^$| )/g, '0');
+    let result = parseInt(index);
+    if ((result.toString() != norm && result.toString(16) != norm) || result < 0) {
+        configError(`Invalid index at: ${configText}`);
+        if (!Number.isInteger(result) || result < 0 || result > 65536) {
+            result = 0;
+        }
+    }
+    return result;
+}
+
+function addTable(tables: ConfTable[], functionsUsage: Map<number, string>, entry: ConfInterfaceEntry, type: string) {
+    let result: ConfGlobal = {
+        ...entry,
+        type: valueTypeFromString(type),
+    };
+    if (result.type != RefType.FUNCREF && result.type != RefType.EXTERNREF) {
+        configError(`Only funcref and externref tables are allowed: ${result.configText}`);
+        result.type = RefType.FUNCREF;
+    }
+    if (functionsUsage.has(result.index)) {
+        configError(`Index ${result.index} already taken: ${result.configText}`);
+        configError(`Previous entry: ${functionsUsage.get(result.index)}`);
+    } else {
+        functionsUsage.set(result.index, result.configText);
+    }
+    tables.push(result);
+}
+
+function addGlobal(globals: ConfGlobal[], globalsUsage: Map<number, string>, entry: ConfInterfaceEntry, type: string) {
+    let result: ConfGlobal = {
+        ...entry,
+        type: valueTypeFromString(type),
+    };
+    if (result.direction == ConfInterfaceDirection.IMPORT) {
+        configError(`Imported globals not implemented: ${result.configText}`);
+    }
+    let words = valueTypeWords(result.type);
+    for (let i = 0; i < words; i++) {
+        let index = result.index + i;
+        if (globalsUsage.has(index)) {
+            configError(`Index ${index} already taken: ${result.configText}`);
+            configError(`Previous entry: ${globalsUsage.get(result.index)}`);
+        } else {
+            globalsUsage.set(result.index, result.configText);
+        }
+    }
+    globals.push(result);
+}
+
+function parseParameters(params: string, configText: string): ConfParameter[] {
+    let result: ConfParameter[] = [];
+    let items = params
+        .trim()
+        .replace(/(^\(\s*|\s*\)$)/g, '')
+        .split(',')
+        .map(x => x.match(/^\s*(.+?)(\s+.*?)?$/));
+    if (items.length == 1 && items[0] === null) {
+        return result;
+    }
+    for (let item of items) {
+        if (!item) {
+            configError(`Invalid parameter: ${configText}`);
+            continue;
+        }
+        if (item[1]?.trim() != 'void') {
+            result.push({
+                type: valueTypeFromString(item[1]),
+                name: item[2] && item[2].trim() != '' ? item[2].trim() : undefined,
+            });
+        }
+    }
+    return result;
+}
+
+function addFunction(functions: ConfFunction[], functionsUsage: Map<number, string>, entry: ConfInterfaceEntry,
+                     attrs: string = '', results: string, params: string) {
+    attrs = attrs.trim().toUpperCase();
+    let result: ConfFunction = {
+        ...entry,
+        attributes: attrs == 'REGCALL' ? ConfFunctionAttributes.REGCALL : ConfFunctionAttributes.NONE,
+        results: parseParameters(results, entry.configText),
+        params: parseParameters(params, entry.configText),
+    };
+    if (functionsUsage.has(result.index)) {
+        configError(`Index ${result.index} already taken: ${result.configText}`);
+        configError(`Previous entry: ${functionsUsage.get(result.index)}`);
+    } else {
+        functionsUsage.set(result.index, result.configText);
+    }
+    functions.push(result);
+}
+
+function parseInterface(conf: Conf, text: string) {
+    let importsUsage = new Map<number, string>();
+    let exportsUsage = new Map<number, string>();
+    let globalsUsage = new Map<number, string>();
     let comment = '';
     for (let m of text.matchAll(/\/\*[\r\n\s*]*triVM\s+interface[^a-z0-9_$]*([\s\S]*?)\*\//gi)) {
         comment += '\n' + m[1]
@@ -82,12 +193,37 @@ function parseInterface(text: string) {
     comment = comment.trim();
     while (comment != '') {
         let m = comment.match(/^(export|import)\s+(table|global)\s*\[\s*(0[xX][0-9A-Fa-f]+|[0-9]+)\s*\]\s*([if]32|[if]64|v128|funcref|externref)\s*([^;]*)\s*;/);
+        let entry: ConfInterfaceEntry;
         if (m) {
-            console.log(m[2], m.slice(1));
+            let [configText, direction, entryKind, index, type, fullName] = m;
+            let [module, name] = splitFullName(fullName);
+            entry = {
+                configText,
+                direction: direction == 'export' ? ConfInterfaceDirection.EXPORT : ConfInterfaceDirection.IMPORT,
+                fullName,
+                index: parseIndex(index, configText),
+                name,
+                module,
+            };
+            if (entryKind == 'table') {
+                addTable(conf.tables, direction == 'export' ? exportsUsage : importsUsage, entry, type);
+            } else {
+                addGlobal(conf.globals, globalsUsage, entry, type);
+            }
         } else {
-            m = comment.match(/^(export|import)\s+function\s*\[\s*(0[xX][0-9A-Fa-f]+|[0-9]+)\s*\]\s*(regcall\s+)?([if]32|[if]64|v128|funcref|externref|void|\(\s*(?:(?:[if]32|[if]64|v128|funcref|externref)(?:\s+[a-zA-Z_$0-9]+)?\s*(?:\,\s*|(?=\))))*\))\s*([\S\s]*?)\s*\(\s*((?:(?:[if]32|[if]64|v128|funcref|externref)(?:\s+[a-zA-Z_$0-9]+)?\s*(?:\,\s*|(?=\))))*)\)\s*;/);
+            m = comment.match(/^(export|import)\s+function\s*\[\s*(0[xX][0-9A-Fa-f]+|[0-9]+)\s*\]\s*(regcall\s+)?([if]32|[if]64|v128|funcref|externref|void|\(\s*(?:(?:[if]32|[if]64|v128|funcref|externref)(?:\s+[a-zA-Z_$0-9]+)?\s*(?:,\s*|(?=\))))*\))\s*([\S\s]*?)\s*\(\s*((?:(?:[if]32|[if]64|v128|funcref|externref)(?:\s+[a-zA-Z_$0-9]+)?\s*(?:,\s*|(?=\))))*)\)\s*;/);
             if (m) {
-                console.log('FUNCTION', m.slice(1));
+                let [configText, direction, index, attrs, results, fullName, params] = m;
+                let [module, name] = splitFullName(fullName);
+                entry = {
+                    configText,
+                    direction: direction == 'export' ? ConfInterfaceDirection.EXPORT : ConfInterfaceDirection.IMPORT,
+                    fullName,
+                    index: parseIndex(index, configText),
+                    name,
+                    module,
+                };
+                addFunction(conf.functions, direction == 'export' ? exportsUsage : importsUsage, entry, attrs, results, params);
             } else {
                 m = comment.match(/^;/);
             }
@@ -99,13 +235,11 @@ function parseInterface(text: string) {
         }
         comment = comment.substring(m[0].length).trim();
     }
-    console.log(comment);
 }
 
 export function parseConf(path: string): Conf {
     let text = platform.readFile(path);
     let defs = parseDefines(text);
-    parseInterface(text);return {} as Conf;
 
     let extensions: ConfExtensions = {
         unwind: getBool(defs, 'TRIVM_EXT_UNWIND'),
@@ -192,7 +326,12 @@ export function parseConf(path: string): Conf {
         program,
         host,
         wasm,
+        functions: [],
+        globals: [],
+        tables: [],
     };
+
+    parseInterface(conf, text);
 
     return conf;
 }
