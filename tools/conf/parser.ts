@@ -1,8 +1,12 @@
 
 
 import { platform } from '../common/platform';
-import { NumberType, RefType, ValueType, VectorType, valueTypeFromString, valueTypeWords } from '../wasm/wasmModule';
-import { Conf, ConfExtensions, ConfFaults, ConfFunction, ConfFunctionAttributes, ConfGlobal, ConfHost, ConfInterfaceDirection, ConfInterfaceEntry, ConfMemory, ConfParameter, ConfProgram, ConfTable, ConfWasm } from './conf';
+import { RefType, valueTypeFromString, valueTypeWords } from '../wasm/wasmModule';
+import {
+    Conf, ConfExtensions, ConfFaults, ConfFunction, ConfFunctionAttributes, ConfGlobal, ConfHost,
+    ConfInterfaceDirection, ConfInterfaceEntry, ConfMemory, ConfParameter, ConfProgram, ConfTable,
+    ConfTableAttributes, ConfWasm
+} from './conf';
 
 const MAX_MEMORY_SIZE = 0x70000000;
 const MIN_MEMORY_SIZE = 0x00000080;
@@ -14,7 +18,7 @@ function parseDefines(text: string) {
         .replace(/\\\r?\n/g, ' ') // remove line breaks
         .replace(/\/\*[\s\S]*?\*\//g, ' ') // remove multi line comments
         .replace(/\/\/[\s\S]*?\r?\n/g, '\n'); // remove single line comments
-    let result: { [name: string]: string | undefined } = {};
+    let result: { [name: string]: string | undefined; } = {};
     for (let line of text.split('\n')) {
         line = line.trim();
         let m = line.match(/^#\s*define\s+([a-z0-9_$]+)(?:\s+([\s\S]+))?/i);
@@ -29,7 +33,7 @@ function configError(message: string) {
     console.error(message);
 }
 
-function getBool(defs: { [name: string]: string | undefined }, name: string, defaultValue?: boolean): boolean {
+function getBool(defs: { [name: string]: string | undefined; }, name: string, defaultValue?: boolean): boolean {
     if (!(name in defs)) {
         return defaultValue || false;
     }
@@ -40,8 +44,8 @@ function getBool(defs: { [name: string]: string | undefined }, name: string, def
     return defs[name]!.trim() == '1';
 }
 
-function getInt(defs: { [name: string]: string | undefined }, name: string, defaultValue: number, minValue?: number,
-    maxValue?: number): number {
+function getInt(defs: { [name: string]: string | undefined; }, name: string, defaultValue: number, minValue?: number,
+                maxValue?: number): number {
     if (!(name in defs)) {
         return defaultValue;
     }
@@ -61,7 +65,7 @@ function getInt(defs: { [name: string]: string | undefined }, name: string, defa
     return value;
 }
 
-function getString<T>(defs: { [name: string]: string | undefined }, name: string, defaultValue: T): string | T {
+function getString<T>(defs: { [name: string]: string | undefined; }, name: string, defaultValue: T): string | T {
     if (!(name in defs)) {
         return defaultValue;
     }
@@ -98,9 +102,10 @@ function parseIndex(index: string, configText: string): number {
 }
 
 function addTable(tables: ConfTable[], functionsUsage: Map<number, string>, entry: ConfInterfaceEntry, type: string) {
-    let result: ConfGlobal = {
+    let result: ConfTable = {
         ...entry,
         type: valueTypeFromString(type),
+        attributes: ConfTableAttributes.NONE, // TODOv3: Growable attribute
     };
     if (result.type != RefType.FUNCREF && result.type != RefType.EXTERNREF) {
         configError(`Only funcref and externref tables are allowed: ${result.configText}`);
@@ -112,7 +117,16 @@ function addTable(tables: ConfTable[], functionsUsage: Map<number, string>, entr
     } else {
         functionsUsage.set(result.index, result.configText);
     }
-    tables.push(result);
+    if (result.direction == ConfInterfaceDirection.EXPORT && result.module) {
+        configError(`Exported table cannot have module name: ${result.configText}`);
+        result.module = undefined;
+    }
+    if (result.direction == ConfInterfaceDirection.IMPORT && !result.module) {
+        configError(`Imported table must have module name: ${result.configText}`);
+        result.module = 'env';
+    }
+    configError(`Table import/export not implemented: ${result.configText}`);
+    //tables.push(result); // TODOv2: Implement table import/export
 }
 
 function addGlobal(globals: ConfGlobal[], globalsUsage: Map<number, string>, entry: ConfInterfaceEntry, type: string) {
@@ -133,7 +147,8 @@ function addGlobal(globals: ConfGlobal[], globalsUsage: Map<number, string>, ent
             globalsUsage.set(result.index, result.configText);
         }
     }
-    globals.push(result);
+    configError(`Global import/export not implemented: ${result.configText}`);
+    //globals.push(result); // TODOv2: Implement global import/export
 }
 
 function parseParameters(params: string, configText: string): ConfParameter[] {
@@ -176,6 +191,18 @@ function addFunction(functions: ConfFunction[], functionsUsage: Map<number, stri
     } else {
         functionsUsage.set(result.index, result.configText);
     }
+    if (result.direction == ConfInterfaceDirection.EXPORT && result.module) {
+        configError(`Exported function cannot have module name: ${result.configText}`);
+        result.module = undefined;
+    }
+    if (result.direction == ConfInterfaceDirection.IMPORT && !result.module) {
+        configError(`Imported function must have module name: ${result.configText}`);
+        result.module = 'env';
+    }
+    if (result.attributes & ConfFunctionAttributes.REGCALL) {
+        configError(`Non-default calling conventions not implemented: ${result.configText}`);
+        result.attributes ^= ConfFunctionAttributes.REGCALL; // TODOv2: REGCALL calling convention
+    }
     functions.push(result);
 }
 
@@ -192,6 +219,10 @@ function parseInterface(conf: Conf, text: string) {
     }
     comment = comment.trim();
     while (comment != '') {
+        // TODOv3: Table attribute: growable
+        // export: informs that host wants to control table growth. Gest is independent, it can grow the table even
+        //         when the attribute is not specified.
+        // import: informs compiler that host is able to grow table.
         let m = comment.match(/^(export|import)\s+(table|global)\s*\[\s*(0[xX][0-9A-Fa-f]+|[0-9]+)\s*\]\s*([if]32|[if]64|v128|funcref|externref)\s*([^;]*)\s*;/);
         let entry: ConfInterfaceEntry;
         if (m) {
@@ -262,6 +293,8 @@ export function parseConf(path: string): Conf {
 
         wasmUnreachable: getBool(defs, 'TRIWASM_ENABLE_FAULT_UNREACHABLE') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
         wasmTableIndex: getBool(defs, 'TRIWASM_ENABLE_FAULT_TABLE_INDEX') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
+        wasmNullCall: getBool(defs, 'TRIWASM_ENABLE_FAULT_NULL_CALL') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
+        wasmInvalidExport: getBool(defs, 'TRIWASM_ENABLE_FAULT_INVALID_EXPORT') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
 
         anyFault: false,
         anyVmFault: false,
@@ -291,9 +324,19 @@ export function parseConf(path: string): Conf {
         memory.max = getInt(defs, 'TRIVM_MEM_SIZE_MAX', MAX_MEMORY_SIZE, memory.min, MAX_MEMORY_SIZE);
     }
 
+    if ((memory.min & 3) || (memory.max & 3)) {
+        configError('Memory size must be multiple of 4 bytes (32 bits)');
+    }
+
     if (memory.min == memory.max && memory.growable) {
         configError('Memory cannot be growable if minimum and maximum sizes are the same');
         memory.growable = false;
+    }
+
+    if (memory.growable || memory.min != memory.max) {
+        configError('Growable memory not implemented.');
+        memory.growable = false; // TODOv2: Implement growable memory
+        memory.max = memory.min;
     }
 
     let program: ConfProgram = {
@@ -316,7 +359,8 @@ export function parseConf(path: string): Conf {
     };
 
     if (parseInt(wasm.entryFunction || '').toString() === wasm.entryFunction) {
-        // TODO: interpret numeric values
+        // TODOv1: support also hex
+        // TODOv1: interpret numeric values
     }
 
     let conf: Conf = {
@@ -335,5 +379,3 @@ export function parseConf(path: string): Conf {
 
     return conf;
 }
-
-console.log(parseConf('/home/doki/my/triwasm/vm/trivm-config.h'));

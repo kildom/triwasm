@@ -22,6 +22,8 @@ export interface ConfFaults {
     // WASM faults
     wasmUnreachable: boolean;
     wasmTableIndex: boolean;
+    wasmNullCall: boolean;
+    wasmInvalidExport: boolean;
     // Group of faults
     anyFault: boolean;
     anyVmFault: boolean;
@@ -69,6 +71,11 @@ export enum ConfFunctionAttributes {
     REGCALL = 1,
 }
 
+export enum ConfTableAttributes {
+    NONE = 0,
+    GROWABLE = 1,
+}
+
 export interface ConfParameter {
     type: ValueType;
     name?: string;
@@ -94,6 +101,7 @@ export interface ConfGlobal extends ConfInterfaceEntry {
 }
 
 export interface ConfTable extends ConfInterfaceEntry {
+    attributes: ConfTableAttributes;
     type: ValueType;
 }
 

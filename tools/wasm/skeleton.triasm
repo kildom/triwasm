@@ -5,35 +5,40 @@
  */
 
 import { WasmModule } from './wasmModule';
-import { TriwasmConf } from './generator';
+import { Generator } from './generator';
+import { Conf } from '../conf/conf';
+import { U16_MAX_SIZE, REGISTERS_END } from '../common/common';
 
-export function skeleton(module: WasmModule, conf: TriwasmConf) {
-    const output: string[] = [];
+export function skeleton(module: WasmModule, conf: Conf, gen: Generator) {
+    const output = gen.output;
     /* eslint-disable max-len */
 %>
+
 
 ########################################################################
 #                             CONSTATNS
 ########################################################################
 
 
-# General
-TRIVM_FAULT_WASM_TABLE_INDEX = 17
-TRIVM_HOST_CALLBACK_IMPORT_ID = -1
+# triWASM Faults
+TRIWASM_FAULT_UNREACHABLE = 16
+TRIWASM_FAULT_TABLE_INDEX = 17
+TRIWASM_FAULT_NULL_CALL = 18
+TRIWASM_FAULT_INVALID_EXPORT = 19
 
 # VM Registers
-TMP0 = 0
+GPR0 = 0
 PC = 4
 ASP = 8
-TMP1 = 12
-TMP2 = 16
-AMB0 = 20
-AMB1 = 24
-SPL = 28
-SPH = 32
-ASPL = 36
-ASPH = 40
-registers_end = 44
+GPR1 = 12
+GPR2 = 16
+GPR3 = 20
+AMB0 = 24
+AMB1 = 28
+SPL = 32
+SPH = 36
+ASPL = 40
+ASPH = 44
 
 
 ########################################################################
@@ -41,98 +46,113 @@ registers_end = 44
 ########################################################################
 
 
-<% if (conf.separateMemory) { %>
-    PROGRAM_MEMORY_BASE = 0x80000000
-    .base PROGRAM_MEMORY_BASE
-    # Main and fault entries
-    BR main_entry
+<% if (conf.program.rom) { %>
+    $_PROGRAM_MEMORY_BASE = 0x80000000
+    .base $_PROGRAM_MEMORY_BASE
+    BR $_main_entry
     .pma 3
-    # Fault is next instruction, so no need to do BR
-    <% if (conf.faults.anyVM) { %>
-    .ref fault_handler
+    <% if (conf.faults.anyVmFault) { %>
+        # Fault is next instruction, so no need to do BR
+        .ref $_fault_handler
     <% } %>
-    # Slots area start
-    slots_area_start = registers_end
 <% } else { %>
-    PROGRAM_MEMORY_BASE = 0
-    .base PROGRAM_MEMORY_BASE
-    # Registers initial values
-    .data32 0 # TMP0
-    .data32 0 # PC
-    .data32 <%= conf.regs.asp %> # ASP
-    .data32 0 # TMP1
-    .data32 0 # TMP2
-    .data32 <%= conf.regs.amb0 %> # AMB0
-    .data32 0 # AMB1
-    .data32 0 # SPL
-    .data32 0xFFFFFFFF # SPH
-    .data32 0 # ASPL
-    .data32 0 # ASPH
-    # Main and fault entries
-    BR main_entry
-    .pma registers_end + 5
-    <% if (conf.faults.anyVM) { %>
-    BR fault_handler
+    $_PROGRAM_MEMORY_BASE = 0
+    .base $_PROGRAM_MEMORY_BASE
+    .data8 <%= gen.staticMemory.slice(0, REGISTERS_END).join(',') %>
+    BR $_main_entry
+    .pma <%= REGISTERS_END %> + 3
+    <% if (conf.faults.anyVmFault) { %>
+        BR $_fault_handler
+        .pma <%= REGISTERS_END %> + 6
+        .data8 <%= gen.staticMemory.slice(REGISTERS_END + 6).join(',') %>
+    <% } else { %>
+        .data8 <%= gen.staticMemory.slice(REGISTERS_END + 3).join(',') %>
     <% } %>
-    .pma registers_end + 8
-    # Slots area
-    slots_area_start = registers_end + 8
-    .data8 <%= conf.slots.memory.join(', ') %>
 <% } %>
 
+
+########################################################################
+#                         FAULT HANDLER ENTRY
+########################################################################
+
+
 .begin discardable
-fault_handler:
-READ32 TMP0
+.local skip_sp_restore
+$_fault_handler:
+# Reinitialize VM stack if fault code is 0 or 1 (stack overflow/underflow)
+READ32 GPR0
 UGT 1
 BRT skip_sp_restore
-CALL initialize_stack
-.local skip_sp_restore
+CALL $_initialize_stack
 skip_sp_restore:
-READ32 TMP0
-READ32 TMP1
-READ32 wasm_TMP3
-READ32 TMP2
-READ32 TMP2
-BR trivm_fault_handler
+# Put fault data into the stack, to call handler as usual function
+READ32 GPR0
+READ32 GPR1
+READ32 GPR3
+READ32 GPR2
+# Return address is after faulty instruction address to allow return when possible
+READ32 GPR2
+BR $_trivm_fault_handler
 .end
 
-
+# Make default $_trivm_fault_handler as a weak reference
 .begin discardable
-trivm_fault_handler_weak:
+$_trivm_fault_handler_weak:
 HOST -1
-BR trivm_fault_handler_weak
+BR $_trivm_fault_handler_weak
 .end
-
-.begin movable weak_symbols
+.begin movable $_weak_symbols
 .begin discardable
-trivm_fault_handler = trivm_fault_handler_weak
+$_trivm_fault_handler = $_trivm_fault_handler_weak
 .end
 .end
 
 
-main_entry:
-NEG -return_to_host
-READ32 TMP0
-<% if (conf.maxProgramSize <= 65536) { %>
-MUL 2
-READ16 [POP] + export_table + PROGRAM_MEMORY_BASE
+########################################################################
+#                    MAIN ENTRY AND STARTUP CODE
+########################################################################
+
+
+$_main_entry:
+.begin
+.local skip_global_startup
+.local skip_invalid_export
+READ8 $_global_startup_executed_flag
+BRT skip_global_startup
+# TODO: global startup code
+skip_global_startup:
+.end
+NEG -$_return_to_host
+<% if (conf.faults.wasmInvalidExport) { %>
+    READ32 GPR0
+    ULT <%= gen.exportFunctions.length %>
+    BRT skip_invalid_export
+    NEG -TRIWASM_FAULT_INVALID_EXPORT
+    BR __trigger_fault_with_code
+    skip_invalid_export:
+<% } %>
+READ32 GPR0
+<% if (conf.program.max <= U16_MAX_SIZE) { %>
+    MUL 2
+    READ16 [POP] + $_export_table + $_PROGRAM_MEMORY_BASE
 <% } else { %>
-MUL 4
-READ32 [POP] + export_table + PROGRAM_MEMORY_BASE
+    MUL 4
+    READ32 [POP] + $_export_table + $_PROGRAM_MEMORY_BASE
 <% } %>
 WRITE32 PC
-return_to_host:
+
+$_return_to_host:
 HOST -1
 
-export_table:
-<% if (conf.maxProgramSize <= 65536) { %>
-.data16 startup
-.data16 <%= conf.exportFunctionTable.map(f => f.name) %>
+$_export_table:
+<% if (conf.program.max <= U16_MAX_SIZE) { %>
+.data16 <%= gen.exportFunctions.map(f => f.name) %>
 <% } else { %>
-.data32 startup
-.data32 <%= conf.exportFunctionTable.map(f => f.name) %>
+.data32 <%= gen.exportFunctions.map(f => f.name) %>
 <% } %>
 
+
+<% /* %>
 
 # Configurations:
 # tableLengthSize - size (in bytes) of the table length field, 0, 2, or 4
@@ -213,42 +233,47 @@ __call_indirect_common:
     .begin discardable
     invalid_index:                          # ..., index, return_address, table_start
         READ32 [SP] - 4                     # ..., index, return_address, table_start, index
-        NEG -TRIVM_FAULT_WASM_TABLE_INDEX   # ..., index, return_address, table_start, index, fault_type
+        NEG -TRIWASM_FAULT_TABLE_INDEX   # ..., index, return_address, table_start, index, fault_type
         BR __trigger_fault_with_two_codes
     .end
 
     .begin discardable
     host_callback:      # params..., index, return_address, callback, callback_address
-        WRITE32 TMP0    # params..., index, return_address, callback
-        WRITE32 TMP1    # params..., index, return_address
+        WRITE32 GPR0    # params..., index, return_address, callback
+        WRITE32 GPR1    # params..., index, return_address
         WRITE32 [SP]    # params..., return_address
-        WRITE32 TMP1    # params...
+        WRITE32 GPR1    # params...
         HOST TRIVM_HOST_CALLBACK_IMPORT_ID
     .end
 .end
 
 .begin discardable
     __trigger_fault:
-    WRITE32 TMP0
-    WRITE32 TMP2
-    BR fault_handler
+    WRITE32 GPR0
+    WRITE32 GPR2
+    BR $_fault_handler
 .end
 
 .begin discardable
     __trigger_fault_with_code:
-    WRITE32 TMP0
-    WRITE32 TMP1
-    WRITE32 TMP2
-    BR fault_handler
+    WRITE32 GPR0
+    WRITE32 GPR1
+    WRITE32 GPR2
+    BR $_fault_handler
 .end
 
 .begin discardable
     __trigger_fault_with_two_codes:
-    WRITE32 TMP0
-    WRITE32 TMP1
-    WRITE32 wasm_TMP3
-    WRITE32 TMP2
-    BR fault_handler
+    WRITE32 GPR0
+    WRITE32 GPR1
+    WRITE32 GPR3
+    WRITE32 GPR2
+    BR $_fault_handler
+.end
+
+.begin discardable
+    __null_call:
+    BR __trigger_fault
 .end
 
 .begin discardable
@@ -264,13 +289,12 @@ softfloat_approxRecip_1k1s_table:
 .data16 0x6D3B, 0x64D4, 0x5D5C, 0x56B1, 0x50B6, 0x4B55, 0x4679, 0x4211,
 .end
 
+<% */ %>
+
 ########################################################################
 #                            WEAK SYMBOLS
 ########################################################################
 
-.place weak_symbols
+.place $_weak_symbols
 
-<%
-    return output.join('');
-}
-%>
+<% } %>

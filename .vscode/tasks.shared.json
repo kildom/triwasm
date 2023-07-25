@@ -1,0 +1,23 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "type": "npm",
+        "script": "build-triasm"
+      },
+      {
+        "type": "npm",
+        "script": "build-triwasm"
+      },
+      {
+        "type": "npm",
+        "script": "lint"
+      },
+      {
+        "type": "shell",
+        "label": "Update extension",
+        "command": "rm -R  ${extensionInstallFolder:kildom.trivm-triasm-syntax-vscode} && cp -fR devtools/vscode-extension ${extensionInstallFolder:kildom.trivm-triasm-syntax-vscode}",
+        "problemMatcher": []
+      }
+    ]
+  }

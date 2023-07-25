@@ -86,37 +86,32 @@
 * Tables:
   ```
   # Table structure:
-  #       u32 table_pointer     Anywhere in the memory, if exported/imported then in import-export slot
+  #     u32/16 table_pointer    Anywhere in the memory
   #             ^       |       Label: $_tableN_ptr
-  #             |       +---+   Can be removed if:
-  #             |           |    * not movable table
-  #             |           |    * not exported/imported
+  #             |       +---+   Can be removed if not movable table
+  #             |           |   Can be u16 if: small memory model (<= 64K)
   #             |           |
   #   u32/16 return_pointer |   Points back to the table pointer, needed for updating table pointers
   #                         |   during table grow.
-  #                         |   Can be removed if:
-  #                         |    * not movable table
-  #                         |   Can be u16 (globally) if:
-  #            +------------+    * all tables are not exported/imported
-  #            |                 * small memory model (<= 64K)
+  #            +------------+   Can be removed if: not movable table
+  #            |                Can be u16 (globally) if: small memory model (<= 64K)
   #            V
-  #  u32/16 length              Number of items in the table.
+  #  u32/16 length              Number of items in the table. Must be more than 0.
   #                             Label: $_tableN_start
+  #                             Can be u16 (globally) if: small memory model (<= 64K)
   #                             Can be removed (globally) if:
-  #                              * all tables are not exported/imported
   #                              * all tables are not growable
   #                              * table index faults are disabled
-  #                             Can be u16 (globally) if:
-  #                              * all tables are not exported/imported
-  #                              * small memory model (<= 64K)
   #
   #  u32/16 callbacks[]         Array of callbacks.
   #                             Highest bit indicates host callback if host callbacks are enabled.
   #                             Can be u16 (globally) if:
-  #                              * all tables are not exported/imported
   #                              * all tables are funcref
-  #                              * small program model (<= 32K)
+  #                              * small program model (<= 64K)
   #                              * host callbacks are disabled
+  #
+  #  u32/16 zero                Zero indicates end of all tables
+  #                             Can be removed if: all tables are not growable
   ```
 
 * Improved for big br_tables (if most of targets has UNWIND then this optimization is pointless):

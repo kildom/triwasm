@@ -37,6 +37,7 @@ struct trivm_instance
 	uint32_t asp;       /**< Auxilary stack pointer */
 	uint32_t tmp1;     /**< triVM Temporary register 1 */
 	uint32_t tmp2;     /**< triVM Temporary register 2 */
+	uint32_t tmp3;     /**< triVM Temporary register 3 */
 	uint32_t amb[2];
 	uint32_t spl; /**< Minimum value for stack if stack guard is enabled */
 	uint32_t sph; /**< Minimum value for stack if stack guard is enabled */

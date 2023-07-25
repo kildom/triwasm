@@ -5,7 +5,7 @@
 			"include": "#comment"
 		},
 		{
-			"begin": "^\\s*([A-Za-z0-9_\\.]+)\\s*:\\s*",
+			"begin": "^\\s*([A-Za-z0-9_\\.\\$]+)\\s*:\\s*",
 			"end": "$",
 			"beginCaptures": {
 				"1": {
@@ -29,7 +29,7 @@
 			]
 		},
 		{
-			"begin": "^\\s*([A-Za-z0-9_\\.]+)\\s*(=)\\s*",
+			"begin": "^\\s*([A-Za-z0-9_\\.\\$]+)\\s*(=)\\s*",
 			"end": "$",
 			"beginCaptures": {
 				"1": {
@@ -124,7 +124,7 @@
 					"name": "constant.numeric.dec"
 				},
 				{
-					"match": "TMP[0-2]|PC|ASP[LH]?|AMB[01]|SP[LH]",
+					"match": "GPR[0-3]|PC|ASP[LH]?|AMB[01]|SP[LH]",
 					"name": "constant.language"
 				},
 				{

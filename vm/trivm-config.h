@@ -8,7 +8,7 @@
 #define TRIVM_EXT_FLOAT64 1
 
 #define TRIVM_ENABLE_STDLIB 1
-#define TRIVM_ENABLE_ROM 0
+#define TRIVM_ENABLE_ROM 1
 
 #define TRIVM_ENABLE_ALL_FAULTS 1
 
@@ -25,7 +25,7 @@
 /* triVM interface:
  *      export function[0] void startup();
  *      export function[1] i32 main(i32 argc, i32 argv);
- *      export table[2] funcref env.funcs; # This is a comment
+ *      export table[2] funcref funcs; # This is a comment
  *
  *      import function[0] void env.puts(i32 text, i32 length);
  *      import function[1] i32 env.input(i32 buffer, i32 size);
@@ -33,10 +33,10 @@
  *
  *      export global[0] i32 env.some_global;
  * 
- * import function[2990] regcall ( i32 ,  i32  )  table_get(i32 op, i32 index);
- * export function[2] regcall () table_set(i32 opet, i32 index, i32 value);
- * import function[2] regcall (i32 err , i32 size) table_size(i32 opize);
- * export function[2] regcall i32 table_grow(i32 oprow, i32 new_length, i32 fill_value);
+ * import function[2990] regcall ( i32 ,  i32  )  env.table_get(i32 op, i32 index);
+ * export function[9] regcall () table_set(i32 opet, i32 index, i32 value);
+ * import function[8] regcall (i32 err , i32 size) env.table_size(i32 opize);
+ * export function[7] regcall i32 table_grow(i32 oprow, i32 new_length, i32 fill_value);
  */
 
 

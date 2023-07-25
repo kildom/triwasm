@@ -1,0 +1,10 @@
+{
+	"recommendations": [
+		"streetsidesoftware.code-spell-checker",
+		"dbaeumer.vscode-eslint",
+		"gruntfuggly.todo-tree",
+		"swellaby.workspace-config-plus",
+		"hediet.vscode-drawio",
+		"kildom.trivm-triasm-syntax-vscode"
+	]
+}

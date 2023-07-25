@@ -2,6 +2,15 @@
 
 export const allowTemporaryNull: unknown = null;
 
+export const U16_MAX_VALUE = 0xFFFF;
+export const S16_MIN_VALUE = -0x8000;
+export const S16_MAX_VALUE = 0x7FFF;
+
+export const U16_MAX_SIZE = 0x10000;
+export const S16_MAX_SIZE = 0x08000;
+
+export const REGISTERS_END = 4 * 12;
+
 export class ObjMarker {
     private sym: symbol;
     public constructor(id: string) {

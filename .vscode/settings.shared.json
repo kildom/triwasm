@@ -1,0 +1,40 @@
+{
+    "eslint.format.enable": true,
+    "javascript.format.semicolons": "insert",
+    "typescript.format.semicolons": "insert",
+    "javascript.format.indentSwitchCase": false,
+    "typescript.format.indentSwitchCase": false,
+    "editor.rulers": [
+        120, 130
+    ],
+    "todo-tree.general.tags": [
+        "TODOv5",
+        "TODOv4",
+        "TODOv3",
+        "TODOv2",
+        "TODOv1",
+        "TODO"
+    ],
+    "todo-tree.highlights.backgroundColourScheme": [
+        "green",
+        "green",
+        "green",
+        "green",
+        "red",
+        "red"
+    ],
+    "todo-tree.highlights.foregroundColourScheme": [
+        "white",
+        "white",
+        "white",
+        "white",
+        "white",
+        "white"
+    ],
+    "todo-tree.highlights.useColourScheme": true,
+    "todo-tree.filtering.excludeGlobs": [
+      "**/node_modules/*/**",
+      "**/__old*/**",
+      "**/test/wasm/testsuite/repo/**"
+    ]
+}
