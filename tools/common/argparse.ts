@@ -13,28 +13,43 @@
  */
 
 import { platform } from './platform';
+import { Path } from './path';
+import { versionString } from './version';
 
 
 /** Regular expression for parsing options from usage text.
- *
- * ```text
- * Argument types:
- *     -x     short option: name = group 2
- *     --out  long option:  name = group 3
- *            positional:   groups 2, 3 empty
- * Filter:
- *     group 4 if exists
- * Count:
- *     min = group 5 if exists
- *     max = group 6 prefixed by '-'
- *     max = inf. if group 6 == '-'
- * Tag:
- *     tag = group 7
- *                   (------------1--------------) (-----------------) (-------------------------) (----------------------)
- *                     (---2----)   (-----3-----)      (------4-----)       (---5--)(---6----)              (----7------)
- * ```
  */
-const usageArgRe = /^(-([a-z0-9])|--([a-z0-9_-]+))?(?::(!?[a-z0-9_]+))?(?:\[([0-9]+)(-?[0-9]*)?\])?(?:[ =]?<([a-z0-9_-]+)>)?$/i;
+class UsageArgReMatch {
+    shortName?: string = ''; //---)
+    longName?: string = ''; //    |     (-----------)
+    fastFilter?: string = ''; //  |     |           |          (-)
+    filterName?: string = ''; //  |     |           |          | | (---)
+    minCount?: string = ''; //    |     |           |          | | |   |         (---)
+    hasRange?: string = ''; //    |     |           |          | | |   |         |   |   (-)
+    maxCount?: string = ''; //    |     |           |          | | |   |         |   |   | |(---)
+    valueName: string = ''; //    |     |           |          | | |   |         |   |   | ||   |         (---)
+    defaultValue?: string = ''; //|     |           |          | | |   |         |   |   | ||   |         |   |           (--)
+    //                   |        |     |           |          | | |   |         |   |   | ||   |         |   |           |  |
+}
+const usageArgRe = /^(?:-([a-z0-9]) *|--([a-z0-9_-]+) *)?(?:: *(!)?(\w+) *)?(?:\[(\d+)(?:(-)(\d+)?)?\] *)?(.*?)(?:(?<!\\)=(.*))?$/i;
+
+export function matchToObject<T>(type: { new(): T }, match: RegExpMatchArray | null): T | null;
+export function matchToObject<T>(type: { new(): T }, match: RegExpMatchArray | null, notNull: true): T;
+export function matchToObject<T>(type: { new(): T }, match: RegExpMatchArray | null, notNull: false): T | null;
+export function matchToObject<T>(type: { new(): T }, match: RegExpMatchArray | null, notNull: boolean = false): T | null {
+    if (match === null) {
+        if (notNull) {
+            throw new Error('Internal error!');
+        }
+        return null;
+    }
+    let res = new type();
+    let i = 1;
+    for (let name in res) {
+        (res as any)[name] = match[i++];
+    }
+    return res;
+}
 
 
 /** Type of the option.
@@ -56,35 +71,36 @@ export enum OptionType {
  * @param parser  The parser object.
  * @returns       Transformed argument value.
  */
-export type FilterFunction = (arg: any, option: Option, parser: ArgsParser) => any;
+export type FilterFunction = (arg: any, option: Option, parser: ArgsParser<unknown>) => any;
+export type PostProcessFunction<T> = (result: T, parser: ArgsParser<T>) => any;
 
 
 /** Represents a single command line option.
  * @remarks Aliased options are grouped into one {@link OptionsGroup}, e.g.
  * `-o` and `--output`.
  */
-export interface Option {
+export interface OptionAlias {
     /** Option type. */
     type: OptionType;
     /** Name of the option with dashes if needed, e.g. `-o`, `--output` or `file`. */
     name: string;
-    /** If the option expects value, it contains tag to print in the usage. */
-    tag: string | null;
     /** Group of options that this option belongs to. */
-    group: OptionsGroup;
+    option: Option;
 }
 
 
 /** Group of aliased options.
  * @remarks Each group will produce one field after command line parsing.
  */
-export class OptionsGroup {
+export class Option {
     /** Array of options in this group. */
-    public options: Option[] = [];
+    public aliases: OptionAlias[] = [];
     /** Name of the group. The output field will have the same name, e.g. `--output-file` will generate field `outputField`. */
     public name: string = '';
     /** Name of this group that should be displayed to the user. It is the last option name. */
     public displayName: string = '';
+    /** Name of this value. */
+    public valueName: string = '';
     /** `true` if this option expects value. */
     public hasValue: boolean = false;
     /** `true` if this option will generate an array output. */
@@ -93,9 +109,10 @@ export class OptionsGroup {
     public minCount: number = 0;
     /** Maximum number of options in command line. */
     public maxCount: number = 0;
+    public defaultValue: string | null = null;
     /** Filter function. It will be called just before assigning the value to the output field. */
     public filter: FilterFunction | null = null;
-    /** Filter function. It will be called just before assigning the value to the output field. */
+    /** Apply filter function immediately, before parsing more following options. */
     public filterEarly: boolean = false;
     /** Help text, one line per array item. Common indentation is removed. */
     public help: string[] = [];
@@ -114,391 +131,370 @@ export class ArgsParserError extends Error {
 
 /** Standard argument filters.
  */
-const stdFilters = {
-    help: (arg: any, option: Option, parser: ArgsParser) => {
+const builtinFilters = {
+    help: (arg: any, option: Option, parser: ArgsParser<unknown>) => {
         parser.printUsage();
         platform.exit(0);
+    },
+    ver: () => {
+        console.log(versionString);
+        platform.exit(0);
+    },
+    int: (arg: any) => {
+        if (arg === undefined) return undefined;
+        let text = ('' + arg).trim();
+        let m: RegExpMatchArray | null;
+        m = text.match(/^(?:-?[0-9]+|-?0x[0-9a-f]+)$/i);
+        if (m) {
+            return parseInt(m[0]);
+        }
+        throw new ArgsParserError(`Invalid integer: ${arg}`);
+    },
+    size: (arg: any) => {
+        if (arg === undefined) return undefined;
+        let mul = 1;
+        let text = ('' + arg).trim();
+        let m: RegExpMatchArray | null;
+        if ((m = text.match(/^(.+)K(b|byte|bytes|)$/i))) {
+            mul = 1024;
+            text = m[1];
+        } else if ((m = text.match(/^(.+)M(b|byte|bytes|)$/i))) {
+            mul = 1024 * 1024;
+            text = m[1];
+        } else if ((m = text.match(/^(.+)G(b|byte|bytes|)$/i))) {
+            mul = 1024 * 1024 * 1024;
+            text = m[1];
+        } else if ((m = text.match(/^(-?[0-9]+)\s*(b|byte|bytes|)$/i))) {
+            mul = 1;
+            text = m[1];
+        } else if ((m = text.match(/^(-?0x[0-9a-f]+)\s*(byte|bytes|)$/i))) {
+            mul = 1;
+            text = m[1];
+        } else if ((m = text.match(/^(.+)Kbits?$/i))) {
+            mul = 1024 / 8;
+            text = m[1];
+        } else if ((m = text.match(/^(.+)Mbits?$/i))) {
+            mul = 1024 * 1024 / 8;
+            text = m[1];
+        } else if ((m = text.match(/^(.+)Gbits?$/i))) {
+            mul = 1024 * 1024 * 1024 / 8;
+            text = m[1];
+        } else if ((m = text.match(/^(.+)bits?$/i))) {
+            let bits = builtinFilters.int(text) as number;
+            if (bits & 7) {
+                throw new ArgsParserError(`Expecting multiple of 8 in bits size.`);
+            }
+            return bits / 8;
+        }
+        let value = builtinFilters.int(text) as number;
+        return mul * value;
+    },
+    Path: (arg: any) => {
+        if (arg === undefined) return undefined;
+        return new Path('' + arg);
     }
 };
 
+type ParseArrays = { [name: string]: { option: Option, values: string[] } };
 
-/** Command line arguments parser class.
- * @remarks
- * Expected arguments are taken from the `usage` constructor parameter.
- *
- * Example of usage string:
- *
- * ```text
- * Usage: your-program [--help] [-o <file>] <input-file>
- *
- * This is some summary of your tool.
- *
- * -o <file>
- * --output=<file>
- *      Output file.
- *
- * <input-file>
- *      Input file.
- *
- * --help:help
- *      Show this help text.
- * ```
- *
- * Format of the usage is following:
- * ```text
- * header-text
- * option-alias
- * option-alias
- * ...
- * option
- *      option-description
- * option-alias
- * option-alias
- * ...
- * option
- *      option-description
- * ...
- * ```
- *
- * Where:
- *  * `header-text` and `option-description` are multiline strings. Line cannot start
- *    with `-`, `<`, `:`, `=` or `[`.
- *  * `option` contains following parts:
- *    * Option name starting with `-` or `--`. Short options can only have one letter or digit as a name.
- *      Long options can have letters, digits, `_` and `-`, e.g. `-o`, `--output-file`.
- *      Positional options does not have this part.
- *    * Optional filter name prefixed with `:`, e.g. `:int`. This can be build-in filter or user
- *      defined filter.
- *    * Optional allowed number of options that can be in the command line surrounded by the `[ ]`.
- *      Single number allows exact number of options, e.g. `[2]`. This can also ba range, e.g. `[0-1]`.
- *      Omit second number to get unlimited range, e.g. `[1-]`.
- *    * A value tag surrounded by the `< >`, if option expects a value. Can be also prefixed by space
- *      or `=`.
- *  * `option-alias` contains the same parts as `option` except filter and range.
- */
-export class ArgsParser {
 
-    /** Map of all short and long options. */
-    private options: { [k: string]: Option } = {};
-    /** Array of all positional options ordered as in the command line. */
-    private posOptions: Option[] = [];
-    /** Array of all option groups. */
-    private groups: OptionsGroup[] = [];
-    /** Usage message that will be printed before list of options. */
-    private usage: string[] = [];
-    /** Current positional argument index (in {@link posOptions} array) used during command line parsing. */
-    private posOptionIndex: number = 0;
+export class ArgsParser<T> {
 
-    /** Creates new parser.
-     * @param usage   Usage text to parse. See {@link ArgsParser}.
-     * @param filters Map of user defined option filters.
-     */
-    public constructor(usage: string, filters?: { [k: string]: FilterFunction }) {
-        this.parseUsage(usage, filters);
+    header: string[] = [];
+    filters: { [name: string]: FilterFunction };
+    options: Option[] = [];
+    shortOptions = new Map<string, Option>();
+    longOptions = new Map<string, Option>();
+    posOptions: Option[] = [];
+
+    public constructor(
+        usage: string,
+        filters?: { [name: string]: FilterFunction },
+        private postProcess?: PostProcessFunction<T>
+    ) {
+        this.filters = { ...builtinFilters, ...filters };
+        this.parseUsage(usage);
     }
 
-    /** Parse usage string and prepare this object for parsing command line arguments.
-     * @param usage   Usage text to parse. See {@link ArgsParser}.
-     * @param filters Map of user defined option filters.
-     */
-    private parseUsage(usage: string, filters?: { [k: string]: FilterFunction }) {
-        // Merge user-defined and standard filters
-        filters = { ...stdFilters, ...(filters || {}) };
-        // Prepare lines
+    parseUsage(usage: string) {
+        let currentHelpOutput = this.header;
+        let currentOption: Option | null = null;
         let lines = usage.split('\n')
             .map(x => x.trimEnd())
             .filter((x, i, arr) => x != '' || (i != 0 && arr[i - 1] != ''));
-        // Remove common prefix
-        lines = this.removeCommonIndent(lines);
-        // Parse line by line
-        let group = new OptionsGroup();
         for (let line of lines) {
-            // Match line with option regular expression
-            let m = line.match(usageArgRe);
-            // If it is not an option, assume that it is help
-            if (!line || !m) {
-                group.help.push(line);
+
+            let m = matchToObject(UsageArgReMatch, line.match(usageArgRe));
+
+            if (m === null || !line.trim() || line.match(/^\s/)) {
+                currentHelpOutput.push(line);
+                currentOption = null;
                 continue;
             }
-            // Try to add recent group to this object and prepare new one
-            group = this.addGroup(group);
-            // Create option object
-            let name = m[1] || m[7];
-            let tag = m[7] || null;
-            let type = !m[1] ? OptionType.POSITIONAL : m[2] ? OptionType.SHORT : OptionType.LONG;
-            let option = { type, name, tag, group };
-            // Update group with information from recently parsed option
-            group.options.push(option);
-            group.name = name
-                .replace(/^--?/, '')
-                .replace(/-([a-z0-9])/gi, (_, x: string) => x.toUpperCase())
-                .replace(/^([0-9])/, '_$1');
-            group.displayName = name;
-            group.hasValue = tag !== null;
-            group.minCount = type == OptionType.POSITIONAL ? 1 : 0;
-            group.maxCount = group.hasValue ? 1 : Infinity;
-            if (m[5]) {
-                group.minCount = parseInt(m[5]);
-                group.maxCount = group.minCount;
-                if (m[6] == '-') {
-                    group.maxCount = Infinity;
-                } else if (m[6]) {
-                    group.maxCount = -parseInt(m[6]);
+
+            if (currentOption === null) {
+                currentOption = new Option();
+                this.options.push(currentOption);
+                currentHelpOutput = currentOption.help;
+            }
+
+            if (m.shortName) {
+                currentOption.aliases.push({
+                    name: m.shortName.trim(),
+                    type: OptionType.SHORT,
+                    option: currentOption,
+                });
+                this.shortOptions.set(m.shortName.trim(), currentOption);
+            } else if (m.longName) {
+                currentOption.aliases.push({
+                    name: m.longName.trim(),
+                    type: OptionType.LONG,
+                    option: currentOption,
+                });
+                this.longOptions.set('--' + m.longName.trim().toLowerCase(), currentOption);
+            } else {
+                currentOption.aliases.push({
+                    name: m.valueName.trim(),
+                    type: OptionType.POSITIONAL,
+                    option: currentOption,
+                });
+                if (this.posOptions.at(-1) !== currentOption) {
+                    this.posOptions.push(currentOption);
                 }
             }
-            group.arrayValue = group.hasValue && group.maxCount > 1;
-            if (m[4]) {
-                let filterName = m[4];
-                if (filterName.startsWith('!')) {
-                    group.filterEarly = true;
-                    filterName = filterName.substring(1);
-                }
-                group.filter = filters ? filters[filterName] : null;
-                if (!group.filter) {
-                    throw new Error(`Unknown filter "${filterName}"`);
+            /*
+             * group 1: short option
+             * group 2: long option
+             * group 3: "!" for fast filters
+             * group 4: filter name
+             * group 5: minimum count
+             * group 6: "-" if count contains range
+             * group 7: maximum count
+             * group 8: value name
+             * group 9: default value
+             */
+            if (m.filterName) {
+                currentOption.filter = this.filters[m.filterName];
+                currentOption.filterEarly = !!m.fastFilter;
+            } else {
+                currentOption.filter = null;
+                currentOption.filterEarly = false;
+            }
+            currentOption.hasValue = !!m.valueName;
+            currentOption.valueName = (m.valueName || '').replace(/\\=/g, '=');
+            if (m.minCount) {
+                currentOption.minCount = parseInt(m.minCount);
+                if (m.hasRange) {
+                    if (m.maxCount) {
+                        currentOption.maxCount = parseInt(m.maxCount);
+                    } else {
+                        currentOption.maxCount = Number.POSITIVE_INFINITY;
+                    }
+                } else {
+                    currentOption.maxCount = currentOption.minCount;
                 }
             } else {
-                group.filter = null;
+                currentOption.minCount = 0;
+                currentOption.maxCount = 1;
             }
-            // Add option to this object
-            if (type == OptionType.POSITIONAL) {
-                this.posOptions.push(option);
-            } else {
-                this.options[name] = option;
+            currentOption.arrayValue = currentOption.maxCount > 1;
+            currentOption.defaultValue = m.defaultValue?.trim() ? m.defaultValue.trim() : null;
+            switch (currentOption.aliases.at(-1)!.type) {
+                case OptionType.SHORT: currentOption.displayName = '-'; break;
+                case OptionType.LONG: currentOption.displayName = '--'; break;
+                case OptionType.POSITIONAL: currentOption.displayName = ''; break;
+            }
+            currentOption.displayName += currentOption.aliases.at(-1)!.name;
+            currentOption.name = currentOption.displayName
+                .replace(/[^a-z0-9]/gi, ' ')
+                .trim()
+                .toLowerCase()
+                .replace(/\s+[a-z]/gi, (x: string) => x.trim().toUpperCase());
+        }
+    }
+
+    private printHelpLines(lines: string[], indent: string = '') {
+        let common = 10000;
+        for (let line of lines) {
+            let m = line.match(/^\s*/);
+            if (line.trim() && m) {
+                common = Math.min(m[0].length, common);
             }
         }
-        // Add last group to this object
-        this.addGroup(group);
-    }
-
-    /** Add group to {@link groups} if it is finished.
-     * @remarks If group has no options, its help is appended to {@link usage} and
-     * returns a new empty group.
-     * @param group Group to add
-     * @returns     New empty group or the same group if it is not finished yet.
-     */
-    private addGroup(group: OptionsGroup): OptionsGroup {
-        if (group.help.length == 0)
-            return group;
-
-        group.help = this.removeCommonIndent(group.help);
-
-        if (group.options.length == 0) {
-            this.usage = group.help;
-            return new OptionsGroup();
+        let output = '';
+        for (let line of lines) {
+            output += line.substring(common).trimEnd() + '\n';
         }
-
-        this.groups.push(group);
-
-        return new OptionsGroup();
+        console.log(indent + output
+            .trimEnd()
+            .replace(/\n/g, '\n' + indent));
     }
 
-    /** Removes indentation that is common for each line (except empty lines) and
-     * removes empty lines from the beginning and ending of the text.
-     * @param lines array of lines
-     * @returns     a new array of lines
-     */
-    private removeCommonIndent(lines: string[]) {
-        let indents = lines
-            .filter(x => x.trim())
-            .map(x => (x.match(/^[\t ]*/) || [''])[0]);
-        let common = indents[0] || '';
-        for (let indent of indents)
-            while (!indent.startsWith(common))
-                common = common.substring(0, common.length - 1);
-        lines = lines.map(x => x.substring(common.length));
-        while (lines.length && lines[0].trim() == '')
-            lines.shift();
-        while (lines.length && lines[lines.length - 1].trim() == '')
-            lines.pop();
-        return lines;
-    }
-
-    /** Print usage information.
-     * @remarks Can be done automatically with the `help` filter.
-     */
     public printUsage() {
-        console.log(this.usage.join('\n'));
         console.log();
-        for (let group of this.groups) {
-            for (let option of group.options) {
+        this.printHelpLines(this.header);
+        console.log();
+        for (let option of this.options) {
+            for (let alias of option.aliases) {
                 let text: string;
-                switch (option.type) {
-                case OptionType.POSITIONAL:
-                    text = '';
-                    break;
-                case OptionType.SHORT:
-                    text = `${option.name} `;
-                    break;
-                case OptionType.LONG:
-                    text = `${option.name}=`;
-                    break;
+                switch (alias.type) {
+                    case OptionType.POSITIONAL:
+                        text = ' ';
+                        break;
+                    case OptionType.SHORT:
+                        text = `-${alias.name} `;
+                        break;
+                    case OptionType.LONG:
+                        text = `--${alias.name} `;
+                        break;
                 }
-                if (option.tag) {
-                    text += `<${option.tag}>`;
+                if (option.hasValue) {
+                    text += option.valueName;
                 } else {
                     text = text.substring(0, text.length - 1);
                 }
-                console.log(text);
+                console.log(text.trim());
             }
-            console.log('        ' + group.help.join('\n        '));
+            this.printHelpLines(option.help, '    ');
             console.log();
+            //console.dir(this, {depth: null});
         }
     }
 
-    /** Parse command line parameters.
-     *
-     * @param output Output object where output fields will be saved. If not provided or `null`,
-     *               new object will be created.
-     * @param args   Command line arguments. Program name is not included,
-     *               so the actual arguments starts at index 0. If not provided, current process
-     *               arguments will be taken.
-     * @returns      The output object.
-     */
-    public parse(output?: { [k: string]: any } | null, args?: string[]) {
-        output = output || {};
-        let container: { [k: string]: any } = {};
-        this.posOptionIndex = 0;
-        try {
-            args = args || platform.getArgv();
-            for (let i = 0; i < args.length; i++) {
-                let arg: string = args[i];
-                if (arg == '--') {
-                    for (i = i + 1; i < args.length; i++)
-                        this.parsePositionalArg(container, args[i]);
-                } else if (arg == '-') {
-                    this.parsePositionalArg(container, arg);
-                } else if (arg.startsWith('--')) {
-                    if (this.parseOptionalArg(container, arg, args[i + 1]))
-                        i++;
-                } else if (arg.startsWith('-')) {
-                    let strLast = arg.length - 1;
-                    for (let k = 1; k < strLast; k++)
-                        this.parseOptionalArg(container, `-${arg[k]}`, undefined);
-                    if (this.parseOptionalArg(container, `-${arg[strLast]}`, args[i + 1]))
-                        i++;
+    private parseToArrays(args?: string[]): ParseArrays {
+        args = args || platform.getArgv();
+        let result: ParseArrays = Object.fromEntries(this.options.map(option => [option.name, { option, values: [] }]));
+        let posIndex = 0;
+        let posCount = 0;
+        let argChar = 0;
+        let index = 0;
+        let onlyPos = false;
+        while (index < args.length) {
+            // skip already parsed characters in packed short options
+            let arg = args[index].substring(argChar);
+            // determine current option
+            let option: Option | undefined = undefined;
+            let optionName: string;
+            if (argChar > 0) {
+                // this is next character of packed short options, skip it and get value from the rest of the argument
+                option = this.shortOptions.get(arg[0]);
+                optionName = '-' + arg[0];
+                argChar++;
+                arg = arg.substring(1);
+                // go to next argument if there is no more characters in this packed short options
+                if (arg === '') {
+                    index++;
+                    arg = args[index];
+                    argChar = 0;
+                }
+            } else if (!onlyPos && arg.startsWith('--')) {
+                if (arg.length > 2) {
+                    // long option and use next argument
+                    optionName = arg.toLocaleLowerCase();
+                    let pos = optionName.indexOf('=');
+                    if (pos > 0) {
+                        optionName = optionName.substring(0, pos);
+                        arg = arg.substring(pos + 1);
+                    } else {
+                        index++;
+                        arg = args[index];
+                    }
+                    option = this.longOptions.get(optionName);
                 } else {
-                    this.parsePositionalArg(container, arg);
+                    // "--" indicates start of positional-only arguments in command line, continue with next argument
+                    onlyPos = true;
+                    index++;
+                    continue;
+                }
+            } else if (!onlyPos && arg.startsWith('-') && arg.length > 1) {
+                // this is start of packed short options, continue with this argument, but start with next character
+                argChar = 1;
+                continue;
+            } else {
+                // this is positional argument
+                option = this.posOptions[posIndex];
+                posCount++;
+                if (option && posCount > option.maxCount) {
+                    posIndex++;
+                    posCount = 0;
+                    option = this.posOptions[posIndex];
+                }
+                optionName = 'Too many positional arguments';
+            }
+
+            // Detect invalid options
+            if (option === undefined) {
+                throw new ArgsParserError(`Unknown or invalid option: ${optionName}`);
+            }
+
+            // Get value from next argument if needed
+            let value: string = '';
+            if (option.hasValue) {
+                if (arg === undefined) {
+                    throw new ArgsParserError(`Expecting argument after: ${optionName}`);
+                }
+                value = arg;
+                index++;
+                argChar = 0;
+            }
+
+            // Apply early filters
+            if (option.filterEarly && option.filter) {
+                value = option.filter(value, option, this as ArgsParser<unknown>);
+            }
+
+            // Push value to this option
+            result[option.name].values.push(value);
+        }
+        return result;
+    }
+
+    private arraysToOutput(output: any, arrays: ParseArrays) {
+        for (let { option, values } of Object.values(arrays)) {
+            if (values.length == 0 && option.defaultValue !== null && option.minCount <= 1) {
+                values.push(option.defaultValue);
+            } else if (values.length < option.minCount) {
+                throw new ArgsParserError(`Expected more arguments for ${option.displayName}`);
+            } else if (values.length > option.maxCount) {
+                throw new ArgsParserError(`Too many arguments for ${option.displayName}`);
+            }
+            let result: any;
+            if (option.arrayValue) {
+                result = option.hasValue ? values : values.length;
+            } else {
+                result = option.hasValue ? values[0] : (values.length > 0);
+            }
+            if (option.filter && !option.filterEarly) {
+                if (typeof (result) == 'object') {
+                    result = result.map((x: any) => option.filter!(x, option, this as ArgsParser<unknown>));
+                } else {
+                    result = option.filter(result, option, this as ArgsParser<unknown>);
                 }
             }
-            for (let group of this.groups) {
-                let value = container[group.name] || [];
-                if (value.length < group.minCount) {
-                    throw new ArgsParserError(`Argument "${group.displayName}" must be provided at least ` +
-                        `${group.minCount} time(s).`);
-                } else if (value.length > group.maxCount) {
-                    throw new ArgsParserError(`Argument "${group.displayName}" must be provided at most ` +
-                        `${group.minCount} time(s).`);
-                }
-                if (group.hasValue) {
-                    if (!group.arrayValue) {
-                        if (value.length > 0) {
-                            value = value[0];
-                        } else {
-                            value = output[group.name];
-                        }
-                    } else {
-                        if (value.length == 0 && output[group.name] !== undefined) {
-                            value = output[group.name];
-                        }
-                    }
-                } else {
-                    value = value.length;
-                }
-                if (group.filter && !group.filterEarly) {
-                    value = group.filter(value, group.options[group.options.length - 1], this);
-                }
-                output[group.name] = value;
+            output[option.name] = result;
+        }
+    }
+
+    parse(output: T, args?: string[]) {
+        try {
+            let arrays = this.parseToArrays(args);
+            this.arraysToOutput(output as any, arrays);
+            if (this.postProcess) {
+                this.postProcess(output, this);
             }
         } catch (ex: unknown) {
             if (ex instanceof ArgsParserError) {
-                let msg = ex.message;
-                console.error(msg);
+                console.error(ex.message);
                 console.error();
                 this.printUsage();
                 platform.exit(99);
             }
             throw ex;
         }
-        return container;
     }
+}
 
-    /** Parse optional command line argument.
-     * @param container Output object.
-     * @param arg       Argument to interpret.
-     * @param nextArg   Next argument after current one or `undefined` if there is no more arguments.
-     * @returns         `true` if the next argument was used.
-     */
-    private parseOptionalArg(container: { [k: string]: any }, arg: string, nextArg?: string): boolean {
-        let nextArgUsed = false;
-        let option: Option;
-        let splitPos = arg.indexOf('=');
-        if (splitPos > 0) {
-            option = this.options[arg.substring(0, splitPos)];
-        } else {
-            option = this.options[arg];
-        }
-        if (!option) {
-            throw new ArgsParserError(`Unknown option "${arg}".`);
-        }
-        let group = option.group;
-        let value: any = null;
-        if (group.hasValue) {
-            if (splitPos > 0) {
-                value = arg.substring(splitPos + 1);
-            } else {
-                value = nextArg;
-                nextArgUsed = true;
-            }
-            if (value === undefined)
-                throw new ArgsParserError(`Option "${option.name}" requires an argument.`);
-        }
-        if (!(group.name in container)) {
-            container[group.name] = [];
-        }
-        if (group.filter && group.filterEarly) {
-            value = group.filter(value, group.options[group.options.length - 1], this);
-        }
-        container[group.name].push(value);
-        return nextArgUsed;
-    }
-
-    /** Parse positional command line argument.
-     * @remarks The {@link posOptionIndex} will track next positional option to use.
-     * @param container Output object.
-     * @param arg       Argument to interpret.
-     */
-    private parsePositionalArg(container: { [k: string]: any }, arg: string) {
-        if (this.posOptionIndex >= this.posOptions.length) {
-            throw new ArgsParserError('Too many arguments.');
-        }
-        let option = this.posOptions[this.posOptionIndex];
-        let group = option.group;
-        if (!(group.name in container)) {
-            container[group.name] = [];
-        }
-        if (group.filter && group.filterEarly) {
-            arg = group.filter(arg, group.options[group.options.length - 1], this);
-        }
-        container[group.name].push(arg);
-        if (container[group.name].length >= group.maxCount) {
-            this.posOptionIndex++;
-        }
-    }
-
-    /** Do parsing in one step.
-     * @remarks First, {@link ArgsParser} object is created. Next, it is used to parse command
-     * line arguments. Finally, the result is returned.
-     * @param usage   See {@link constructor}.
-     * @param output  See {@link (parse:instance)}.
-     * @param filters See {@link constructor}.
-     * @param args    See {@link (parse:instance)}.
-     * @returns       See {@link (parse:instance)}.
-     */
-    public static parse(usage: string, output?: { [k: string]: any } | null, filters?: { [k: string]: FilterFunction },
-                        args?: string[]) {
-        let a = new ArgsParser(usage, filters);
-        return a.parse(output, args);
-    }
-
+export function parse<T>(usage: string, output: T, filters?: { [name: string]: FilterFunction }, postProcess?: PostProcessFunction<T>, args?: string[]) {
+    let a = new ArgsParser(usage, filters, postProcess);
+    return a.parse(output, args);
 }
