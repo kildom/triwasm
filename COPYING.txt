@@ -23,5 +23,5 @@ BSD 3-Clause License
 GNU General Public License v3.0
     - tools that are intended to be run by the developers during development process,
       e.g. triWASM compiler, configuration tools
-    - utility scripts, e.g. used during building
+    - utility scripts, e.g. used during building. TODO: Some scripts use third party modules that can be incompatible with GPL.
     - tests
