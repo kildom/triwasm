@@ -61,6 +61,56 @@
     allows all licenses. Example: --allow-licenses=Berkeley-SoftFloat
     `--show-licenses` will show list of declared and used licenses.
 
+* Problem with read-only data:
+  * Read-only data is always copied from program to RAM (wasm memory) even if they already in the RAM.
+  * Possible solutions (for clang, other languages may need a different approach):
+    * Create special function that will be translated to ROM memory and function that returns pointer to that memory.
+      * *+* Everything in one program,
+      * *+* Can access consts from other places,
+      * *+* If function is unused it will be removed
+      * *-* Need to use magic macros to create such function
+      * *-* Hard to initialize structures
+      * *-* `sizeof` will not work
+      * *-* Pointer to such memory cannot be used as contant
+    * Compile seperate module. Its memory content will become read-only memory. Symbols will be exported.
+      * *+* Simpler to initialize structures
+      * *+* Uses standard C/C++ syntax
+      * *+* Can access read-only symbols from this module
+      * *+* Can be access as const from this module
+      * *-* Cannot access anything from outsite this module
+      * *-* Additional build step for the user
+      * *-* Unused symbols cannot be garbage collected
+    * Wait for multiple memory implementation in llvm/clang
+      * https://github.com/WebAssembly/multi-memory/issues/31
+      * https://github.com/AssemblyScript/assemblyscript/issues/2716
+      * https://github.com/WebAssembly/multi-memory/issues/45
+    * Create patched llvm/clang:
+      * Put `.rodata` segment to passive Wasm segment.
+      * Set virtual memory address of that segment to some special value, e.g. 0x80000000.
+        Should be configurable to allow smaller offsets for small memory model, e.g. mem (from wasm pov) == 64K, rodata_offset == 0x10000 (makes sense if `AMB0B` implemented).
+      * Create special function (or passive data segment) that tells address and size of each segment if multiple `.rodata` segments.
+      * triVM core must extend `AMB` registers, for example:
+        * `AMB0L` - maps 0-X offsets to one region
+        * `AMB0H` - maps X-4G offsets to second region
+        * if it makes significant difference: `AMB0B` wich decides how big is first region `base = offset < AMB0B ? AMB0L : AMB0H; offset = offset < AMB0B ? offset : offset - AMB0B`
+        * read/write instructions still use `AMB0`, offset value highest bit decides which region to use
+      * *+* Not visible to the user in code
+      * *+* No limitation how to use it
+      * *-* Implement it in llvm/clang
+      * *-* Matain patched version of clang (can be mantaied as a seperate branch in `wasm-baremetal-sdk`)
+      * Implementation tips from PRs:
+        * https://reviews.llvm.org/D64537
+        * https://reviews.llvm.org/D59343
+        * https://reviews.llvm.org/D65783
+        * https://reviews.llvm.org/D92620
+    * Support `WebAssembly Object File Linking`: https://github.com/WebAssembly/tool-conventions/blob/main/Linking.md
+      * Link the files in `triwasm`
+      * *+* Not visible to the user in code
+      * *+* No limitation how to use it
+      * *+* No need to change triVM core
+      * *-* Support non-standarized file format that can change in any time without notification.
+      * *-* A lot of implementation
+
 * Add triVM extensions:
   * Memory mappings:
     * VM can be configured to use N MSB bits as memory identifier, e.g 2 bits gives 4 memories 1GB each.
