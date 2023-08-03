@@ -23,6 +23,7 @@ export interface WasmArgs {
     globalBase: number;
     guestStackFirst: boolean;
     guestStackGuard: boolean;
+    guestStackGlobal?: string;
     guestStackSize?: number;
     assembly: boolean;
     merge: WasmArgsMerge[];
@@ -55,7 +56,9 @@ export wasmUsage = ```
 
 --vm-stack-size:VmStackSize <size>|shared = 1024
     Set size of the virtual machine stack. Default is 1024. Special value
-    "shared" puts the virtual machine stack at the guest stack.
+    "shared" puts the virtual machine stack at the guest stack. "Shared"
+    stack is only possible if guest has stack that grows downwards, from
+    higer address to lower.
 
 --global-base:size <address> = 0
     Address at which module starts storing data. Everything before that is
@@ -63,12 +66,19 @@ export wasmUsage = ```
     Required for memory size smaller than 64K. By default, it is 0.
 
 --guest-stack-first
-    Gest have its stack first, before '--global-base' address.
+    Gest have its stack first, before "--global-base" address.
 
 --guest-stack-guard
-    Enable gest stack guard. Module must contain special function detecting the
-    stack pointer global variable and virtual machine must have guest stack
-    overflow or underflow fault enabled.
+    Enable gest stack guard. Virtual machine must have guest stack overflow
+    or underflow fault enabled and guest stack pointer must be known, see
+    "--guest-stack-global" option.
+
+--guest-stack-global <name>|#<index>|only-one
+    Guest stack pointer global. You can pass global imported or exported
+    <name>, exported function <name> that only touches the stack pointer
+    global, <index> of global, special value "only-one", if module has only
+    one global and it is stack pointer. By default, it is "__stack_pointer"
+    if such global is exported, otherwise guest stack pointer is unavailable.
 
 --guest-stack-size:size <size>
     Size of the guest stack. It is used only if "--guest-stack-first" or
