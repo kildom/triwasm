@@ -111,6 +111,10 @@
       * *-* Support non-standarized file format that can change in any time without notification.
       * *-* A lot of implementation
 
+* Stack pointer detection
+  * Link module with `-Wl,--export=__stack_pointer` (only clang)
+  * Special function that uses only stack pointer global - useful if cannot be compiled with `--export...` or other languages.
+
 * Add triVM extensions:
   * Memory mappings:
     * VM can be configured to use N MSB bits as memory identifier, e.g 2 bits gives 4 memories 1GB each.
