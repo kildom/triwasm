@@ -34,11 +34,11 @@ struct trivm_instance
 		uint8_t ram[1];    /**< RAM memory */
 	};
 	uint32_t pc;       /**< triVM Program counter - offset in ROM independent from rom_base */
-	uint32_t asp;       /**< Auxilary stack pointer */
+	uint32_t asp;       /**< Auxilary stack pointer */ // TODO: Rename to GSP (Guest Stack Pointer)
 	uint32_t tmp1;     /**< triVM Temporary register 1 */
 	uint32_t tmp2;     /**< triVM Temporary register 2 */
 	uint32_t tmp3;     /**< triVM Temporary register 3 */
-	uint32_t amb[2];
+	uint32_t amb[2]; // TODO: consider 4 registers: AMB0L, AMB1L (maps to offsets 0-2G) AMB0H, AMB1H (maps to offsets 2G-4G)
 	uint32_t spl; /**< Minimum value for stack if stack guard is enabled */
 	uint32_t sph; /**< Minimum value for stack if stack guard is enabled */
 	uint32_t aspl; /**< Minimum value for stack if stack guard is enabled */
