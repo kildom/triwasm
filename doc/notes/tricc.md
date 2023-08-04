@@ -1,9 +1,9 @@
 
 General:
-* tricc should know all options that is passing to clang.
+* tricc should know all options that is passing to clang or linker over `-Wl,<option>`.
 * tricc will pass just known limited number of arguments.
 * If user wants more:
-  * can use `--tricc-x <option>` to pass any option to clang front-end, `-Wl,<option>` to pass to linker
+  * can use `--tricc-x <option>` to pass any option to clang front-end
   * call clang directly, optionally with help of `--tricc-dry` that shows invoked commands instead of actual compilation
   * send an issue/PR on github to add new option
 * docs should contains autonatically generated list of supported options.
