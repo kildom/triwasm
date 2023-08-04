@@ -599,9 +599,9 @@ skip_access_size_mul:
 		/*> pop {{pop_value}} -> {addr} */
 	}
 
-	if (code & CODE_MEM_BASE0)
+	if (!(code & CODE_MEM_BASE0))
 	{
-		addr += vm->amb[code >> CODE_MEM_BASE1_BIT];
+		addr += vm->amb[(code >> CODE_MEM_BASE0_BIT) | (addr >> 31)];
 		/*> base AMB{#code >> CODE_MEM_BASE1_BIT} {{vm->amb[code >> CODE_MEM_BASE1_BIT]}} -> {addr} */
 	}
 	else if (code & CODE_MEM_BASE1)
