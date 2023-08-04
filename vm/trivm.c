@@ -601,7 +601,7 @@ skip_access_size_mul:
 
 	if (!(code & CODE_MEM_BASE0))
 	{
-		addr += vm->amb[(code >> CODE_MEM_BASE0_BIT) | (addr >> 31)];
+		addr += vm->amb[(code >> CODE_MEM_BASE0_BIT) | ((x + 0x40000000) >> 31)]; // TODO: or ((x >> 30) + 1) >> 1 if smaller on Thumb2
 		/*> base AMB{#code >> CODE_MEM_BASE1_BIT} {{vm->amb[code >> CODE_MEM_BASE1_BIT]}} -> {addr} */
 	}
 	else if (code & CODE_MEM_BASE1)
