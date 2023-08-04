@@ -14,7 +14,7 @@
 
 #if TRIVM_ENABLE_ROM
 #define TRIVM_PROGRAM_START 0
-#define TRIVM_MEMORY_HEADER (12 + sizeof(uint8_t*))
+#define TRIVM_MEMORY_HEADER (12 + sizeof(uint8_t*)) // TODO: This may be incorrect (and depends on pointer size).
 #else
 #define TRIVM_PROGRAM_START 8
 #define TRIVM_MEMORY_HEADER 8
