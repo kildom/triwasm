@@ -27,7 +27,7 @@
  * [**Minimal footprint**](https://kildom.github.io/trivm/docs/general/size-comparition.html).
    It takes less than **1 KB** of ARM Thumb code in basic configuration, but still, it is able to run complex programs.
  * [**Sandboxed enviroment**](https://kildom.github.io/trivm/docs/sandbox.html). Guest software running on it has no access to the host except defined import/export interface.
- * [**C**, **C++**, **AssemblyScript**, **Rust**](https://kildom.github.io/trivm/docs/guest-targets.html)
+ * [**C**, **C++**, **AssemblyScript**, **Rust**, **Dart(???)**](https://kildom.github.io/trivm/docs/guest-targets.html)
    and other languages supported by the [WebAssembly](https://webassembly.org/)
    can run as a guest inside VM.
  * [**Written in C**](https://kildom.github.io/trivm/docs/porting.html). It can be ported to any platform supporting *ANSI C (C90)*  and little-endian byte order.
