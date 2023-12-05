@@ -85,3 +85,32 @@ Front page: highlights, link to on-line demo and tutorial, list of elements: tri
       * (CI should add `VER: ` tag if missing, based on comment date)
     * You will loose filtering on some `#deprecated` discussions.
     * You will loose nice integration
+  * DIFFERENT APPROACH:
+    * Each markdown file that is "commentable" must have disscusion links at the bottom.
+    * They will be visible on github, but on web page will be hidden.
+    * First link is discussion.
+    * Following links are deprecated discussions and may be followed by tags. Only comments with any of those tags will be displayed.
+    * Link title become discussion title.
+    * Example:
+      # Comments
+      * [Architecture/Instructions](https://github.com/kildom/triwasm/discussions/9)
+      * [deprecated: Architecture/README.html](https://github.com/kildom/triwasm/discussions/3) (Instructions)
+    * CI after push to `main` will:
+      * rename discussions according they link titles.
+      * check their existsance
+      * check if at least one tag of each deprecated link is unique for this discussion.
+      * create issue if find out some inconsistent links/discussions
+    * CI on PR will also check inconsistency and it will comment if it finds out something.
+    * Doc publish workflow will ebmed all dissussions ids at build time, so it will save some queries to github.
+    * NEW: create a placeholder discussion with title e.g. `placeholder: Architecture/Instructions` and link it.
+    * RENAMED: nothing to do (optionally change link title)
+    * MERGED: select one dissussion as main (or create new) and mark rest as deprecated.
+    * SPLITTED: create new dissussion for each new file and link (with tag) old dissussion as depracated in each file.
+      * Doc publish workflow will detect which dissussion are linked multiple times and mark them.
+        Comments from those discussion will have information that "they were created for older version of the docs
+        and may reffer to following pages: ..."
+      * Admin and comment author will be able to select to which page this comment reffers to. It will add tag
+        to the comment, so the "may reffer to" note will disapear.
+      * Tags may accumulate if multiple split operations are done, but one of them must be unique (checked by CI).
+        The first unique one will be used when selecting to which page this comment reffers to.
+    * DELETED: Move discussion to special page containing all comments that has no place right now.
