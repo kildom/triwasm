@@ -1,3 +1,19 @@
+
+General workflow:
+1. `wasmParser`: Read and parse main module.
+2. `moduleMerger`: Read, parse and merge "merged" modules (including `triwasmlib` and `softfloatlib`).
+3. `linkResolver`: Resolve links between modules and host.
+4. `reducer`: Reduce instruction set to compatible with target VM.
+5. `optimizer`: Run multiple optimization passes.
+6. `generator`: Generate triASM assembly source code.
+7. `triasm`: Compile triASM assembly into binary file.
+
+At any point:
+* `moduleDebug`: Verify correctness of the module and dump its contents with diagnostic information.
+
+
+# Notes
+
 * General
   * Move `SP` register from visible registers and make separate instructions for it: `READSP` and `WRITESP`:
     * Benefits (only if memory alignment enabled):
