@@ -135,7 +135,7 @@ export class ExprMaker implements ExprParserConsumer {
     }
 
     onParserShlExpr(a: ExprEval, b: ExprEval): ExprEval {
-        return ctx => (a(ctx) << b(ctx)) & 0xFFFFFFFFFFFFFFFFn;
+        return ctx => (a(ctx) << b(ctx)) & 0xFFFFFFFFFFFFFFFFn; // TODO: if b() result is too big, number may be too big and not fix into memory.
     }
 
     onParserShrExpr(a: ExprEval, b: ExprEval): ExprEval {
