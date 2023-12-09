@@ -4,6 +4,9 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
+#include <stdint.h>
+#include <stdbool.h>
+
 #include <trivm_guest.h>
 
 typedef uint32_t u32;

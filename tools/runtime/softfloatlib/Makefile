@@ -16,6 +16,7 @@ CFLAGS:=\
 
 SRC=./f32.c \
 	./f64.c \
+	./f32f64.c \
 	\
 	./Berkeley-SoftFloat/source/f32_eq.c \
 	./Berkeley-SoftFloat/source/f32_lt.c \
@@ -24,6 +25,18 @@ SRC=./f32.c \
 	./Berkeley-SoftFloat/source/f32_sub.c \
 	./Berkeley-SoftFloat/source/f32_mul.c \
 	./Berkeley-SoftFloat/source/f32_div.c \
+	./Berkeley-SoftFloat/source/f32_sqrt.c \
+	./Berkeley-SoftFloat/source/f32_to_ui32.c \
+	./Berkeley-SoftFloat/source/f32_to_i32.c \
+	./Berkeley-SoftFloat/source/f32_to_ui64.c \
+	./Berkeley-SoftFloat/source/f32_to_i64.c \
+	./Berkeley-SoftFloat/source/s_roundMToI64.c \
+	./Berkeley-SoftFloat/source/s_roundMToUI64.c \
+	./Berkeley-SoftFloat/source/s_roundToI32.c \
+	./Berkeley-SoftFloat/source/s_roundToUI32.c \
+	./Berkeley-SoftFloat/source/s_shiftRightJamM.c \
+	./Berkeley-SoftFloat/source/s_approxRecipSqrt32_1.c \
+	./Berkeley-SoftFloat/source/s_shortShiftRightJamM.c \
 	./Berkeley-SoftFloat/source/f32_roundToInt.c \
 	./Berkeley-SoftFloat/source/s_addMagsF32.c \
 	./Berkeley-SoftFloat/source/s_subMagsF32.c \
@@ -33,7 +46,6 @@ SRC=./f32.c \
 	./Berkeley-SoftFloat/source/s_roundPackToF32.c \
 	./Berkeley-SoftFloat/source/s_normRoundPackToF32.c \
 	./Berkeley-SoftFloat/source/s_approxRecip32_1.c \
-	./Berkeley-SoftFloat/source/s_approxRecip_1Ks.c \
 	./Berkeley-SoftFloat/source/$(SF_SPEC)/s_propagateNaNF32UI.c \
 	./Berkeley-SoftFloat/source/f64_eq.c \
 	./Berkeley-SoftFloat/source/f64_lt.c \
@@ -42,6 +54,11 @@ SRC=./f32.c \
 	./Berkeley-SoftFloat/source/f64_sub.c \
 	./Berkeley-SoftFloat/source/f64_mul.c \
 	./Berkeley-SoftFloat/source/f64_div.c \
+	./Berkeley-SoftFloat/source/f64_sqrt.c \
+	./Berkeley-SoftFloat/source/f64_to_ui32.c \
+	./Berkeley-SoftFloat/source/f64_to_i32.c \
+	./Berkeley-SoftFloat/source/f64_to_ui64.c \
+	./Berkeley-SoftFloat/source/f64_to_i64.c \
 	./Berkeley-SoftFloat/source/f64_roundToInt.c \
 	./Berkeley-SoftFloat/source/s_addMagsF64.c \
 	./Berkeley-SoftFloat/source/s_subMagsF64.c \

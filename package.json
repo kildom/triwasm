@@ -17,7 +17,7 @@
     "build-triconf": "tsc -p tools/conf/triconf.tsconfig.json",
     "postbuild-triconf": "node tools/build/postbuild.js starters jsfixup",
 
-    "prebuild-runtime": "make -C tools/runtime/triwasmlib get-tools && make -C tools/runtime/softfloatlib get-tools",
+    "prebuild-runtime": "make -C tools/runtime/triwasmlib -j2 get-tools && make -C tools/runtime/softfloatlib -j2 get-tools",
     "build-runtime": "make -C tools/runtime/triwasmlib && make -C tools/runtime/softfloatlib",
 
     "build": "concurrently -c white,red,magenta,yellow,blue npm:build-runtime npm:build-triasm npm:build-triwasm npm:build-tricc npm:build-triconf",

@@ -11,17 +11,92 @@
 TRIVM_EXPORT(trivm_##name) \
 T trivm_##name( float64_t a, float64_t b ) \
 { \
-    ANNOTATION(trivm_##name, "license:Berkeley-SoftFloat"); \
+    ANNOTATION(trivm_0_##name, "triasm_name:__softfloatlib_" #name); \
+    ANNOTATION(trivm_1_##name, "license:Berkeley-SoftFloat"); \
     return name(a, b); \
-} \
+}
 
-EXP_BINOP64(bool, f64_eq);
-EXP_BINOP64(bool, f64_lt);
-EXP_BINOP64(bool, f64_le);
+#define EXP_UNOP64(T, name) \
+TRIVM_EXPORT(trivm_##name) \
+T trivm_##name( float64_t a ) \
+{ \
+    ANNOTATION(trivm_0_##name, "triasm_name:__softfloatlib_" #name); \
+    ANNOTATION(trivm_1_##name, "license:Berkeley-SoftFloat"); \
+    return name(a); \
+}
+
 EXP_BINOP64(float64_t, f64_add);
 EXP_BINOP64(float64_t, f64_sub);
 EXP_BINOP64(float64_t, f64_mul);
 EXP_BINOP64(float64_t, f64_div);
+EXP_BINOP64(bool, f64_eq);
+EXP_BINOP64(bool, f64_le);
+EXP_BINOP64(bool, f64_lt);
+EXP_UNOP64(float64_t, f64_sqrt);
+
+TRIVM_EXPORT_ASSEMBLY(
+    bool, trivm_f64_ne, ( float64_t a, float64_t b ),
+    "READ [SP] - 16\n"
+    "READ [SP] - 16\n"
+    "READ [SP] - 16\n"
+    "READ [SP] - 16\n"
+    "CALL __softfloatlib_f64_eq\n"
+    "NOT\n"
+    "WRITE [SP] - 20\n"
+    "WRITE [SP]\n"
+    "WRITE [SP]\n"
+    "WRITE [SP]\n"
+    "RET\n");
+
+TRIVM_EXPORT_ASSEMBLY(
+    bool, trivm_f64_gt, ( float64_t a, float64_t b ),
+    "READ [SP] - 16\n"
+    "READ [SP] - 16\n"
+    "READ [SP] - 16\n"
+    "READ [SP] - 16\n"
+    "WRITE [SP] - 24\n"
+    "WRITE [SP] - 24\n"
+    "WRITE [SP] - 8\n"
+    "WRITE [SP] - 8\n"
+    "BR __softfloatlib_f64_lt\n");
+
+TRIVM_EXPORT_ASSEMBLY(
+    bool, trivm_f64_ge, ( float64_t a, float64_t b ),
+    "READ [SP] - 16\n"
+    "READ [SP] - 16\n"
+    "READ [SP] - 16\n"
+    "READ [SP] - 16\n"
+    "WRITE [SP] - 24\n"
+    "WRITE [SP] - 24\n"
+    "WRITE [SP] - 8\n"
+    "WRITE [SP] - 8\n"
+    "BR __softfloatlib_f64_le\n");
+
+TRIVM_EXPORT_ASSEMBLY(
+    float64_t, trivm_f64_abs, ( float64_t a ),
+    "READ [SP] - 4\n"
+    "AND 0x7FFFFFFF\n"
+    "WRITE [SP] - 4\n"
+    "RET\n");
+
+TRIVM_EXPORT_ASSEMBLY(
+    float64_t, trivm_f64_neg, ( float64_t a ),
+    "__softfloatlib_trivm_f64_neg:\n"
+    "READ [SP] - 4\n"
+    "XOR 0x80000000\n"
+    "WRITE [SP] - 4\n"
+    "RET\n");
+
+TRIVM_EXPORT_ASSEMBLY(
+    float64_t, trivm_f64_copysign, (float64_t a, float64_t b),
+    "READ [SP] - 12\n"
+    "READ [SP] - 8\n"
+    "XOR\n"
+    "AND 0x80000000\n"
+    "BRF __softfloatlib_return_first64\n"
+    "WRITE64 [SP]\n"
+    "WRITE64 [SP]\n"
+    "BR __softfloatlib_trivm_f64_neg\n");
 
 TRIVM_EXPORT(trivm_f64_ceil)
 float64_t trivm_f64_ceil( float64_t a )
@@ -49,6 +124,62 @@ float64_t trivm_f64_nearest( float64_t a )
 {
     ANNOTATION(trivm_f64_nearest, "license:Berkeley-SoftFloat");
     return f64_roundToInt(a, softfloat_round_near_even, false);
+}
+
+TRIVM_EXPORT(trivm_i32_trunc_f64_s)
+int32_t trivm_i32_trunc_f64_s( float64_t a )
+{
+    ANNOTATION(trivm_i32_trunc_f64_s, "license:Berkeley-SoftFloat");
+    return f64_to_i32(a, softfloat_round_minMag, false);
+}
+
+TRIVM_EXPORT(trivm_i32_trunc_f64_u)
+uint32_t trivm_i32_trunc_f64_u( float64_t a )
+{
+    ANNOTATION(trivm_i32_trunc_f64_u, "license:Berkeley-SoftFloat");
+    return f64_to_ui32(a, softfloat_round_minMag, false);
+}
+
+TRIVM_EXPORT(trivm_i32_trunc_sat_f64_s)
+int32_t trivm_i32_trunc_sat_f64_s( float64_t a )
+{
+    ANNOTATION(trivm_i32_trunc_sat_f64_s, "license:Berkeley-SoftFloat");
+    return f64_to_i32(a, softfloat_round_minMag, false);
+}
+
+TRIVM_EXPORT(trivm_i32_trunc_sat_f64_u)
+uint32_t trivm_i32_trunc_sat_f64_u( float64_t a )
+{
+    ANNOTATION(trivm_i32_trunc_sat_f64_u, "license:Berkeley-SoftFloat");
+    return f64_to_ui32(a, softfloat_round_minMag, false);
+}
+
+TRIVM_EXPORT(trivm_i64_trunc_f64_s)
+int64_t trivm_i64_trunc_f64_s( float64_t a )
+{
+    ANNOTATION(trivm_i64_trunc_f64_s, "license:Berkeley-SoftFloat");
+    return f64_to_i64(a, softfloat_round_minMag, false);
+}
+
+TRIVM_EXPORT(trivm_i64_trunc_f64_u)
+uint64_t trivm_i64_trunc_f64_u( float64_t a )
+{
+    ANNOTATION(trivm_i64_trunc_f64_u, "license:Berkeley-SoftFloat");
+    return f64_to_ui64(a, softfloat_round_minMag, false);
+}
+
+TRIVM_EXPORT(trivm_i64_trunc_sat_f64_s)
+int64_t trivm_i64_trunc_sat_f64_s( float64_t a )
+{
+    ANNOTATION(trivm_i64_trunc_sat_f64_s, "license:Berkeley-SoftFloat");
+    return f64_to_i64(a, softfloat_round_minMag, false);
+}
+
+TRIVM_EXPORT(trivm_i64_trunc_sat_f64_u)
+uint64_t trivm_i64_trunc_sat_f64_u( float64_t a )
+{
+    ANNOTATION(trivm_i64_trunc_sat_f64_u, "license:Berkeley-SoftFloat");
+    return f64_to_ui64(a, softfloat_round_minMag, false);
 }
 
 TRIVM_EXPORT(trivm_f64_convert_i32_s)
@@ -79,10 +210,25 @@ float64_t trivm_f64_convert_i64_u(int64_t a)
     return ui64_to_f64(a);
 }
 
-TRIVM_EXPORT(trivm_f64_promote_f32)
-float64_t trivm_f64_promote_f32(float32_t a)
-{
-    ANNOTATION(trivm_f64_promote_f32, "license:Berkeley-SoftFloat");
-    return f32_to_f64(a);
-}
+TRIVM_EXPORT_ASSEMBLY(
+    bool, trivm_f64_min, ( float64_t a, float64_t b ),
+    "READ32 [SP] - 16\n"
+    "READ32 [SP] - 16\n"
+    "READ32 [SP] - 16\n"
+    "READ32 [SP] - 16\n"
+    "CALL __softfloatlib_f64_le\n"
+    "BRT __softfloatlib_return_first64\n"
+    "BR __softfloatlib_return_second64\n"
+    );
+
+TRIVM_EXPORT_ASSEMBLY(
+    bool, trivm_f64_max, ( float64_t a, float64_t b ),
+    "READ32 [SP] - 16\n"
+    "READ32 [SP] - 16\n"
+    "READ32 [SP] - 16\n"
+    "READ32 [SP] - 16\n"
+    "CALL __softfloatlib_f64_le\n"
+    "BRF __softfloatlib_return_first64\n"
+    "BR __softfloatlib_return_second64\n"
+    );
 
