@@ -13,11 +13,11 @@
  */
 
 import { Path } from '../common/path';
-import { generate } from './generator';
+//import { generate } from './generator';
 import { LinkResolver } from './linkResolver';
 import { moduleDebug, ModuleStage } from './moduleDebug';
 import { ModuleMerger } from './moduleMerger';
-import { reduce } from './reducer';
+//import { reduce } from './reducer';
 import { WasmParser } from './wasmParser';
 
 //let p = new WasmParser("test/__old/test.wasm");

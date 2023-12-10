@@ -10,3 +10,4 @@ node_modules
 !/ext/*/DIRECTORY-README.txt
 /bin/
 /tools/wasm/skeleton.ts
+/tools/wasm/res.ts

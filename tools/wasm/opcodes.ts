@@ -12,9 +12,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-// -- Begin of source code generated with help of "gen-instr.ts" script --
 
 export enum OP {
+    // -- Opcodes enum - begin of source code generated with help of "gen-instr.ts" script --
+
     UNREACHABLE = 0x00, // unreachable    [ 0x00 ]
     NOP = 0x01, // nop    [ 0x01 ]
     BLOCK = 0x02, // block bt    [ 0x02 ]
@@ -216,242 +217,6 @@ export enum OP {
     TABLE_GROW = 0x0FFC, // table.grow x    [ 0xFC 0x0F ]
     TABLE_SIZE = 0x10FC, // table.size x    [ 0xFC 0x10 ]
     TABLE_FILL = 0x11FC, // table.fill x    [ 0xFC 0x11 ]
-    V128_LOAD = 0xFD, // v128.load memarg    [ 0xFD 0x00 ]
-    V128_LOAD8X8_S = 0x01FD, // v128.load8x8_s memarg    [ 0xFD 0x01 ]
-    V128_LOAD8X8_U = 0x02FD, // v128.load8x8_u memarg    [ 0xFD 0x02 ]
-    V128_LOAD16X4_S = 0x03FD, // v128.load16x4_s memarg    [ 0xFD 0x03 ]
-    V128_LOAD16X4_U = 0x04FD, // v128.load16x4_u memarg    [ 0xFD 0x04 ]
-    V128_LOAD32X2_S = 0x05FD, // v128.load32x2_s memarg    [ 0xFD 0x05 ]
-    V128_LOAD32X2_U = 0x06FD, // v128.load32x2_u memarg    [ 0xFD 0x06 ]
-    V128_LOAD8_SPLAT = 0x07FD, // v128.load8_splat memarg    [ 0xFD 0x07 ]
-    V128_LOAD16_SPLAT = 0x08FD, // v128.load16_splat memarg    [ 0xFD 0x08 ]
-    V128_LOAD32_SPLAT = 0x09FD, // v128.load32_splat memarg    [ 0xFD 0x09 ]
-    V128_LOAD64_SPLAT = 0x0AFD, // v128.load64_splat memarg    [ 0xFD 0x0A ]
-    V128_STORE = 0x0BFD, // v128.store memarg    [ 0xFD 0x0B ]
-    V128_CONST = 0x0CFD, // v128.const i128    [ 0xFD 0x0C ]
-    I8X16_SHUFFLE = 0x0DFD, // i8x16.shuffle laneidx16    [ 0xFD 0x0D ]
-    I8X16_SWIZZLE = 0x0EFD, // i8x16.swizzle    [ 0xFD 0x0E ]
-    I8X16_SPLAT = 0x0FFD, // i8x16.splat    [ 0xFD 0x0F ]
-    I16X8_SPLAT = 0x10FD, // i16x8.splat    [ 0xFD 0x10 ]
-    I32X4_SPLAT = 0x11FD, // i32x4.splat    [ 0xFD 0x11 ]
-    I64X2_SPLAT = 0x12FD, // i64x2.splat    [ 0xFD 0x12 ]
-    F32X4_SPLAT = 0x13FD, // f32x4.splat    [ 0xFD 0x13 ]
-    F64X2_SPLAT = 0x14FD, // f64x2.splat    [ 0xFD 0x14 ]
-    I8X16_EXTRACT_LANE_S = 0x15FD, // i8x16.extract_lane_s laneidx    [ 0xFD 0x15 ]
-    I8X16_EXTRACT_LANE_U = 0x16FD, // i8x16.extract_lane_u laneidx    [ 0xFD 0x16 ]
-    I8X16_REPLACE_LANE = 0x17FD, // i8x16.replace_lane laneidx    [ 0xFD 0x17 ]
-    I16X8_EXTRACT_LANE_S = 0x18FD, // i16x8.extract_lane_s laneidx    [ 0xFD 0x18 ]
-    I16X8_EXTRACT_LANE_U = 0x19FD, // i16x8.extract_lane_u laneidx    [ 0xFD 0x19 ]
-    I16X8_REPLACE_LANE = 0x1AFD, // i16x8.replace_lane laneidx    [ 0xFD 0x1A ]
-    I32X4_EXTRACT_LANE = 0x1BFD, // i32x4.extract_lane laneidx    [ 0xFD 0x1B ]
-    I32X4_REPLACE_LANE = 0x1CFD, // i32x4.replace_lane laneidx    [ 0xFD 0x1C ]
-    I64X2_EXTRACT_LANE = 0x1DFD, // i64x2.extract_lane laneidx    [ 0xFD 0x1D ]
-    I64X2_REPLACE_LANE = 0x1EFD, // i64x2.replace_lane laneidx    [ 0xFD 0x1E ]
-    F32X4_EXTRACT_LANE = 0x1FFD, // f32x4.extract_lane laneidx    [ 0xFD 0x1F ]
-    F32X4_REPLACE_LANE = 0x20FD, // f32x4.replace_lane laneidx    [ 0xFD 0x20 ]
-    F64X2_EXTRACT_LANE = 0x21FD, // f64x2.extract_lane laneidx    [ 0xFD 0x21 ]
-    F64X2_REPLACE_LANE = 0x22FD, // f64x2.replace_lane laneidx    [ 0xFD 0x22 ]
-    I8X16_EQ = 0x23FD, // i8x16.eq    [ 0xFD 0x23 ]
-    I8X16_NE = 0x24FD, // i8x16.ne    [ 0xFD 0x24 ]
-    I8X16_LT_S = 0x25FD, // i8x16.lt_s    [ 0xFD 0x25 ]
-    I8X16_LT_U = 0x26FD, // i8x16.lt_u    [ 0xFD 0x26 ]
-    I8X16_GT_S = 0x27FD, // i8x16.gt_s    [ 0xFD 0x27 ]
-    I8X16_GT_U = 0x28FD, // i8x16.gt_u    [ 0xFD 0x28 ]
-    I8X16_LE_S = 0x29FD, // i8x16.le_s    [ 0xFD 0x29 ]
-    I8X16_LE_U = 0x2AFD, // i8x16.le_u    [ 0xFD 0x2A ]
-    I8X16_GE_S = 0x2BFD, // i8x16.ge_s    [ 0xFD 0x2B ]
-    I8X16_GE_U = 0x2CFD, // i8x16.ge_u    [ 0xFD 0x2C ]
-    I16X8_EQ = 0x2DFD, // i16x8.eq    [ 0xFD 0x2D ]
-    I16X8_NE = 0x2EFD, // i16x8.ne    [ 0xFD 0x2E ]
-    I16X8_LT_S = 0x2FFD, // i16x8.lt_s    [ 0xFD 0x2F ]
-    I16X8_LT_U = 0x30FD, // i16x8.lt_u    [ 0xFD 0x30 ]
-    I16X8_GT_S = 0x31FD, // i16x8.gt_s    [ 0xFD 0x31 ]
-    I16X8_GT_U = 0x32FD, // i16x8.gt_u    [ 0xFD 0x32 ]
-    I16X8_LE_S = 0x33FD, // i16x8.le_s    [ 0xFD 0x33 ]
-    I16X8_LE_U = 0x34FD, // i16x8.le_u    [ 0xFD 0x34 ]
-    I16X8_GE_S = 0x35FD, // i16x8.ge_s    [ 0xFD 0x35 ]
-    I16X8_GE_U = 0x36FD, // i16x8.ge_u    [ 0xFD 0x36 ]
-    I32X4_EQ = 0x37FD, // i32x4.eq    [ 0xFD 0x37 ]
-    I32X4_NE = 0x38FD, // i32x4.ne    [ 0xFD 0x38 ]
-    I32X4_LT_S = 0x39FD, // i32x4.lt_s    [ 0xFD 0x39 ]
-    I32X4_LT_U = 0x3AFD, // i32x4.lt_u    [ 0xFD 0x3A ]
-    I32X4_GT_S = 0x3BFD, // i32x4.gt_s    [ 0xFD 0x3B ]
-    I32X4_GT_U = 0x3CFD, // i32x4.gt_u    [ 0xFD 0x3C ]
-    I32X4_LE_S = 0x3DFD, // i32x4.le_s    [ 0xFD 0x3D ]
-    I32X4_LE_U = 0x3EFD, // i32x4.le_u    [ 0xFD 0x3E ]
-    I32X4_GE_S = 0x3FFD, // i32x4.ge_s    [ 0xFD 0x3F ]
-    I32X4_GE_U = 0x40FD, // i32x4.ge_u    [ 0xFD 0x40 ]
-    F32X4_EQ = 0x41FD, // f32x4.eq    [ 0xFD 0x41 ]
-    F32X4_NE = 0x42FD, // f32x4.ne    [ 0xFD 0x42 ]
-    F32X4_LT = 0x43FD, // f32x4.lt    [ 0xFD 0x43 ]
-    F32X4_GT = 0x44FD, // f32x4.gt    [ 0xFD 0x44 ]
-    F32X4_LE = 0x45FD, // f32x4.le    [ 0xFD 0x45 ]
-    F32X4_GE = 0x46FD, // f32x4.ge    [ 0xFD 0x46 ]
-    F64X2_EQ = 0x47FD, // f64x2.eq    [ 0xFD 0x47 ]
-    F64X2_NE = 0x48FD, // f64x2.ne    [ 0xFD 0x48 ]
-    F64X2_LT = 0x49FD, // f64x2.lt    [ 0xFD 0x49 ]
-    F64X2_GT = 0x4AFD, // f64x2.gt    [ 0xFD 0x4A ]
-    F64X2_LE = 0x4BFD, // f64x2.le    [ 0xFD 0x4B ]
-    F64X2_GE = 0x4CFD, // f64x2.ge    [ 0xFD 0x4C ]
-    V128_NOT = 0x4DFD, // v128.not    [ 0xFD 0x4D ]
-    V128_AND = 0x4EFD, // v128.and    [ 0xFD 0x4E ]
-    V128_ANDNOT = 0x4FFD, // v128.andnot    [ 0xFD 0x4F ]
-    V128_OR = 0x50FD, // v128.or    [ 0xFD 0x50 ]
-    V128_XOR = 0x51FD, // v128.xor    [ 0xFD 0x51 ]
-    V128_BITSELECT = 0x52FD, // v128.bitselect    [ 0xFD 0x52 ]
-    V128_ANY_TRUE = 0x53FD, // v128.any_true    [ 0xFD 0x53 ]
-    V128_LOAD8_LANE = 0x54FD, // v128.load8_lane memarg laneidx    [ 0xFD 0x54 ]
-    V128_LOAD16_LANE = 0x55FD, // v128.load16_lane memarg laneidx    [ 0xFD 0x55 ]
-    V128_LOAD32_LANE = 0x56FD, // v128.load32_lane memarg laneidx    [ 0xFD 0x56 ]
-    V128_LOAD64_LANE = 0x57FD, // v128.load64_lane memarg laneidx    [ 0xFD 0x57 ]
-    V128_STORE8_LANE = 0x58FD, // v128.store8_lane memarg laneidx    [ 0xFD 0x58 ]
-    V128_STORE16_LANE = 0x59FD, // v128.store16_lane memarg laneidx    [ 0xFD 0x59 ]
-    V128_STORE32_LANE = 0x5AFD, // v128.store32_lane memarg laneidx    [ 0xFD 0x5A ]
-    V128_STORE64_LANE = 0x5BFD, // v128.store64_lane memarg laneidx    [ 0xFD 0x5B ]
-    V128_LOAD32_ZERO = 0x5CFD, // v128.load32_zero memarg laneidx    [ 0xFD 0x5C ]
-    V128_LOAD64_ZERO = 0x5DFD, // v128.load64_zero memarg laneidx    [ 0xFD 0x5D ]
-    F32X4_DEMOTE_F64X2_ZERO = 0x5EFD, // f32x4.demote_f64x2_zero    [ 0xFD 0x5E ]
-    F64X2_PROMOTE_LOW_F32X4 = 0x5FFD, // f64x2.promote_low_f32x4    [ 0xFD 0x5F ]
-    I8X16_ABS = 0x60FD, // i8x16.abs    [ 0xFD 0x60 ]
-    I8X16_NEG = 0x61FD, // i8x16.neg    [ 0xFD 0x61 ]
-    I8X16_POPCNT = 0x62FD, // i8x16.popcnt    [ 0xFD 0x62 ]
-    I8X16_ALL_TRUE = 0x63FD, // i8x16.all_true    [ 0xFD 0x63 ]
-    I8X16_BITMASK = 0x64FD, // i8x16.bitmask    [ 0xFD 0x64 ]
-    I8X16_NARROW_I16X8_S = 0x65FD, // i8x16.narrow_i16x8_s    [ 0xFD 0x65 ]
-    I8X16_NARROW_I16X8_U = 0x66FD, // i8x16.narrow_i16x8_u    [ 0xFD 0x66 ]
-    F32X4_CEIL = 0x67FD, // f32x4.ceil    [ 0xFD 0x67 ]
-    F32X4_FLOOR = 0x68FD, // f32x4.floor    [ 0xFD 0x68 ]
-    F32X4_TRUNC = 0x69FD, // f32x4.trunc    [ 0xFD 0x69 ]
-    F32X4_NEAREST = 0x6AFD, // f32x4.nearest    [ 0xFD 0x6A ]
-    I8X16_SHL = 0x6BFD, // i8x16.shl    [ 0xFD 0x6B ]
-    I8X16_SHR_S = 0x6CFD, // i8x16.shr_s    [ 0xFD 0x6C ]
-    I8X16_SHR_U = 0x6DFD, // i8x16.shr_u    [ 0xFD 0x6D ]
-    I8X16_ADD = 0x6EFD, // i8x16.add    [ 0xFD 0x6E ]
-    I8X16_ADD_SAT_S = 0x6FFD, // i8x16.add_sat_s    [ 0xFD 0x6F ]
-    I8X16_ADD_SAT_U = 0x70FD, // i8x16.add_sat_u    [ 0xFD 0x70 ]
-    I8X16_SUB = 0x71FD, // i8x16.sub    [ 0xFD 0x71 ]
-    I8X16_SUB_SAT_S = 0x72FD, // i8x16.sub_sat_s    [ 0xFD 0x72 ]
-    I8X16_SUB_SAT_U = 0x73FD, // i8x16.sub_sat_u    [ 0xFD 0x73 ]
-    F64X2_CEIL = 0x74FD, // f64x2.ceil    [ 0xFD 0x74 ]
-    F64X2_FLOOR = 0x75FD, // f64x2.floor    [ 0xFD 0x75 ]
-    I8X16_MIN_S = 0x76FD, // i8x16.min_s    [ 0xFD 0x76 ]
-    I8X16_MIN_U = 0x77FD, // i8x16.min_u    [ 0xFD 0x77 ]
-    I8X16_MAX_S = 0x78FD, // i8x16.max_s    [ 0xFD 0x78 ]
-    I8X16_MAX_U = 0x79FD, // i8x16.max_u    [ 0xFD 0x79 ]
-    F64X2_TRUNC = 0x7AFD, // f64x2.trunc    [ 0xFD 0x7A ]
-    I8X16_AVGR_U = 0x7BFD, // i8x16.avgr_u    [ 0xFD 0x7B ]
-    I16X8_EXTADD_PAIRWISE_I8X16_S = 0x7CFD, // i16x8.extadd_pairwise_i8x16_s    [ 0xFD 0x7C ]
-    I16X8_EXTADD_PAIRWISE_I8X16_U = 0x7DFD, // i16x8.extadd_pairwise_i8x16_u    [ 0xFD 0x7D ]
-    I32X4_EXTADD_PAIRWISE_I16X8_S = 0x7EFD, // i32x4.extadd_pairwise_i16x8_s    [ 0xFD 0x7E ]
-    I32X4_EXTADD_PAIRWISE_I16X8_U = 0x7FFD, // i32x4.extadd_pairwise_i16x8_u    [ 0xFD 0x7F ]
-    I16X8_ABS = 0x80FD, // i16x8.abs    [ 0xFD 0x80 0x01 ]
-    I16X8_NEG = 0x81FD, // i16x8.neg    [ 0xFD 0x81 0x01 ]
-    I16X8_Q15MULR_SAT_S = 0x82FD, // i16x8.q15mulr_sat_s    [ 0xFD 0x82 0x01 ]
-    I16X8_ALL_TRUE = 0x83FD, // i16x8.all_true    [ 0xFD 0x83 0x01 ]
-    I16X8_BITMASK = 0x84FD, // i16x8.bitmask    [ 0xFD 0x84 0x01 ]
-    I16X8_NARROW_I32X4_S = 0x85FD, // i16x8.narrow_i32x4_s    [ 0xFD 0x85 0x01 ]
-    I16X8_NARROW_I32X4_U = 0x86FD, // i16x8.narrow_i32x4_u    [ 0xFD 0x86 0x01 ]
-    I16X8_EXTEND_LOW_I8X16_S = 0x87FD, // i16x8.extend_low_i8x16_s    [ 0xFD 0x87 0x01 ]
-    I16X8_EXTEND_HIGH_I8X16_S = 0x88FD, // i16x8.extend_high_i8x16_s    [ 0xFD 0x88 0x01 ]
-    I16X8_EXTEND_LOW_I8X16_U = 0x89FD, // i16x8.extend_low_i8x16_u    [ 0xFD 0x89 0x01 ]
-    I16X8_EXTEND_HIGH_I8X16_U = 0x8AFD, // i16x8.extend_high_i8x16_u    [ 0xFD 0x8A 0x01 ]
-    I16X8_SHL = 0x8BFD, // i16x8.shl    [ 0xFD 0x8B 0x01 ]
-    I16X8_SHR_S = 0x8CFD, // i16x8.shr_s    [ 0xFD 0x8C 0x01 ]
-    I16X8_SHR_U = 0x8DFD, // i16x8.shr_u    [ 0xFD 0x8D 0x01 ]
-    I16X8_ADD = 0x8EFD, // i16x8.add    [ 0xFD 0x8E 0x01 ]
-    I16X8_ADD_SAT_S = 0x8FFD, // i16x8.add_sat_s    [ 0xFD 0x8F 0x01 ]
-    I16X8_ADD_SAT_U = 0x90FD, // i16x8.add_sat_u    [ 0xFD 0x90 0x01 ]
-    I16X8_SUB = 0x91FD, // i16x8.sub    [ 0xFD 0x91 0x01 ]
-    I16X8_SUB_SAT_S = 0x92FD, // i16x8.sub_sat_s    [ 0xFD 0x92 0x01 ]
-    I16X8_SUB_SAT_U = 0x93FD, // i16x8.sub_sat_u    [ 0xFD 0x93 0x01 ]
-    F64X2_NEAREST = 0x94FD, // f64x2.nearest    [ 0xFD 0x94 0x01 ]
-    I16X8_MUL = 0x95FD, // i16x8.mul    [ 0xFD 0x95 0x01 ]
-    I16X8_MIN_S = 0x96FD, // i16x8.min_s    [ 0xFD 0x96 0x01 ]
-    I16X8_MIN_U = 0x97FD, // i16x8.min_u    [ 0xFD 0x97 0x01 ]
-    I16X8_MAX_S = 0x98FD, // i16x8.max_s    [ 0xFD 0x98 0x01 ]
-    I16X8_MAX_U = 0x99FD, // i16x8.max_u    [ 0xFD 0x99 0x01 ]
-    I16X8_AVGR_U = 0x9BFD, // i16x8.avgr_u    [ 0xFD 0x9B 0x01 ]
-    I16X8_EXTMUL_LOW_I8X16_S = 0x9CFD, // i16x8.extmul_low_i8x16_s    [ 0xFD 0x9C 0x01 ]
-    I16X8_EXTMUL_HIGH_I8X16_S = 0x9DFD, // i16x8.extmul_high_i8x16_s    [ 0xFD 0x9D 0x01 ]
-    I16X8_EXTMUL_LOW_I8X16_U = 0x9EFD, // i16x8.extmul_low_i8x16_u    [ 0xFD 0x9E 0x01 ]
-    I16X8_EXTMUL_HIGH_I8X16_U = 0x9FFD, // i16x8.extmul_high_i8x16_u    [ 0xFD 0x9F 0x01 ]
-    I32X4_ABS = 0xA0FD, // i32x4.abs    [ 0xFD 0xA0 0x01 ]
-    I32X4_NEG = 0xA1FD, // i32x4.neg    [ 0xFD 0xA1 0x01 ]
-    I32X4_ALL_TRUE = 0xA3FD, // i32x4.all_true    [ 0xFD 0xA3 0x01 ]
-    I32X4_BITMASK = 0xA4FD, // i32x4.bitmask    [ 0xFD 0xA4 0x01 ]
-    I32X4_EXTEND_LOW_I16X8_S = 0xA7FD, // i32x4.extend_low_i16x8_s    [ 0xFD 0xA7 0x01 ]
-    I32X4_EXTEND_HIGH_I16X8_S = 0xA8FD, // i32x4.extend_high_i16x8_s    [ 0xFD 0xA8 0x01 ]
-    I32X4_EXTEND_LOW_I16X8_U = 0xA9FD, // i32x4.extend_low_i16x8_u    [ 0xFD 0xA9 0x01 ]
-    I32X4_EXTEND_HIGH_I16X8_U = 0xAAFD, // i32x4.extend_high_i16x8_u    [ 0xFD 0xAA 0x01 ]
-    I32X4_SHL = 0xABFD, // i32x4.shl    [ 0xFD 0xAB 0x01 ]
-    I32X4_SHR_S = 0xACFD, // i32x4.shr_s    [ 0xFD 0xAC 0x01 ]
-    I32X4_SHR_U = 0xADFD, // i32x4.shr_u    [ 0xFD 0xAD 0x01 ]
-    I32X4_ADD = 0xAEFD, // i32x4.add    [ 0xFD 0xAE 0x01 ]
-    I32X4_SUB = 0xB1FD, // i32x4.sub    [ 0xFD 0xB1 0x01 ]
-    I32X4_MUL = 0xB5FD, // i32x4.mul    [ 0xFD 0xB5 0x01 ]
-    I32X4_MIN_S = 0xB6FD, // i32x4.min_s    [ 0xFD 0xB6 0x01 ]
-    I32X4_MIN_U = 0xB7FD, // i32x4.min_u    [ 0xFD 0xB7 0x01 ]
-    I32X4_MAX_S = 0xB8FD, // i32x4.max_s    [ 0xFD 0xB8 0x01 ]
-    I32X4_MAX_U = 0xB9FD, // i32x4.max_u    [ 0xFD 0xB9 0x01 ]
-    I32X4_DOT_I16X8_S = 0xBAFD, // i32x4.dot_i16x8_s    [ 0xFD 0xBA 0x01 ]
-    I32X4_EXTMUL_LOW_I16X8_S = 0xBCFD, // i32x4.extmul_low_i16x8_s    [ 0xFD 0xBC 0x01 ]
-    I32X4_EXTMUL_HIGH_I16X8_S = 0xBDFD, // i32x4.extmul_high_i16x8_s    [ 0xFD 0xBD 0x01 ]
-    I32X4_EXTMUL_LOW_I16X8_U = 0xBEFD, // i32x4.extmul_low_i16x8_u    [ 0xFD 0xBE 0x01 ]
-    I32X4_EXTMUL_HIGH_I16X8_U = 0xBFFD, // i32x4.extmul_high_i16x8_u    [ 0xFD 0xBF 0x01 ]
-    I64X2_ABS = 0xC0FD, // i64x2.abs    [ 0xFD 0xC0 0x01 ]
-    I64X2_NEG = 0xC1FD, // i64x2.neg    [ 0xFD 0xC1 0x01 ]
-    I64X2_ALL_TRUE = 0xC3FD, // i64x2.all_true    [ 0xFD 0xC3 0x01 ]
-    I64X2_BITMASK = 0xC4FD, // i64x2.bitmask    [ 0xFD 0xC4 0x01 ]
-    I64X2_EXTEND_LOW_I32X4_S = 0xC7FD, // i64x2.extend_low_i32x4_s    [ 0xFD 0xC7 0x01 ]
-    I64X2_EXTEND_HIGH_I32X4_S = 0xC8FD, // i64x2.extend_high_i32x4_s    [ 0xFD 0xC8 0x01 ]
-    I64X2_EXTEND_LOW_I32X4_U = 0xC9FD, // i64x2.extend_low_i32x4_u    [ 0xFD 0xC9 0x01 ]
-    I64X2_EXTEND_HIGH_I32X4_U = 0xCAFD, // i64x2.extend_high_i32x4_u    [ 0xFD 0xCA 0x01 ]
-    I64X2_SHL = 0xCBFD, // i64x2.shl    [ 0xFD 0xCB 0x01 ]
-    I64X2_SHR_S = 0xCCFD, // i64x2.shr_s    [ 0xFD 0xCC 0x01 ]
-    I64X2_SHR_U = 0xCDFD, // i64x2.shr_u    [ 0xFD 0xCD 0x01 ]
-    I64X2_ADD = 0xCEFD, // i64x2.add    [ 0xFD 0xCE 0x01 ]
-    I64X2_SUB = 0xD1FD, // i64x2.sub    [ 0xFD 0xD1 0x01 ]
-    I64X2_MUL = 0xD5FD, // i64x2.mul    [ 0xFD 0xD5 0x01 ]
-    I64X2_EQ = 0xD6FD, // i64x2.eq    [ 0xFD 0xD6 0x01 ]
-    I64X2_NE = 0xD7FD, // i64x2.ne    [ 0xFD 0xD7 0x01 ]
-    I64X2_LT_S = 0xD8FD, // i64x2.lt_s    [ 0xFD 0xD8 0x01 ]
-    I64X2_GT_S = 0xD9FD, // i64x2.gt_s    [ 0xFD 0xD9 0x01 ]
-    I64X2_LE_S = 0xDAFD, // i64x2.le_s    [ 0xFD 0xDA 0x01 ]
-    I64X2_GE_S = 0xDBFD, // i64x2.ge_s    [ 0xFD 0xDB 0x01 ]
-    I64X2_EXTMUL_LOW_I32X4_S = 0xDCFD, // i64x2.extmul_low_i32x4_s    [ 0xFD 0xDC 0x01 ]
-    I64X2_EXTMUL_HIGH_I32X4_S = 0xDDFD, // i64x2.extmul_high_i32x4_s    [ 0xFD 0xDD 0x01 ]
-    I64X2_EXTMUL_LOW_I32X4_U = 0xDEFD, // i64x2.extmul_low_i32x4_u    [ 0xFD 0xDE 0x01 ]
-    I64X2_EXTMUL_HIGH_I32X4_U = 0xDFFD, // i64x2.extmul_high_i32x4_u    [ 0xFD 0xDF 0x01 ]
-    F32X4_ABS = 0xE0FD, // f32x4.abs    [ 0xFD 0xE0 0x01 ]
-    F32X4_NEG = 0xE1FD, // f32x4.neg    [ 0xFD 0xE1 0x01 ]
-    F32X4_SQRT = 0xE3FD, // f32x4.sqrt    [ 0xFD 0xE3 0x01 ]
-    F32X4_ADD = 0xE4FD, // f32x4.add    [ 0xFD 0xE4 0x01 ]
-    F32X4_SUB = 0xE5FD, // f32x4.sub    [ 0xFD 0xE5 0x01 ]
-    F32X4_MUL = 0xE6FD, // f32x4.mul    [ 0xFD 0xE6 0x01 ]
-    F32X4_DIV = 0xE7FD, // f32x4.div    [ 0xFD 0xE7 0x01 ]
-    F32X4_MIN = 0xE8FD, // f32x4.min    [ 0xFD 0xE8 0x01 ]
-    F32X4_MAX = 0xE9FD, // f32x4.max    [ 0xFD 0xE9 0x01 ]
-    F32X4_PMIN = 0xEAFD, // f32x4.pmin    [ 0xFD 0xEA 0x01 ]
-    F32X4_PMAX = 0xEBFD, // f32x4.pmax    [ 0xFD 0xEB 0x01 ]
-    F64X2_ABS = 0xECFD, // f64x2.abs    [ 0xFD 0xEC 0x01 ]
-    F64X2_NEG = 0xEDFD, // f64x2.neg    [ 0xFD 0xED 0x01 ]
-    F64X2_SQRT = 0xEFFD, // f64x2.sqrt    [ 0xFD 0xEF 0x01 ]
-    F64X2_ADD = 0xF0FD, // f64x2.add    [ 0xFD 0xF0 0x01 ]
-    F64X2_SUB = 0xF1FD, // f64x2.sub    [ 0xFD 0xF1 0x01 ]
-    F64X2_MUL = 0xF2FD, // f64x2.mul    [ 0xFD 0xF2 0x01 ]
-    F64X2_DIV = 0xF3FD, // f64x2.div    [ 0xFD 0xF3 0x01 ]
-    F64X2_MIN = 0xF4FD, // f64x2.min    [ 0xFD 0xF4 0x01 ]
-    F64X2_MAX = 0xF5FD, // f64x2.max    [ 0xFD 0xF5 0x01 ]
-    F64X2_PMIN = 0xF6FD, // f64x2.pmin    [ 0xFD 0xF6 0x01 ]
-    F64X2_PMAX = 0xF7FD, // f64x2.pmax    [ 0xFD 0xF7 0x01 ]
-    I32X4_TRUNC_SAT_F32X4_S = 0xF8FD, // i32x4.trunc_sat_f32x4_s    [ 0xFD 0xF8 0x01 ]
-    I32X4_TRUNC_SAT_F32X4_U = 0xF9FD, // i32x4.trunc_sat_f32x4_u    [ 0xFD 0xF9 0x01 ]
-    F32X4_CONVERT_I32X4_S = 0xFAFD, // f32x4.convert_i32x4_s    [ 0xFD 0xFA 0x01 ]
-    F32X4_CONVERT_I32X4_U = 0xFBFD, // f32x4.convert_i32x4_u    [ 0xFD 0xFB 0x01 ]
-    I32X4_TRUNC_SAT_F64X2_S_ZERO = 0xFCFD, // i32x4.trunc_sat_f64x2_s_zero    [ 0xFD 0xFC 0x01 ]
-    I32X4_TRUNC_SAT_F64X2_U_ZERO = 0xFDFD, // i32x4.trunc_sat_f64x2_u_zero    [ 0xFD 0xFD 0x01 ]
-    F64X2_CONVERT_LOW_I32X4_S = 0xFEFD, // f64x2.convert_low_i32x4_s    [ 0xFD 0xFE 0x01 ]
-    F64X2_CONVERT_LOW_I32X4_U = 0xFFFD, // f64x2.convert_low_i32x4_u    [ 0xFD 0xFF 0x01 ]
     TRIVM_MULTIBYTE_FIRST = 0xFB, // TRIVM.MULTIBYTE_FIRST    [ 0xFB ]
     TRIVM_FUNCTION = -1, // TRIVM.FUNCTION
     TRIVM_POP = -2, // TRIVM.POP
@@ -466,6 +231,228 @@ export enum OP {
     TRIVM_GLOBAL_SET32 = -11, // TRIVM.GLOBAL_SET32
     TRIVM_GLOBAL_SET64 = -12, // TRIVM.GLOBAL_SET64
     TRIVM_RAW = -13, // TRIVM.RAW
+
+    // -- Opcodes enum - end of source code generated with help of "gen-instr.ts" script --
 }
 
-// -- End of source code generated with help of "gen-instr.ts" script --
+export const OP_NAMES: { [key in OP]: string } = {
+    // -- Instruction names - begin of source code generated with help of "gen-instr.ts" script --
+
+    [OP.UNREACHABLE]: 'unreachable',
+    [OP.NOP]: 'nop',
+    [OP.BLOCK]: 'block',
+    [OP.LOOP]: 'loop',
+    [OP.IF]: 'if',
+    [OP.ELSE]: 'else',
+    [OP.END]: 'end',
+    [OP.BR]: 'br',
+    [OP.BR_IF]: 'br_if',
+    [OP.BR_TABLE]: 'br_table',
+    [OP.RETURN]: 'return',
+    [OP.CALL]: 'call',
+    [OP.CALL_INDIRECT]: 'call_indirect',
+    [OP.DROP]: 'drop',
+    [OP.SELECT]: 'select',
+    [OP.SELECT_T]: 'select_t',
+    [OP.LOCAL_GET]: 'local.get',
+    [OP.LOCAL_SET]: 'local.set',
+    [OP.LOCAL_TEE]: 'local.tee',
+    [OP.GLOBAL_GET]: 'global.get',
+    [OP.GLOBAL_SET]: 'global.set',
+    [OP.TABLE_GET]: 'table.get',
+    [OP.TABLE_SET]: 'table.set',
+    [OP.I32_LOAD]: 'i32.load',
+    [OP.I64_LOAD]: 'i64.load',
+    [OP.F32_LOAD]: 'f32.load',
+    [OP.F64_LOAD]: 'f64.load',
+    [OP.I32_LOAD8_S]: 'i32.load8_s',
+    [OP.I32_LOAD8_U]: 'i32.load8_u',
+    [OP.I32_LOAD16_S]: 'i32.load16_s',
+    [OP.I32_LOAD16_U]: 'i32.load16_u',
+    [OP.I64_LOAD8_S]: 'i64.load8_s',
+    [OP.I64_LOAD8_U]: 'i64.load8_u',
+    [OP.I64_LOAD16_S]: 'i64.load16_s',
+    [OP.I64_LOAD16_U]: 'i64.load16_u',
+    [OP.I64_LOAD32_S]: 'i64.load32_s',
+    [OP.I64_LOAD32_U]: 'i64.load32_u',
+    [OP.I32_STORE]: 'i32.store',
+    [OP.I64_STORE]: 'i64.store',
+    [OP.F32_STORE]: 'f32.store',
+    [OP.F64_STORE]: 'f64.store',
+    [OP.I32_STORE8]: 'i32.store8',
+    [OP.I32_STORE16]: 'i32.store16',
+    [OP.I64_STORE8]: 'i64.store8',
+    [OP.I64_STORE16]: 'i64.store16',
+    [OP.I64_STORE32]: 'i64.store32',
+    [OP.MEMORY_SIZE]: 'memory.size',
+    [OP.MEMORY_GROW]: 'memory.grow',
+    [OP.I32_CONST]: 'i32.const',
+    [OP.I64_CONST]: 'i64.const',
+    [OP.F32_CONST]: 'f32.const',
+    [OP.F64_CONST]: 'f64.const',
+    [OP.I32_EQZ]: 'i32.eqz',
+    [OP.I32_EQ]: 'i32.eq',
+    [OP.I32_NE]: 'i32.ne',
+    [OP.I32_LT_S]: 'i32.lt_s',
+    [OP.I32_LT_U]: 'i32.lt_u',
+    [OP.I32_GT_S]: 'i32.gt_s',
+    [OP.I32_GT_U]: 'i32.gt_u',
+    [OP.I32_LE_S]: 'i32.le_s',
+    [OP.I32_LE_U]: 'i32.le_u',
+    [OP.I32_GE_S]: 'i32.ge_s',
+    [OP.I32_GE_U]: 'i32.ge_u',
+    [OP.I64_EQZ]: 'i64.eqz',
+    [OP.I64_EQ]: 'i64.eq',
+    [OP.I64_NE]: 'i64.ne',
+    [OP.I64_LT_S]: 'i64.lt_s',
+    [OP.I64_LT_U]: 'i64.lt_u',
+    [OP.I64_GT_S]: 'i64.gt_s',
+    [OP.I64_GT_U]: 'i64.gt_u',
+    [OP.I64_LE_S]: 'i64.le_s',
+    [OP.I64_LE_U]: 'i64.le_u',
+    [OP.I64_GE_S]: 'i64.ge_s',
+    [OP.I64_GE_U]: 'i64.ge_u',
+    [OP.F32_EQ]: 'f32.eq',
+    [OP.F32_NE]: 'f32.ne',
+    [OP.F32_LT]: 'f32.lt',
+    [OP.F32_GT]: 'f32.gt',
+    [OP.F32_LE]: 'f32.le',
+    [OP.F32_GE]: 'f32.ge',
+    [OP.F64_EQ]: 'f64.eq',
+    [OP.F64_NE]: 'f64.ne',
+    [OP.F64_LT]: 'f64.lt',
+    [OP.F64_GT]: 'f64.gt',
+    [OP.F64_LE]: 'f64.le',
+    [OP.F64_GE]: 'f64.ge',
+    [OP.I32_CLZ]: 'i32.clz',
+    [OP.I32_CTZ]: 'i32.ctz',
+    [OP.I32_POPCNT]: 'i32.popcnt',
+    [OP.I32_ADD]: 'i32.add',
+    [OP.I32_SUB]: 'i32.sub',
+    [OP.I32_MUL]: 'i32.mul',
+    [OP.I32_DIV_S]: 'i32.div_s',
+    [OP.I32_DIV_U]: 'i32.div_u',
+    [OP.I32_REM_S]: 'i32.rem_s',
+    [OP.I32_REM_U]: 'i32.rem_u',
+    [OP.I32_AND]: 'i32.and',
+    [OP.I32_OR]: 'i32.or',
+    [OP.I32_XOR]: 'i32.xor',
+    [OP.I32_SHL]: 'i32.shl',
+    [OP.I32_SHR_S]: 'i32.shr_s',
+    [OP.I32_SHR_U]: 'i32.shr_u',
+    [OP.I32_ROTL]: 'i32.rotl',
+    [OP.I32_ROTR]: 'i32.rotr',
+    [OP.I64_CLZ]: 'i64.clz',
+    [OP.I64_CTZ]: 'i64.ctz',
+    [OP.I64_POPCNT]: 'i64.popcnt',
+    [OP.I64_ADD]: 'i64.add',
+    [OP.I64_SUB]: 'i64.sub',
+    [OP.I64_MUL]: 'i64.mul',
+    [OP.I64_DIV_S]: 'i64.div_s',
+    [OP.I64_DIV_U]: 'i64.div_u',
+    [OP.I64_REM_S]: 'i64.rem_s',
+    [OP.I64_REM_U]: 'i64.rem_u',
+    [OP.I64_AND]: 'i64.and',
+    [OP.I64_OR]: 'i64.or',
+    [OP.I64_XOR]: 'i64.xor',
+    [OP.I64_SHL]: 'i64.shl',
+    [OP.I64_SHR_S]: 'i64.shr_s',
+    [OP.I64_SHR_U]: 'i64.shr_u',
+    [OP.I64_ROTL]: 'i64.rotl',
+    [OP.I64_ROTR]: 'i64.rotr',
+    [OP.F32_ABS]: 'f32.abs',
+    [OP.F32_NEG]: 'f32.neg',
+    [OP.F32_CEIL]: 'f32.ceil',
+    [OP.F32_FLOOR]: 'f32.floor',
+    [OP.F32_TRUNC]: 'f32.trunc',
+    [OP.F32_NEAREST]: 'f32.nearest',
+    [OP.F32_SQRT]: 'f32.sqrt',
+    [OP.F32_ADD]: 'f32.add',
+    [OP.F32_SUB]: 'f32.sub',
+    [OP.F32_MUL]: 'f32.mul',
+    [OP.F32_DIV]: 'f32.div',
+    [OP.F32_MIN]: 'f32.min',
+    [OP.F32_MAX]: 'f32.max',
+    [OP.F32_COPYSIGN]: 'f32.copysign',
+    [OP.F64_ABS]: 'f64.abs',
+    [OP.F64_NEG]: 'f64.neg',
+    [OP.F64_CEIL]: 'f64.ceil',
+    [OP.F64_FLOOR]: 'f64.floor',
+    [OP.F64_TRUNC]: 'f64.trunc',
+    [OP.F64_NEAREST]: 'f64.nearest',
+    [OP.F64_SQRT]: 'f64.sqrt',
+    [OP.F64_ADD]: 'f64.add',
+    [OP.F64_SUB]: 'f64.sub',
+    [OP.F64_MUL]: 'f64.mul',
+    [OP.F64_DIV]: 'f64.div',
+    [OP.F64_MIN]: 'f64.min',
+    [OP.F64_MAX]: 'f64.max',
+    [OP.F64_COPYSIGN]: 'f64.copysign',
+    [OP.I32_WRAP_I64]: 'i32.wrap_i64',
+    [OP.I32_TRUNC_F32_S]: 'i32.trunc_f32_s',
+    [OP.I32_TRUNC_F32_U]: 'i32.trunc_f32_u',
+    [OP.I32_TRUNC_F64_S]: 'i32.trunc_f64_s',
+    [OP.I32_TRUNC_F64_U]: 'i32.trunc_f64_u',
+    [OP.I64_EXTEND_I32_S]: 'i64.extend_i32_s',
+    [OP.I64_EXTEND_I32_U]: 'i64.extend_i32_u',
+    [OP.I64_TRUNC_F32_S]: 'i64.trunc_f32_s',
+    [OP.I64_TRUNC_F32_U]: 'i64.trunc_f32_u',
+    [OP.I64_TRUNC_F64_S]: 'i64.trunc_f64_s',
+    [OP.I64_TRUNC_F64_U]: 'i64.trunc_f64_u',
+    [OP.F32_CONVERT_I32_S]: 'f32.convert_i32_s',
+    [OP.F32_CONVERT_I32_U]: 'f32.convert_i32_u',
+    [OP.F32_CONVERT_I64_S]: 'f32.convert_i64_s',
+    [OP.F32_CONVERT_I64_U]: 'f32.convert_i64_u',
+    [OP.F32_DEMOTE_F64]: 'f32.demote_f64',
+    [OP.F64_CONVERT_I32_S]: 'f64.convert_i32_s',
+    [OP.F64_CONVERT_I32_U]: 'f64.convert_i32_u',
+    [OP.F64_CONVERT_I64_S]: 'f64.convert_i64_s',
+    [OP.F64_CONVERT_I64_U]: 'f64.convert_i64_u',
+    [OP.F64_PROMOTE_F32]: 'f64.promote_f32',
+    [OP.I32_REINTERPRET_F32]: 'i32.reinterpret_f32',
+    [OP.I64_REINTERPRET_F64]: 'i64.reinterpret_f64',
+    [OP.F32_REINTERPRET_I32]: 'f32.reinterpret_i32',
+    [OP.F64_REINTERPRET_I64]: 'f64.reinterpret_i64',
+    [OP.I32_EXTEND8_S]: 'i32.extend8_s',
+    [OP.I32_EXTEND16_S]: 'i32.extend16_s',
+    [OP.I64_EXTEND8_S]: 'i64.extend8_s',
+    [OP.I64_EXTEND16_S]: 'i64.extend16_s',
+    [OP.I64_EXTEND32_S]: 'i64.extend32_s',
+    [OP.REF_NULL]: 'ref.null',
+    [OP.REF_IS_NULL]: 'ref.is_null',
+    [OP.REF_FUNC]: 'ref.func',
+    [OP.I32_TRUNC_SAT_F32_S]: 'i32.trunc_sat_f32_s',
+    [OP.I32_TRUNC_SAT_F32_U]: 'i32.trunc_sat_f32_u',
+    [OP.I32_TRUNC_SAT_F64_S]: 'i32.trunc_sat_f64_s',
+    [OP.I32_TRUNC_SAT_F64_U]: 'i32.trunc_sat_f64_u',
+    [OP.I64_TRUNC_SAT_F32_S]: 'i64.trunc_sat_f32_s',
+    [OP.I64_TRUNC_SAT_F32_U]: 'i64.trunc_sat_f32_u',
+    [OP.I64_TRUNC_SAT_F64_S]: 'i64.trunc_sat_f64_s',
+    [OP.I64_TRUNC_SAT_F64_U]: 'i64.trunc_sat_f64_u',
+    [OP.MEMORY_INIT]: 'memory.init',
+    [OP.DATA_DROP]: 'data.drop',
+    [OP.MEMORY_COPY]: 'memory.copy',
+    [OP.MEMORY_FILL]: 'memory.fill',
+    [OP.TABLE_INIT]: 'table.init',
+    [OP.ELEM_DROP]: 'elem.drop',
+    [OP.TABLE_COPY]: 'table.copy',
+    [OP.TABLE_GROW]: 'table.grow',
+    [OP.TABLE_SIZE]: 'table.size',
+    [OP.TABLE_FILL]: 'table.fill',
+    [OP.TRIVM_MULTIBYTE_FIRST]: 'TRIVM.MULTIBYTE_FIRST',
+    [OP.TRIVM_FUNCTION]: 'TRIVM.FUNCTION',
+    [OP.TRIVM_POP]: 'TRIVM.POP',
+    [OP.TRIVM_DUP32]: 'TRIVM.DUP32',
+    [OP.TRIVM_DUP64]: 'TRIVM.DUP64',
+    [OP.TRIVM_LOCAL_GET32]: 'TRIVM.LOCAL_GET32',
+    [OP.TRIVM_LOCAL_GET64]: 'TRIVM.LOCAL_GET64',
+    [OP.TRIVM_LOCAL_SET32]: 'TRIVM.LOCAL_SET32',
+    [OP.TRIVM_LOCAL_SET64]: 'TRIVM.LOCAL_SET64',
+    [OP.TRIVM_GLOBAL_GET32]: 'TRIVM.GLOBAL_GET32',
+    [OP.TRIVM_GLOBAL_GET64]: 'TRIVM.GLOBAL_GET64',
+    [OP.TRIVM_GLOBAL_SET32]: 'TRIVM.GLOBAL_SET32',
+    [OP.TRIVM_GLOBAL_SET64]: 'TRIVM.GLOBAL_SET64',
+    [OP.TRIVM_RAW]: 'TRIVM.RAW',
+
+    // -- Instruction names - end of source code generated with help of "gen-instr.ts" script --
+};

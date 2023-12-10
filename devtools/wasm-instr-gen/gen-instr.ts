@@ -132,7 +132,7 @@ function postProcess(table: Row[]) {
 }
 
 function generateEnum(table: Row[]) {
-    let out = '\nexport enum OP {\n';
+    let out = '';
     for (let row of table) {
         out += `    ${row.id} = ${row.hexOpcode}, // ${row.instruction}`;
         if (row.immediate.length) {
@@ -143,8 +143,7 @@ function generateEnum(table: Row[]) {
         }
         out += '\n';
     }
-    out += '};\n';
-    writeOutput('output/opcodes.ts', '../../tools/wasm/opcodes.ts', out, '');
+    writeOutput('output/opcodes.ts', '../../tools/wasm/opcodes.ts', out, '    ', 'Opcodes enum');
 }
 
 function generateParser(table: Row[]) {
@@ -192,6 +191,39 @@ function splitTypes(type: string): [(string | undefined)[], (string | undefined)
         ) as [(string | undefined)[], (string | undefined)[]];
 }
 
+interface SplitTypesResult {
+    pop: (string | undefined)[];
+    push: (string | undefined)[];
+    defined: boolean;
+    known: boolean;
+}
+
+function splitTypes2(type: string): SplitTypesResult {
+    type = type.replace(/[^a-z0-9_→]/gi, ' ');
+    let parts = type.trim().split('→');
+    if (parts.length != 2) {
+        return {
+            pop: [],
+            push: [],
+            defined: false,
+            known: false,
+        };
+    }
+
+    let partsFiltered = parts.map(x => x
+        .trim()
+        .split(/\s+/)
+        .filter(x => x.length)
+        .map(x => TYPES[x.toLowerCase()]));
+
+    return {
+        pop: partsFiltered[0],
+        push: partsFiltered[1],
+        defined: true,
+        known: partsFiltered.findIndex(x => x.findIndex(y => y === undefined) >= 0) < 0,
+    };
+}
+
 function generateDumperNames(table: Row[]) {
     let out = '';
 
@@ -199,7 +231,7 @@ function generateDumperNames(table: Row[]) {
         out += `    [OP.${row.id}]: '${row.instruction}',\n`;
     }
 
-    writeOutput('output/moduleDebug-names.ts', '../../tools/wasm/moduleDebug.ts', out, '    ', 'Instruction names');
+    writeOutput('output/opcodes.ts', '../../tools/wasm/opcodes.ts', out, '    ', 'Instruction names');
 }
 
 function generateDumperCases(table: Row[]) {
@@ -429,6 +461,53 @@ export function valueTypeWords(type: string[] | string): number {
     return TYPE_WORDS[type];
 }
 
+function generatePopPush(table: Row[]) {
+
+    function sortKey(value: string): number {
+        if (value.trim().startsWith('!')) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    let out = '';
+
+    let groups: { [key: string]: Row[] } = {};
+
+    for (let row of table) {
+        let types = splitTypes2(row.type);
+        let key = !types.defined || !types.known ? '!' + row.instruction : types.pop.join(',') + ';' + types.push.join(',');
+        groups[key] = groups[key] || [];
+        groups[key].push(row);
+    }
+
+    let sorted = Object.keys(groups).sort((a, b) => sortKey(a) - sortKey(b));
+
+    for (let key of sorted) {
+        for (let row of groups[key]) {
+            out += `\n    case OP.${row.id}:`;
+        }
+        out += ` {\n`;
+        if (key.startsWith('!')) {
+            // Nothing to do
+        } else {
+            let types = splitTypes2(groups[key][0].type);
+            if (types.pop.length) {
+                out += `        res.poppedTypes = [${types.pop.join(', ')}];\n`;
+            }
+            if (types.push.length) {
+                out += `        res.pushedTypes = [${types.push.join(', ')}];\n`;
+            }
+        }
+        out += `        break;\n`;
+        out += `    }`;
+    }
+    out += `\n`;
+
+    writeOutput('output/instrStack.ts', '../../tools/wasm/instrStack.ts', out, '    ', 'Instruction pop and push');
+}
+
 function generateGenerator(table: Row[]) {
 
     function sortKey(value: string): number {
@@ -541,18 +620,20 @@ function writeOutput(destFile: string, origFile: string, content: string, indent
 
 async function main() {
     try {
-        fs.rmdirSync('temp', { 'recursive': true });
+        fs.rmSync('temp', { 'recursive': true });
     } catch (ex) { }
     fs.mkdirSync('temp', { 'recursive': true });
     fs.mkdirSync('output', { 'recursive': true });
     let table = await parseOds();
     postProcess(table);
     fs.writeFileSync('temp/content5.json', JSON.stringify(table, null, 4));
+    generatePopPush(table);
     generateEnum(table);
-    generateParser(table);
-    generateReducer(table);
-    generateDumper(table);
-    generateGenerator(table);
+    generateDumperNames(table);
+    // generateParser(table);
+    // generateReducer(table);
+    // generateDumper(table);
+    // generateGenerator(table);
     // generateOutputNames(table);
     // generateDataDump(table);
     // generateGenerator(table);

@@ -152,11 +152,11 @@ export interface WasmInstrBr {
     direction: WasmBranchDir;
 }
 
-export type WasmInstrIndexedOP = OP.LOCAL_GET | OP.LOCAL_SET | OP.LOCAL_TEE | OP.I8X16_EXTRACT_LANE_S |
+export type WasmInstrIndexedOP = OP.LOCAL_GET | OP.LOCAL_SET | OP.LOCAL_TEE /*| OP.I8X16_EXTRACT_LANE_S |
     OP.I8X16_EXTRACT_LANE_U | OP.I8X16_REPLACE_LANE | OP.I16X8_EXTRACT_LANE_S | OP.I16X8_EXTRACT_LANE_U |
     OP.I16X8_REPLACE_LANE | OP.I32X4_EXTRACT_LANE | OP.I32X4_REPLACE_LANE | OP.I64X2_EXTRACT_LANE |
     OP.I64X2_REPLACE_LANE | OP.F32X4_EXTRACT_LANE | OP.F32X4_REPLACE_LANE | OP.F64X2_EXTRACT_LANE |
-    OP.F64X2_REPLACE_LANE;
+    OP.F64X2_REPLACE_LANE*/;
 export interface WasmInstrIndexed {
     id: number;
     opcode: WasmInstrIndexedOP;
@@ -233,7 +233,6 @@ export interface WasmInstrRefFunc {
     id: number;
     opcode: WasmInstrRefFuncOP;
     func: WasmFunction;
-    type?: FunctionType;
 }
 
 export type WasmInstrGlobalOP = OP.GLOBAL_GET | OP.GLOBAL_SET;
@@ -252,12 +251,12 @@ export interface WasmInstrGlobalOffset {
     offset: number;
 }
 
-export type WasmInstrValueV128OP = OP.V128_CONST | OP.I8X16_SHUFFLE;
+/*export type WasmInstrValueV128OP = OP.V128_CONST | OP.I8X16_SHUFFLE;
 export interface WasmInstrValueV128 {
     id: number;
     opcode: WasmInstrValueV128OP;
     value: Uint8Array;
-}
+}*/
 
 export type WasmInstrTableOP = OP.TABLE_GET | OP.TABLE_SET | OP.TABLE_GROW | OP.TABLE_SIZE | OP.TABLE_FILL;
 export interface WasmInstrTable {
@@ -269,10 +268,10 @@ export interface WasmInstrTable {
 export type WasmInstrMemArgOP = OP.I32_LOAD | OP.I64_LOAD | OP.F32_LOAD | OP.F64_LOAD | OP.I32_LOAD8_S |
     OP.I32_LOAD8_U | OP.I32_LOAD16_S | OP.I32_LOAD16_U | OP.I64_LOAD8_S | OP.I64_LOAD8_U | OP.I64_LOAD16_S |
     OP.I64_LOAD16_U | OP.I64_LOAD32_S | OP.I64_LOAD32_U | OP.I32_STORE | OP.I64_STORE | OP.F32_STORE | OP.F64_STORE |
-    OP.I32_STORE8 | OP.I32_STORE16 | OP.I64_STORE8 | OP.I64_STORE16 | OP.I64_STORE32 | OP.V128_LOAD |
+    OP.I32_STORE8 | OP.I32_STORE16 | OP.I64_STORE8 | OP.I64_STORE16 | OP.I64_STORE32 /*| OP.V128_LOAD |
     OP.V128_LOAD8X8_S | OP.V128_LOAD8X8_U | OP.V128_LOAD16X4_S | OP.V128_LOAD16X4_U | OP.V128_LOAD32X2_S |
     OP.V128_LOAD32X2_U | OP.V128_LOAD8_SPLAT | OP.V128_LOAD16_SPLAT | OP.V128_LOAD32_SPLAT | OP.V128_LOAD64_SPLAT |
-    OP.V128_STORE;
+    OP.V128_STORE*/;
 export interface WasmInstrMemArg {
     id: number;
     opcode: WasmInstrMemArgOP;
@@ -296,7 +295,7 @@ export interface WasmInstrLocal {
     offset: number;
 }
 
-export type WasmInstrMemArgWithIndexOP = OP.V128_LOAD8_LANE | OP.V128_STORE8_LANE | OP.V128_LOAD16_LANE |
+/*export type WasmInstrMemArgWithIndexOP = OP.V128_LOAD8_LANE | OP.V128_STORE8_LANE | OP.V128_LOAD16_LANE |
     OP.V128_STORE16_LANE | OP.V128_LOAD32_LANE | OP.V128_STORE32_LANE | OP.V128_LOAD32_ZERO | OP.V128_LOAD64_LANE |
     OP.V128_STORE64_LANE | OP.V128_LOAD64_ZERO;
 export interface WasmInstrMemArgWithIndex {
@@ -305,7 +304,7 @@ export interface WasmInstrMemArgWithIndex {
     offset: number;
     memory: WasmMemory;
     index: number;
-}
+}*/
 
 export type WasmInstrMemOP = OP.MEMORY_SIZE | OP.MEMORY_GROW | OP.MEMORY_FILL;
 export interface WasmInstrMem {
@@ -370,8 +369,8 @@ export interface WasmInstrRaw {
 export type WasmInstrNoArgsOP = Exclude<OP, WasmInstrBrOP | WasmInstrIndexedOP | WasmInstrWithBlockOP | WasmInstrIfOP |
     WasmInstrEndOP | WasmInstrConst32OP | WasmInstrConst64OP | WasmInstrBrTableOP | WasmInstrRefOP |
     WasmInstrCallIndirectOP | WasmInstrCallOP | WasmInstrRefFuncOP | WasmInstrGlobalOP | WasmInstrGlobalOffsetOP |
-    WasmInstrTableOP | WasmInstrValueV128OP | WasmInstrMemArgOP | WasmInstrOffsetOP | WasmInstrLocalOP |
-    WasmInstrMemOP | WasmInstrMemInitOP | WasmInstrDataDropOP | WasmInstrMemCopyOP | WasmInstrMemArgWithIndexOP |
+    WasmInstrTableOP /*| WasmInstrValueV128OP*/ | WasmInstrMemArgOP | WasmInstrOffsetOP | WasmInstrLocalOP |
+    WasmInstrMemOP | WasmInstrMemInitOP | WasmInstrDataDropOP | WasmInstrMemCopyOP /*| WasmInstrMemArgWithIndexOP*/ |
     WasmInstrElemDropOP | WasmInstrTableInitOP | WasmInstrTableCopyOP | WasmInstrRawOP>;
 
 export interface WasmInstrNoArgs {
@@ -381,9 +380,9 @@ export interface WasmInstrNoArgs {
 
 export type WasmInstr = WasmInstrNoArgs | WasmInstrBr | WasmInstrIndexed | WasmInstrWithBlock | WasmInstrIf |
     WasmInstrEnd | WasmInstrConst32 | WasmInstrConst64 | WasmInstrBrTable | WasmInstrRef | WasmInstrCallIndirect |
-    WasmInstrCall | WasmInstrRefFunc | WasmInstrGlobal | WasmInstrGlobalOffset | WasmInstrTable | WasmInstrValueV128 |
+    WasmInstrCall | WasmInstrRefFunc | WasmInstrGlobal | WasmInstrGlobalOffset | WasmInstrTable /*| WasmInstrValueV128*/ |
     WasmInstrMemArg | WasmInstrOffset | WasmInstrLocal | WasmInstrMem | WasmInstrMemInit | WasmInstrDataDrop |
-    WasmInstrMemCopy | WasmInstrMemArgWithIndex | WasmInstrElemDrop | WasmInstrTableInit | WasmInstrTableCopy |
+    WasmInstrMemCopy /*| WasmInstrMemArgWithIndex*/ | WasmInstrElemDrop | WasmInstrTableInit | WasmInstrTableCopy |
     WasmInstrRaw;
 
 export class WasmBlock {

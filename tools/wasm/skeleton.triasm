@@ -12,6 +12,7 @@ import { U16_MAX_SIZE, REGISTERS_END } from '../common/common';
 export function skeleton(module: WasmModule, conf: Conf, gen: Generator) {
     const output = gen.output;
     /* eslint-disable max-len */
+    /* eslint-disable quotes */
 %>
 
 
