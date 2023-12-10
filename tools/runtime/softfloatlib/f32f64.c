@@ -119,3 +119,10 @@ void* softfloatlib_get_temp_buffer12()
 {
     return softfloatlib_get_temp_buffer12_asm();
 }
+
+TRIVM_EXPORT(temp)
+uint32_t temp(uint32_t x) {
+    TRIVM_IMPORT(__triwasm__triwasmlib, i32_clz)
+    uint32_t i32_clz(uint32_t);
+    return i32_clz(x);
+}

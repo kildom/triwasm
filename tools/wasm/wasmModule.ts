@@ -442,6 +442,20 @@ export class WasmFunction extends WasmEntity {
         super();
         this.resolved = this;
     }
+    public getLocal(index: number): ValueType {
+        if (index < 0) {
+            throw new Error(`Invalid local index: ${index}`);
+        } else if (index < this.type.params.length) {
+            return this.type.params[index];
+        } else if (index < this.getLocalsCount()) {
+            return this.locals[index - this.type.params.length];
+        } else {
+            throw new Error(`Invalid local index: ${index}`);
+        }
+    }
+    public getLocalsCount(): number {
+        return this.type.params.length + this.locals.length;
+    }
 }
 
 export class WasmMemory extends WasmEntity {

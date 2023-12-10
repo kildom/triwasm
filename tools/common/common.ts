@@ -48,3 +48,32 @@ export function enumize<E>(x: number, enumObject?: any): E {
     }
     return x as E;
 }
+
+let stackSizeLimit = 100000;
+
+export function extendArray(base: unknown[], add: unknown[]) {
+    if (add.length <= stackSizeLimit) {
+        try {
+            base.push(...add);
+            return;
+        } catch (ex) {
+            stackSizeLimit = Math.ceil(stackSizeLimit / 2);
+        }
+    }
+
+    if (add === base) {
+        add = [...base];
+    }
+
+    for (let i = 0; i < add.length;) {
+        try {
+            base.push(...add.slice(i, i + stackSizeLimit));
+            i += stackSizeLimit;
+        } catch (ex) {
+            stackSizeLimit = Math.ceil(stackSizeLimit / 2);
+            if (stackSizeLimit < 1000) {
+                throw ex;
+            }
+        }
+    }
+}
