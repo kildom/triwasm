@@ -19,23 +19,6 @@ export interface PopPushResult {
     unreachable: boolean;
 }
 
-function targetType(res: PopPushResult, func: WasmFunction, target: WasmBlock, stack?: ValueType[]): FunctionType {
-    if (target === func.block && func.kind === WasmFunctionKind.WASM_TYPE_UNKNOWN) {
-        if (!stack) {
-            res.errors.push('Unknown return type.');
-            return { params: [], results: [] };
-        } else if (!stack.length) {
-            res.errors.push('Returning empty stack.');
-            return { params: [], results: [] };
-        }
-        return {
-            params: [],
-            results: [stack.at(-1) as ValueType],
-        };
-    }
-    return target.type;
-}
-
 export function getInstrPopPush(func: WasmFunction, block: WasmBlock, instr: WasmInstr, stack?: ValueType[],
                                 throwErrors?: boolean): PopPushResult {
 
@@ -71,37 +54,33 @@ export function getInstrPopPush(func: WasmFunction, block: WasmBlock, instr: Was
         break;
     }
     case OP.END: {
-        let type = targetType(res, func, block, stack);
-        res.poppedTypes = [...type.results];
+        res.poppedTypes = [...block.type.results];
         res.unreachable = true;
         break;
     }
     case OP.BR: {
-        let type = targetType(res, func, instr.target, stack);
         if (instr.direction === WasmBranchDir.Forward) {
-            res.poppedTypes = [...type.results];
+            res.poppedTypes = [...instr.target.type.results];
         } else {
-            res.poppedTypes = [...type.params];
+            res.poppedTypes = [...instr.target.type.params];
         }
         res.unreachable = true;
         break;
     }
     case OP.BR_IF: {
-        let type = targetType(res, func, instr.target, stack);
         if (instr.direction === WasmBranchDir.Forward) {
-            res.poppedTypes = [...type.results, NumberType.I32];
-            res.pushedTypes = [...type.results];
+            res.poppedTypes = [...instr.target.type.results, NumberType.I32];
+            res.pushedTypes = [...instr.target.type.results];
         } else {
-            res.poppedTypes = [...type.params, NumberType.I32];
-            res.pushedTypes = [...type.params];
+            res.poppedTypes = [...instr.target.type.params, NumberType.I32];
+            res.pushedTypes = [...instr.target.type.params];
         }
         break;
     }
     case OP.BR_TABLE: {
         let common: ValueType[] = [];
         for (let target of instr.targets) {
-            let type = targetType(res, func, target, stack);
-            let types = target.parentInstruction.opcode === OP.LOOP ? type.params : type.results;
+            let types = target.parentInstruction.opcode === OP.LOOP ? target.type.params : target.type.results;
             let intersectLength = Math.min(types.length, common.length);
             let a = common.slice(common.length - intersectLength);
             let b = types.slice(types.length - intersectLength);
@@ -117,20 +96,14 @@ export function getInstrPopPush(func: WasmFunction, block: WasmBlock, instr: Was
         break;
     }
     case OP.RETURN: {
-        if (func.block) {
-            let type = targetType(res, func, func.block, stack);
-            res.poppedTypes = [...type.results];
-            res.unreachable = true;
-        }
+        res.poppedTypes = [...func.type.results];
+        res.unreachable = true;
         break;
     }
     case OP.CALL: {
         let type: FunctionType;
         if (instr.type) {
             type = instr.type;
-        } else if (instr.func.kind === WasmFunctionKind.WASM_TYPE_UNKNOWN) {
-            res.errors.push('Call of function with unknown return type.');
-            type = { params: [], results: [] };
         } else {
             type = instr.func.type;
         }

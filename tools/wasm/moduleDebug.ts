@@ -209,7 +209,7 @@ function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
         out?.push('</pre></td></tr>');
     }
     out?.push('</table>');
-    ctx.walkFunction = (func.kind === WasmFunctionKind.WASM || func.kind === WasmFunctionKind.WASM_TYPE_UNKNOWN);
+    ctx.walkFunction = (func.kind === WasmFunctionKind.WASM);
     // TODO: Verify correctness of the function at this stage
     return {};
 }
@@ -218,9 +218,11 @@ function enterBlock(ctx: EnterBlockCtx<ModuleData, FunctionData, BlockData, Inst
     let out = ctx.instrDataStack.at(-1)?.output || ctx.moduleData.output;
     out?.push(`<table class="instr" id="${'...'}"><tbody>`);
     let blockData = new BlockData();
-    for (let type of ctx.block.type.params) {
-        blockData.typesStack.push(type);
-        blockData.labelsStack.push(...STACK_LABELS[type]);
+    if (ctx.block.parentInstruction.opcode !== OP.TRIVM_FUNCTION) {
+        for (let type of ctx.block.type.params) {
+            blockData.typesStack.push(type);
+            blockData.labelsStack.push(...STACK_LABELS[type]);
+        }
     }
     return blockData;
 }

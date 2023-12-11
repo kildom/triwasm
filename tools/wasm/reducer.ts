@@ -190,16 +190,6 @@ function handleBranch(ctx: Ctx, target: WasmBlock, direction: WasmBranchDir) {
     } else {
         checkTypes(ctx, ...target.type.results);
     }
-    if (ctx.func.kind == WasmFunctionKind.WASM_TYPE_UNKNOWN && target.parentInstruction.opcode === OP.TRIVM_FUNCTION) {
-        if (ctx.blockData.typeStack.length === 0) {
-            error(ctx, 'Function should return a value.');
-            ctx.func.type = { params: [], results: [NumberType.I32] };
-        } else {
-            ctx.func.type = { params: [], results: [ctx.blockData.typeStack.at(-1) as ValueType] };
-        }
-        target.type = ctx.func.type;
-        ctx.func.kind = WasmFunctionKind.WASM;
-    }
 }
 
 

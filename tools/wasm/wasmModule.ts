@@ -83,7 +83,6 @@ export interface FunctionType {
 
 export enum WasmFunctionKind {
     WASM,            ///< Normal WASM function with body
-    WASM_TYPE_UNKNOWN,//< Normal WASM function with body, but the result is unknown and must be determined from the code
     ANNOTATION,      ///< Annotation magic function, call replaced by ".annotation" during triasm generation
     IMPORT,          ///< Import function, will be replaced by FUNCTION_HOST or FUNCTION_LINK during ref resolving
     HOST,            ///< Host function referenced by index

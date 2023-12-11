@@ -16,7 +16,7 @@ import { allowTemporaryNull, enumize, pick } from '../common/common';
 import { BinaryInput } from './binaryInput';
 import { OP } from './opcodes';
 import {
-    DataKind, ElementKind, FunctionType, GlobalKind, Limits, RefType, ValueType, ValueTypeObject,
+    DataKind, ElementKind, FunctionType, GlobalKind, Limits, NumberType, RefType, ValueType, ValueTypeObject,
     WasmBlock, WasmBranchDir, WasmData, WasmElement, WasmFunction, WasmFunctionKind, WasmGlobal,
     WasmInstr, WasmInstrIf, WasmInstrIfOP, WasmInstrWithBlock, WasmInstrWithBlockOP, WasmMemory,
     WasmModule, WasmTable, instrId
@@ -181,7 +181,7 @@ export class WasmParser {
                 index = input.u32();
             // no break - fall through
             case 0: {
-                let offset = this.parseConstExpression(input);
+                let offset = this.parseConstExpression(input, NumberType.I32);
                 let size = input.u32();
                 let content = input.raw(size);
                 data.kind = DataKind.ACTIVE;
@@ -265,7 +265,7 @@ export class WasmParser {
             case 0: { // active to table 0 of type funcref
                 element.kind = ElementKind.ACTIVE;
                 element.table = this.module.tables[0];
-                element.offset = this.parseConstExpression(input);
+                element.offset = this.parseConstExpression(input, NumberType.I32);
                 break;
             }
             case 1: { // passive
@@ -276,7 +276,7 @@ export class WasmParser {
             case 2: { // active to table N of type X
                 element.kind = ElementKind.ACTIVE;
                 element.table = this.module.tables[input.u32()];
-                element.offset = this.parseConstExpression(input);
+                element.offset = this.parseConstExpression(input, NumberType.I32);
                 elemkind = input.byte();
                 break;
             }
@@ -293,7 +293,7 @@ export class WasmParser {
             for (let k = 0; k < itemsCount; k++) {
                 let expr: WasmFunction;
                 if (tag & 4) {
-                    expr = this.parseConstExpression(input);
+                    expr = this.parseConstExpression(input, RefType.FUNCREF);
                 } else {
                     let baseId = input.id();
                     let index = input.u32();
@@ -352,7 +352,7 @@ export class WasmParser {
             // types.html#binary-globaltype
             let type: ValueType = enumize(input.byte(), ValueTypeObject);
             let kind: GlobalKind = enumize(input.byte(), GlobalKind);
-            let expr = this.parseConstExpression(input);
+            let expr = this.parseConstExpression(input, type);
             let global = this.module.globals[this.globalIndex++];
             global.kind = kind;
             global.type = type;
@@ -361,8 +361,8 @@ export class WasmParser {
     }
 
     // ../valid/instructions.html#constant-expressions
-    private parseConstExpression(input: BinaryInput): WasmFunction {
-        let func = new WasmFunction(WasmFunctionKind.WASM_TYPE_UNKNOWN, { params: [], results: [] });
+    private parseConstExpression(input: BinaryInput, type: ValueType): WasmFunction {
+        let func = new WasmFunction(WasmFunctionKind.WASM, { params: [], results: [type] });
         this.module.functions.push(func);
         this.parseFuncExpr(input, func);
         return func;
