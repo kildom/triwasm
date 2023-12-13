@@ -49,6 +49,23 @@ export class Path {
         }
         return new Path(this.root, [...this.parts, ...all]);
     }
+    public withExtension(extension: string): Path {
+        if (!extension.startsWith('.')) {
+            extension = '.' + extension;
+        }
+        if (this.parts.length > 0) {
+            let last = this.parts.at(-1) as string;
+            let index = last.lastIndexOf('.');
+            if (index > 0) {
+                last = last.substring(0, index) + extension;
+            } else {
+                last += extension;
+            }
+            return new Path(this.root, [...this.parts.slice(0, this.parts.length - 1), last]);
+        } else {
+            return new Path(this.root, [extension]);
+        }
+    }
     public toString(): string {
         if (this.root !== undefined) {
             return this.parts.length ? [this.root, ...this.parts].join(this.sep) : this.root + this.sep;

@@ -1,4 +1,4 @@
-import { extendArray } from '../common/common';
+import { exhaustiveCheck, extendArray } from '../common/common';
 import { Path } from '../common/path';
 import { platform } from '../common/platform';
 import { getInstrPopPush } from './instrStack';
@@ -7,9 +7,8 @@ import { OP, OP_NAMES } from './opcodes';
 import { DUMP_HTML_CSS, DUMP_HTML_JS } from './res';
 import {
     FunctionType, NumberType, RefType, ValueType, VectorType, WasmBranchDir,
-    WasmData,
-    WasmElement,
-    WasmFunction, WasmFunctionKind, WasmGlobal, WasmMemory, WasmModule, WasmTable, valueTypeWords
+    WasmData, WasmElement, WasmEntity,
+    WasmFunction, WasmFunctionKind, WasmGlobal, WasmInstr, WasmMemory, WasmModule, WasmTable, valueTypeWords
 } from './wasmModule';
 
 
@@ -20,88 +19,40 @@ export enum ModuleStage {
     AfterOptimization = 3,
 }
 
-let lastModuleUid = 0;
-let lastFuncUid = 1000000;
-const moduleUidMap: Map<WasmModule, string> = new Map();
-const funcUidMap: Map<WasmFunction, string> = new Map();
-const usedUids: Set<string> = new Set();
 
-function getModuleUid(module: WasmModule): string {
-    if (moduleUidMap.has(module)) {
-        return moduleUidMap.get(module) as string;
-    }
-    lastModuleUid++;
-    moduleUidMap.set(module, lastModuleUid.toString());
-    return lastModuleUid.toString();
-}
+type TopLevelElement = WasmModule | WasmEntity | WasmData | WasmElement;
+type LinkableElement = TopLevelElement | WasmInstr;
 
-function getFuncPostfixForUid(func: WasmFunction): string {
-    let name: string | undefined = func.import?.name;
-    if (!name) {
-        name = func.exports[0]?.name;
-    }
-    let m: RegExpMatchArray | null;
-    if ((m = name?.match(/export=([a-z0-9_$]+)/i))) {
-        name = m[1];
-    }
-    if (!name?.match(/^[a-z0-9_$]+$/i)) {
-        return '';
-    } else {
-        return '-' + name;
-    }
-}
-
-function getFuncUid(module: WasmModule, func: WasmFunction): string {
-    if (funcUidMap.has(func)) {
-        return funcUidMap.get(func) as string;
-    } else {
-        let moduleUid = 'F-' + getModuleUid(module);
-        let postfix = getFuncPostfixForUid(func);
-        for (let i = 0; i < module.functions.length; i++) {
-            if (func === module.functions[i]) {
-                let uid = moduleUid + '-' + i + postfix;
-                let k = 0;
-                while (usedUids.has(uid)) {
-                    k++;
-                    uid = moduleUid + '-' + i + '-' + k + postfix;
-                }
-                funcUidMap.set(func, uid);
-                return uid;
-            }
-        }
-        lastFuncUid++;
-        let uid = moduleUid + '-' + lastFuncUid + postfix;
-        funcUidMap.set(func, uid);
-        return uid;
-    }
-}
-
-function getFuncLink(module: WasmModule, func: WasmFunction): string {
-    let uid = getFuncUid(module, func);
-    if (func.resolved !== func) {
-        let resUid = getFuncUid(module, func.resolved);
-        return `<a href="#${uid}">#${uid}</a> =&gt; <a href="#${resUid}">#${resUid}</a>`;
-    }
-    return `<a href="#${uid}">#${uid}</a>`;
-}
 
 class ModuleData {
+
+    public errors: string[] = [];
 
     constructor(
         public module: WasmModule,
         public stage: ModuleStage,
         public output: string[] | undefined) { }
 
+    assert(condition: boolean, out: string[] | undefined, target: LinkableElement, message: string) {
+        if (!condition) {
+            addError(out, this, message, target);
+        }
+    }
+
 }
+
 
 interface FunctionData {
 }
+
 
 class BlockData {
     public unreachable: boolean = false;
     public labelsStack: string[] = [];
     public typesStack: ValueType[] = [];
+    public elseCount: number = 0;
 }
+
 
 class InstrData {
     public output: string[] | undefined;
@@ -110,6 +61,7 @@ class InstrData {
         this.output = useOutput ? [] : undefined;
     }
 }
+
 
 const STACK_LABELS: { [key in ValueType]: string[] } = {
     [NumberType.I32]: ['i32'],
@@ -121,6 +73,7 @@ const STACK_LABELS: { [key in ValueType]: string[] } = {
     [VectorType.V128]: ['v128a', 'v128b', 'v128c', 'v128d'],
 };
 
+
 const STACK_LABELS_REVERSED: { [key in ValueType]: string[] } = {
     [NumberType.I32]: ['i32'],
     [NumberType.I64]: ['i64hi', 'i64lo'],
@@ -130,6 +83,7 @@ const STACK_LABELS_REVERSED: { [key in ValueType]: string[] } = {
     [RefType.EXTERNREF]: ['extern'],
     [VectorType.V128]: ['v128d', 'v128c', 'v128b', 'v128a'],
 };
+
 
 const TYPE_NAMES: { [key in ValueType]: string } = {
     [NumberType.I32]: 'i32',
@@ -141,6 +95,7 @@ const TYPE_NAMES: { [key in ValueType]: string } = {
     [VectorType.V128]: 'v128',
 };
 
+
 const htmlHeader = [
     '<html><head><style>',
     DUMP_HTML_CSS,
@@ -150,9 +105,17 @@ const htmlHeader = [
     '</script></head><body>'
 ];
 
+
 const htmlFooter = [
     '</body></html>'
 ];
+
+
+let lastModuleUid = 0;
+let lastDynamicUid = 1000000;
+const uidMap: Map<TopLevelElement, string> = new Map();
+const usedUids: Set<string> = new Set();
+
 
 function html(text: string | undefined | null): string {
     return (text || '')
@@ -162,6 +125,35 @@ function html(text: string | undefined | null): string {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+
+function formatValue32(value: number) {
+    let dec: bigint;
+    let value2 = BigInt(value) & 0xFFFFFFFFn;
+    if (value2 & 0x80000000n) {
+        dec = value2 - 0x100000000n;
+    } else {
+        dec = value2;
+    }
+    let hex = '00000000' + value2.toString(16);
+    hex = hex.substring(hex.length - 8);
+    return `${dec} (0x${hex})`;
+}
+
+
+function formatValue64(value: bigint) {
+    let dec: bigint;
+    value &= 0xFFFFFFFFFFFFFFFFn;
+    if (value & 0x8000000000000000n) {
+        dec = value - 0x10000000000000000n;
+    } else {
+        dec = value;
+    }
+    let hex = '0000000000000000' + value.toString(16);
+    hex = hex.substring(hex.length - 16);
+    return `${dec} (0x${hex})`;
+}
+
 
 function dumpFunctionType(type: FunctionType, force: boolean = false): string {
     if (!force && type.params.length === 0 && type.results.length === 0) {
@@ -179,16 +171,114 @@ function dumpFunctionType(type: FunctionType, force: boolean = false): string {
 }
 
 
+function getUid(module: WasmModule, value?: LinkableElement): string {
+
+    if (value && !(value instanceof WasmModule) && !(value instanceof WasmEntity) &&
+        !(value instanceof WasmData) && !(value instanceof WasmElement)) {
+        if (typeof (value.id) === 'number' && typeof (value.opcode) === 'number' && OP[value.opcode]) {
+            return value.id.toString();
+        } else {
+            throw new Error();
+        }
+    }
+
+    if (uidMap.has(value || module)) {
+        return uidMap.get(value || module) as string;
+    }
+
+    if (!value || value instanceof WasmModule) {
+        lastModuleUid++;
+        let uid = lastModuleUid.toString();
+        uidMap.set(module, uid);
+        usedUids.add(uid);
+        return uid;
+    }
+
+    let prefix: string;
+    let postfix: string = '';
+    let list: any[];
+
+    if (value instanceof WasmEntity) {
+        let name: string | undefined = value.import?.name;
+        if (!name) {
+            name = value.exports[0]?.name;
+        }
+        let m: RegExpMatchArray | null;
+        if ((m = name?.match(/export=([a-z0-9_$]+)/i))) {
+            name = m[1];
+        }
+        if (name?.match(/^[a-z0-9_$]+$/i) && name.length < 80) {
+            postfix = '-' + name;
+        }
+    }
+
+    if (value instanceof WasmFunction) {
+        prefix = 'F-';
+        list = module.functions;
+    } else if (value instanceof WasmMemory) {
+        prefix = 'M-';
+        list = module.memories;
+    } else if (value instanceof WasmTable) {
+        prefix = 'T-';
+        list = module.tables;
+    } else if (value instanceof WasmGlobal) {
+        prefix = 'G-';
+        list = module.globals;
+    } else if (value instanceof WasmData) {
+        prefix = 'd-';
+        list = module.data;
+    } else if (value instanceof WasmElement) {
+        prefix = 'e-';
+        list = module.elements;
+    } else {
+        throw new Error();
+    }
+
+    prefix += getUid(module) + '-';
+
+    for (let i = 0; i < list.length; i++) {
+        if (value === list[i]) {
+            let uid = prefix + i + postfix;
+            let k = 0;
+            while (usedUids.has(uid)) {
+                k++;
+                uid = prefix + i + '-' + k + postfix;
+            }
+            uidMap.set(value, uid);
+            return uid;
+        }
+    }
+
+    lastDynamicUid++;
+    let uid = prefix + '-' + lastDynamicUid + postfix;
+    uidMap.set(value, uid);
+    return uid;
+}
+
+
+function getLink(module: WasmModule, value: LinkableElement): string {
+    let uid = getUid(module, value);
+    if (value instanceof WasmFunction && value.resolved !== value) {
+        let resUid = getUid(module, value.resolved);
+        return `<a href="#${uid}">#${uid}</a> =&gt; <a href="#${resUid}">#${resUid}</a>`;
+    }
+    return `<a href="#${uid}">#${uid}</a>`;
+}
+
+
 function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
     let out = ctx.moduleData.output;
     let func = ctx.func;
-    let uid = getFuncUid(ctx.module, func);
-    out?.push(`<h2 id="${uid}">Function ${getFuncLink(ctx.module, func)}</h2>`);
+    let uid = getUid(ctx.module, func);
+    out?.push(`<h2 id="${uid}">Function ${getLink(ctx.module, func)}</h2>`);
     out?.push('<table class="func-header">');
     out?.push(`<tr><td>Kind:</td><td>${WasmFunctionKind[func.kind]}</td></tr>`);
     out?.push(`<tr><td>Type:</td><td>${dumpFunctionType(func.type, true)}</td></tr>`);
     out?.push(`<tr><td>Name:</td><td>${html(func.name) || '-'}</td></tr>`);
     out?.push(`<tr><td>Index:</td><td>${func.index}</td></tr>`);
+    if (func.hostExportIndex !== undefined) {
+        out?.push(`<tr><td>Host export:</td><td>${func.hostExportIndex}</td></tr>`);
+    }
     for (let exp of func.exports) {
         out?.push(`<tr><td>Export:</td><td>${html(exp.module) || '?'}.${html(exp.name)}</td></tr>`);
     }
@@ -216,7 +306,7 @@ function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
 
 function enterBlock(ctx: EnterBlockCtx<ModuleData, FunctionData, BlockData, InstrData>): BlockData {
     let out = ctx.instrDataStack.at(-1)?.output || ctx.moduleData.output;
-    out?.push(`<table class="instr" id="${'...'}"><tbody>`);
+    out?.push(`<table class="instr" id="block-${getUid(ctx.module, ctx.block.parentInstruction)}"><tbody>`);
     let blockData = new BlockData();
     if (ctx.block.parentInstruction.opcode !== OP.TRIVM_FUNCTION) {
         for (let type of ctx.block.type.params) {
@@ -236,61 +326,36 @@ function enterInstr(ctx: EnterInstrCtx<ModuleData, FunctionData, BlockData, Inst
     return new InstrData(ctx.moduleData.output ? true : false);
 }
 
-function formatValue32(value: number) {
-    let dec: bigint;
-    let value2 = BigInt(value) & 0xFFFFFFFFn;
-    if (value2 & 0x80000000n) {
-        dec = value2 - 0x100000000n;
-    } else {
-        dec = value2;
-    }
-    let hex = '00000000' + value2.toString(16);
-    hex = hex.substring(hex.length - 8);
-    return `${dec} (0x${hex})`;
-}
-
-function formatValue64(value: bigint) {
-    let dec: bigint;
-    value &= 0xFFFFFFFFFFFFFFFFn;
-    if (value & 0x8000000000000000n) {
-        dec = value - 0x10000000000000000n;
-    } else {
-        dec = value;
-    }
-    let hex = '0000000000000000' + value.toString(16);
-    hex = hex.substring(hex.length - 16);
-    return `${dec} (0x${hex})`;
-}
-
 function addParam(out: string[] | undefined, ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>,
-                  value: string | number | bigint | WasmFunction | WasmTable | WasmGlobal | WasmMemory | WasmData | WasmElement) {
-    let htmlValue:string;
-    if (typeof(value) === 'number') {
+    value: string | number | bigint | WasmEntity | WasmData | WasmElement) {
+
+    let htmlValue: string;
+
+    if (typeof (value) === 'number') {
         htmlValue = value.toString();
-    } else if (typeof(value) === 'bigint') {
+    } else if (typeof (value) === 'bigint') {
         if (value <= 0xFFFFFFFFn) {
             htmlValue = formatValue32(Number(value));
         } else {
             htmlValue = formatValue64(value);
         }
-    } else if (typeof(value) === 'string') {
+    } else if (typeof (value) === 'string') {
         htmlValue = html(value);
-    } else if (value instanceof WasmFunction) {
-        htmlValue = getFuncLink(ctx.module, value);
-    } else if (value instanceof WasmTable) {
-        htmlValue = '// TODO: table link';
-    } else if (value instanceof WasmGlobal) {
-        htmlValue = '// TODO: global link';
-    } else if (value instanceof WasmMemory) {
-        htmlValue = '// TODO: memory link';
-    } else if (value instanceof WasmData) {
-        htmlValue = '// TODO: data link';
-    } else if (value instanceof WasmElement) {
-        htmlValue = '// TODO: element link';
+    } else if (value instanceof WasmEntity || value instanceof WasmData || value instanceof WasmElement) {
+        htmlValue = getLink(ctx.module, value);
     } else {
-        htmlValue = 'ERROR';
+        throw exhaustiveCheck(value);
     }
     out?.push(` <span class="param">${htmlValue}</span>`);
+}
+
+function addError(out: string[] | undefined, moduleData: ModuleData, message: string, target?: LinkableElement) {
+    out?.push(`<div class="error-icon"><div class="error-icon-tip">${html(message)}</div></div>`);
+    if (target) {
+        moduleData.errors.push(`<div class="error">${getLink(moduleData.module, target)}: ${html(message)}</div>`);
+    } else {
+        moduleData.errors.push(`<div class="error">${html(message)}</div>`);
+    }
 }
 
 function validateInstr(out: string[] | undefined, ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>) {
@@ -407,32 +472,39 @@ function exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrD
     let blockData = ctx.blockData;
     let labelsStack = blockData.labelsStack;
     let typesStack = blockData.typesStack;
+    let moduleData = ctx.moduleData;
 
     let popPush = getInstrPopPush(ctx.func, ctx.block, ctx.instr, typesStack, false);
     popPush.unreachable = popPush.unreachable || blockData.unreachable;
 
+    out?.push(`<tr id="${instr.id}"><td width="1%">`);
+
     if (!blockData.unreachable) {
         for (let error of popPush.errors) {
-            console.log(error); // TODO: report errors
+            addError(out, moduleData, error, instr);
         }
     }
 
-    out?.push(`<tr id="instr-${instr.id}"><td width="1%">`);
-
     if (instr.opcode == OP.ELSE) {
         out?.push('<div class="else-line"><div></div></div>');
-        /*ctx.moduleData.assert(ctx.block.parentInstruction.opcode === OP.IF, instr,
+        moduleData.assert(ctx.block.parentInstruction.opcode === OP.IF, out, instr,
             'The "else" instruction without "if".');
-        ctx.moduleData.assert(ctx.instrData.elseCount === 0, instr,
+        moduleData.assert(blockData.elseCount === 0, out, instr,
             'Too many "else" instructions.');
-        ctx.instrData.elseCount++;*/
+        blockData.elseCount++;
     } else if (instr.opcode === OP.RETURN) {
         out?.push(`<div class="br-line-down"><div style="--levels: ${ctx.blockStack.length}"></div></div>`);
     } else if (instr.opcode === OP.BR || instr.opcode === OP.BR_IF) {
-        let levels = ctx.blockStack.length - ctx.blockStack.indexOf(instr.target);
+        let targetIndex = ctx.blockStack.indexOf(instr.target);
+        moduleData.assert(targetIndex >= 0, out, instr,
+            'Cannot find target block.');
+        let levels = ctx.blockStack.length - targetIndex;
         out?.push(`<div class="br-line-${instr.direction === WasmBranchDir.Forward ? 'down' : 'up'}">`);
         out?.push(`<div style="--levels: ${levels}"></div></div>`);
     }
+
+    moduleData.assert(!!OP_NAMES[instr.opcode], out, instr,
+        'Unknown instruction');
 
     out?.push(html(OP_NAMES[instr.opcode]));
     validateInstr(out, ctx);
@@ -449,10 +521,13 @@ function exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrD
             for (let label of STACK_LABELS_REVERSED[type]) {
                 if (labelsStack.length === 0) {
                     stackOut?.unshift(`<div class="item-${label} underflow">${label}</div>`);
-                    // TODO: error underflow
+                    addError(out, moduleData, 'Stack underflow.', instr);
                 } else if (labelsStack.at(-1) !== label) {
                     let prev = labelsStack.pop();
                     stackOut?.unshift(`<div class="item-${label}"><span>${prev}</span>${label}</div>`);
+                    if (moduleData.stage < ModuleStage.AfterReducer) {
+                        addError(out, moduleData, 'Unexpected stack data type.', instr);
+                    }
                 } else {
                     labelsStack.pop();
                     stackOut?.unshift(`<div class="item-${label}">${label}</div>`);
@@ -496,7 +571,10 @@ function exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrD
     if (instr.opcode === OP.BR_TABLE) {
         for (let i = 0; i < instr.targets.length; i++) {
             let target = instr.targets[i];
-            let levels = ctx.blockStack.length - ctx.blockStack.indexOf(target);
+            let targetIndex = ctx.blockStack.indexOf(target);
+            moduleData.assert(targetIndex >= 0, out, instr,
+                'Cannot find target block.');
+            let levels = ctx.blockStack.length - targetIndex;
             out?.push(`<tr id="instr-${instr.id}"><td width="1%">`);
             out?.push(`<div class="br-line-${target.parentInstruction.opcode !== OP.LOOP ? 'down' : 'up'}">`);
             out?.push(`<div style="--levels: ${levels}"></div></div>`);
@@ -517,7 +595,7 @@ function exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrD
         out?.push('</td></tr>');
     }
 
-    if (instr.opcode == OP.ELSE) {
+    if (instr.opcode === OP.ELSE) {
         blockData.typesStack = [];
         blockData.labelsStack = [];
         for (let type of ctx.block.type.params) {
@@ -530,8 +608,8 @@ function exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrD
     }
 }
 
-export function moduleDebug(module: WasmModule, stage: ModuleStage, dumpFile?: Path): void {
-    let out = dumpFile ? [...htmlHeader] : undefined;
+export function moduleDebug(module: WasmModule, stage: ModuleStage, dumpFile?: Path): boolean {
+    let out: string[] | undefined = dumpFile ? [] : undefined;
     let moduleData = new ModuleData(module, stage, out);
     out?.push('<h1>Functions</h1>');
     walkFunctions(module, moduleData, {
@@ -542,7 +620,11 @@ export function moduleDebug(module: WasmModule, stage: ModuleStage, dumpFile?: P
         exitInstr,
     });
     if (moduleData.output) {
+        for (let error of [...htmlHeader, ...moduleData.errors].reverse()) {
+            moduleData.output.unshift(error);
+        }
         moduleData.output.push(...htmlFooter);
-        platform.writeFile(dumpFile!.toString(), moduleData.output.join('\n'));
+        platform.writeFile(dumpFile!.toString(), moduleData.output.join(''));
     }
+    return moduleData.errors.length === 0;
 }

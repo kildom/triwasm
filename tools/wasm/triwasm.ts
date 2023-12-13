@@ -13,12 +13,19 @@
  */
 
 import { Path } from '../common/path';
+import { parseConf } from '../conf/parser';
+import { args } from './args';
 //import { generate } from './generator';
 import { LinkResolver } from './linkResolver';
 import { moduleDebug, ModuleStage } from './moduleDebug';
 import { ModuleMerger } from './moduleMerger';
 //import { reduce } from './reducer';
 import { WasmParser } from './wasmParser';
+
+console.log(args);
+
+/*
+let conf = parseConf('test/__old/trivm-conf.h');
 
 //let p = new WasmParser("test/__old/test.wasm");
 let p = new WasmParser();
@@ -39,7 +46,7 @@ m.merge(softfloatlib, '__triwasm__softfloatlib');
 
 moduleDebug(main, ModuleStage.AfterParser, new Path('merged.html'));
 
-let r = new LinkResolver();
+let r = new LinkResolver(conf);
 r.resolve(main);
 
 moduleDebug(main, ModuleStage.AfterResolver, new Path('resolved.html'));

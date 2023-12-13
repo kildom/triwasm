@@ -7,10 +7,10 @@
 #define TRIVM_EXT_FLOAT32 0
 #define TRIVM_EXT_FLOAT64 1
 
-#define TRIVM_ENABLE_STDLIB 1
+#define TRIVM_STDLIB 1
 #define TRIVM_ENABLE_ROM 1
 
-#define TRIVM_ENABLE_ALL_FAULTS 1
+#define TRIVM_ALL_FAULTS 1
 
 #define TRIVM_MEM_SIZE_MAX 256
 #define TRIVM_MEM_GROWABLE 0
@@ -19,8 +19,8 @@
 
 #define TRIVM_ENABLE_HOST_CALLBACKS 1
 
-#define TRIVM_IMPORT_TABLE_GROW 0
-#define TRIVM_EXPORT_TABLE_GROW 0
+#define TRIVM_ENABLE_IMPORT_TABLE_GROW 0
+#define TRIVM_ENABLE_EXPORT_TABLE_GROW 0
 
 /* triVM interface:
  *      export function[0] void startup();

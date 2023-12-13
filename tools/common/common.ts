@@ -77,3 +77,8 @@ export function extendArray(base: unknown[], add: unknown[]) {
         }
     }
 }
+
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+export function exhaustiveCheck(...value: never[]) {
+    return new Error('Exhaustive Check Assertion');
+}

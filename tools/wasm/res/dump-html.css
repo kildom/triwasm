@@ -11,7 +11,7 @@ a {
 }
 
 a:hover {
-    color: #4858a7;
+    color: #9eabeb;
     text-decoration: underline;
 }
 
@@ -340,8 +340,8 @@ div.error-icon:before {
 div.error-icon>div {
     position: absolute;
     width: 400px;
-    background-color: #ffe8e8;
-    border: 1px solid red;
+    background-color: #592323;
+    border: 1px solid #853c3c;
     display: none;
     padding: 10px;
 }
@@ -351,20 +351,21 @@ div.error-icon:hover>div {
 }
 
 div.error {
-    background-color: #f1f1f1;
-    border: 1px solid #eed5d5;
+    background-color: #592323;
+    border: 1px solid #853c3c;
     padding: 7px;
     margin: 9px;
+    color: #fdffb9;
 }
 
 div.error>a {
     text-decoration: none;
-    color: #940000;
+    color: #ffc4c4;
 }
 
 div.error>a:hover {
     text-decoration: underline;
-    color: blue;
+    color: #f7ec89
 }
 
 h1>a, h2>a, h3>a, h4>a, h5>a, h6>a {

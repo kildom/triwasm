@@ -1,6 +1,6 @@
 
 import { Path } from '../common/path';
-import { parse } from '../common/argparse';
+import { ArgsParser, Option, parse } from '../common/argparse';
 
 export enum OptLevel {
     NONE = 0,
@@ -16,7 +16,7 @@ interface WasmArgsMerge {
 
 export interface WasmArgs {
     input: Path;
-    confg: Path;
+    config: Path;
     output: Path;
     optimize: OptLevel;
     vmStackSize: number | 'shared';
@@ -30,8 +30,9 @@ export interface WasmArgs {
     debugDump: boolean;
 }
 
-export wasmUsage = ```
- triwasm [options] -c <trivm-config> <input>
+export const wasmUsage = `
+
+ USAGE: triwasm -c <trivm-config> [options] <input>
 
  Compile WebAssembly module file to triVM binary file.
 
@@ -58,7 +59,7 @@ export wasmUsage = ```
     Set size of the virtual machine stack. Default is 1024. Special value
     "shared" puts the virtual machine stack at the guest stack. "Shared"
     stack is only possible if guest has stack that grows downwards, from
-    higer address to lower.
+    higher address to lower.
 
 --global-base:size <address> = 0
     Address at which module starts storing data. Everything before that is
@@ -89,7 +90,7 @@ export wasmUsage = ```
     Compile to assembly text file.
 
 --merge:Merge[0-] <name>\\=<file>
-    Merge additinal WebAssembly module into the output. The module can contain
+    Merge additional WebAssembly module into the output. The module can contain
     only functions. If name is prefixed with "!", exports from module will be
     available as global (guest-host) exports. Otherwise, the module exports can
     be used only internally by other modules.
@@ -103,41 +104,47 @@ export wasmUsage = ```
 
 --help:!help
     Display this information.
-```;
+`;
 
 const filters = {
-    Merge: (arg: any, option: Option, parser: ArgsParser): WasmArgsMerge => {
+    Merge: (arg: any, option: Option, parser: ArgsParser<unknown>): WasmArgsMerge => {
         let [name, file] = (arg as string).split('=', 2);
         let globalExports = false;
         if (name.startsWith('!')) {
             name = name.substring(1);
             globalExports = true;
         }
-        return { name, file: argparse.stdFilters.Path(file), globalExports };
-    }
-    VmStackSize: (arg: any, option: Option, parser: ArgsParser): number | 'shared' => {
+        return { name, file: parser.filters.Path(file, option, parser), globalExports };
+    },
+    VmStackSize: (arg: any, option: Option, parser: ArgsParser<unknown>): number | 'shared' => {
         if (arg === 'shared') {
             return arg;
         } else {
-            return argparse.stdFilters.size(arg, option, parser);
+            return parser.filters.size(arg, option, parser);
         }
-    }
-    OptLevel: (arg: any, option: Option, parser: ArgsParser): OptLevel => {
+    },
+    OptLevel: (arg: any, option: Option, parser: ArgsParser<unknown>): OptLevel => {
         if (arg === 's' || arg === 'z' || arg === 'fast') {
             return OptLevel.FULL;
         } else if (arg === 'g') {
             return OptLevel.BASIC;
         } else {
-            let value = argparse.stdFilters.int(arg, option, parser);
+            let value = parser.filters.int(arg, option, parser);
             return Math.max(0, Math.min(2, value)) as OptLevel;
         }
     }
 };
 
-function postProcess(results: any, name: string, parser: ArgsParser) {
+function postProcess(results: WasmArgs) {
     if (results.output === undefined) {
-        results.output = results.input.withExt(results.assembly ? '.triasm' : '.trivm');
+        results.output = results.input.withExtension(results.assembly ? '.triasm' : '.trivm');
     }
-};
+}
 
-export const args: WasmArgs = parse<WasmArgs>(wasmUsage, filters, postProcess);
+function returnArgs() {
+    let args = {} as WasmArgs;
+    parse<WasmArgs>(wasmUsage, args, filters, postProcess);
+    return args;
+}
+
+export const args: WasmArgs = returnArgs();

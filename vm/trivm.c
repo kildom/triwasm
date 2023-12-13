@@ -25,59 +25,59 @@
 #ifndef TRIVM_EXT_FLOAT64
 #define TRIVM_EXT_FLOAT64                       0
 #endif
-#ifndef TRIVM_ENABLE_STDLIB
-#define TRIVM_ENABLE_STDLIB                     1
+#ifndef TRIVM_STDLIB
+#define TRIVM_STDLIB                     1
 #endif
-#ifndef TRIVM_ENABLE_ALL_FAULTS
-#define TRIVM_ENABLE_ALL_FAULTS                 0
+#ifndef TRIVM_ALL_FAULTS
+#define TRIVM_ALL_FAULTS                 0
 #endif
-#ifndef TRIVM_ENABLE_FAULT_STACK_OVERFLOW
-#define TRIVM_ENABLE_FAULT_STACK_OVERFLOW       0
+#ifndef TRIVM_FAULT_STACK_OVERFLOW
+#define TRIVM_FAULT_STACK_OVERFLOW       0
 #endif
-#ifndef TRIVM_ENABLE_FAULT_STACK_UNDERFLOW
-#define TRIVM_ENABLE_FAULT_STACK_UNDERFLOW      0
+#ifndef TRIVM_FAULT_STACK_UNDERFLOW
+#define TRIVM_FAULT_STACK_UNDERFLOW      0
 #endif
-#ifndef TRIVM_ENABLE_FAULT_INSTR_OUT_OF_BOUNDS
-#define TRIVM_ENABLE_FAULT_INSTR_OUT_OF_BOUNDS  0
+#ifndef TRIVM_FAULT_INSTR_OUT_OF_BOUNDS
+#define TRIVM_FAULT_INSTR_OUT_OF_BOUNDS  0
 #endif
-#ifndef TRIVM_ENABLE_FAULT_INSTR_INVALID
-#define TRIVM_ENABLE_FAULT_INSTR_INVALID        0
+#ifndef TRIVM_FAULT_INSTR_INVALID
+#define TRIVM_FAULT_INSTR_INVALID        0
 #endif
-#ifndef TRIVM_ENABLE_FAULT_ACCESS_OUT_OF_BOUNDS
-#define TRIVM_ENABLE_FAULT_ACCESS_OUT_OF_BOUNDS 0
+#ifndef TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS
+#define TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS 0
 #endif
-#ifndef TRIVM_ENABLE_FAULT_READ_ONLY
-#define TRIVM_ENABLE_FAULT_READ_ONLY            0
+#ifndef TRIVM_FAULT_READ_ONLY
+#define TRIVM_FAULT_READ_ONLY            0
 #endif
-#ifndef TRIVM_ENABLE_FAULT_DIVISION_BY_ZERO
-#define TRIVM_ENABLE_FAULT_DIVISION_BY_ZERO     0
+#ifndef TRIVM_FAULT_DIVISION_BY_ZERO
+#define TRIVM_FAULT_DIVISION_BY_ZERO     0
 #endif
-#ifndef TRIVM_ENABLE_FAULT_AUX_STACK_OVERFLOW
-#define TRIVM_ENABLE_FAULT_AUX_STACK_OVERFLOW   0
+#ifndef TRIVM_FAULT_AUX_STACK_OVERFLOW
+#define TRIVM_FAULT_AUX_STACK_OVERFLOW   0
 #endif
-#ifndef TRIVM_ENABLE_FAULT_AUX_STACK_UNDERFLOW
-#define TRIVM_ENABLE_FAULT_AUX_STACK_UNDERFLOW  0
+#ifndef TRIVM_FAULT_AUX_STACK_UNDERFLOW
+#define TRIVM_FAULT_AUX_STACK_UNDERFLOW  0
 #endif
 
-#if TRIVM_ENABLE_ALL_FAULTS
-#undef TRIVM_ENABLE_FAULT_INSTR_OUT_OF_BOUNDS
-#undef TRIVM_ENABLE_FAULT_INSTR_INVALID
-#undef TRIVM_ENABLE_FAULT_ACCESS_OUT_OF_BOUNDS
-#undef TRIVM_ENABLE_FAULT_READ_ONLY
-#undef TRIVM_ENABLE_FAULT_DIVISION_BY_ZERO
-#undef TRIVM_ENABLE_FAULT_STACK_OVERFLOW
-#undef TRIVM_ENABLE_FAULT_STACK_UNDERFLOW
-#undef TRIVM_ENABLE_FAULT_AUX_STACK_OVERFLOW
-#undef TRIVM_ENABLE_FAULT_AUX_STACK_UNDERFLOW
-#define TRIVM_ENABLE_FAULT_INSTR_OUT_OF_BOUNDS  1
-#define TRIVM_ENABLE_FAULT_INSTR_INVALID        1
-#define TRIVM_ENABLE_FAULT_ACCESS_OUT_OF_BOUNDS 1
-#define TRIVM_ENABLE_FAULT_READ_ONLY            1
-#define TRIVM_ENABLE_FAULT_DIVISION_BY_ZERO     1
-#define TRIVM_ENABLE_FAULT_STACK_OVERFLOW       1
-#define TRIVM_ENABLE_FAULT_STACK_UNDERFLOW      1
-#define TRIVM_ENABLE_FAULT_AUX_STACK_OVERFLOW   1
-#define TRIVM_ENABLE_FAULT_AUX_STACK_UNDERFLOW  1
+#if TRIVM_ALL_FAULTS
+#undef TRIVM_FAULT_INSTR_OUT_OF_BOUNDS
+#undef TRIVM_FAULT_INSTR_INVALID
+#undef TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS
+#undef TRIVM_FAULT_READ_ONLY
+#undef TRIVM_FAULT_DIVISION_BY_ZERO
+#undef TRIVM_FAULT_STACK_OVERFLOW
+#undef TRIVM_FAULT_STACK_UNDERFLOW
+#undef TRIVM_FAULT_AUX_STACK_OVERFLOW
+#undef TRIVM_FAULT_AUX_STACK_UNDERFLOW
+#define TRIVM_FAULT_INSTR_OUT_OF_BOUNDS  1
+#define TRIVM_FAULT_INSTR_INVALID        1
+#define TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS 1
+#define TRIVM_FAULT_READ_ONLY            1
+#define TRIVM_FAULT_DIVISION_BY_ZERO     1
+#define TRIVM_FAULT_STACK_OVERFLOW       1
+#define TRIVM_FAULT_STACK_UNDERFLOW      1
+#define TRIVM_FAULT_AUX_STACK_OVERFLOW   1
+#define TRIVM_FAULT_AUX_STACK_UNDERFLOW  1
 #endif
 
 
@@ -360,7 +360,7 @@ static bool trivm_instr_long(struct trivm_instance *vm, uint32_t code, uint32_t 
 
 	return true;
 
-#if TRIVM_ENABLE_FAULT_INSTR_INVALID
+#if TRIVM_FAULT_INSTR_INVALID
 invalid_instruction:
 	TRIGGER_FAULT(INSTR_INVALID);
 	return true;
@@ -403,7 +403,7 @@ static void trivm_instr_unwind(struct trivm_instance *vm, uint32_t arg1, uint32_
 	uint8_t* src = &vm->ram[vm->sp - keep + 1];
 	uint8_t* dst = &vm->ram[vm->sp - total + 1];
 
-#if TRIVM_ENABLE_STDLIB
+#if TRIVM_STDLIB
 	memmove(dst, src, keep);
 #else
 	uint8_t* end = src + keep;
@@ -496,7 +496,7 @@ static bool trivm_instr(struct trivm_instance *vm, uint32_t code)
 
 	return true;
 
-#if TRIVM_ENABLE_FAULT_INSTR_INVALID
+#if TRIVM_FAULT_INSTR_INVALID
 invalid_instruction:
 	TRIGGER_FAULT(INSTR_INVALID);
 	return true;
@@ -658,7 +658,7 @@ skip_access_size_mul:
 		src = ptr;
 	}
 
-#if TRIVM_ENABLE_STDLIB
+#if TRIVM_STDLIB
 	memcpy(dst, src, access_size);
 #else
 	uint8_t* end;
@@ -707,7 +707,7 @@ static bool trivm_step(struct trivm_instance *vm)
 		TRIGGER_FAULT(AUX_STACK_UNDERFLOW, { vm->asph = 0x7FFFFFFF; return true; });
 	}
 
-	if (TRIVM_ENABLE_FAULT_STACK_OVERFLOW && vm->aspl == 0x80000000)
+	if (TRIVM_FAULT_STACK_OVERFLOW && vm->aspl == 0x80000000)
 	{
 		if ((int32_t)vm->sp > (int32_t)(vm->asp - vm->sph))
 		{
@@ -769,7 +769,7 @@ struct trivm_instance *trivm_init(uint8_t *memory, uint32_t memory_size, const u
 {
 	struct trivm_instance *vm = (struct trivm_instance *)memory;
 	uint32_t addr = TRIVM_ENABLE_ROM ? 0 : TRIVM_PROGRAM_START + program_size;
-#if TRIVM_ENABLE_STDLIB
+#if TRIVM_STDLIB
 	memset(&memory[addr], 0, memory_size - addr);
 #else
 	while (addr < memory_size) {

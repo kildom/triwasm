@@ -281,16 +281,17 @@ export function parseConf(path: string): Conf {
     };
 
     let faults: ConfFaults = {
-        stackOverflow: getBool(defs, 'TRIVM_ENABLE_FAULT_STACK_OVERFLOW') || getBool(defs, 'TRIVM_ENABLE_ALL_FAULTS'),
-        stackUnderflow: getBool(defs, 'TRIVM_ENABLE_FAULT_STACK_UNDERFLOW') || getBool(defs, 'TRIVM_ENABLE_ALL_FAULTS'),
-        instrOutOfBounds: getBool(defs, 'TRIVM_ENABLE_FAULT_INSTR_OUT_OF_BOUNDS') || getBool(defs, 'TRIVM_ENABLE_ALL_FAULTS'),
-        instrInvalid: getBool(defs, 'TRIVM_ENABLE_FAULT_INSTR_INVALID') || getBool(defs, 'TRIVM_ENABLE_ALL_FAULTS'),
-        accessOutOfBounds: getBool(defs, 'TRIVM_ENABLE_FAULT_ACCESS_OUT_OF_BOUNDS') || getBool(defs, 'TRIVM_ENABLE_ALL_FAULTS'),
-        readOnly: getBool(defs, 'TRIVM_ENABLE_FAULT_READ_ONLY') || getBool(defs, 'TRIVM_ENABLE_ALL_FAULTS'),
-        divisionByZero: getBool(defs, 'TRIVM_ENABLE_FAULT_DIVISION_BY_ZERO') || getBool(defs, 'TRIVM_ENABLE_ALL_FAULTS'),
-        auxStackOverflow: getBool(defs, 'TRIVM_ENABLE_FAULT_AUX_STACK_OVERFLOW') || getBool(defs, 'TRIVM_ENABLE_ALL_FAULTS'),
-        auxStackUnderflow: getBool(defs, 'TRIVM_ENABLE_FAULT_AUX_STACK_UNDERFLOW') || getBool(defs, 'TRIVM_ENABLE_ALL_FAULTS'),
+        stackOverflow: getBool(defs, 'TRIVM_FAULT_STACK_OVERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
+        stackUnderflow: getBool(defs, 'TRIVM_FAULT_STACK_UNDERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
+        instrOutOfBounds: getBool(defs, 'TRIVM_FAULT_INSTR_OUT_OF_BOUNDS') || getBool(defs, 'TRIVM_ALL_FAULTS'),
+        instrInvalid: getBool(defs, 'TRIVM_FAULT_INSTR_INVALID') || getBool(defs, 'TRIVM_ALL_FAULTS'),
+        accessOutOfBounds: getBool(defs, 'TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS') || getBool(defs, 'TRIVM_ALL_FAULTS'),
+        readOnly: getBool(defs, 'TRIVM_FAULT_READ_ONLY') || getBool(defs, 'TRIVM_ALL_FAULTS'),
+        divisionByZero: getBool(defs, 'TRIVM_FAULT_DIVISION_BY_ZERO') || getBool(defs, 'TRIVM_ALL_FAULTS'),
+        auxStackOverflow: getBool(defs, 'TRIVM_FAULT_AUX_STACK_OVERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
+        auxStackUnderflow: getBool(defs, 'TRIVM_FAULT_AUX_STACK_UNDERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
 
+        // TODO: remove wasm specific options
         wasmUnreachable: getBool(defs, 'TRIWASM_ENABLE_FAULT_UNREACHABLE') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
         wasmTableIndex: getBool(defs, 'TRIWASM_ENABLE_FAULT_TABLE_INDEX') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
         wasmNullCall: getBool(defs, 'TRIWASM_ENABLE_FAULT_NULL_CALL') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
@@ -313,7 +314,7 @@ export function parseConf(path: string): Conf {
         max: 0,
     };
 
-    if ('TRIVM_MEM_SIZE' in defs) {
+    if (defs.TRIVM_MEM_SIZE) {
         if (defs.TRIVM_MEM_SIZE_MIN || defs.TRIVM_MEM_SIZE_MAX || memory.growable) {
             configError('TRIVM_MEM_SIZE cannot be combined with TRIVM_MEM_SIZE_MIN, TRIVM_MEM_SIZE_MAX or TRIVM_MEM_GROWABLE');
         }
@@ -350,8 +351,8 @@ export function parseConf(path: string): Conf {
 
     let host: ConfHost = {
         callbacks: getBool(defs, 'TRIVM_ENABLE_CALLBACKS'),
-        importTableGrow: getBool(defs, 'TRIVM_IMPORT_TABLE_GROW'),
-        exportTableGrow: getBool(defs, 'TRIVM_EXPORT_TABLE_GROW'),
+        importTableGrow: getBool(defs, 'TRIVM_ENABLE_IMPORT_TABLE_GROW'),
+        exportTableGrow: getBool(defs, 'TRIVM_ENABLE_EXPORT_TABLE_GROW'),
     };
 
     let wasm: ConfWasm = {

@@ -225,11 +225,11 @@ function generateTree(treeName, tree) {
     outputSimple = outputSimple
         .map(x => (x + ' '.repeat(lineLength)).substr(0, lineLength) + '\\')
         .join('\n');
-    let code = `#if !TRIVM_ENABLE_FAULT_INSTR_INVALID\n\n`;
+    let code = `#if !TRIVM_FAULT_INSTR_INVALID\n\n`;
     code += `#define ${treeName} \\\n${output}\n\n`;
     code += `#else\n\n`;
     code += `#define ${treeName} \\\n${outputSimple}\n\n`;
-    code += `#endif /* !TRIVM_ENABLE_FAULT_INSTR_INVALID */\n\n`;
+    code += `#endif /* !TRIVM_FAULT_INSTR_INVALID */\n\n`;
     code += `#define ${treeName}_FIRST_ONE_ARG 0x${firstOneArg.toString(16).toUpperCase()}\n`;
     code += `#define ${treeName}_LAST_TWO_ARGS 0x${lastTwoArgs.toString(16).toUpperCase()}\n\n`;
     code += `#define ${treeName}_NAME_CASES \\\n`;

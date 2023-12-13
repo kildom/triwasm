@@ -137,7 +137,7 @@ const builtinFilters = {
         platform.exit(0);
     },
     ver: () => {
-        console.log(versionString);
+        console.log('triVM tools, version ' + versionString);
         platform.exit(0);
     },
     int: (arg: any) => {
@@ -182,7 +182,7 @@ const builtinFilters = {
         } else if ((m = text.match(/^(.+)bits?$/i))) {
             let bits = builtinFilters.int(text) as number;
             if (bits & 7) {
-                throw new ArgsParserError(`Expecting multiple of 8 in bits size.`);
+                throw new ArgsParserError('Expecting multiple of 8 in bits size.');
             }
             return bits / 8;
         }
