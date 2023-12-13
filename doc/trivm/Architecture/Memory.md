@@ -10,6 +10,30 @@ that is used by the memory access instructions `LOAD` and `STORE`.
 Stack can only be located in the data memory.
 Instructions can be only executed for the program memory.
 
+## Memory models
+
+The triVM allows flexibility of memory size management.
+Configuration options defines what is the memory size and how it can change.
+
+> [!WARNING]
+> This feature is no fully implemented yet.
+> You can only use **Fixed memory** with **Minimum and maximum** that are the same.
+
+There are following basic memory management cases:
+* **Fixed memory** - during initialization, host provides specific memory buffer and it is never changed.
+  * **Minimum and maximum are the same** - host provides memory size that is always
+  the same and it is known at compile time.
+  * **Minimum and maximum are different** - host can provide memory size that in specific range.
+* **Growable** - during initialization, host provides initial memory buffer. Guest may request more memory and host will reallocate the buffer to fulfill the guest request or it may report failure to the guest.
+
+  Minimum size tells what is the minimum memory size that host can provide during initialization.
+  Maximum size tells how big memory can grow.
+
+> [!NOTE]
+> This section describes a size available for the guest.
+> Memory needed by the virtual machine is actually slightly bigger to store
+> internal state.
+
 ## Memory organization
 
 Below diagram shows how the memory in triVM is organized.
@@ -200,3 +224,4 @@ Those registers are compared with the `ASP` to generate auxiliary stack overflow
 See [Auxiliary Stack]() for details.
 
 *Reset value*: zero
+

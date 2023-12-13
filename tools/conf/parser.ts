@@ -350,9 +350,9 @@ export function parseConf(path: string): Conf {
     program.max = getInt(defs, 'TRIVM_PROGRAM_SIZE_MAX', program_max_max, MIN_PROGRAM_SIZE, program_max_max);
 
     let host: ConfHost = {
-        callbacks: getBool(defs, 'TRIVM_ENABLE_CALLBACKS'),
-        importTableGrow: getBool(defs, 'TRIVM_ENABLE_IMPORT_TABLE_GROW'),
-        exportTableGrow: getBool(defs, 'TRIVM_ENABLE_EXPORT_TABLE_GROW'),
+        callbacks: getBool(defs, 'TRIVM_CALLBACKS'),
+        importTableGrow: getBool(defs, 'TRIVM_IMPORT_TABLE_GROWABLE'),
+        exportTableGrow: getBool(defs, 'TRIVM_EXPORT_TABLE_GROWABLE'),
     };
 
     let wasm: ConfWasm = {

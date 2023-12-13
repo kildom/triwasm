@@ -12,8 +12,9 @@ The configuration file is used in the following:
 * It is included in the triVM source code to do conditional compilation.
 * The tools use it to generate guest program bytecode compatible with specific virtual machine.
 * It can be used to generate host-guest interface implementation helpers.
-  > [!NOTE]
-  > This is not fully implemented yet.
+
+> [!NOTE]
+> Generation of the host-guest interface is not fully implemented yet.
 
 ## Defines
 
@@ -67,8 +68,9 @@ See [growable memory](trivm/Architecture/Memory.md#growable-memory) for details.
   By default, maximum size supported by the triVM.
 * `TRIVM_ENABLE_ROM` - the triVM uses separate read-only memory that contains guest program.
   Enabled by default.
-  > [!WARNING]
-  > Disabling this feature is no fully implemented yet. You cannot set it to `0`.
+
+> [!WARNING]
+> Non-ROM mode is no fully implemented yet. You cannot set `TRIVM_ENABLE_ROM` to `0`.
 
 See [program memory](trivm/Architecture/Program.md) for details.
 
@@ -99,18 +101,15 @@ See [faults](trivm/Architecture/VMFaults.md) for details.
 
 ### Capabilities
 
-* `TRIVM_ENABLE_CALLBACKS` - Enable [callbacks](trivm/Architecture/Callbacks.md) on the triVM.
+* `TRIVM_CALLBACKS` - Enable [callbacks](trivm/Architecture/Callbacks.md) on the triVM.
   Disabled by default.
-  > [!WARNING]
-  > This feature is no fully implemented yet. You cannot set it to `1`.
-* `TRIVM_ENABLE_IMPORT_TABLE_GROW` - guest can request host to increase size of the imported table.
+* `TRIVM_IMPORT_TABLE_GROWABLE` - guest can request host to increase size of the imported table.
   Disabled by default.
-  > [!WARNING]
-  > This feature is no fully implemented yet. You cannot set it to `1`.
-* `TRIVM_ENABLE_EXPORT_TABLE_GROW` - host can request guest to increase size of the exported table.
+* `TRIVM_EXPORT_TABLE_GROWABLE` - host can request guest to increase size of the exported table.
   Disabled by default.
-  > [!WARNING]
-  > This feature is no fully implemented yet. You cannot set it to `1`.
+
+> [!WARNING]
+> Those feature are not fully implemented yet. You cannot set those to `1`.
 
 See [tables](trivm/Architecture/Tables.md) for details.
 
@@ -186,6 +185,9 @@ import function[3] void env.halt();
 
 ## Tables
 
+> [!WARNING]
+> Import/export tables are not fully implemented yes. Do not use this feature.
+
 Imported table is stored and handled by the host and the guest can access them via dedicated imported function.
 Exported table is stored and handled by the guest and the host can access it via dedicated exported function.
 
@@ -235,30 +237,3 @@ export global[2] i32 global_val;
 */
 ```
 
-
-# Memory models
-
-> [!NOTE]
-> TODO: Move this sections to memory page.
-
-The triVM allows flexibility of memory size management.
-Configuration options defines what is the memory size and how it can change.
-
-> [!WARNING]
-> This feature is no fully implemented yet.
-> You can only use **Fixed memory** with **Minimum and maximum** that are the same.
-
-There are following basic memory management cases:
-* **Fixed memory** - during initialization, host provides specific memory buffer and it is never changed.
-  * **Minimum and maximum are the same** - host provides memory size that is always
-  the same and it is known at compile time.
-  * **Minimum and maximum are different** - host can provide memory size that in specific range.
-* **Growable** - during initialization, host provides initial memory buffer. Guest may request more memory and host will reallocate the buffer to fulfill the guest request or it may report failure to the guest.
-
-  Minimum size tells what is the minimum memory size that host can provide during initialization.
-  Maximum size tells how big memory can grow.
-
-> [!NOTE]
-> This section describes a size available for the guest.
-> Memory needed by the virtual machine is actually slightly bigger to store
-> internal state.
