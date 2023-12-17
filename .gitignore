@@ -11,3 +11,5 @@ node_modules
 /bin/
 /tools/wasm/skeleton.ts
 /tools/wasm/res.ts
+/doc/triwasm/cmd.md
+/test/__old/*.html

@@ -1,4 +1,8 @@
 
+
+
+## List of faults
+
 Fault is triggered before executing an instruction that starts less than
 5 bytes (maximum instruction size) before end of program memory.
  * code - unused

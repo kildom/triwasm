@@ -267,6 +267,7 @@ function getLink(module: WasmModule, value: LinkableElement): string {
 
 
 function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
+    let moduleData = ctx.moduleData;
     let out = ctx.moduleData.output;
     let func = ctx.func;
     let uid = getUid(ctx.module, func);
@@ -276,8 +277,8 @@ function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
     out?.push(`<tr><td>Type:</td><td>${dumpFunctionType(func.type, true)}</td></tr>`);
     out?.push(`<tr><td>Name:</td><td>${html(func.name) || '-'}</td></tr>`);
     out?.push(`<tr><td>Index:</td><td>${func.index}</td></tr>`);
-    if (func.hostExportIndex !== undefined) {
-        out?.push(`<tr><td>Host export:</td><td>${func.hostExportIndex}</td></tr>`);
+    if (func.hostExportIndexes.length) {
+        out?.push(`<tr><td>Host export:</td><td>${func.hostExportIndexes.join(', ')}</td></tr>`);
     }
     for (let exp of func.exports) {
         out?.push(`<tr><td>Export:</td><td>${html(exp.module) || '?'}.${html(exp.name)}</td></tr>`);
@@ -299,8 +300,37 @@ function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
         out?.push('</pre></td></tr>');
     }
     out?.push('</table>');
-    ctx.walkFunction = (func.kind === WasmFunctionKind.WASM);
-    // TODO: Verify correctness of the function at this stage
+
+    ctx.walkFunction = false;
+
+    switch (func.kind) {
+    case WasmFunctionKind.ASSEMBLY:
+    case WasmFunctionKind.INLINE_ASSEMBLY:
+    case WasmFunctionKind.ANNOTATION:
+        moduleData.assert(!!func.data?.length, out, func, 'Invalid function data.');
+        break;
+    case WasmFunctionKind.IMPORT:
+        moduleData.assert(moduleData.stage < ModuleStage.AfterResolver, out, func, 'Unresolved import function.');
+        moduleData.assert(func.import !== undefined, out, func, 'Missing import data.');
+        break;
+    case WasmFunctionKind.HOST:
+        moduleData.assert(moduleData.stage >= ModuleStage.AfterResolver, out, func, 'Host function before resolving.');
+        break;
+    case WasmFunctionKind.LINK:
+        moduleData.assert(moduleData.stage >= ModuleStage.AfterResolver, out, func, 'Link function before resolving.');
+        moduleData.assert(!!ctx.module.functions.find(f => f === func.resolved), out, func, 'Link to function outside module.');
+        break;
+    case WasmFunctionKind.WASM:
+        ctx.walkFunction = true;
+        moduleData.assert(!!func.block, out, func, 'Missing code of WASM function.');
+        break;
+    case WasmFunctionKind.UNUSED:
+        // Nothing to check.
+        break;
+    default:
+        exhaustiveCheck(func.kind);
+    }
+
     return {};
 }
 

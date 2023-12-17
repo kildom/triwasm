@@ -10,6 +10,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { Path } from '../common/path';
 import { platform } from '../common/platform';
 
 
@@ -22,11 +23,11 @@ export class BinaryInput {
     private dec: TextDecoder;
     private idBase: number;
 
-    public constructor(file: string, idBase: number);
+    public constructor(file: Path, idBase: number);
     public constructor(source: BinaryInput, start: number, length: number, idBase: number);
-    constructor(file_or_source: string | BinaryInput, startOrIdBase: number, length?: number, idBase?: number) {
-        if (typeof (file_or_source) === 'string') {
-            this.buffer = platform.readFile(file_or_source, true);
+    constructor(file_or_source: Path | BinaryInput, startOrIdBase: number, length?: number, idBase?: number) {
+        if (file_or_source instanceof Path) {
+            this.buffer = file_or_source.readBinary();
             this.view = new DataView(this.buffer.buffer, this.buffer.byteOffset, this.buffer.byteLength);
             this.pos = 0;
             this.limit = this.buffer.length;

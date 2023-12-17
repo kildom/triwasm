@@ -12,14 +12,15 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Conf, ConfFunction, ConfInterfaceDirection } from '../conf/conf';
+import { ConfFunction, ConfInterfaceDirection } from '../conf/conf';
+import { WasmConf } from './args';
 import { WasmFunctionKind, WasmModule } from './wasmModule';
 
 
 export class LinkResolver {
 
     public constructor(
-        public conf: Conf) { }
+        public conf: WasmConf) { }
 
     public resolve(module: WasmModule) {
         this.resolveInternalLinks(module);
@@ -27,7 +28,7 @@ export class LinkResolver {
     }
 
     private resolveHostLinks(module: WasmModule) {
-        let hostFunctions = this.conf.functions;
+        let hostFunctions = this.conf.vmConf.functions;
         let doneExports = new Set<ConfFunction>();
 
         // Link functions to its host destination
@@ -63,7 +64,7 @@ export class LinkResolver {
                                 || !hostFunction.results.every((p, i) => p.type === func.type.results[i])) {
                                 throw new Error(`Mismatching parameters of export ${hostFunction.fullName}.`);
                             }
-                            func.hostExportIndex = hostFunction.index;
+                            func.hostExportIndexes.push(hostFunction.index);
                             doneExports.add(hostFunction);
                         }
                     }

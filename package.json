@@ -7,9 +7,9 @@
     "build-triasm": "tsc -p tools/asm/triasm.tsconfig.json",
     "postbuild-triasm": "node tools/build/postbuild.js starters jsfixup",
 
-    "prebuild-triwasm": "npx ts-node devtools/wasm-instr-gen/template-gen.ts tools/wasm/skeleton.triasm && npx prettier tools/wasm/skeleton.ts --write --ignore-path .prettierignore && npx ts-node devtools/wasm-instr-gen/res-gen.ts tools/wasm/res.ts tools/wasm/res/dump-html.css tools/wasm/res/dump-html.js",
+    "prebuild-triwasm": "npx ts-node devtools/wasm-instr-gen/template-gen.ts tools/wasm/skeleton.triasm && npx prettier tools/wasm/skeleton.ts --write --ignore-path .prettierignore && npx ts-node devtools/wasm-instr-gen/res-gen.ts tools/wasm/res.ts tools/wasm/res/dump-html.css tools/wasm/res/dump-html.js tools/wasm/res/args.txt",
     "build-triwasm": "tsc -p tools/wasm/triwasm.tsconfig.json",
-    "postbuild-triwasm": "node tools/build/postbuild.js starters jsfixup",
+    "postbuild-triwasm": "node tools/build/postbuild.js starters jsfixup && node bin/js/triwasm.js --help-md > doc/triwasm/cmd.md",
 
     "build-tricc": "tsc -p tools/cc/tricc.tsconfig.json",
     "postbuild-tricc": "node tools/build/postbuild.js starters jsfixup",

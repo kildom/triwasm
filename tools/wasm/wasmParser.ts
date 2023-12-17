@@ -13,6 +13,7 @@
  */
 
 import { allowTemporaryNull, enumize, pick } from '../common/common';
+import { Path } from '../common/path';
 import { BinaryInput } from './binaryInput';
 import { OP } from './opcodes';
 import {
@@ -71,7 +72,7 @@ export class WasmParser {
     private functionsWithCode: WasmFunction[] = [];
     private functionsWithCodePos: number = 0;
 
-    public parse(file: string, baseOffset: number): WasmModule {
+    public parse(file: Path, baseOffset: number): WasmModule {
         this.module = new WasmModule();
         this.types = [];
         this.blockStack = [];

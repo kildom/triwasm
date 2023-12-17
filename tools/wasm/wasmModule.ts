@@ -433,7 +433,7 @@ export class WasmFunction extends WasmEntity {
     public locals: ValueType[] = [];
     public block?: WasmBlock;
     public name: string = '';
-    public hostExportIndex?: number;
+    public hostExportIndexes: number[] = [];
     constructor(
         public kind: WasmFunctionKind,
         public type: FunctionType

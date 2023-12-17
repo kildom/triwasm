@@ -13,8 +13,7 @@
  */
 
 import { Path } from '../common/path';
-import { parseConf } from '../conf/parser';
-import { args } from './args';
+import { getWasmConf, WasmArgsMerge } from './args';
 //import { generate } from './generator';
 import { LinkResolver } from './linkResolver';
 import { moduleDebug, ModuleStage } from './moduleDebug';
@@ -22,34 +21,48 @@ import { ModuleMerger } from './moduleMerger';
 //import { reduce } from './reducer';
 import { WasmParser } from './wasmParser';
 
-console.log(args);
+// Get configuration from command line and config file.
 
-/*
-let conf = parseConf('test/__old/trivm-conf.h');
+let conf = getWasmConf();
 
-//let p = new WasmParser("test/__old/test.wasm");
-let p = new WasmParser();
-let main = p.parse('test/__old/libbzip2-dec.wasm', 0);
+// Parse main module
 
-moduleDebug(main, ModuleStage.AfterParser, new Path('dump.html'));
+let parser = new WasmParser();
+let main = parser.parse(conf.args.input, 0);
+moduleDebug(main, ModuleStage.AfterParser, conf.args.output.withExtension('main.parsed.html'));
 
-let triwasmlib = p.parse(Path.runtime.join('triwasmlib.wasm').toString(), main.logicalOffsets.end);
-let softfloatlib = p.parse(Path.runtime.join('softfloatlib.wasm').toString(), triwasmlib.logicalOffsets.end);
+// Merge triwasmlib, softfloatlib and any user provided modules to merge.
 
-moduleDebug(main, ModuleStage.AfterParser, new Path('dump.html'));
-moduleDebug(triwasmlib, ModuleStage.AfterParser, new Path('triwasmlib.html'));
-moduleDebug(softfloatlib, ModuleStage.AfterParser, new Path('softfloatlib.html'));
+let mergeModules: WasmArgsMerge[] = [
+    {
+        name: '__triwasm__triwasmlib',
+        file: Path.runtime.join('triwasmlib.wasm'),
+        globalExports: false,
+    },
+    {
+        name: '__triwasm__softfloatlib',
+        file: Path.runtime.join('softfloatlib.wasm'),
+        globalExports: false,
+    },
+    ...conf.args.merge,
+];
 
-let m = new ModuleMerger(main);
-m.merge(triwasmlib, '__triwasm__triwasmlib');
-m.merge(softfloatlib, '__triwasm__softfloatlib');
+let merger = new ModuleMerger(main);
+let offsets = main.logicalOffsets.end;
+for (let mergeModule of mergeModules) {
+    let mod = parser.parse(mergeModule.file, offsets);
+    offsets = mod.logicalOffsets.end;
+    moduleDebug(mod, ModuleStage.AfterParser, conf.args.output.withExtension(mergeModule.name + '.parsed.html'));
+    merger.merge(mod, mergeModule.name);
+}
 
-moduleDebug(main, ModuleStage.AfterParser, new Path('merged.html'));
+moduleDebug(main, ModuleStage.AfterParser, conf.args.output.withExtension('merged.html'));
 
-let r = new LinkResolver(conf);
-r.resolve(main);
+// Resolve dependencies.
 
-moduleDebug(main, ModuleStage.AfterResolver, new Path('resolved.html'));
+let resolver = new LinkResolver(conf);
+resolver.resolve(main);
+moduleDebug(main, ModuleStage.AfterResolver, conf.args.output.withExtension('resolved.html'));
 
 /*
 

@@ -33,10 +33,10 @@ class UsageArgReMatch {
 }
 const usageArgRe = /^(?:-([a-z0-9]) *|--([a-z0-9_-]+) *)?(?:: *(!)?(\w+) *)?(?:\[(\d+)(?:(-)(\d+)?)?\] *)?(.*?)(?:(?<!\\)=(.*))?$/i;
 
-export function matchToObject<T>(type: { new(): T }, match: RegExpMatchArray | null): T | null;
-export function matchToObject<T>(type: { new(): T }, match: RegExpMatchArray | null, notNull: true): T;
-export function matchToObject<T>(type: { new(): T }, match: RegExpMatchArray | null, notNull: false): T | null;
-export function matchToObject<T>(type: { new(): T }, match: RegExpMatchArray | null, notNull: boolean = false): T | null {
+export function matchToObject<T>(type: { new(): T; }, match: RegExpMatchArray | null): T | null;
+export function matchToObject<T>(type: { new(): T; }, match: RegExpMatchArray | null, notNull: true): T;
+export function matchToObject<T>(type: { new(): T; }, match: RegExpMatchArray | null, notNull: false): T | null;
+export function matchToObject<T>(type: { new(): T; }, match: RegExpMatchArray | null, notNull: boolean = false): T | null {
     if (match === null) {
         if (notNull) {
             throw new Error('Internal error!');
@@ -136,6 +136,10 @@ const builtinFilters = {
         parser.printUsage();
         platform.exit(0);
     },
+    markdown: (arg: any, option: Option, parser: ArgsParser<unknown>) => {
+        parser.printMarkdown();
+        platform.exit(0);
+    },
     ver: () => {
         console.log('triVM tools, version ' + versionString);
         platform.exit(0);
@@ -192,24 +196,41 @@ const builtinFilters = {
     Path: (arg: any) => {
         if (arg === undefined) return undefined;
         return new Path('' + arg);
+    },
+    FromFile: (arg: any, option: Option, parser: ArgsParser<unknown>) => {
+        let path = new Path(arg);
+        let argsStr = path.readString();
+        let arr: string[] = [];
+        for (let m of argsStr.matchAll(/\s*(".*?(?:"".*?)*"|[^ ]+)/g)) {
+            let text = m[1].trim();
+            if (text !== '') {
+                if (text.startsWith('"')) {
+                    text = text.replace(/""/g, '"');
+                }
+                arr.push(text);
+            }
+        }
+        parser.args.splice(parser.argIndex, 0, ...arr);
     }
 };
 
-type ParseArrays = { [name: string]: { option: Option, values: string[] } };
+type ParseArrays = { [name: string]: { option: Option, values: string[]; }; };
 
 
 export class ArgsParser<T> {
 
     header: string[] = [];
-    filters: { [name: string]: FilterFunction };
+    filters: { [name: string]: FilterFunction; };
     options: Option[] = [];
     shortOptions = new Map<string, Option>();
     longOptions = new Map<string, Option>();
     posOptions: Option[] = [];
+    args: string[] = [];
+    argIndex: number = 0;
 
     public constructor(
         usage: string,
-        filters?: { [name: string]: FilterFunction },
+        filters?: { [name: string]: FilterFunction; },
         private postProcess?: PostProcessFunction<T>
     ) {
         this.filters = { ...builtinFilters, ...filters };
@@ -300,9 +321,9 @@ export class ArgsParser<T> {
             currentOption.arrayValue = currentOption.maxCount > 1;
             currentOption.defaultValue = m.defaultValue?.trim() ? m.defaultValue.trim() : null;
             switch (currentOption.aliases.at(-1)!.type) {
-                case OptionType.SHORT: currentOption.displayName = '-'; break;
-                case OptionType.LONG: currentOption.displayName = '--'; break;
-                case OptionType.POSITIONAL: currentOption.displayName = ''; break;
+            case OptionType.SHORT: currentOption.displayName = '-'; break;
+            case OptionType.LONG: currentOption.displayName = '--'; break;
+            case OptionType.POSITIONAL: currentOption.displayName = ''; break;
             }
             currentOption.displayName += currentOption.aliases.at(-1)!.name;
             currentOption.name = currentOption.displayName
@@ -313,7 +334,7 @@ export class ArgsParser<T> {
         }
     }
 
-    private printHelpLines(lines: string[], indent: string = '') {
+    private printHelpLines(lines: string[], indent: string, markdown: boolean = false) {
         let common = 10000;
         for (let line of lines) {
             let m = line.match(/^\s*/);
@@ -323,7 +344,21 @@ export class ArgsParser<T> {
         }
         let output = '';
         for (let line of lines) {
-            output += line.substring(common).trimEnd() + '\n';
+            let lineTrimmed = line.substring(common).trimEnd();
+            let markdownOnly = lineTrimmed.startsWith(':');
+            let textOnly = lineTrimmed.startsWith(';');
+            if ((markdown && textOnly) || (!markdown && markdownOnly)) {
+                continue;
+            } else if (markdownOnly || textOnly) {
+                lineTrimmed = lineTrimmed.substring(1);
+            }
+            if (markdown && !markdownOnly) {
+                lineTrimmed = lineTrimmed.replace(/(<[a-z0-9_-]+>)/gi, '`$1`');
+            }
+            if (!markdown && !textOnly) {
+                lineTrimmed = lineTrimmed.replace(/`/g, '"');
+            }
+            output += lineTrimmed + '\n';
         }
         console.log(indent + output
             .trimEnd()
@@ -332,24 +367,24 @@ export class ArgsParser<T> {
 
     public printUsage() {
         console.log();
-        this.printHelpLines(this.header);
+        this.printHelpLines(this.header, '');
         console.log();
         for (let option of this.options) {
             for (let alias of option.aliases) {
                 let text: string;
                 switch (alias.type) {
-                    case OptionType.POSITIONAL:
-                        text = ' ';
-                        break;
-                    case OptionType.SHORT:
-                        text = `-${alias.name} `;
-                        break;
-                    case OptionType.LONG:
-                        text = `--${alias.name} `;
-                        break;
+                case OptionType.POSITIONAL:
+                    text = ' ';
+                    break;
+                case OptionType.SHORT:
+                    text = `-${alias.name} `;
+                    break;
+                case OptionType.LONG:
+                    text = `--${alias.name} `;
+                    break;
                 }
                 if (option.hasValue) {
-                    text += option.valueName;
+                    text += option.valueName.trim();
                 } else {
                     text = text.substring(0, text.length - 1);
                 }
@@ -357,21 +392,59 @@ export class ArgsParser<T> {
             }
             this.printHelpLines(option.help, '    ');
             console.log();
-            //console.dir(this, {depth: null});
+        }
+    }
+
+    public printMarkdown() {
+        console.log(`<!-- Markdown generated with option "${platform.getArgv().join(' ')}". Do not edit it manually. -->`);
+        console.log();
+        this.printHelpLines(this.header, '', true);
+        console.log();
+        for (let option of this.options) {
+            let first = true;
+            for (let alias of option.aliases) {
+                let text: string;
+                switch (alias.type) {
+                case OptionType.POSITIONAL:
+                    text = ' ';
+                    break;
+                case OptionType.SHORT:
+                    text = `**\`-${alias.name}\`** `;
+                    break;
+                case OptionType.LONG:
+                    text = `**\`--${alias.name}\`** `;
+                    break;
+                }
+                if (option.hasValue) {
+                    text += `\`${option.valueName.trim()}\``;
+                } else {
+                    text = text.substring(0, text.length - 1);
+                }
+                if (first) {
+                    first = false;
+                    console.log(`* ${text.trim()}`);
+                } else {
+                    console.log(`\n  ${text.trim()}`);
+                }
+            }
+            console.log();
+            this.printHelpLines(option.help, '  ', true);
+            console.log();
         }
     }
 
     private parseToArrays(args?: string[]): ParseArrays {
-        args = args || platform.getArgv();
+        ///args = [...(args || platform.getArgv())];
+        this.args = [...(args || platform.getArgv())];
+        this.argIndex = 0;
         let result: ParseArrays = Object.fromEntries(this.options.map(option => [option.name, { option, values: [] }]));
         let posIndex = 0;
         let posCount = 0;
         let argChar = 0;
-        let index = 0;
         let onlyPos = false;
-        while (index < args.length) {
+        while (this.argIndex < this.args.length) {
             // skip already parsed characters in packed short options
-            let arg = args[index].substring(argChar);
+            let arg = this.args[this.argIndex].substring(argChar);
             // determine current option
             let option: Option | undefined = undefined;
             let optionName: string;
@@ -383,8 +456,8 @@ export class ArgsParser<T> {
                 arg = arg.substring(1);
                 // go to next argument if there is no more characters in this packed short options
                 if (arg === '') {
-                    index++;
-                    arg = args[index];
+                    this.argIndex++;
+                    arg = this.args[this.argIndex];
                     argChar = 0;
                 }
             } else if (!onlyPos && arg.startsWith('--')) {
@@ -396,14 +469,14 @@ export class ArgsParser<T> {
                         optionName = optionName.substring(0, pos);
                         arg = arg.substring(pos + 1);
                     } else {
-                        index++;
-                        arg = args[index];
+                        this.argIndex++;
+                        arg = this.args[this.argIndex];
                     }
                     option = this.longOptions.get(optionName);
                 } else {
                     // "--" indicates start of positional-only arguments in command line, continue with next argument
                     onlyPos = true;
-                    index++;
+                    this.argIndex++;
                     continue;
                 }
             } else if (!onlyPos && arg.startsWith('-') && arg.length > 1) {
@@ -434,7 +507,7 @@ export class ArgsParser<T> {
                     throw new ArgsParserError(`Expecting argument after: ${optionName}`);
                 }
                 value = arg;
-                index++;
+                this.argIndex++;
                 argChar = 0;
             }
 
@@ -494,7 +567,8 @@ export class ArgsParser<T> {
     }
 }
 
-export function parse<T>(usage: string, output: T, filters?: { [name: string]: FilterFunction }, postProcess?: PostProcessFunction<T>, args?: string[]) {
+export function parse<T>(usage: string, output: T, filters?: { [name: string]: FilterFunction; },
+                         postProcess?: PostProcessFunction<T>, args?: string[]) {
     let a = new ArgsParser(usage, filters, postProcess);
     return a.parse(output, args);
 }

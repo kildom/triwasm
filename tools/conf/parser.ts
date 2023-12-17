@@ -1,11 +1,11 @@
 
 
-import { platform } from '../common/platform';
+import { Path } from '../common/path';
 import { RefType, valueTypeFromString, valueTypeWords } from '../wasm/wasmModule';
 import {
     Conf, ConfExtensions, ConfFaults, ConfFunction, ConfFunctionAttributes, ConfGlobal, ConfHost,
     ConfInterfaceDirection, ConfInterfaceEntry, ConfMemory, ConfParameter, ConfProgram, ConfTable,
-    ConfTableAttributes, ConfWasm
+    ConfTableAttributes
 } from './conf';
 
 const MAX_MEMORY_SIZE = 0x70000000;
@@ -63,17 +63,6 @@ function getInt(defs: { [name: string]: string | undefined; }, name: string, def
         return maxValue;
     }
     return value;
-}
-
-function getString<T>(defs: { [name: string]: string | undefined; }, name: string, defaultValue: T): string | T {
-    if (!(name in defs)) {
-        return defaultValue;
-    }
-    if (defs[name] === undefined) {
-        configError(`${name} must have value`);
-        return defaultValue;
-    }
-    return defs[name]!.trim();
 }
 
 function splitFullName(fullName: string): [string | undefined, string] {
@@ -268,8 +257,8 @@ function parseInterface(conf: Conf, text: string) {
     }
 }
 
-export function parseConf(path: string): Conf {
-    let text = platform.readFile(path);
+export function parseConf(path: Path): Conf {
+    let text = path.readString();
     let defs = parseDefines(text);
 
     let extensions: ConfExtensions = {
@@ -290,23 +279,7 @@ export function parseConf(path: string): Conf {
         divisionByZero: getBool(defs, 'TRIVM_FAULT_DIVISION_BY_ZERO') || getBool(defs, 'TRIVM_ALL_FAULTS'),
         auxStackOverflow: getBool(defs, 'TRIVM_FAULT_AUX_STACK_OVERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
         auxStackUnderflow: getBool(defs, 'TRIVM_FAULT_AUX_STACK_UNDERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
-
-        // TODO: remove wasm specific options
-        wasmUnreachable: getBool(defs, 'TRIWASM_ENABLE_FAULT_UNREACHABLE') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
-        wasmTableIndex: getBool(defs, 'TRIWASM_ENABLE_FAULT_TABLE_INDEX') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
-        wasmNullCall: getBool(defs, 'TRIWASM_ENABLE_FAULT_NULL_CALL') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
-        wasmInvalidExport: getBool(defs, 'TRIWASM_ENABLE_FAULT_INVALID_EXPORT') || getBool(defs, 'TRIWASM_ENABLE_ALL_FAULTS'),
-
-        anyFault: false,
-        anyVmFault: false,
-        anyWasmFault: false,
     };
-
-    faults.anyVmFault = faults.stackOverflow || faults.stackUnderflow || faults.instrOutOfBounds ||
-        faults.instrInvalid || faults.accessOutOfBounds || faults.readOnly || faults.divisionByZero ||
-        faults.auxStackOverflow || faults.auxStackUnderflow;
-    faults.anyWasmFault = faults.wasmUnreachable || faults.wasmTableIndex;
-    faults.anyFault = faults.anyVmFault || faults.anyWasmFault;
 
     let memory: ConfMemory = {
         growable: getBool(defs, 'TRIVM_MEM_GROWABLE'),
@@ -355,22 +328,12 @@ export function parseConf(path: string): Conf {
         exportTableGrow: getBool(defs, 'TRIVM_EXPORT_TABLE_GROWABLE'),
     };
 
-    let wasm: ConfWasm = {
-        entryFunction: getString(defs, 'TRIWASM_ENTRY_FUNCTION', undefined),
-    };
-
-    if (parseInt(wasm.entryFunction || '').toString() === wasm.entryFunction) {
-        // TODOv1: support also hex
-        // TODOv1: interpret numeric values
-    }
-
     let conf: Conf = {
         extensions,
         faults,
         memory,
         program,
         host,
-        wasm,
         functions: [],
         globals: [],
         tables: [],

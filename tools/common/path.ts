@@ -42,6 +42,13 @@ export class Path {
     public parent(): Path {
         return this.join('..');
     }
+    public name(): string {
+        if (this.parts.length > 0) {
+            return this.parts.at(-1) as string;
+        } else {
+            return this.root || '';
+        }
+    }
     public join(...newParts: string[]): Path {
         let all: string[] = [];
         for (let part of newParts) {
@@ -50,7 +57,7 @@ export class Path {
         return new Path(this.root, [...this.parts, ...all]);
     }
     public withExtension(extension: string): Path {
-        if (!extension.startsWith('.')) {
+        if (extension !== '' && !extension.startsWith('.')) {
             extension = '.' + extension;
         }
         if (this.parts.length > 0) {

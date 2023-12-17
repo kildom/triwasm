@@ -1,0 +1,129 @@
+
+ :# `triwasm` command line arguments
+ :
+ USAGE:
+ :```
+ :triwasm -c <trivm-config> [options] <input>
+ :```
+ ;    triwasm -c <trivm-config> [options] <input>
+
+ Compile WebAssembly module file to triVM binary file.
+
+:Path[1] <input>
+    Compile WebAssembly module from <input>.
+
+-c
+--config:Path[1] <file>
+    Get triVM configuration from <file>.
+
+-o
+--output:Path <file>
+    Place the output into <file>. By default, use the same file name as input,
+    but with different extension.
+
+-O
+--optimize:OptLevel <level> = 2
+    Optimize the output. By default, maximum optimization is enabled.
+    :
+    Optimization levels:
+      * `0` - no optimization,
+      * `1` - basic optimization,
+      * `2` and more - maximum optimization
+    :
+    The `s`, `z` and `fast` are aliases for `2`, `g` is alias for `1`.
+    :
+    The optimization strategy is always focused on size.
+
+--vm-stack-size:VmStackSize <size>|shared = 1024
+    Set size of the virtual machine stack. Default is 1024. Special value
+    `shared` puts the virtual machine stack at the guest stack. `Shared` stack
+    is only possible if guest has stack that grows downwards, from higher
+    address to lower.
+
+--global-base:size <address> = 0
+    Address at which module starts storing data. Everything before that is
+    unused by the module and can be used by the compiler and virtual machine.
+    Required for memory size smaller than 64K. By default, it is 0.
+
+--guest-stack-first
+    Gest have its stack first, before `--global-base` address.
+
+--guest-stack-guard
+    Enable gest stack guard. Virtual machine must have guest stack overflow or
+    underflow fault enabled and guest stack pointer must be known, see
+    `--guest-stack-global` option.
+
+--guest-stack-global <name>|#<index>|only-one
+    Guest stack pointer global. You can pass global imported or exported
+    <name>, exported function <name> that only touches the stack pointer
+    global, <index> of global, special value `only-one`, if module has only
+    one global and it is stack pointer. By default, it is `__stack_pointer`,
+    if such global is exported, otherwise guest stack pointer is unavailable.
+
+--guest-stack-size:size <size>
+    Size of the guest stack. It is used only if `--guest-stack-first` or
+    `--guest-stack-guard` options are enabled.
+
+--entry-function[0-] <name>|#<index>
+    Functions that will be called during module startup. If WASM module also
+    specifies entry function, it will be called first.
+
+--disable-fault-all
+    Disable all software-only faults.
+    :
+    :See [software-only faults](swFaults.md).
+
+--disable-fault-unreachable
+    Disable "unreachable" software-only fault.
+    :
+    :See [TRIWASM_FAULT_UNREACHABLE](swFaults.md#triwasm_fault_unreachable--64).
+
+--disable-fault-table-index
+    Disable "table index" software-only fault.
+    :
+    :See [TRIWASM_FAULT_TABLE_INDEX](swFaults.md#triwasm_fault_table_index--65).
+
+--disable-fault-null-call
+    Disable "null call" software-only fault.
+    :
+    :See [TRIWASM_FAULT_NULL_CALL](swFaults.md#triwasm_fault_null_call--66).
+
+--disable-fault-invalid-export
+    Disable "invalid export" software-only fault.
+    :
+    :See [TRIWASM_FAULT_INVALID_EXPORT](swFaults.md#triwasm_fault_invalid_export--67).
+
+-S
+--assembly
+    Compile to assembly text file.
+
+--merge:Merge[0-] <name>\=<file>
+    Merge additional WebAssembly module into the output. The module can contain
+    only functions. If name is prefixed with `!`, exports from module will be
+    available as global (guest-host) exports. Otherwise, the module exports can
+    be used only internally by other modules.
+
+--debug-dump
+    Dump various internal files alongside the output file. Use it to debug the
+    compiler.
+
+--args:!FromFile <file>
+    Place here command line arguments from <file>. The file uses
+    platform-independent style of arguments quoting. Arguments can be enclosed
+    with double quotes. Escape sequence for double quote character are two
+    double quote characters.
+    :
+    :For example:
+    :```
+    :-Os -c "A project called ""My Project""/trivm-conf.h"
+    :-o myapp.trivm
+    :```
+
+--version:!ver
+    Display version information.
+
+--help:!help
+    Display this information.
+
+--help-md:!markdown
+    Display this information in Markdown format.

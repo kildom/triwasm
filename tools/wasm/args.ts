@@ -1,6 +1,10 @@
 
 import { Path } from '../common/path';
 import { ArgsParser, Option, parse } from '../common/argparse';
+import { Conf, ConfFaults } from '../conf/conf';
+import { parseConf } from '../conf/parser';
+import { platform } from '../common/platform';
+import { ARGS_TXT } from './res';
 
 export enum OptLevel {
     NONE = 0,
@@ -8,7 +12,7 @@ export enum OptLevel {
     FULL = 2,
 }
 
-interface WasmArgsMerge {
+export interface WasmArgsMerge {
     name: string;
     file: Path;
     globalExports: boolean;
@@ -25,86 +29,32 @@ export interface WasmArgs {
     guestStackGuard: boolean;
     guestStackGlobal?: string;
     guestStackSize?: number;
+    entryFunction: string[];
+    disableFaultAll: boolean;
+    disableFaultUnreachable: boolean;
+    disableFaultTableIndex: boolean;
+    disableFaultNullCall: boolean;
+    disableFaultInvalidExport: boolean;
     assembly: boolean;
     merge: WasmArgsMerge[];
     debugDump: boolean;
 }
 
-export const wasmUsage = `
+export interface WasmFaults extends ConfFaults {
+    faultUnreachable: boolean;
+    faultTableIndex: boolean;
+    faultNullCall: boolean;
+    faultInvalidExport: boolean;
+    anyVMFault: boolean;
+    anyWASMFault: boolean;
+    anyFault: boolean;
+}
 
- USAGE: triwasm -c <trivm-config> [options] <input>
-
- Compile WebAssembly module file to triVM binary file.
-
-:Path[1] <input>
-    Compile WebAssembly module from <input>.
-
--c
---config:Path[1] <file>
-    Get triVM configuration from <file>.
-
--o
---output:Path <file>
-    Place the output into <file>. By default, use the same file name as input,
-    but with different extension.
-
--O
---optimize:OptLevel <level> = 2
-    Optimize the output. By default, maximum optimization is enabled.
-    Optimization levels: 0 - no optimization, 1 - basic optimization,
-    2 and more - maximum optimization, "s", "z" and "fast" are aliases for 2,
-    "g" is alias for 1. The optimization strategy is always focused on size.
-
---vm-stack-size:VmStackSize <size>|shared = 1024
-    Set size of the virtual machine stack. Default is 1024. Special value
-    "shared" puts the virtual machine stack at the guest stack. "Shared"
-    stack is only possible if guest has stack that grows downwards, from
-    higher address to lower.
-
---global-base:size <address> = 0
-    Address at which module starts storing data. Everything before that is
-    unused by the module and can be used by the compiler and virtual machine.
-    Required for memory size smaller than 64K. By default, it is 0.
-
---guest-stack-first
-    Gest have its stack first, before "--global-base" address.
-
---guest-stack-guard
-    Enable gest stack guard. Virtual machine must have guest stack overflow
-    or underflow fault enabled and guest stack pointer must be known, see
-    "--guest-stack-global" option.
-
---guest-stack-global <name>|#<index>|only-one
-    Guest stack pointer global. You can pass global imported or exported
-    <name>, exported function <name> that only touches the stack pointer
-    global, <index> of global, special value "only-one", if module has only
-    one global and it is stack pointer. By default, it is "__stack_pointer"
-    if such global is exported, otherwise guest stack pointer is unavailable.
-
---guest-stack-size:size <size>
-    Size of the guest stack. It is used only if "--guest-stack-first" or
-    "--guest-stack-guard" options are enabled.
-
--S
---assembly
-    Compile to assembly text file.
-
---merge:Merge[0-] <name>\\=<file>
-    Merge additional WebAssembly module into the output. The module can contain
-    only functions. If name is prefixed with "!", exports from module will be
-    available as global (guest-host) exports. Otherwise, the module exports can
-    be used only internally by other modules.
-
---debug-dump
-    Dump various internal files alongside the output file. Use it to debug the
-    compiler.
-
---version:!ver
-    Display version information.
-
---help:!help
-    Display this information.
-`;
+export interface WasmConf {
+    args: WasmArgs;
+    vmConf: Conf;
+    faults: WasmFaults;
+}
 
 const filters = {
     Merge: (arg: any, option: Option, parser: ArgsParser<unknown>): WasmArgsMerge => {
@@ -141,10 +91,27 @@ function postProcess(results: WasmArgs) {
     }
 }
 
-function returnArgs() {
+export function getWasmConf(cmdLineArgs?: string[]) {
     let args = {} as WasmArgs;
-    parse<WasmArgs>(wasmUsage, args, filters, postProcess);
-    return args;
+    parse<WasmArgs>(ARGS_TXT, args, filters, postProcess, cmdLineArgs || platform.getArgv());
+    let vmConf = parseConf(args.config);
+    let faults: WasmFaults = {
+        ...vmConf.faults,
+        faultUnreachable: !args.disableFaultAll && !args.disableFaultUnreachable,
+        faultTableIndex: !args.disableFaultAll && !args.disableFaultTableIndex,
+        faultNullCall: !args.disableFaultAll && !args.disableFaultNullCall,
+        faultInvalidExport: !args.disableFaultAll && !args.disableFaultInvalidExport,
+        anyVMFault: false,
+        anyWASMFault: false,
+        anyFault: false,
+    };
+    let conf: WasmConf = {
+        args,
+        vmConf,
+        faults,
+    };
+    faults.anyVMFault = Object.values(vmConf.faults).some(x => x);
+    faults.anyWASMFault = faults.faultUnreachable || faults.faultTableIndex || faults.faultNullCall || faults.faultInvalidExport;
+    faults.anyFault = faults.anyVMFault || faults.anyWASMFault;
+    return conf;
 }
-
-export const args: WasmArgs = returnArgs();

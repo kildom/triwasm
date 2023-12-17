@@ -9,7 +9,6 @@ export interface ConfExtensions {
 }
 
 export interface ConfFaults {
-    // VM faults
     stackOverflow: boolean;
     stackUnderflow: boolean;
     instrOutOfBounds: boolean;
@@ -19,15 +18,6 @@ export interface ConfFaults {
     divisionByZero: boolean;
     auxStackOverflow: boolean;
     auxStackUnderflow: boolean;
-    // WASM faults
-    wasmUnreachable: boolean;
-    wasmTableIndex: boolean;
-    wasmNullCall: boolean;
-    wasmInvalidExport: boolean;
-    // Group of faults
-    anyFault: boolean;
-    anyVmFault: boolean;
-    anyWasmFault: boolean;
 }
 
 export interface ConfMemory {
@@ -55,10 +45,6 @@ export interface ConfHost {
     callbacks: boolean;
     importTableGrow: boolean;
     exportTableGrow: boolean;
-}
-
-export interface ConfWasm {
-    entryFunction?: string;
 }
 
 export enum ConfInterfaceDirection {
@@ -111,17 +97,7 @@ export interface Conf {
     memory: ConfMemory;
     program: ConfProgram;
     host: ConfHost;
-    wasm: ConfWasm;
     functions: ConfFunction[];
     globals: ConfGlobal[];
     tables: ConfTable[];
 }
-
-/*
-fixed size:
-    build time known
-    build time unknown
-growable size:
-    build time known
-    build time unknown
-*/
