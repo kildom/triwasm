@@ -1,7 +1,7 @@
 import { OP } from './opcodes';
 import {
     FunctionType, NumberType, RefType, ValueType, WasmBlock, WasmBranchDir,
-    WasmFunction, WasmFunctionKind, WasmInstr, valueTypeWords
+    WasmFunction, WasmInstr, valueTypeWords
 } from './wasmModule';
 
 
@@ -19,8 +19,15 @@ export interface PopPushResult {
     unreachable: boolean;
 }
 
-export function getInstrPopPush(func: WasmFunction, block: WasmBlock, instr: WasmInstr, stack?: ValueType[],
-                                throwErrors?: boolean): PopPushResult {
+export enum StackModifyMode {
+    NONE,
+    PERMISSIVE,
+    STRICT,
+}
+
+export function getInstrPopPush(func: WasmFunction, block: WasmBlock,
+                                instr: WasmInstr, stack?: ValueType[], throwErrors?: boolean,
+                                stackModifyMode: StackModifyMode = StackModifyMode.NONE): PopPushResult {
 
     let res: PopPushResult = {
         errors: [],
@@ -534,6 +541,25 @@ export function getInstrPopPush(func: WasmFunction, block: WasmBlock, instr: Was
 
     res.poppedWords = valueTypeWords(res.poppedTypes);
     res.pushedWords = valueTypeWords(res.pushedTypes);
+
+    if (stack && stackModifyMode === StackModifyMode.STRICT) {
+        for (let type of [...res.poppedTypes].reverse()) {
+            if (stack.length === 0) {
+                res.errors.push('Missing data on stack.');
+                break;
+            } else {
+                let stackType = stack.pop();
+                if (stackType !== type) {
+                    res.errors.push('Invalid data type on stack.');
+                }
+            }
+        }
+        for (let type of res.pushedTypes) {
+            stack.push(type);
+        }
+    } else if (stack && stackModifyMode === StackModifyMode.PERMISSIVE) {
+        throw new Error('Not implemented');
+    }
 
     if (res.errors.length > 0 && throwErrors) {
         throw new Error(res.errors.join(' '));

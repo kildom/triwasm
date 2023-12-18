@@ -330,12 +330,24 @@ function generateDumper(table: Row[]) {
     writeOutput('output/moduleDebug.ts', '../../tools/wasm/moduleDebug.ts', out, '            ');
 }
 
+const extNames: {[key:string]: string} = {
+    unwind: 'unwind',
+    m64: 'mem64',
+    i64: 'int64',
+    f32: 'float32',
+    f64: 'float64',
+    mem64: 'mem64',
+    int64: 'int64',
+    float32: 'float32',
+    float64: 'float64',
+};
+
 function generateReducer(table: Row[]) {
 
     function replaceExpr(expr: string): string {
         return expr
             .trim()
-            .replace(/#([a-z0-9_]+)/gi, 'ext.$1')
+            .replace(/#([a-z0-9_]+)/gi, (all, m) => `ext.${extNames[m]}`)
             .replace(/\.\./gi, 'instr.')
             .replace(/\\\,/gi, ',')
     }
@@ -360,7 +372,7 @@ function generateReducer(table: Row[]) {
 
     let groups: { [reduction: string]: Row[] } = {};
     for (let row of table) {
-        let key = row.reduction + '```' + row.type;
+        let key = row.reduction;
         if (!row.trivmOnly) {
             groups[key] = groups[key] || [];
             groups[key].push(row);
@@ -371,14 +383,14 @@ function generateReducer(table: Row[]) {
 
     for (let key of sorted) {
         let group = groups[key];
-        let [reduction, type] = key.split('```');
+        let reduction = key;
 
         for (let row of group) {
-            out += `\n        case OP.${row.id}:`;
+            out += `\n    case OP.${row.id}:`;
         }
         out += ` {`;
         if (reduction.startsWith('!')) {
-            out += `\n            break;\n        }`;
+            out += `\n        break;\n    }`;
             continue;
         } else if (reduction.trim().startsWith('##')) {
             // nothing to print
@@ -406,12 +418,12 @@ function generateReducer(table: Row[]) {
                 tokens.push(`${ind}if (${replaceExpr(m[1])}) {`);
                 reduction = reduction.substring(m[0].length);
             } else if ((m = reduction.match(/^\s*##\s*/i))) { // ##
-                tokens.push(`${ind}    newBody.push(instr);`)
+                tokens.push(`${ind}    newBody.push(instr);`);
                 reduction = reduction.substring(m[0].length);
             } else if ((m = reduction.match(/^\s*;\s*/i))) { // ;
                 reduction = reduction.substring(m[0].length);
             } else if ((m = reduction.match(/^\s*@\s*([a-z0-9_]+)\s*/i))) { // @triwasmlib_func
-                tokens.push(`${ind}    newBody.push(createTriWasmLibCall(ctx, '${m[1]}'));`)
+                tokens.push(`${ind}    newBody.push(createTriWasmLibCall(ctx, '${m[1]}'));`);
                 reduction = reduction.substring(m[0].length);
             } else if ((m = reduction.match(/^\s*([a-z0-9_\.]+)(\s+[^;{]+)?/i))) { // other.instr param: value, param2 ...
                 let name = m[1].toUpperCase().replace(/\./g, '_');
@@ -438,18 +450,11 @@ function generateReducer(table: Row[]) {
             tokens.push(`${ind}}`);
             ind = ind.substring(0, ind.length - 4);
         }
-        let [popTypes, pushTypes] = splitTypes(type);
-        if (popTypes.length) {
-            tokens.push(`    popTypes(ctx, ${popTypes.join(', ')});`);
-        }
-        if (pushTypes.length) {
-            tokens.push(`    pushTypes(ctx, ${pushTypes.join(', ')});`);
-        }
-        out += `\n        ${tokens.join('\n        ')}`;
-        out += `\n            break;\n        }`;
+        out += `\n    ${tokens.join('\n    ')}`;
+        out += `\n        break;\n    }`;
     }
 
-    writeOutput('output/reducer.ts', '../../tools/wasm/reducer.ts', out, '        ');
+    writeOutput('output/reducer.ts', '../../tools/wasm/reducer.ts', out, '    ');
 }
 
 export function valueTypeWords(type: string[]): number;
@@ -631,7 +636,7 @@ async function main() {
     generateEnum(table);
     generateDumperNames(table);
     // generateParser(table);
-    // generateReducer(table);
+    generateReducer(table);
     // generateDumper(table);
     // generateGenerator(table);
     // generateOutputNames(table);

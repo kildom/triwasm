@@ -97,6 +97,18 @@ uint32_t i64_clz32(uint32_t ah, uint32_t al)
     }
 }
 
+TRIVM_EXPORT(i64_ne)
+uint32_t i64_ne(uint32_t ah, uint32_t al, uint32_t bh, uint32_t bl)
+{
+    return al != bl || ah != bh ? 1 : 0;
+}
+
+TRIVM_EXPORT(i64_le_s)
+uint32_t i64_le_s(uint32_t ah, uint32_t al, uint32_t bh, uint32_t bl)
+{
+    return 0; // TODO: call i64_sub and compare only high word.
+}
+
 TRIVM_ASSEMBLY(
     "READ [SP]\n"
     "PUSH 0\n"
@@ -112,3 +124,9 @@ TRIVM_ASSEMBLY(
     "JUMP udivmod64"
     )
 uint64_t umod64(uint64_t b, uint64_t a);
+
+TRIVM_EXPORT_INLINE_ASSEMBLY(
+    uint64_t, i64_extend_i32_s, (uint32_t a),
+    "READ [SP]\n"
+    "SSHR 31\n"
+);

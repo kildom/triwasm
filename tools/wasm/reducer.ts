@@ -12,26 +12,18 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { WasmConf } from './args';
+import { StackModifyMode, getInstrPopPush } from './instrStack';
 import { EnterBlockCtx, EnterInstrCtx, ExitBlockCtx, ExitInstrCtx, walkFunctions } from './moduleWalker';
 import { OP } from './opcodes';
 import {
-    instrId, NumberType, RefType, ValueType, valueTypeWords, WasmBlock, WasmBranchDir, WasmFunction,
+    instrId, NumberType, ValueType, WasmBlock, WasmBranchDir, WasmFunction,
     WasmFunctionKind, WasmInstr, WasmInstrCall, WasmInstrIf, WasmModule, FunctionType
 } from './wasmModule';
 
-class TriVMExtensions {
-    public unwind = false;
-    public mem64 = false;
-    public i64 = false;
-    public f32 = false;
-    public f64 = false;
-    public faults = {
-        unreachable: true,
-    };
-}
 
 interface ModuleData {
-    ext: TriVMExtensions;
+    conf: WasmConf;
 }
 
 type FunctionData = undefined;
@@ -49,13 +41,16 @@ interface InstrData {
 
 type Ctx = EnterInstrCtx<ModuleData, FunctionData, BlockData, InstrData>;
 
+
 function enterFunction(/*ctx: EnterFunctionCtx<ModuleData>*/): FunctionData {
     return undefined;
 }
 
+
 function exitFunction(/*ctx: ExitFunctionCtx<ModuleData, FunctionData>*/): void {
 
 }
+
 
 function enterBlock(ctx: EnterBlockCtx<ModuleData, FunctionData, BlockData, InstrData>): BlockData {
     return {
@@ -69,10 +64,11 @@ function enterBlock(ctx: EnterBlockCtx<ModuleData, FunctionData, BlockData, Inst
     };
 }
 
+
 function exitBlock(ctx: ExitBlockCtx<ModuleData, FunctionData, BlockData, InstrData>): void {
     // Move new body to old body array
     ctx.block.body.splice(0, Infinity);
-    for (let instr of ctx.blockData.newBody) { // TODO: is there a better way? but remember to don't use "..." in parameters
+    for (let instr of ctx.blockData.newBody) {
         ctx.block.body.push(instr);
     }
     // If this is not forward branch target then next instruction after this block is unreachable
@@ -80,6 +76,7 @@ function exitBlock(ctx: ExitBlockCtx<ModuleData, FunctionData, BlockData, InstrD
         ctx.instrDataStack.at(-1)!.nextUnreachable = true;
     }
 }
+
 
 function enterInstr(ctx: Ctx): InstrData {
     let instrData: InstrData = {
@@ -96,16 +93,16 @@ function enterInstr(ctx: Ctx): InstrData {
     return instrData;
 }
 
+
 function exitInstr(ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>): void {
     ctx.blockData.unreachable = ctx.instrData.nextUnreachable;
 }
 
 
-
-export function reduce(module: WasmModule) {
+export function reduce(module: WasmModule, conf: WasmConf) {
     walkFunctions(module,
         {
-            ext: new TriVMExtensions(),
+            conf
         },
         {
             enterFunction,
@@ -117,6 +114,7 @@ export function reduce(module: WasmModule) {
         });
 }
 
+
 function createTriWasmLibCall(ctx: Ctx, name: string, type?: FunctionType): WasmInstrCall {
     let func = ctx.module.getExported('__triwasm__softfloatlib', name, false);
     if (func === undefined) {
@@ -125,56 +123,23 @@ function createTriWasmLibCall(ctx: Ctx, name: string, type?: FunctionType): Wasm
     return { id: instrId(ctx.instr), opcode: OP.CALL, func, type };
 }
 
-function pushTypes(ctx: Ctx, ...args: ValueType[]) {
-    ctx.blockData.typeStack.push(...args);
-}
 
-
-function error(obj: WasmInstr | { instr: WasmInstr }, message: string) {
-    /*let instr: WasmInstr;
-    if (obj.instr) {
-        instr = obj.instr;
+function handleAnnotation(ctx: Ctx, func: WasmFunction) {
+    if (func.kind != WasmFunctionKind.ANNOTATION) {
+        return false;
+    }
+    let text = func.data;
+    if (!text) {
+        return false;
+    }
+    if (text.startsWith('triasm_name:')) {
+        ctx.func.name = text.substring(12).trim();
+        return true;
     } else {
-        instr = obj;
-    }*/
-    throw new Error(message); // TODO: handle errors properly
-}
-
-function popTypes(ctx: Ctx, ...args: ValueType[]) {
-    if (args.length > ctx.blockData.typeStack.length) {
-        error(ctx, 'Stack underflow.');
-        ctx.blockData.typeStack.splice(0, Infinity);
-    } else {
-        for (let i = args.length - 1; i >= 0; i--) {
-            if (ctx.blockData.typeStack.pop() !== args[i]) {
-                error(ctx, 'Invalid stack types.');
-            }
-        }
+        return false;
     }
 }
 
-function checkTypes(ctx: Ctx, ...args: ValueType[]) {
-    if (args.length > ctx.blockData.typeStack.length) {
-        error(ctx, 'Stack underflow.');
-        ctx.blockData.typeStack.splice(0, Infinity);
-    } else {
-        for (let i = args.length - 1; i >= 0; i--) {
-            if (ctx.blockData.typeStack.at(-1 - i) !== args[i]) {
-                error(ctx, 'Invalid stack types.');
-            }
-        }
-    }
-}
-
-function peekType(ctx: Ctx): ValueType {
-    if (ctx.blockData.typeStack.length == 0) {
-        error(ctx, 'Stack underflow.');
-        ctx.blockData.typeStack.splice(0, Infinity);
-        return NumberType.I32;
-    } else {
-        return ctx.blockData.typeStack.at(-1) as ValueType;
-    }
-}
 
 function getBlockData(ctx: Ctx, target: WasmBlock): BlockData | undefined {
     for (let i = 0; i < ctx.blockStack.length; i++) {
@@ -184,46 +149,36 @@ function getBlockData(ctx: Ctx, target: WasmBlock): BlockData | undefined {
     }
 }
 
-function handleBranch(ctx: Ctx, target: WasmBlock, direction: WasmBranchDir) {
-    if (direction === WasmBranchDir.Backward) {
-        checkTypes(ctx, ...target.type.params);
-    } else {
-        checkTypes(ctx, ...target.type.results);
-    }
-}
-
-
 function reduceInstr(ctx: Ctx, instrData: InstrData) {
     let instr = ctx.instr;
     let newBody = ctx.blockData.newBody;
     let func = ctx.func;
-    let ext = ctx.moduleData.ext;
+    let conf = ctx.moduleData.conf;
+    let ext = conf.vmConf.extensions;
+
+    let popPush = getInstrPopPush(func, ctx.block, instr, ctx.blockData.typeStack, true, StackModifyMode.STRICT);
+
+    instrData.nextUnreachable = instrData.nextUnreachable || popPush.unreachable;
 
     switch (instr.opcode) {
     // -- Begin of source code generated with help of "gen-instr.ts" script --
 
     case OP.UNREACHABLE: {
-        newBody.push(createTriWasmLibCall(ctx, 'unreachable'));
+        if (conf.faults.faultUnreachable) {
+            newBody.push({
+                id: instrId(instr),
+                opcode: OP.TRIVM_RAW,
+                code: 'CALL $__trigger_unreachable',
+                type: {
+                    params: [],
+                    results: [],
+                },
+                noReturn: true,
+            });
+        } else {
+            newBody.push({ id: instrId(instr), opcode: OP.NOP });
+        }
         instrData.nextUnreachable = true;
-        break;
-    }
-    case OP.BLOCK: {
-        popTypes(ctx, ...instr.block.type.params);
-        pushTypes(ctx, ...instr.block.type.results);
-        newBody.push(instr);
-        break;
-    }
-    case OP.LOOP: {
-        popTypes(ctx, ...instr.block.type.params);
-        pushTypes(ctx, ...instr.block.type.results);
-        newBody.push(instr);
-        break;
-    }
-    case OP.IF: {
-        popTypes(ctx, NumberType.I32);
-        popTypes(ctx, ...instr.block.type.params);
-        pushTypes(ctx, ...instr.block.type.results);
-        newBody.push(instr);
         break;
     }
     case OP.ELSE: {
@@ -239,7 +194,6 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
     }
     case OP.END: {
         let target = ctx.blockStack.at(-1) as WasmBlock;
-        handleBranch(ctx, target, WasmBranchDir.Forward);
         newBody.push({ id: instrId(instr), opcode: OP.BR, target, direction: WasmBranchDir.Forward });
         ctx.blockDataStack.at(-1)!.isForwardTarget = true;
         instrData.nextUnreachable = true;
@@ -248,7 +202,6 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
     }
     case OP.BR: {
         let target = instr.target;
-        handleBranch(ctx, target, instr.direction);
         if (instr.direction == WasmBranchDir.Forward) {
             getBlockData(ctx, target)!.isForwardTarget = true;
         }
@@ -258,8 +211,6 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
     }
     case OP.BR_IF: {
         let target = instr.target;
-        popTypes(ctx, NumberType.I32);
-        handleBranch(ctx, target, instr.direction);
         if (instr.direction == WasmBranchDir.Forward) {
             getBlockData(ctx, target)!.isForwardTarget = true;
         }
@@ -267,10 +218,8 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         break;
     }
     case OP.BR_TABLE: {
-        popTypes(ctx, NumberType.I32);
         for (let target of instr.targets) {
             let direction = (target.parentInstruction.opcode === OP.LOOP) ? WasmBranchDir.Backward : WasmBranchDir.Forward;
-            handleBranch(ctx, target, direction);
             if (direction === WasmBranchDir.Forward) {
                 getBlockData(ctx, target)!.isForwardTarget = true;
             }
@@ -281,7 +230,6 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
     }
     case OP.RETURN: {
         let target = ctx.blockStack[0];
-        handleBranch(ctx, target, WasmBranchDir.Forward);
         newBody.push({ id: instrId(instr), opcode: OP.BR, target, direction: WasmBranchDir.Forward });
         getBlockData(ctx, target)!.isForwardTarget = true;
         instrData.nextUnreachable = true;
@@ -292,15 +240,10 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         if (handleAnnotation(ctx, func)) {
             break;
         }
-        popTypes(ctx, ...func.type.params);
-        pushTypes(ctx, ...func.type.results);
         newBody.push(instr);
         break;
     }
     case OP.CALL_INDIRECT: {
-        popTypes(ctx, NumberType.I32);
-        popTypes(ctx, ...instr.type.params);
-        pushTypes(ctx, ...instr.type.results);
         newBody.push({
             id: instrId(instr),
             opcode: OP.TRIVM_RAW,
@@ -314,30 +257,16 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         break;
     }
     case OP.DROP: {
-        let type = peekType(ctx);
-        popTypes(ctx, type);
-        let words = valueTypeWords(type);
-        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: words });
+        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: popPush.poppedWords });
         break;
     }
     case OP.SELECT:
     case OP.SELECT_T: {
-        popTypes(ctx, NumberType.I32);
-        let type = peekType(ctx);
-        popTypes(ctx, type, type);
-        pushTypes(ctx, type);
-        newBody.push(createTriWasmLibCall(ctx, 'select' + (32 * valueTypeWords(type))));
+        newBody.push(createTriWasmLibCall(ctx, 'select' + (32 * popPush.pushedWords)));
         break;
     }
     case OP.LOCAL_GET: {
-        let type: ValueType;
-        if (instr.index < func.type.params.length) {
-            type = func.type.params[instr.index];
-        } else {
-            type = func.locals[instr.index - func.type.params.length];
-        }
-        pushTypes(ctx, type);
-        let words = valueTypeWords(type);
+        let words = popPush.pushedWords;
         let offset = 0;
         while (words > 0) {
             if (ext.mem64 && words > 1) {
@@ -353,14 +282,7 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         break;
     }
     case OP.LOCAL_SET: {
-        let type: ValueType;
-        if (instr.index < func.type.params.length) {
-            type = func.type.params[instr.index];
-        } else {
-            type = func.locals[instr.index - func.type.params.length];
-        }
-        popTypes(ctx, type);
-        let words = valueTypeWords(type);
+        let words = popPush.poppedWords;
         while (words > 0) {
             if (ext.mem64 && words > 1) {
                 words -= 2;
@@ -373,14 +295,7 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         break;
     }
     case OP.LOCAL_TEE: {
-        let type: ValueType;
-        if (instr.index < func.type.params.length) {
-            type = func.type.params[instr.index];
-        } else {
-            type = func.locals[instr.index - func.type.params.length];
-        }
-        checkTypes(ctx, type);
-        let words = valueTypeWords(type);
+        let words = popPush.poppedWords;
         let offset = 0;
         while (words > 0) {
             if (ext.mem64 && words > 1) {
@@ -399,9 +314,7 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
     }
     case OP.GLOBAL_GET: {
         let global = instr.global;
-        let type = global.type;
-        pushTypes(ctx, type);
-        let words = valueTypeWords(type);
+        let words = popPush.pushedWords;
         let offset = 0;
         while (words > 0) {
             if (ext.mem64 && words > 1) {
@@ -418,9 +331,7 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
     }
     case OP.GLOBAL_SET: {
         let global = instr.global;
-        let type = global.type;
-        popTypes(ctx, type);
-        let words = valueTypeWords(type);
+        let words = popPush.poppedWords;
         while (words > 0) {
             if (ext.mem64 && words > 1) {
                 words -= 2;
@@ -438,16 +349,10 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
     case OP.TABLE_SET: {
         break;
     }
-    case OP.REF_NULL: {
+    case OP.MEMORY_INIT: {
         break;
     }
-    case OP.REF_IS_NULL: {
-        break;
-    }
-    case OP.TABLE_GROW: {
-        break;
-    }
-    case OP.TABLE_FILL: {
+    case OP.TABLE_INIT: {
         break;
     }
     /* eslint-disable max-len */
@@ -460,14 +365,10 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
             newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.offset });
             newBody.push(createTriWasmLibCall(ctx, 'i64_load'));
         }
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.F32_LOAD: { // Generated from expression: i32.load offset, memory
         newBody.push({ id: instrId(instr), opcode: OP.I32_LOAD, offset: instr.offset, memory: instr.memory });
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.F32);
         break;
     }
     case OP.F64_LOAD: { // Generated from expression: {#mem64} i64.load memory, offset {elif ..offset == 0} @i64_load_0 {else} i32.const value:..offset ; @i64_load
@@ -479,62 +380,48 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
             newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.offset });
             newBody.push(createTriWasmLibCall(ctx, 'i64_load'));
         }
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.F64);
         break;
     }
     case OP.I64_LOAD8_S: { // Generated from expression: i32.load8_s offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s
         newBody.push({ id: instrId(instr), opcode: OP.I32_LOAD8_S, offset: instr.offset, memory: instr.memory });
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push({ id: instrId(instr), opcode: OP.I64_EXTEND_I32_S });
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_extend_i32_s'));
         }
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_LOAD8_U: { // Generated from expression: i32.load8_u memory, offset ; i32.const value:0
         newBody.push({ id: instrId(instr), opcode: OP.I32_LOAD8_U, memory: instr.memory, offset: instr.offset });
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: 0 });
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_LOAD16_S: { // Generated from expression: i32.load16_s offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s
         newBody.push({ id: instrId(instr), opcode: OP.I32_LOAD16_S, offset: instr.offset, memory: instr.memory });
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push({ id: instrId(instr), opcode: OP.I64_EXTEND_I32_S });
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_extend_i32_s'));
         }
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_LOAD16_U: { // Generated from expression: i32.load16_u memory, offset ; i32.const value:0
         newBody.push({ id: instrId(instr), opcode: OP.I32_LOAD16_U, memory: instr.memory, offset: instr.offset });
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: 0 });
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_LOAD32_S: { // Generated from expression: i32.load offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s
         newBody.push({ id: instrId(instr), opcode: OP.I32_LOAD, offset: instr.offset, memory: instr.memory });
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push({ id: instrId(instr), opcode: OP.I64_EXTEND_I32_S });
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_extend_i32_s'));
         }
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_LOAD32_U: { // Generated from expression: i32.load offset, memory ; i32.const value:0
         newBody.push({ id: instrId(instr), opcode: OP.I32_LOAD, offset: instr.offset, memory: instr.memory });
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: 0 });
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_STORE: { // Generated from expression: {#mem64} ## {elif ..offset == 0} @i64_store_0 {else} i32.const value:..offset ; @i64_store {end}
@@ -546,12 +433,10 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
             newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.offset });
             newBody.push(createTriWasmLibCall(ctx, 'i64_store'));
         }
-        popTypes(ctx, NumberType.I32, NumberType.I64);
         break;
     }
     case OP.F32_STORE: { // Generated from expression: i32.store offset, memory
         newBody.push({ id: instrId(instr), opcode: OP.I32_STORE, offset: instr.offset, memory: instr.memory });
-        popTypes(ctx, NumberType.I32, NumberType.F32);
         break;
     }
     case OP.F64_STORE: { // Generated from expression: {#mem64} i64.store offset, memory {elif ..offset == 0} @i64_store_0 {else} i32.const value:..offset ; @i64_store {end}
@@ -563,553 +448,934 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
             newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.offset });
             newBody.push(createTriWasmLibCall(ctx, 'i64_store'));
         }
-        popTypes(ctx, NumberType.I32, NumberType.F64);
         break;
     }
     case OP.I64_STORE8: { // Generated from expression: trivm.pop value: 1 ; i32.store8 offset, memory
         newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: 1 });
         newBody.push({ id: instrId(instr), opcode: OP.I32_STORE8, offset: instr.offset, memory: instr.memory });
-        popTypes(ctx, NumberType.I32, NumberType.I64);
         break;
     }
     case OP.I64_STORE16: { // Generated from expression: trivm.pop value: 1 ; i32.store16 offset, memory
         newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: 1 });
         newBody.push({ id: instrId(instr), opcode: OP.I32_STORE16, offset: instr.offset, memory: instr.memory });
-        popTypes(ctx, NumberType.I32, NumberType.I64);
         break;
     }
     case OP.I64_STORE32: { // Generated from expression: trivm.pop value: 1 ; i32.store offset, memory
         newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: 1 });
         newBody.push({ id: instrId(instr), opcode: OP.I32_STORE, offset: instr.offset, memory: instr.memory });
-        popTypes(ctx, NumberType.I32, NumberType.I64);
         break;
     }
     case OP.MEMORY_SIZE: { // Generated from expression: @memory_size
         newBody.push(createTriWasmLibCall(ctx, 'memory_size'));
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.MEMORY_GROW: { // Generated from expression: @memory_grow
         newBody.push(createTriWasmLibCall(ctx, 'memory_grow'));
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I64_CONST: { // Generated from expression: {#i64} ## {else} i32.const value: Number(..value & 0xFFFFFFFFn) & 0xFFFFFFFF ; i32.const value: Number(..value >> 32n) & 0xFFFFFFFF
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: Number(instr.value & 0xFFFFFFFFn) & 0xFFFFFFFF });
             newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: Number(instr.value >> 32n) & 0xFFFFFFFF });
         }
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.F32_CONST: { // Generated from expression: i32.const value
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.value });
-        pushTypes(ctx, NumberType.F32);
         break;
     }
     case OP.F64_CONST: { // Generated from expression: {#i64} i64.const value {else} i32.const value: Number(..value & 0xFFFFFFFFn) & 0xFFFFFFFF ; i32.const value: Number(..value >> 32n) & 0xFFFFFFFF
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push({ id: instrId(instr), opcode: OP.I64_CONST, value: instr.value });
         } else {
             newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: Number(instr.value & 0xFFFFFFFFn) & 0xFFFFFFFF });
             newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: Number(instr.value >> 32n) & 0xFFFFFFFF });
         }
-        pushTypes(ctx, NumberType.F64);
         break;
     }
     case OP.I32_NE: { // Generated from expression: i32.eq ; i32.eqz
         newBody.push({ id: instrId(instr), opcode: OP.I32_EQ });
         newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
-        popTypes(ctx, NumberType.I32, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I32_LE_S: { // Generated from expression: i32.gt_s ; i32.eqz
         newBody.push({ id: instrId(instr), opcode: OP.I32_GT_S });
         newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
-        popTypes(ctx, NumberType.I32, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I32_LE_U: { // Generated from expression: i32.gt_u ; i32.eqz
         newBody.push({ id: instrId(instr), opcode: OP.I32_GT_U });
         newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
-        popTypes(ctx, NumberType.I32, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I32_GE_S: { // Generated from expression: i32.lt_s ; i32.eqz
         newBody.push({ id: instrId(instr), opcode: OP.I32_LT_S });
         newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
-        popTypes(ctx, NumberType.I32, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I32_GE_U: { // Generated from expression: i32.lt_u ; i32.eqz
         newBody.push({ id: instrId(instr), opcode: OP.I32_LT_U });
         newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
-        popTypes(ctx, NumberType.I32, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I64_EQZ: { // Generated from expression: i32.or ; i32.eqz
         newBody.push({ id: instrId(instr), opcode: OP.I32_OR });
         newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
-        popTypes(ctx, NumberType.I64);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I64_EQ: { // Generated from expression: {#i64} ## {else} @i64_eq
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_eq'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
-    case OP.I64_NE: { // Generated from expression: {#i64} i64.eq {else} @i64_eq {end} i32.eqz
-        if (ext.i64) {
+    case OP.I64_NE: { // Generated from expression: {#i64} i64.eq ; i32.eqz {else} @i64_ne
+        if (ext.int64) {
             newBody.push({ id: instrId(instr), opcode: OP.I64_EQ });
+            newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
         } else {
-            newBody.push(createTriWasmLibCall(ctx, 'i64_eq'));
+            newBody.push(createTriWasmLibCall(ctx, 'i64_ne'));
         }
-        newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
-    case OP.I64_LT_S:
-    case OP.I64_LT_U:
-    case OP.I64_GT_S:
-    case OP.I64_GT_U:
-    case OP.I64_LE_S:
-    case OP.I64_LE_U:
-    case OP.I64_GE_S:
-    case OP.I64_GE_U: { // TODO
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I32);
+    case OP.I64_LT_S: { // Generated from expression: {#i64} ## {else} @i64_lt_s
+        if (ext.int64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_lt_s'));
+        }
         break;
     }
-    case OP.F32_EQ:
-    case OP.F32_NE:
-    case OP.F32_LT:
-    case OP.F32_GT:
-    case OP.F32_LE:
-    case OP.F32_GE: { // TODO
-        popTypes(ctx, NumberType.F32, NumberType.F32);
-        pushTypes(ctx, NumberType.I32);
+    case OP.I64_LT_U: { // Generated from expression: {#i64} ## {else} @i64_lt_u
+        if (ext.int64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_lt_u'));
+        }
         break;
     }
-    case OP.F64_EQ:
-    case OP.F64_NE:
-    case OP.F64_LT:
-    case OP.F64_GT:
-    case OP.F64_LE:
-    case OP.F64_GE: { // TODO
-        popTypes(ctx, NumberType.F64, NumberType.F64);
-        pushTypes(ctx, NumberType.I32);
+    case OP.I64_GT_S: { // Generated from expression: {#i64} ## {else} @i64_gt_s
+        if (ext.int64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_gt_s'));
+        }
+        break;
+    }
+    case OP.I64_GT_U: { // Generated from expression: {#i64} ## {else} @i64_gt_u
+        if (ext.int64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_gt_u'));
+        }
+        break;
+    }
+    case OP.I64_LE_S: { // Generated from expression: {#i64} ## ; i32.eqz {else} @i64_le_s
+        if (ext.int64) {
+            newBody.push(instr);
+            newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_le_s'));
+        }
+        break;
+    }
+    case OP.I64_LE_U: { // Generated from expression: {#i64} ## ; i32.eqz {else} @i64_le_u
+        if (ext.int64) {
+            newBody.push(instr);
+            newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_le_u'));
+        }
+        break;
+    }
+    case OP.I64_GE_S: { // Generated from expression: {#i64} ## ; i32.eqz {else} @i64_ge_s
+        if (ext.int64) {
+            newBody.push(instr);
+            newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_ge_s'));
+        }
+        break;
+    }
+    case OP.I64_GE_U: { // Generated from expression: {#i64} ## ; i32.eqz {else} @i64_ge_u
+        if (ext.int64) {
+            newBody.push(instr);
+            newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_ge_u'));
+        }
+        break;
+    }
+    case OP.F32_EQ: { // Generated from expression: {#f32} ## {else} @f32_eq
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_eq'));
+        }
+        break;
+    }
+    case OP.F32_NE: { // Generated from expression: {#f32} f32.eq ; i32.eqz {else} @f32_ne
+        if (ext.float32) {
+            newBody.push({ id: instrId(instr), opcode: OP.F32_EQ });
+            newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_ne'));
+        }
+        break;
+    }
+    case OP.F32_LT: { // Generated from expression: {#f32} ## {else} @f32_lt
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_lt'));
+        }
+        break;
+    }
+    case OP.F32_GT: { // Generated from expression: {#f32} ## {else} @f32_gt
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_gt'));
+        }
+        break;
+    }
+    case OP.F32_LE: { // Generated from expression: {#f32} ## {else} @f32_le
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_le'));
+        }
+        break;
+    }
+    case OP.F32_GE: { // Generated from expression: {#f32} ## {else} @f32_ge
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_ge'));
+        }
+        break;
+    }
+    case OP.F64_EQ: { // Generated from expression: {#f64} ## {else} @f64_eq
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_eq'));
+        }
+        break;
+    }
+    case OP.F64_NE: { // Generated from expression: {#f64} f64.eq ; i32.eqz {else} @f64_ne
+        if (ext.float64) {
+            newBody.push({ id: instrId(instr), opcode: OP.F64_EQ });
+            newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_ne'));
+        }
+        break;
+    }
+    case OP.F64_LT: { // Generated from expression: {#f64} ## {else} @f64_lt
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_lt'));
+        }
+        break;
+    }
+    case OP.F64_GT: { // Generated from expression: {#f64} ## {else} @f64_gt
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_gt'));
+        }
+        break;
+    }
+    case OP.F64_LE: { // Generated from expression: {#f64} ## {else} @f64_le
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_le'));
+        }
+        break;
+    }
+    case OP.F64_GE: { // Generated from expression: {#f64} ## {else} @f64_ge
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_ge'));
+        }
         break;
     }
     case OP.I32_CLZ: { // Generated from expression: @i32_clz
         newBody.push(createTriWasmLibCall(ctx, 'i32_clz'));
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I32_CTZ: { // Generated from expression: @i32_ctz
         newBody.push(createTriWasmLibCall(ctx, 'i32_ctz'));
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I32_POPCNT: { // Generated from expression: @i32_popcnt
         newBody.push(createTriWasmLibCall(ctx, 'i32_popcnt'));
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I32_ROTL: { // Generated from expression: @i32_rotl
         newBody.push(createTriWasmLibCall(ctx, 'i32_rotl'));
-        popTypes(ctx, NumberType.I32, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I32_ROTR: { // Generated from expression: @i32_rotr
         newBody.push(createTriWasmLibCall(ctx, 'i32_rotr'));
-        popTypes(ctx, NumberType.I32, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
     case OP.I64_CLZ: { // Generated from expression: @i64_clz32; i32.const value:0
         newBody.push(createTriWasmLibCall(ctx, 'i64_clz32'));
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: 0 });
-        popTypes(ctx, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_CTZ: { // Generated from expression: @i64_ctz32; i32.const value:0
         newBody.push(createTriWasmLibCall(ctx, 'i64_ctz32'));
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: 0 });
-        popTypes(ctx, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_POPCNT: { // Generated from expression: @i64_popcnt32; i32.const value:0
         newBody.push(createTriWasmLibCall(ctx, 'i64_popcnt32'));
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: 0 });
-        popTypes(ctx, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_ADD: { // Generated from expression: {#i64} ## {else} @i64_add
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_add'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_SUB: { // Generated from expression: {#i64} ## {else} @i64_sub
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_sub'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_MUL: { // Generated from expression: {#i64} ## {else} @i64_mul
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_mul'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_DIV_S: { // Generated from expression: {#i64} ## {else} @i64_div_s
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_div_s'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_DIV_U: { // Generated from expression: {#i64} ## {else} @i64_div_u
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_div_u'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_REM_S: { // Generated from expression: {#i64} ## {else} @i64_rem_s
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_rem_s'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_REM_U: { // Generated from expression: {#i64} ## {else} @i64_rem_u
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_rem_u'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_AND: { // Generated from expression: {#i64} ## {else} @i64_and
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_and'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_OR: { // Generated from expression: {#i64} ## {else} @i64_or
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_or'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_XOR: { // Generated from expression: {#i64} ## {else} @i64_xor
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_xor'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_SHL: { // Generated from expression: {#i64} ## {else} @i64_shl
-        if (ext.i64) {
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push(createTriWasmLibCall(ctx, 'i64_shl'));
         }
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
-    case OP.I64_SHR_S:
-    case OP.I64_SHR_U:
-    case OP.I64_ROTL:
-    case OP.I64_ROTR: { // TODO
-        popTypes(ctx, NumberType.I64, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
+    case OP.I64_SHR_S: { // Generated from expression: {#i64} ## {else} @i64_shr_s
+        if (ext.int64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_shr_s'));
+        }
         break;
     }
-    case OP.F32_ABS:
-    case OP.F32_NEG:
-    case OP.F32_CEIL:
-    case OP.F32_FLOOR:
-    case OP.F32_TRUNC:
-    case OP.F32_NEAREST:
-    case OP.F32_SQRT: { // TODO
-        popTypes(ctx, NumberType.F32);
-        pushTypes(ctx, NumberType.F32);
+    case OP.I64_SHR_U: { // Generated from expression: {#i64} ## {else} @i64_shr_u
+        if (ext.int64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_shr_u'));
+        }
         break;
     }
-    case OP.F32_ADD:
-    case OP.F32_SUB:
-    case OP.F32_MUL:
-    case OP.F32_DIV:
-    case OP.F32_MIN:
-    case OP.F32_MAX:
-    case OP.F32_COPYSIGN: { // TODO
-        popTypes(ctx, NumberType.F32, NumberType.F32);
-        pushTypes(ctx, NumberType.F32);
+    case OP.I64_ROTL: { // Generated from expression: @i64_rotl
+        newBody.push(createTriWasmLibCall(ctx, 'i64_rotl'));
         break;
     }
-    case OP.F64_ABS:
-    case OP.F64_NEG:
-    case OP.F64_CEIL:
-    case OP.F64_FLOOR:
-    case OP.F64_TRUNC:
-    case OP.F64_NEAREST:
-    case OP.F64_SQRT: { // TODO
-        popTypes(ctx, NumberType.F64);
-        pushTypes(ctx, NumberType.F64);
+    case OP.I64_ROTR: { // Generated from expression: @i64_rotr
+        newBody.push(createTriWasmLibCall(ctx, 'i64_rotr'));
         break;
     }
-    case OP.F64_ADD:
-    case OP.F64_SUB:
-    case OP.F64_MUL:
-    case OP.F64_DIV:
-    case OP.F64_MIN:
-    case OP.F64_MAX:
-    case OP.F64_COPYSIGN: { // TODO
-        popTypes(ctx, NumberType.F64, NumberType.F64);
-        pushTypes(ctx, NumberType.F64);
+    case OP.F32_ABS: { // Generated from expression: i32.const value: -1 ; trivm.ushr_const value: 1 ; i32.and
+        newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: -1 });
+        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_USHR_CONST, value: 1 });
+        newBody.push({ id: instrId(instr), opcode: OP.I32_AND });
         break;
     }
-    case OP.I32_WRAP_I64: { // TODO
-        popTypes(ctx, NumberType.I64);
-        pushTypes(ctx, NumberType.I32);
+    case OP.F32_NEG: { // Generated from expression: i32.const value: 1 ; trivm.shl_const value: 31 ; i32.xor
+        newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: 1 });
+        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_SHL_CONST, value: 31 });
+        newBody.push({ id: instrId(instr), opcode: OP.I32_XOR });
         break;
     }
-    case OP.I32_TRUNC_F32_S:
-    case OP.I32_TRUNC_F32_U:
-    case OP.I32_TRUNC_SAT_F32_S:
-    case OP.I32_TRUNC_SAT_F32_U: { // TODO
-        popTypes(ctx, NumberType.F32);
-        pushTypes(ctx, NumberType.I32);
+    case OP.F32_CEIL: { // Generated from expression: {#f32} ## {else} @f32_ceil
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_ceil'));
+        }
         break;
     }
-    case OP.I32_TRUNC_F64_S:
-    case OP.I32_TRUNC_F64_U:
-    case OP.I32_TRUNC_SAT_F64_S:
-    case OP.I32_TRUNC_SAT_F64_U: { // TODO
-        popTypes(ctx, NumberType.F64);
-        pushTypes(ctx, NumberType.I32);
+    case OP.F32_FLOOR: { // Generated from expression: {#f32} ## {else} @f32_floor
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_floor'));
+        }
         break;
     }
-    case OP.I64_EXTEND_I32_S: { // Generated from expression: {#i64} ## {else} TRIVM.DUP32 offset:0 ; i32.const value:31 ; i32.shr_s
-        if (ext.i64) {
+    case OP.F32_TRUNC: { // Generated from expression: {#f32} ## {else} @f32_trunc
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_trunc'));
+        }
+        break;
+    }
+    case OP.F32_NEAREST: { // Generated from expression: {#f32} ## {else} @f32_nearest
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_nearest'));
+        }
+        break;
+    }
+    case OP.F32_SQRT: { // Generated from expression: {#f32} ## {else} @f32_sqrt
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_sqrt'));
+        }
+        break;
+    }
+    case OP.F32_ADD: { // Generated from expression: {#f32} ## {else} @f32_add
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_add'));
+        }
+        break;
+    }
+    case OP.F32_SUB: { // Generated from expression: {#f32} ## {else} @f32_sub
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_sub'));
+        }
+        break;
+    }
+    case OP.F32_MUL: { // Generated from expression: {#f32} ## {else} @f32_mul
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_mul'));
+        }
+        break;
+    }
+    case OP.F32_DIV: { // Generated from expression: {#f32} ## {else} @f32_div
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_div'));
+        }
+        break;
+    }
+    case OP.F32_MIN: { // Generated from expression: @f32_min
+        newBody.push(createTriWasmLibCall(ctx, 'f32_min'));
+        break;
+    }
+    case OP.F32_MAX: { // Generated from expression: @f32_max
+        newBody.push(createTriWasmLibCall(ctx, 'f32_max'));
+        break;
+    }
+    case OP.F32_COPYSIGN: { // Generated from expression: @f32_copysign
+        newBody.push(createTriWasmLibCall(ctx, 'f32_copysign'));
+        break;
+    }
+    case OP.F64_ABS: { // Generated from expression: @f64_abs
+        newBody.push(createTriWasmLibCall(ctx, 'f64_abs'));
+        break;
+    }
+    case OP.F64_NEG: { // Generated from expression: @f64_neg
+        newBody.push(createTriWasmLibCall(ctx, 'f64_neg'));
+        break;
+    }
+    case OP.F64_CEIL: { // Generated from expression: {#f64} ## {else} @f64_ceil
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_ceil'));
+        }
+        break;
+    }
+    case OP.F64_FLOOR: { // Generated from expression: {#f64} ## {else} @f64_floor
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_floor'));
+        }
+        break;
+    }
+    case OP.F64_TRUNC: { // Generated from expression: {#f64} ## {else} @f64_trunc
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_trunc'));
+        }
+        break;
+    }
+    case OP.F64_NEAREST: { // Generated from expression: {#f64} ## {else} @f64_nearest
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_nearest'));
+        }
+        break;
+    }
+    case OP.F64_SQRT: { // Generated from expression: {#f64} ## {else} @f64_sqrt
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_sqrt'));
+        }
+        break;
+    }
+    case OP.F64_ADD: { // Generated from expression: {#f64} ## {else} @f64_add
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_add'));
+        }
+        break;
+    }
+    case OP.F64_SUB: { // Generated from expression: {#f64} ## {else} @f64_sub
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_sub'));
+        }
+        break;
+    }
+    case OP.F64_MUL: { // Generated from expression: {#f64} ## {else} @f64_mul
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_mul'));
+        }
+        break;
+    }
+    case OP.F64_DIV: { // Generated from expression: {#f64} ## {else} @f64_div
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_div'));
+        }
+        break;
+    }
+    case OP.F64_MIN: { // Generated from expression: @f64_min
+        newBody.push(createTriWasmLibCall(ctx, 'f64_min'));
+        break;
+    }
+    case OP.F64_MAX: { // Generated from expression: @f64_max
+        newBody.push(createTriWasmLibCall(ctx, 'f64_max'));
+        break;
+    }
+    case OP.F64_COPYSIGN: { // Generated from expression: @f64_copysign
+        newBody.push(createTriWasmLibCall(ctx, 'f64_copysign'));
+        break;
+    }
+    case OP.I32_WRAP_I64: { // Generated from expression: trivm.pop value: 1
+        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: 1 });
+        break;
+    }
+    case OP.I32_TRUNC_F32_S: { // Generated from expression: {#f32} ## {else} @i32_trunc_f32_s
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i32_trunc_f32_s'));
+        }
+        break;
+    }
+    case OP.I32_TRUNC_F32_U: { // Generated from expression: {#f32} ## {else} @i32_trunc_f32_u
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i32_trunc_f32_u'));
+        }
+        break;
+    }
+    case OP.I32_TRUNC_F64_S: { // Generated from expression: {#f64} ## {else} @i32_trunc_f64_s
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i32_trunc_f64_s'));
+        }
+        break;
+    }
+    case OP.I32_TRUNC_F64_U: { // Generated from expression: {#f64} ## {else} @i32_trunc_f64_u
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i32_trunc_f64_u'));
+        }
+        break;
+    }
+    case OP.I64_EXTEND_I32_S: { // Generated from expression: {#i64} ## {else} TRIVM.DUP32 offset:0 ; trivm.sshr_const value:31
+        if (ext.int64) {
             newBody.push(instr);
         } else {
             newBody.push({ id: instrId(instr), opcode: OP.TRIVM_DUP32, offset: 0 });
-            newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: 31 });
-            newBody.push({ id: instrId(instr), opcode: OP.I32_SHR_S });
+            newBody.push({ id: instrId(instr), opcode: OP.TRIVM_SSHR_CONST, value: 31 });
         }
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
     case OP.I64_EXTEND_I32_U: { // Generated from expression: i32.const value:0
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: 0 });
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I64);
         break;
     }
-    case OP.I64_TRUNC_F32_S:
-    case OP.I64_TRUNC_F32_U:
-    case OP.I64_TRUNC_SAT_F32_S:
-    case OP.I64_TRUNC_SAT_F32_U: { // TODO
-        popTypes(ctx, NumberType.F32);
-        pushTypes(ctx, NumberType.I64);
+    case OP.I64_TRUNC_F32_S: { // Generated from expression: {#f32} ## {else} @i64_trunc_f32_s
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_trunc_f32_s'));
+        }
         break;
     }
-    case OP.I64_TRUNC_F64_S:
-    case OP.I64_TRUNC_F64_U:
-    case OP.I64_TRUNC_SAT_F64_S:
-    case OP.I64_TRUNC_SAT_F64_U: { // TODO
-        popTypes(ctx, NumberType.F64);
-        pushTypes(ctx, NumberType.I64);
+    case OP.I64_TRUNC_F32_U: { // Generated from expression: {#f32} ## {else} @i64_trunc_f32_u
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_trunc_f32_u'));
+        }
         break;
     }
-    case OP.F32_CONVERT_I32_S:
-    case OP.F32_CONVERT_I32_U: { // TODO
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.F32);
+    case OP.I64_TRUNC_F64_S: { // Generated from expression: {#f64} ## {else} @i64_trunc_f64_s
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_trunc_f64_s'));
+        }
         break;
     }
-    case OP.F32_CONVERT_I64_S:
-    case OP.F32_CONVERT_I64_U: { // TODO
-        popTypes(ctx, NumberType.I64);
-        pushTypes(ctx, NumberType.F32);
+    case OP.I64_TRUNC_F64_U: { // Generated from expression: {#f64} ## {else} @i64_trunc_f64_u
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_trunc_f64_u'));
+        }
         break;
     }
-    case OP.F32_DEMOTE_F64: { // TODO
-        popTypes(ctx, NumberType.F64);
-        pushTypes(ctx, NumberType.F32);
+    case OP.F32_CONVERT_I32_S: { // Generated from expression: {#f32} ## {else} @f32_convert_i32_s
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_convert_i32_s'));
+        }
         break;
     }
-    case OP.F64_CONVERT_I32_S:
-    case OP.F64_CONVERT_I32_U: { // TODO
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.F64);
+    case OP.F32_CONVERT_I32_U: { // Generated from expression: {#f32} ## {else} @f32_convert_i32_u
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_convert_i32_u'));
+        }
         break;
     }
-    case OP.F64_CONVERT_I64_S:
-    case OP.F64_CONVERT_I64_U: { // TODO
-        popTypes(ctx, NumberType.I64);
-        pushTypes(ctx, NumberType.F64);
+    case OP.F32_CONVERT_I64_S: { // Generated from expression: {#f32} ## {else} @f32_convert_i64_s
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_convert_i64_s'));
+        }
         break;
     }
-    case OP.F64_PROMOTE_F32: { // TODO
-        popTypes(ctx, NumberType.F32);
-        pushTypes(ctx, NumberType.F64);
+    case OP.F32_CONVERT_I64_U: { // Generated from expression: {#f32} ## {else} @f32_convert_i64_u
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_convert_i64_u'));
+        }
         break;
     }
-    case OP.I32_REINTERPRET_F32: { // Generated from expression: nop
-        newBody.push({ id: instrId(instr), opcode: OP.NOP });
-        popTypes(ctx, NumberType.F32);
-        pushTypes(ctx, NumberType.I32);
+    case OP.F32_DEMOTE_F64: { // Generated from expression: {#f32} {#f64} ## {else} @f32_demote_f64 {end} {else} @f32_demote_f64 {end}
+        if (ext.float32) {
+            if (ext.float64) {
+                newBody.push(instr);
+            } else {
+                newBody.push(createTriWasmLibCall(ctx, 'f32_demote_f64'));
+            }
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f32_demote_f64'));
+        }
         break;
     }
-    case OP.I64_REINTERPRET_F64: { // Generated from expression: nop
-        newBody.push({ id: instrId(instr), opcode: OP.NOP });
-        popTypes(ctx, NumberType.F64);
-        pushTypes(ctx, NumberType.I64);
+    case OP.F64_CONVERT_I32_S: { // Generated from expression: {#f64} ## {else} @f64_convert_i32_s
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_convert_i32_s'));
+        }
         break;
     }
-    case OP.F32_REINTERPRET_I32: { // Generated from expression: nop
-        newBody.push({ id: instrId(instr), opcode: OP.NOP });
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.F32);
+    case OP.F64_CONVERT_I32_U: { // Generated from expression: {#f64} ## {else} @f64_convert_i32_u
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_convert_i32_u'));
+        }
         break;
     }
-    case OP.F64_REINTERPRET_I64: { // Generated from expression: nop
-        newBody.push({ id: instrId(instr), opcode: OP.NOP });
-        popTypes(ctx, NumberType.I64);
-        pushTypes(ctx, NumberType.F64);
+    case OP.F64_CONVERT_I64_S: { // Generated from expression: {#f64} ## {else} @f64_convert_i64_s
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_convert_i64_s'));
+        }
         break;
     }
-    case OP.I32_EXTEND8_S:
-    case OP.I32_EXTEND16_S: { // TODO
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
+    case OP.F64_CONVERT_I64_U: { // Generated from expression: {#f64} ## {else} @f64_convert_i64_u
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_convert_i64_u'));
+        }
         break;
     }
-    case OP.I64_EXTEND8_S:
-    case OP.I64_EXTEND16_S:
-    case OP.I64_EXTEND32_S: { // TODO
-        popTypes(ctx, NumberType.I64);
-        pushTypes(ctx, NumberType.I64);
+    case OP.F64_PROMOTE_F32: { // Generated from expression: {#f32} {#f64} ## {else} @f64_promote_f32 {end} {else} @f64_promote_f32 {end}
+        if (ext.float32) {
+            if (ext.float64) {
+                newBody.push(instr);
+            } else {
+                newBody.push(createTriWasmLibCall(ctx, 'f64_promote_f32'));
+            }
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'f64_promote_f32'));
+        }
         break;
     }
-    case OP.REF_FUNC: { // TODO
-        pushTypes(ctx, RefType.FUNCREF);
-        break;
-    }
-    case OP.MEMORY_INIT:
-    case OP.MEMORY_COPY:
-    case OP.MEMORY_FILL:
-    case OP.TABLE_INIT: { // TODO
-        popTypes(ctx, NumberType.I32, NumberType.I32, NumberType.I32);
-        break;
-    }
+    case OP.I32_REINTERPRET_F32:
+    case OP.I64_REINTERPRET_F64:
+    case OP.F32_REINTERPRET_I32:
+    case OP.F64_REINTERPRET_I64:
     case OP.DATA_DROP:
     case OP.ELEM_DROP: { // Generated from expression: nop
         newBody.push({ id: instrId(instr), opcode: OP.NOP });
+        break;
+    }
+    case OP.I32_EXTEND8_S: { // Generated from expression: trivm.exts_const value: 24
+        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_EXTS_CONST, value: 24 });
+        break;
+    }
+    case OP.I32_EXTEND16_S: { // Generated from expression: trivm.exts_const value: 16
+        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_EXTS_CONST, value: 16 });
+        break;
+    }
+    case OP.I64_EXTEND8_S: { // Generated from expression: {#i64} trivm.exts64_const value: 56 {else} @i64_extend8_s
+        if (ext.int64) {
+            newBody.push({ id: instrId(instr), opcode: OP.TRIVM_EXTS64_CONST, value: 56 });
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_extend8_s'));
+        }
+        break;
+    }
+    case OP.I64_EXTEND16_S: { // Generated from expression: {#i64} trivm.exts64_const value: 48 {else} @i64_extend16_s
+        if (ext.int64) {
+            newBody.push({ id: instrId(instr), opcode: OP.TRIVM_EXTS64_CONST, value: 48 });
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_extend16_s'));
+        }
+        break;
+    }
+    case OP.I64_EXTEND32_S: { // Generated from expression: {#i64} trivm.exts64_const value: 32 {else} @i64_extend32_s
+        if (ext.int64) {
+            newBody.push({ id: instrId(instr), opcode: OP.TRIVM_EXTS64_CONST, value: 32 });
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_extend32_s'));
+        }
+        break;
+    }
+    case OP.REF_NULL: { // Generated from expression: i32.const value: 0
+        newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: 0 });
+        break;
+    }
+    case OP.REF_IS_NULL: { // Generated from expression: i32.eqz
+        newBody.push({ id: instrId(instr), opcode: OP.I32_EQZ });
+        break;
+    }
+    case OP.I32_TRUNC_SAT_F32_S: { // Generated from expression: {#f32} ## {else} @i32_trunc_sat_f32_s
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i32_trunc_sat_f32_s'));
+        }
+        break;
+    }
+    case OP.I32_TRUNC_SAT_F32_U: { // Generated from expression: {#f32} ## {else} @i32_trunc_sat_f32_u
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i32_trunc_sat_f32_u'));
+        }
+        break;
+    }
+    case OP.I32_TRUNC_SAT_F64_S: { // Generated from expression: {#f64} ## {else} @i32_trunc_sat_f64_s
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i32_trunc_sat_f64_s'));
+        }
+        break;
+    }
+    case OP.I32_TRUNC_SAT_F64_U: { // Generated from expression: {#f64} ## {else} @i32_trunc_sat_f64_u
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i32_trunc_sat_f64_u'));
+        }
+        break;
+    }
+    case OP.I64_TRUNC_SAT_F32_S: { // Generated from expression: {#f32} ## {else} @i64_trunc_sat_f32_s
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_trunc_sat_f32_s'));
+        }
+        break;
+    }
+    case OP.I64_TRUNC_SAT_F32_U: { // Generated from expression: {#f32} ## {else} @i64_trunc_sat_f32_u
+        if (ext.float32) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_trunc_sat_f32_u'));
+        }
+        break;
+    }
+    case OP.I64_TRUNC_SAT_F64_S: { // Generated from expression: {#f64} ## {else} @i64_trunc_sat_f64_s
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_trunc_sat_f64_s'));
+        }
+        break;
+    }
+    case OP.I64_TRUNC_SAT_F64_U: { // Generated from expression: {#f64} ## {else} @i64_trunc_sat_f64_u
+        if (ext.float64) {
+            newBody.push(instr);
+        } else {
+            newBody.push(createTriWasmLibCall(ctx, 'i64_trunc_sat_f64_u'));
+        }
+        break;
+    }
+    case OP.MEMORY_COPY: { // Generated from expression: {if ..memories[0].index === 0 && ..memories[1].index === 0} @memory_copy_0 {else} nop
+        if (instr.memories[0].index === 0 && instr.memories[1].index === 0) {
+            newBody.push(createTriWasmLibCall(ctx, 'memory_copy_0'));
+        } else {
+            newBody.push({ id: instrId(instr), opcode: OP.NOP });
+        }
+        break;
+    }
+    case OP.MEMORY_FILL: { // Generated from expression: {if ..memory.index === 0} @memory_fill_0 {else} nop
+        if (instr.memory.index === 0) {
+            newBody.push(createTriWasmLibCall(ctx, 'memory_fill_0'));
+        } else {
+            newBody.push({ id: instrId(instr), opcode: OP.NOP });
+        }
         break;
     }
     case OP.TABLE_COPY: { // Generated from expression: i32.const value:..tables[0].index ; i32.const value:..tables[1].index ; @table_copy
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.tables[0].index });
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.tables[1].index });
         newBody.push(createTriWasmLibCall(ctx, 'table_copy'));
-        popTypes(ctx, NumberType.I32, NumberType.I32, NumberType.I32);
+        break;
+    }
+    case OP.TABLE_GROW: { // Generated from expression: i32.const value:..table.index ; @table_grow
+        newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.table.index });
+        newBody.push(createTriWasmLibCall(ctx, 'table_grow'));
         break;
     }
     case OP.TABLE_SIZE: { // Generated from expression: i32.const value:..table.index ; @table_size
         newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.table.index });
         newBody.push(createTriWasmLibCall(ctx, 'table_size'));
-        pushTypes(ctx, NumberType.I32);
         break;
     }
-    case OP.NOP: {
-        newBody.push(instr);
+    case OP.TABLE_FILL: { // Generated from expression: i32.const value:..table.index ; @table_fill
+        newBody.push({ id: instrId(instr), opcode: OP.I32_CONST, value: instr.table.index });
+        newBody.push(createTriWasmLibCall(ctx, 'table_fill'));
         break;
     }
+    case OP.NOP:
+    case OP.BLOCK:
+    case OP.LOOP:
+    case OP.IF:
     case OP.I32_LOAD:
     case OP.I32_LOAD8_S:
     case OP.I32_LOAD8_U:
     case OP.I32_LOAD16_S:
     case OP.I32_LOAD16_U:
-    case OP.I32_EQZ: {
-        newBody.push(instr);
-        popTypes(ctx, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
-        break;
-    }
     case OP.I32_STORE:
     case OP.I32_STORE8:
-    case OP.I32_STORE16: {
-        newBody.push(instr);
-        popTypes(ctx, NumberType.I32, NumberType.I32);
-        break;
-    }
-    case OP.I32_CONST: {
-        newBody.push(instr);
-        pushTypes(ctx, NumberType.I32);
-        break;
-    }
+    case OP.I32_STORE16:
+    case OP.I32_CONST:
+    case OP.I32_EQZ:
     case OP.I32_EQ:
     case OP.I32_LT_S:
     case OP.I32_LT_U:
@@ -1127,31 +1393,14 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
     case OP.I32_XOR:
     case OP.I32_SHL:
     case OP.I32_SHR_S:
-    case OP.I32_SHR_U: {
+    case OP.I32_SHR_U:
+    case OP.REF_FUNC: {
         newBody.push(instr);
-        popTypes(ctx, NumberType.I32, NumberType.I32);
-        pushTypes(ctx, NumberType.I32);
         break;
     }
-    /* eslint-enable max-len */
 
     // -- End of source code generated with help of "gen-instr.ts" script --
+
+    /* eslint-enable max-len */
     }
 }
-
-function handleAnnotation(ctx: Ctx, func: WasmFunction) {
-    if (func.kind != WasmFunctionKind.ANNOTATION) {
-        return false;
-    }
-    let text = func.data;
-    if (!text) {
-        return false;
-    }
-    if (text.startsWith('triasm_name:')) {
-        ctx.func.name = text.substring(12).trim();
-        return true;
-    } else {
-        return false;
-    }
-}
-

@@ -183,7 +183,8 @@ export interface WasmInstrEnd {
     opcode: WasmInstrEndOP;
 }
 
-export type WasmInstrConst32OP = OP.I32_CONST | OP.F32_CONST | OP.TRIVM_POP;
+export type WasmInstrConst32OP = OP.I32_CONST | OP.F32_CONST | OP.TRIVM_POP | OP.TRIVM_EXTS64_CONST |
+    OP.TRIVM_SHL_CONST | OP.TRIVM_USHR_CONST | OP.TRIVM_SSHR_CONST | OP.TRIVM_EXTS_CONST;
 export interface WasmInstrConst32 {
     id: number;
     opcode: WasmInstrConst32OP;
@@ -434,6 +435,7 @@ export class WasmFunction extends WasmEntity {
     public block?: WasmBlock;
     public name: string = '';
     public hostExportIndexes: number[] = [];
+    public constValue?: string | number | bigint;
     constructor(
         public kind: WasmFunctionKind,
         public type: FunctionType

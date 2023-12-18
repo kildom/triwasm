@@ -7,7 +7,7 @@ export interface EnterFunctionCtx<ModuleData> {
     module: WasmModule;     // Current module
     moduleData: ModuleData; // Current module data (provided in the walk function invocation)
     func: WasmFunction;     // Current function
-    walkFunction: boolean;             // Set to false to prevent from walking the function
+    walkFunction: boolean;  // Set to false to prevent from walking the function
 }
 
 export interface ExitFunctionCtx<ModuleData, FunctionData> extends EnterFunctionCtx<ModuleData> {

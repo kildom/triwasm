@@ -11,7 +11,6 @@
  */
 
 import { Path } from '../common/path';
-import { platform } from '../common/platform';
 
 
 export class BinaryInput {

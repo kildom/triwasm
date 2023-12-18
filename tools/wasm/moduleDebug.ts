@@ -280,6 +280,9 @@ function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
     if (func.hostExportIndexes.length) {
         out?.push(`<tr><td>Host export:</td><td>${func.hostExportIndexes.join(', ')}</td></tr>`);
     }
+    if (func.constValue !== undefined) {
+        out?.push(`<tr><td>Const:</td><td>${html(func.constValue.toString())}</td></tr>`);
+    }
     for (let exp of func.exports) {
         out?.push(`<tr><td>Export:</td><td>${html(exp.module) || '?'}.${html(exp.name)}</td></tr>`);
     }
@@ -395,6 +398,14 @@ function validateInstr(out: string[] | undefined, ctx: ExitInstrCtx<ModuleData, 
     case OP.LOOP:
     case OP.IF:
         addParam(out, ctx, dumpFunctionType(instr.block.type));
+        break;
+    case OP.ELSE:
+        /*ctx.moduleData.assert(ctx.moduleData.stage < ModuleStage.AfterReducer || ctx.blockData.unreachable, out, instr,
+            'The "else" instruction must be unreachable after reduction.');*/
+        break;
+    case OP.END:
+        /*ctx.moduleData.assert(ctx.moduleData.stage < ModuleStage.AfterReducer || ctx.blockData.unreachable, out, instr,
+            'The "end" instruction must be unreachable after reduction.');*/
         break;
     case OP.BR:
     case OP.BR_IF:

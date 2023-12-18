@@ -14,10 +14,12 @@
 
 import { Path } from '../common/path';
 import { getWasmConf, WasmArgsMerge } from './args';
+import { evaluateConstExpressions } from './constEvaluator';
 //import { generate } from './generator';
 import { LinkResolver } from './linkResolver';
 import { moduleDebug, ModuleStage } from './moduleDebug';
 import { ModuleMerger } from './moduleMerger';
+import { reduce } from './reducer';
 //import { reduce } from './reducer';
 import { WasmParser } from './wasmParser';
 
@@ -58,11 +60,21 @@ for (let mergeModule of mergeModules) {
 
 moduleDebug(main, ModuleStage.AfterParser, conf.args.output.withExtension('merged.html'));
 
+// Evaluate constant expressions.
+
+evaluateConstExpressions(main);
+
+moduleDebug(main, ModuleStage.AfterParser, conf.args.output.withExtension('eval.html'));
+
 // Resolve dependencies.
 
 let resolver = new LinkResolver(conf);
 resolver.resolve(main);
 moduleDebug(main, ModuleStage.AfterResolver, conf.args.output.withExtension('resolved.html'));
+
+reduce(main, conf);
+
+moduleDebug(main, ModuleStage.AfterReducer, conf.args.output.withExtension('reduced.html'));
 
 /*
 

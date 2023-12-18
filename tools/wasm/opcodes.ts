@@ -231,6 +231,11 @@ export enum OP {
     TRIVM_GLOBAL_SET32 = -11, // TRIVM.GLOBAL_SET32
     TRIVM_GLOBAL_SET64 = -12, // TRIVM.GLOBAL_SET64
     TRIVM_RAW = -13, // TRIVM.RAW
+    TRIVM_SHL_CONST = -100, // TRIVM.SHL_CONST
+    TRIVM_USHR_CONST = -101, // TRIVM.USHR_CONST
+    TRIVM_SSHR_CONST = -102, // TRIVM.SSHR_CONST
+    TRIVM_EXTS_CONST = -103, // TRIVM.EXTS_CONST
+    TRIVM_EXTS64_CONST = -104, // TRIVM.EXTS64_CONST
 
     // -- Opcodes enum - end of source code generated with help of "gen-instr.ts" script --
 }
@@ -453,6 +458,11 @@ export const OP_NAMES: { [key in OP]: string } = {
     [OP.TRIVM_GLOBAL_SET32]: 'TRIVM.GLOBAL_SET32',
     [OP.TRIVM_GLOBAL_SET64]: 'TRIVM.GLOBAL_SET64',
     [OP.TRIVM_RAW]: 'TRIVM.RAW',
+    [OP.TRIVM_SHL_CONST]: 'TRIVM.SHL_CONST',
+    [OP.TRIVM_USHR_CONST]: 'TRIVM.USHR_CONST',
+    [OP.TRIVM_SSHR_CONST]: 'TRIVM.SSHR_CONST',
+    [OP.TRIVM_EXTS_CONST]: 'TRIVM.EXTS_CONST',
+    [OP.TRIVM_EXTS64_CONST]: 'TRIVM.EXTS64_CONST',
 
     // -- Instruction names - end of source code generated with help of "gen-instr.ts" script --
 };
