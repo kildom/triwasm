@@ -10,258 +10,258 @@ TODO: license
 #if !TRIVM_FAULT_INSTR_INVALID
 
 #define TRIVM_TREE_CORE \
-  if (op & 1 << 6) {                                                                             \
-    if (op & 1 << 5) {                                                                           \
-      if (op & 1 << 4) {                                                                         \
-        if (op & 1 << 2 || !TRIVM_EXT_UNWIND) {                                                  \
-            /* EXT 0x1D */ if (arg1 == (uint32_t)(-1)) return false; trivm_instr_ext(vm, arg1);  \
-        } else {                                                                                 \
-            /* UNWIND 0x1C */ trivm_instr_unwind(vm, arg1, arg1_shift);                          \
-        }                                                                                        \
-        return true;                                                                             \
-      } else {                                                                                   \
-        if (op & 1 << 3) {                                                                       \
-          if (op & 1 << 2) {                                                                     \
-              /* READSP 0x1B */ ret = vm->sp; vm->pc--;                                          \
-          } else {                                                                               \
-              /* WRITESP 0x1A */ vm->sp = arg1 & ~3; return true;                                \
-          }                                                                                      \
-        } else {                                                                                 \
-            /* BR 0x18 */ vm->pc = arg1_pc; return true;                                         \
-        }                                                                                        \
-      }                                                                                          \
-    } else {                                                                                     \
-      if (op & 1 << 4) {                                                                         \
-        if (op & 1 << 3) {                                                                       \
-          if (op & 1 << 2) {                                                                     \
-              /* CALL 0x17 */ ret = vm->pc; vm->pc = arg1_pc;                                    \
-          } else {                                                                               \
-              /* NEG 0x16 */ ret = -arg1;                                                        \
-          }                                                                                      \
-        } else {                                                                                 \
-          if (op & 1 << 2) {                                                                     \
-              /* NOT 0x15 */ ret = !arg1;                                                        \
-          } else {                                                                               \
-              /* EQ 0x14 */ ret = arg0 == arg1;                                                  \
-          }                                                                                      \
-        }                                                                                        \
-      } else {                                                                                   \
-        if (op & 1 << 3) {                                                                       \
-          if (op & 1 << 2) {                                                                     \
-              /* SGT 0x13 */ ret = (uint32_t)((int32_t)arg0 > (int32_t)arg1);                    \
-          } else {                                                                               \
-              /* SLT 0x12 */ ret = (uint32_t)((int32_t)arg0 < (int32_t)arg1);                    \
-          }                                                                                      \
-        } else {                                                                                 \
-          if (op & 1 << 2) {                                                                     \
-              /* UGT 0x11 */ ret = arg0 > arg1;                                                  \
-          } else {                                                                               \
-              /* ULT 0x10 */ ret = arg0 < arg1;                                                  \
-          }                                                                                      \
-        }                                                                                        \
-      }                                                                                          \
-    }                                                                                            \
-  } else {                                                                                       \
-    if (op & 1 << 5) {                                                                           \
-      if (op & 1 << 4) {                                                                         \
-        uint32_t shift = arg1 & 0x1F;                                                            \
-        if (op & 1 << 3) {                                                                       \
-          if (op & 1 << 2) {                                                                     \
-              /* SSHR 0xF */ ret = (uint32_t)((int32_t)arg0 >> shift);                           \
-          } else {                                                                               \
-              /* USHR 0xE */ ret = arg0 >> shift;                                                \
-          }                                                                                      \
-        } else {                                                                                 \
-          ret = arg0 << shift;                                                                   \
-          if (op & 1 << 2) {                                                                     \
-              /* EXTS 0xD */ ret = (uint32_t)((int32_t)ret >> shift);                            \
-          } else {                                                                               \
-              /* SHL 0xC */                                                                      \
-          }                                                                                      \
-        }                                                                                        \
-      } else {                                                                                   \
-        arg1 = check_div_0(vm, arg0, arg1);                                                      \
-        if (op & 1 << 3) {                                                                       \
-          if (op & 1 << 2) {                                                                     \
-              /* SMOD 0xB */ ret = (uint32_t)((int32_t)arg0 % (int32_t)arg1);                    \
-          } else {                                                                               \
-              /* UMOD 0xA */ ret = arg0 % arg1;                                                  \
-          }                                                                                      \
-        } else {                                                                                 \
-          if (op & 1 << 2) {                                                                     \
-              /* SDIV 0x9 */ ret = (uint32_t)((int32_t)arg0 / (int32_t)arg1);                    \
-          } else {                                                                               \
-              /* UDIV 0x8 */ ret = arg0 / arg1;                                                  \
-          }                                                                                      \
-        }                                                                                        \
-      }                                                                                          \
-    } else {                                                                                     \
-      if (op & 1 << 4) {                                                                         \
-        if (op & 1 << 3) {                                                                       \
-          if (op & 1 << 2) {                                                                     \
-              /* XOR 0x7 */ ret = arg0 ^ arg1;                                                   \
-          } else {                                                                               \
-              /* OR 0x6 */ ret = arg0 | arg1;                                                    \
-          }                                                                                      \
-        } else {                                                                                 \
-          if (op & 1 << 2) {                                                                     \
-              /* AND 0x5 */ ret = arg0 & arg1;                                                   \
-          } else {                                                                               \
-              /* MUL 0x4 */ ret = arg0 * arg1;                                                   \
-          }                                                                                      \
-        }                                                                                        \
-      } else {                                                                                   \
-        if (op & 1 << 3) {                                                                       \
-          if (op & 1 << 2) {                                                                     \
-              /* SUB 0x3 */ ret = arg0 - arg1;                                                   \
-          } else {                                                                               \
-              /* ADD 0x2 */ ret = arg0 + arg1;                                                   \
-          }                                                                                      \
-        } else {                                                                                 \
-          if (op & 1 << 2) {                                                                     \
-              /* BRF 0x1 */ if (!arg0) { vm->pc = arg1_pc; }                                     \
-          } else {                                                                               \
-              /* BRT 0x0 */ if (arg0) { vm->pc = arg1_pc; }                                      \
-          }                                                                                      \
-          return true;                                                                           \
-        }                                                                                        \
-      }                                                                                          \
-    }                                                                                            \
-  }                                                                                              \
+  if (op & 1 << 6) {                                                                                              \
+    if (op & 1 << 5) {                                                                                            \
+      if (op & 1 << 4) {                                                                                          \
+        if (op & 1 << 2 || !TRIVM_EXT_UNWIND) {                                                                   \
+            /* EXT 0x1D */ if (arg1 == (uint32_t)(-1)) return false; trivm_instr_ext(vm, arg1);                   \
+        } else {                                                                                                  \
+            /* UNWIND 0x1C */ trivm_instr_unwind(vm, arg1, arg1_shift);                                           \
+        }                                                                                                         \
+        return true;                                                                                              \
+      } else {                                                                                                    \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* READSP 0x1B */ ret = vm->sp; vm->pc--;                                                           \
+          } else {                                                                                                \
+              /* WRITESP 0x1A */ vm->sp = arg1 & ~3; return true;                                                 \
+          }                                                                                                       \
+        } else {                                                                                                  \
+            /* BR 0x18 */ vm->pc = arg1_pc; return true;                                                          \
+        }                                                                                                         \
+      }                                                                                                           \
+    } else {                                                                                                      \
+      if (op & 1 << 4) {                                                                                          \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* CALL 0x17 */ ret = vm->pc; vm->pc = arg1_pc;                                                     \
+          } else {                                                                                                \
+              /* NEG 0x16 */ ret = -arg1;                                                                         \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* NOT 0x15 */ ret = !arg1;                                                                         \
+          } else {                                                                                                \
+              /* EQ 0x14 */ ret = arg0 == arg1;                                                                   \
+          }                                                                                                       \
+        }                                                                                                         \
+      } else {                                                                                                    \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* SGT 0x13 */ ret = (uint32_t)((int32_t)arg0 > (int32_t)arg1);                                     \
+          } else {                                                                                                \
+              /* SLT 0x12 */ ret = (uint32_t)((int32_t)arg0 < (int32_t)arg1);                                     \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* UGT 0x11 */ ret = arg0 > arg1;                                                                   \
+          } else {                                                                                                \
+              /* ULT 0x10 */ ret = arg0 < arg1;                                                                   \
+          }                                                                                                       \
+        }                                                                                                         \
+      }                                                                                                           \
+    }                                                                                                             \
+  } else {                                                                                                        \
+    if (op & 1 << 5) {                                                                                            \
+      if (op & 1 << 4) {                                                                                          \
+        uint32_t shift = arg1 & 0x1F;                                                                             \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* SSHR 0xF */ ret = (uint32_t)((int32_t)arg0 >> shift);                                            \
+          } else {                                                                                                \
+              /* USHR 0xE */ ret = arg0 >> shift;                                                                 \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          ret = arg0 << shift;                                                                                    \
+          if (op & 1 << 2) {                                                                                      \
+              /* EXTS 0xD */ ret = (uint32_t)((int32_t)ret >> shift);                                             \
+          } else {                                                                                                \
+              /* SHL 0xC */                                                                                       \
+          }                                                                                                       \
+        }                                                                                                         \
+      } else {                                                                                                    \
+        arg1 = check_div_0(vm, arg0, arg1);                                                                       \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* SMOD 0xB */ ret = (uint32_t)((int32_t)arg0 % (int32_t)arg1);                                     \
+          } else {                                                                                                \
+              /* SDIV 0xA */ arg1 = check_sdiv(vm, arg0, arg1); ret = (uint32_t)((int32_t)arg0 / (int32_t)arg1);  \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* UMOD 0x9 */ ret = arg0 % arg1;                                                                   \
+          } else {                                                                                                \
+              /* UDIV 0x8 */ ret = arg0 / arg1;                                                                   \
+          }                                                                                                       \
+        }                                                                                                         \
+      }                                                                                                           \
+    } else {                                                                                                      \
+      if (op & 1 << 4) {                                                                                          \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* XOR 0x7 */ ret = arg0 ^ arg1;                                                                    \
+          } else {                                                                                                \
+              /* OR 0x6 */ ret = arg0 | arg1;                                                                     \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* AND 0x5 */ ret = arg0 & arg1;                                                                    \
+          } else {                                                                                                \
+              /* MUL 0x4 */ ret = arg0 * arg1;                                                                    \
+          }                                                                                                       \
+        }                                                                                                         \
+      } else {                                                                                                    \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* SUB 0x3 */ ret = arg0 - arg1;                                                                    \
+          } else {                                                                                                \
+              /* ADD 0x2 */ ret = arg0 + arg1;                                                                    \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* BRF 0x1 */ if (!arg0) { vm->pc = arg1_pc; }                                                      \
+          } else {                                                                                                \
+              /* BRT 0x0 */ if (arg0) { vm->pc = arg1_pc; }                                                       \
+          }                                                                                                       \
+          return true;                                                                                            \
+        }                                                                                                         \
+      }                                                                                                           \
+    }                                                                                                             \
+  }                                                                                                               \
 
 #else
 
 #define TRIVM_TREE_CORE \
-  if (op & 1 << 6) {                                                                               \
-    if (op & 1 << 5) {                                                                             \
-      if (op & 1 << 4) {                                                                           \
-        if (op & 1 << 3) {                                                                         \
-          goto invalid_instruction;                                                                \
-        } else {                                                                                   \
-          if (op & 1 << 2) {                                                                       \
-              /* EXT 0x1D */ if (arg1 == (uint32_t)(-1)) return false; trivm_instr_ext(vm, arg1);  \
-          } else {                                                                                 \
-            if (TRIVM_EXT_UNWIND) {                                                                \
-                /* UNWIND 0x1C */ trivm_instr_unwind(vm, arg1, arg1_shift);                        \
-            } else {                                                                               \
-              goto invalid_instruction;                                                            \
-            }                                                                                      \
-          }                                                                                        \
-        }                                                                                          \
-        return true;                                                                               \
-      } else {                                                                                     \
-        if (op & 1 << 3) {                                                                         \
-          if (op & 1 << 2) {                                                                       \
-              /* READSP 0x1B */ ret = vm->sp; vm->pc--;                                            \
-          } else {                                                                                 \
-              /* WRITESP 0x1A */ vm->sp = arg1 & ~3; return true;                                  \
-          }                                                                                        \
-        } else {                                                                                   \
-          if (op & 1 << 2) {                                                                       \
-            goto invalid_instruction;                                                              \
-          } else {                                                                                 \
-              /* BR 0x18 */ vm->pc = arg1_pc; return true;                                         \
-          }                                                                                        \
-        }                                                                                          \
-      }                                                                                            \
-    } else {                                                                                       \
-      if (op & 1 << 4) {                                                                           \
-        if (op & 1 << 3) {                                                                         \
-          if (op & 1 << 2) {                                                                       \
-              /* CALL 0x17 */ ret = vm->pc; vm->pc = arg1_pc;                                      \
-          } else {                                                                                 \
-              /* NEG 0x16 */ ret = -arg1;                                                          \
-          }                                                                                        \
-        } else {                                                                                   \
-          if (op & 1 << 2) {                                                                       \
-              /* NOT 0x15 */ ret = !arg1;                                                          \
-          } else {                                                                                 \
-              /* EQ 0x14 */ ret = arg0 == arg1;                                                    \
-          }                                                                                        \
-        }                                                                                          \
-      } else {                                                                                     \
-        if (op & 1 << 3) {                                                                         \
-          if (op & 1 << 2) {                                                                       \
-              /* SGT 0x13 */ ret = (uint32_t)((int32_t)arg0 > (int32_t)arg1);                      \
-          } else {                                                                                 \
-              /* SLT 0x12 */ ret = (uint32_t)((int32_t)arg0 < (int32_t)arg1);                      \
-          }                                                                                        \
-        } else {                                                                                   \
-          if (op & 1 << 2) {                                                                       \
-              /* UGT 0x11 */ ret = arg0 > arg1;                                                    \
-          } else {                                                                                 \
-              /* ULT 0x10 */ ret = arg0 < arg1;                                                    \
-          }                                                                                        \
-        }                                                                                          \
-      }                                                                                            \
-    }                                                                                              \
-  } else {                                                                                         \
-    if (op & 1 << 5) {                                                                             \
-      if (op & 1 << 4) {                                                                           \
-        uint32_t shift = arg1 & 0x1F;                                                              \
-        if (op & 1 << 3) {                                                                         \
-          if (op & 1 << 2) {                                                                       \
-              /* SSHR 0xF */ ret = (uint32_t)((int32_t)arg0 >> shift);                             \
-          } else {                                                                                 \
-              /* USHR 0xE */ ret = arg0 >> shift;                                                  \
-          }                                                                                        \
-        } else {                                                                                   \
-          ret = arg0 << shift;                                                                     \
-          if (op & 1 << 2) {                                                                       \
-              /* EXTS 0xD */ ret = (uint32_t)((int32_t)ret >> shift);                              \
-          } else {                                                                                 \
-              /* SHL 0xC */                                                                        \
-          }                                                                                        \
-        }                                                                                          \
-      } else {                                                                                     \
-        arg1 = check_div_0(vm, arg0, arg1);                                                        \
-        if (op & 1 << 3) {                                                                         \
-          if (op & 1 << 2) {                                                                       \
-              /* SMOD 0xB */ ret = (uint32_t)((int32_t)arg0 % (int32_t)arg1);                      \
-          } else {                                                                                 \
-              /* UMOD 0xA */ ret = arg0 % arg1;                                                    \
-          }                                                                                        \
-        } else {                                                                                   \
-          if (op & 1 << 2) {                                                                       \
-              /* SDIV 0x9 */ ret = (uint32_t)((int32_t)arg0 / (int32_t)arg1);                      \
-          } else {                                                                                 \
-              /* UDIV 0x8 */ ret = arg0 / arg1;                                                    \
-          }                                                                                        \
-        }                                                                                          \
-      }                                                                                            \
-    } else {                                                                                       \
-      if (op & 1 << 4) {                                                                           \
-        if (op & 1 << 3) {                                                                         \
-          if (op & 1 << 2) {                                                                       \
-              /* XOR 0x7 */ ret = arg0 ^ arg1;                                                     \
-          } else {                                                                                 \
-              /* OR 0x6 */ ret = arg0 | arg1;                                                      \
-          }                                                                                        \
-        } else {                                                                                   \
-          if (op & 1 << 2) {                                                                       \
-              /* AND 0x5 */ ret = arg0 & arg1;                                                     \
-          } else {                                                                                 \
-              /* MUL 0x4 */ ret = arg0 * arg1;                                                     \
-          }                                                                                        \
-        }                                                                                          \
-      } else {                                                                                     \
-        if (op & 1 << 3) {                                                                         \
-          if (op & 1 << 2) {                                                                       \
-              /* SUB 0x3 */ ret = arg0 - arg1;                                                     \
-          } else {                                                                                 \
-              /* ADD 0x2 */ ret = arg0 + arg1;                                                     \
-          }                                                                                        \
-        } else {                                                                                   \
-          if (op & 1 << 2) {                                                                       \
-              /* BRF 0x1 */ if (!arg0) { vm->pc = arg1_pc; }                                       \
-          } else {                                                                                 \
-              /* BRT 0x0 */ if (arg0) { vm->pc = arg1_pc; }                                        \
-          }                                                                                        \
-          return true;                                                                             \
-        }                                                                                          \
-      }                                                                                            \
-    }                                                                                              \
-  }                                                                                                \
+  if (op & 1 << 6) {                                                                                              \
+    if (op & 1 << 5) {                                                                                            \
+      if (op & 1 << 4) {                                                                                          \
+        if (op & 1 << 3) {                                                                                        \
+          goto invalid_instruction;                                                                               \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* EXT 0x1D */ if (arg1 == (uint32_t)(-1)) return false; trivm_instr_ext(vm, arg1);                 \
+          } else {                                                                                                \
+            if (TRIVM_EXT_UNWIND) {                                                                               \
+                /* UNWIND 0x1C */ trivm_instr_unwind(vm, arg1, arg1_shift);                                       \
+            } else {                                                                                              \
+              goto invalid_instruction;                                                                           \
+            }                                                                                                     \
+          }                                                                                                       \
+        }                                                                                                         \
+        return true;                                                                                              \
+      } else {                                                                                                    \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* READSP 0x1B */ ret = vm->sp; vm->pc--;                                                           \
+          } else {                                                                                                \
+              /* WRITESP 0x1A */ vm->sp = arg1 & ~3; return true;                                                 \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+            goto invalid_instruction;                                                                             \
+          } else {                                                                                                \
+              /* BR 0x18 */ vm->pc = arg1_pc; return true;                                                        \
+          }                                                                                                       \
+        }                                                                                                         \
+      }                                                                                                           \
+    } else {                                                                                                      \
+      if (op & 1 << 4) {                                                                                          \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* CALL 0x17 */ ret = vm->pc; vm->pc = arg1_pc;                                                     \
+          } else {                                                                                                \
+              /* NEG 0x16 */ ret = -arg1;                                                                         \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* NOT 0x15 */ ret = !arg1;                                                                         \
+          } else {                                                                                                \
+              /* EQ 0x14 */ ret = arg0 == arg1;                                                                   \
+          }                                                                                                       \
+        }                                                                                                         \
+      } else {                                                                                                    \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* SGT 0x13 */ ret = (uint32_t)((int32_t)arg0 > (int32_t)arg1);                                     \
+          } else {                                                                                                \
+              /* SLT 0x12 */ ret = (uint32_t)((int32_t)arg0 < (int32_t)arg1);                                     \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* UGT 0x11 */ ret = arg0 > arg1;                                                                   \
+          } else {                                                                                                \
+              /* ULT 0x10 */ ret = arg0 < arg1;                                                                   \
+          }                                                                                                       \
+        }                                                                                                         \
+      }                                                                                                           \
+    }                                                                                                             \
+  } else {                                                                                                        \
+    if (op & 1 << 5) {                                                                                            \
+      if (op & 1 << 4) {                                                                                          \
+        uint32_t shift = arg1 & 0x1F;                                                                             \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* SSHR 0xF */ ret = (uint32_t)((int32_t)arg0 >> shift);                                            \
+          } else {                                                                                                \
+              /* USHR 0xE */ ret = arg0 >> shift;                                                                 \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          ret = arg0 << shift;                                                                                    \
+          if (op & 1 << 2) {                                                                                      \
+              /* EXTS 0xD */ ret = (uint32_t)((int32_t)ret >> shift);                                             \
+          } else {                                                                                                \
+              /* SHL 0xC */                                                                                       \
+          }                                                                                                       \
+        }                                                                                                         \
+      } else {                                                                                                    \
+        arg1 = check_div_0(vm, arg0, arg1);                                                                       \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* SMOD 0xB */ ret = (uint32_t)((int32_t)arg0 % (int32_t)arg1);                                     \
+          } else {                                                                                                \
+              /* SDIV 0xA */ arg1 = check_sdiv(vm, arg0, arg1); ret = (uint32_t)((int32_t)arg0 / (int32_t)arg1);  \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* UMOD 0x9 */ ret = arg0 % arg1;                                                                   \
+          } else {                                                                                                \
+              /* UDIV 0x8 */ ret = arg0 / arg1;                                                                   \
+          }                                                                                                       \
+        }                                                                                                         \
+      }                                                                                                           \
+    } else {                                                                                                      \
+      if (op & 1 << 4) {                                                                                          \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* XOR 0x7 */ ret = arg0 ^ arg1;                                                                    \
+          } else {                                                                                                \
+              /* OR 0x6 */ ret = arg0 | arg1;                                                                     \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* AND 0x5 */ ret = arg0 & arg1;                                                                    \
+          } else {                                                                                                \
+              /* MUL 0x4 */ ret = arg0 * arg1;                                                                    \
+          }                                                                                                       \
+        }                                                                                                         \
+      } else {                                                                                                    \
+        if (op & 1 << 3) {                                                                                        \
+          if (op & 1 << 2) {                                                                                      \
+              /* SUB 0x3 */ ret = arg0 - arg1;                                                                    \
+          } else {                                                                                                \
+              /* ADD 0x2 */ ret = arg0 + arg1;                                                                    \
+          }                                                                                                       \
+        } else {                                                                                                  \
+          if (op & 1 << 2) {                                                                                      \
+              /* BRF 0x1 */ if (!arg0) { vm->pc = arg1_pc; }                                                      \
+          } else {                                                                                                \
+              /* BRT 0x0 */ if (arg0) { vm->pc = arg1_pc; }                                                       \
+          }                                                                                                       \
+          return true;                                                                                            \
+        }                                                                                                         \
+      }                                                                                                           \
+    }                                                                                                             \
+  }                                                                                                               \
 
 #endif /* !TRIVM_FAULT_INSTR_INVALID */
 
@@ -278,8 +278,8 @@ TODO: license
   case TRIVM_OP_CODE_OR: return "OR"; \
   case TRIVM_OP_CODE_XOR: return "XOR"; \
   case TRIVM_OP_CODE_UDIV: return "UDIV"; \
-  case TRIVM_OP_CODE_SDIV: return "SDIV"; \
   case TRIVM_OP_CODE_UMOD: return "UMOD"; \
+  case TRIVM_OP_CODE_SDIV: return "SDIV"; \
   case TRIVM_OP_CODE_SMOD: return "SMOD"; \
   case TRIVM_OP_CODE_SHL: return "SHL"; \
   case TRIVM_OP_CODE_EXTS: return "EXTS"; \
@@ -527,11 +527,7 @@ TODO: license
 #define TRIVM_TREE_ADV64 \
   if ((op & 1 << 5 && (TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_INT64)) || !(TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {            \
     if ((op & 1 << 4 && TRIVM_EXT_INT64) || !(TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                                                    \
-      if (op & 1 << 0) {                                                                                                                                                                                     \
-          /* NEG64 0x31 */ ret = -arg1;                                                                                                                                                                      \
-      } else {                                                                                                                                                                                               \
-          /* NOT64 0x30 */ ret = !arg1;                                                                                                                                                                      \
-      }                                                                                                                                                                                                      \
+        /* NEG64 0x30 */ ret = -arg1;                                                                                                                                                                        \
     } else {                                                                                                                                                                                                 \
       if ((op & 1 << 3 && ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_FLOAT64)) || !(TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64))) {  \
         if ((op & 1 << 2 && ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_FLOAT64)) || !((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                       \
@@ -689,11 +685,11 @@ TODO: license
             if (op & 1 << 0) {                                                                                                                                                                               \
                 /* SMOD64 0x7 */ ret = (uint64_t)((int64_t)arg0 % (int64_t)arg1);                                                                                                                            \
             } else {                                                                                                                                                                                         \
-                /* UMOD64 0x6 */ ret = arg0 % arg1;                                                                                                                                                          \
+                /* SDIV64 0x6 */ arg1 = check_sdiv64(vm, arg0, arg1); ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1);                                                                                       \
             }                                                                                                                                                                                                \
           } else {                                                                                                                                                                                           \
             if (op & 1 << 0) {                                                                                                                                                                               \
-                /* SDIV64 0x5 */ ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1);                                                                                                                            \
+                /* UMOD64 0x5 */ ret = arg0 % arg1;                                                                                                                                                          \
             } else {                                                                                                                                                                                         \
                 /* UDIV64 0x4 */ ret = arg0 / arg1;                                                                                                                                                          \
             }                                                                                                                                                                                                \
@@ -737,9 +733,13 @@ TODO: license
                   } else {                                                                                                               \
                     if (TRIVM_EXT_INT64) {                                                                                               \
                       if (op & 1 << 0) {                                                                                                 \
-                          /* NEG64 0x31 */ ret = -arg1;                                                                                  \
+                        goto invalid_instruction;                                                                                        \
                       } else {                                                                                                           \
-                          /* NOT64 0x30 */ ret = !arg1;                                                                                  \
+                        if (TRIVM_EXT_INT64) {                                                                                           \
+                            /* NEG64 0x30 */ ret = -arg1;                                                                                \
+                        } else {                                                                                                         \
+                          goto invalid_instruction;                                                                                      \
+                        }                                                                                                                \
                       }                                                                                                                  \
                     } else {                                                                                                             \
                       goto invalid_instruction;                                                                                          \
@@ -1038,11 +1038,11 @@ TODO: license
                 if (op & 1 << 0) {                                                                                                       \
                     /* SMOD64 0x7 */ ret = (uint64_t)((int64_t)arg0 % (int64_t)arg1);                                                    \
                 } else {                                                                                                                 \
-                    /* UMOD64 0x6 */ ret = arg0 % arg1;                                                                                  \
+                    /* SDIV64 0x6 */ arg1 = check_sdiv64(vm, arg0, arg1); ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1);               \
                 }                                                                                                                        \
               } else {                                                                                                                   \
                 if (op & 1 << 0) {                                                                                                       \
-                    /* SDIV64 0x5 */ ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1);                                                    \
+                    /* UMOD64 0x5 */ ret = arg0 % arg1;                                                                                  \
                 } else {                                                                                                                 \
                     /* UDIV64 0x4 */ ret = arg0 / arg1;                                                                                  \
                 }                                                                                                                        \
@@ -1083,8 +1083,8 @@ TODO: license
   case TRIVM_OP_CODE_MUL64: return "MUL64"; \
   case TRIVM_OP_CODE_AND64: return "AND64"; \
   case TRIVM_OP_CODE_UDIV64: return "UDIV64"; \
-  case TRIVM_OP_CODE_SDIV64: return "SDIV64"; \
   case TRIVM_OP_CODE_UMOD64: return "UMOD64"; \
+  case TRIVM_OP_CODE_SDIV64: return "SDIV64"; \
   case TRIVM_OP_CODE_SMOD64: return "SMOD64"; \
   case TRIVM_OP_CODE_SHL64: return "SHL64"; \
   case TRIVM_OP_CODE_EXTS64: return "EXTS64"; \
@@ -1121,7 +1121,6 @@ TODO: license
   case TRIVM_OP_CODE_CONVF32S64: return "CONVF32S64"; \
   case TRIVM_OP_CODE_CONVF64U64: return "CONVF64U64"; \
   case TRIVM_OP_CODE_CONVF64S64: return "CONVF64S64"; \
-  case TRIVM_OP_CODE_NOT64: return "NOT64"; \
   case TRIVM_OP_CODE_NEG64: return "NEG64"; \
 
 #define TRIVM_OP_CODE_BRT 0x0
@@ -1133,8 +1132,8 @@ TODO: license
 #define TRIVM_OP_CODE_OR 0x18
 #define TRIVM_OP_CODE_XOR 0x1C
 #define TRIVM_OP_CODE_UDIV 0x20
-#define TRIVM_OP_CODE_SDIV 0x24
-#define TRIVM_OP_CODE_UMOD 0x28
+#define TRIVM_OP_CODE_UMOD 0x24
+#define TRIVM_OP_CODE_SDIV 0x28
 #define TRIVM_OP_CODE_SMOD 0x2C
 #define TRIVM_OP_CODE_SHL 0x30
 #define TRIVM_OP_CODE_EXTS 0x34
@@ -1176,8 +1175,8 @@ TODO: license
 #define TRIVM_OP_CODE_MUL64 0x2
 #define TRIVM_OP_CODE_AND64 0x3
 #define TRIVM_OP_CODE_UDIV64 0x4
-#define TRIVM_OP_CODE_SDIV64 0x5
-#define TRIVM_OP_CODE_UMOD64 0x6
+#define TRIVM_OP_CODE_UMOD64 0x5
+#define TRIVM_OP_CODE_SDIV64 0x6
 #define TRIVM_OP_CODE_SMOD64 0x7
 #define TRIVM_OP_CODE_SHL64 0x8
 #define TRIVM_OP_CODE_EXTS64 0x9
@@ -1214,7 +1213,6 @@ TODO: license
 #define TRIVM_OP_CODE_CONVF32S64 0x2D
 #define TRIVM_OP_CODE_CONVF64U64 0x2E
 #define TRIVM_OP_CODE_CONVF64S64 0x2F
-#define TRIVM_OP_CODE_NOT64 0x30
-#define TRIVM_OP_CODE_NEG64 0x31
+#define TRIVM_OP_CODE_NEG64 0x30
 
 #endif /* _TRIVM_OP_TREE_H_ */

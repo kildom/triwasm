@@ -52,6 +52,9 @@
 #ifndef TRIVM_FAULT_DIVISION_BY_ZERO
 #define TRIVM_FAULT_DIVISION_BY_ZERO     0
 #endif
+#ifndef TRIVM_FAULT_DIVISION_OVERFLOW
+#define TRIVM_FAULT_DIVISION_OVERFLOW     0
+#endif
 #ifndef TRIVM_FAULT_AUX_STACK_OVERFLOW
 #define TRIVM_FAULT_AUX_STACK_OVERFLOW   0
 #endif
@@ -65,6 +68,7 @@
 #undef TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS
 #undef TRIVM_FAULT_READ_ONLY
 #undef TRIVM_FAULT_DIVISION_BY_ZERO
+#undef TRIVM_FAULT_DIVISION_OVERFLOW
 #undef TRIVM_FAULT_STACK_OVERFLOW
 #undef TRIVM_FAULT_STACK_UNDERFLOW
 #undef TRIVM_FAULT_AUX_STACK_OVERFLOW
@@ -74,6 +78,7 @@
 #define TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS 1
 #define TRIVM_FAULT_READ_ONLY            1
 #define TRIVM_FAULT_DIVISION_BY_ZERO     1
+#define TRIVM_FAULT_DIVISION_OVERFLOW     1
 #define TRIVM_FAULT_STACK_OVERFLOW       1
 #define TRIVM_FAULT_STACK_UNDERFLOW      1
 #define TRIVM_FAULT_AUX_STACK_OVERFLOW   1
@@ -95,8 +100,9 @@
 #define TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS 4
 #define TRIVM_FAULT_READ_ONLY            5
 #define TRIVM_FAULT_DIVISION_BY_ZERO     6
-#define TRIVM_FAULT_AUX_STACK_OVERFLOW   7
-#define TRIVM_FAULT_AUX_STACK_UNDERFLOW  8
+#define TRIVM_FAULT_DIVISION_OVERFLOW    7
+#define TRIVM_FAULT_AUX_STACK_OVERFLOW   8
+#define TRIVM_FAULT_AUX_STACK_UNDERFLOW  9
 
 
 /* =============================================== Build-time checks ================================================ */
@@ -302,6 +308,16 @@ static uint64_t check_div64_0(struct trivm_instance *vm, uint64_t arg0, uint64_t
 	return arg1;
 }
 
+static uint64_t check_sdiv64(struct trivm_instance *vm, uint64_t arg0, uint64_t arg1)
+{
+	if (arg0 == ((uint64_t)1 << 63) && arg1 == (uint64_t)(-1))
+	{
+		TRIGGER_FAULT(DIVISION_OVERFLOW);
+		return 1;
+	}
+	return arg1;
+}
+
 static bool trivm_instr_long(struct trivm_instance *vm, uint32_t code, uint32_t arg1_lo)
 {
 	uint32_t op = (code >> 8) & 0x3F;
@@ -430,6 +446,16 @@ static uint32_t check_div_0(struct trivm_instance *vm, uint32_t arg0, uint32_t a
 	if (arg1 == 0)
 	{
 		TRIGGER_FAULT(DIVISION_BY_ZERO);
+		return 1;
+	}
+	return arg1;
+}
+
+static uint32_t check_sdiv(struct trivm_instance *vm, uint32_t arg0, uint32_t arg1)
+{
+	if (arg1 == (uint32_t)(-1) && arg0 == (uint32_t)(-0x80000000))
+	{
+		TRIGGER_FAULT(DIVISION_OVERFLOW);
 		return 1;
 	}
 	return arg1;

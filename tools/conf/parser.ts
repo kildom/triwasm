@@ -277,6 +277,7 @@ export function parseConf(path: Path): Conf {
         accessOutOfBounds: getBool(defs, 'TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS') || getBool(defs, 'TRIVM_ALL_FAULTS'),
         readOnly: getBool(defs, 'TRIVM_FAULT_READ_ONLY') || getBool(defs, 'TRIVM_ALL_FAULTS'),
         divisionByZero: getBool(defs, 'TRIVM_FAULT_DIVISION_BY_ZERO') || getBool(defs, 'TRIVM_ALL_FAULTS'),
+        divisionOverflow: getBool(defs, 'TRIVM_FAULT_DIVISION_OVERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
         auxStackOverflow: getBool(defs, 'TRIVM_FAULT_AUX_STACK_OVERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
         auxStackUnderflow: getBool(defs, 'TRIVM_FAULT_AUX_STACK_UNDERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
     };

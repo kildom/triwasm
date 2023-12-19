@@ -92,6 +92,8 @@ See [program memory](trivm/Architecture/Program.md) for details.
   Disabled by default.
 * `TRIVM_FAULT_DIVISION_BY_ZERO` - enable [DIVISION_BY_ZERO](trivm/Architecture/VMFaults.md#DIVISION_BY_ZERO) fault.
   Disabled by default.
+* `TRIVM_FAULT_DIVISION_OVERFLOW` - enable [DIVISION_OVERFLOW](trivm/Architecture/VMFaults.md#DIVISION_OVERFLOW) fault.
+  Disabled by default.
 * `TRIVM_FAULT_AUX_STACK_OVERFLOW` - enable [AUX_STACK_OVERFLOW](trivm/Architecture/VMFaults.md#AUX_STACK_OVERFLOW) fault.
   Disabled by default.
 * `TRIVM_FAULT_AUX_STACK_UNDERFLOW` - enable [AUX_STACK_UNDERFLOW](trivm/Architecture/VMFaults.md#AUX_STACK_UNDERFLOW) fault.

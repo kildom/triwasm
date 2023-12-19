@@ -28,8 +28,8 @@ const instrInfoTextTable = `
 ~>   OR             0-1   0    -       sc      0x06
 ~>   XOR            0-1   0    -       sc      0x07
 ~>   UDIV           0-1   0    -       sc      0x08
-~>   SDIV           0-1   0    -       sc      0x09
-~>   UMOD           0-1   0    -       sc      0x0A
+~>   UMOD           0-1   0    -       sc      0x09
+~>   SDIV           0-1   0    -       sc      0x0A
 ~>   SMOD           0-1   0    -       sc      0x0B
 ~>   SHL            0-1   0    -       sc      0x0C
 ~>   EXTS           0-1   0    -       sc      0x0D
@@ -87,12 +87,12 @@ const instrInfoTextTable = `
 ~>   UDIV64***      0-0   0    i64     -       0
 ~>   UDIV64**       1-1   0    i64     -       0
 ~>   UDIV64         0-1   0    i64     -       0
-~>   SDIV64***      0-0   0    i64     -       0
-~>   SDIV64**       1-1   0    i64     -       0
-~>   SDIV64         0-1   0    i64     -       0
 ~>   UMOD64***      0-0   0    i64     -       0
 ~>   UMOD64**       1-1   0    i64     -       0
 ~>   UMOD64         0-1   0    i64     -       0
+~>   SDIV64***      0-0   0    i64     -       0
+~>   SDIV64**       1-1   0    i64     -       0
+~>   SDIV64         0-1   0    i64     -       0
 ~>   SMOD64***      0-0   0    i64     -       0
 ~>   SMOD64**       1-1   0    i64     -       0
 ~>   SMOD64         0-1   0    i64     -       0

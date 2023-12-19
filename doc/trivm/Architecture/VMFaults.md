@@ -52,7 +52,7 @@ are not reverted to the previous state.
 `#define TRIVM_FAULT_STACK_UNALIGNED 5`
 
 Fault is triggered during the read or write instruction out of memory.
-Except is raised in the middle of the instrcution execution, so instruction
+Except is raised in the middle of the instruction execution, so instruction
 code is read from the program memory, address is popped from stack if needed,
 but final push or pop is not executed.
  * code - invalid address
@@ -66,3 +66,11 @@ executed, but division by 1 is done instead.
  * pc -   address after the instruction
 
 `#define TRIVM_FAULT_DIVISION_BY_ZERO 7`
+
+Fault is triggered after the signed division of -0x80000000
+(or -0x8000000000000000 in case of 64-bit division) by -1. The instruction is
+executed, but division by 1 is done instead.
+ * code - unused
+ * pc -   address after the instruction
+
+`#define TRIVM_FAULT_DIVISION_OVERFLOW 8`

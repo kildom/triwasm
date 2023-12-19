@@ -266,4 +266,4 @@ if (lines.indexOf('\r') >= 0) {
     code = code.replace(/\r?\n/g, '\r\n');
 }
 
-fs.writeFileSync(path.join(__dirname, outputFile), code);
+fs.writeFileSync(path.join(__dirname, '../../vm/trivm_op_tree.h'), code);

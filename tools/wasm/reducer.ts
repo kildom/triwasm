@@ -257,7 +257,9 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         break;
     }
     case OP.DROP: {
-        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: popPush.poppedWords });
+        for (let i = 0; i < popPush.poppedWords; i++) {
+            newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP });
+        }
         break;
     }
     case OP.SELECT:
@@ -451,17 +453,17 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         break;
     }
     case OP.I64_STORE8: { // Generated from expression: trivm.pop value: 1 ; i32.store8 offset, memory
-        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: 1 });
+        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP });
         newBody.push({ id: instrId(instr), opcode: OP.I32_STORE8, offset: instr.offset, memory: instr.memory });
         break;
     }
     case OP.I64_STORE16: { // Generated from expression: trivm.pop value: 1 ; i32.store16 offset, memory
-        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: 1 });
+        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP });
         newBody.push({ id: instrId(instr), opcode: OP.I32_STORE16, offset: instr.offset, memory: instr.memory });
         break;
     }
     case OP.I64_STORE32: { // Generated from expression: trivm.pop value: 1 ; i32.store offset, memory
-        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: 1 });
+        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP });
         newBody.push({ id: instrId(instr), opcode: OP.I32_STORE, offset: instr.offset, memory: instr.memory });
         break;
     }
@@ -1044,7 +1046,7 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
         break;
     }
     case OP.I32_WRAP_I64: { // Generated from expression: trivm.pop value: 1
-        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP, value: 1 });
+        newBody.push({ id: instrId(instr), opcode: OP.TRIVM_POP });
         break;
     }
     case OP.I32_TRUNC_F32_S: { // Generated from expression: {#f32} ## {else} @i32_trunc_f32_s

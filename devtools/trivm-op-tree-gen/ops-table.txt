@@ -29,8 +29,8 @@ TRIVM_TREE_CORE: x << 2
 0x06    OR      TWO_ARGS    { ret = arg0 | arg1; }
 0x07    XOR     TWO_ARGS    { ret = arg0 ^ arg1; }
 0x08    UDIV    TWO_ARGS    { arg1 = check_div_0(vm, arg0, arg1); /**/ ret = arg0 / arg1; }
-0x09    SDIV    TWO_ARGS    { arg1 = check_div_0(vm, arg0, arg1); /**/ ret = (uint32_t)((int32_t)arg0 / (int32_t)arg1); }
-0x0A    UMOD    TWO_ARGS    { arg1 = check_div_0(vm, arg0, arg1); /**/ ret = arg0 % arg1; }
+0x09    UMOD    TWO_ARGS    { arg1 = check_div_0(vm, arg0, arg1); /**/ ret = arg0 % arg1; }
+0x0A    SDIV    TWO_ARGS    { arg1 = check_div_0(vm, arg0, arg1); /**/ arg1 = check_sdiv(vm, arg0, arg1); ret = (uint32_t)((int32_t)arg0 / (int32_t)arg1); }
 0x0B    SMOD    TWO_ARGS    { arg1 = check_div_0(vm, arg0, arg1); /**/ ret = (uint32_t)((int32_t)arg0 % (int32_t)arg1); }
 0x0C    SHL     TWO_ARGS    { uint32_t shift = arg1 & 0x1F; /**/ ret = arg0 << shift; }
 0x0D    EXTS    TWO_ARGS    { uint32_t shift = arg1 & 0x1F; /**/ ret = arg0 << shift; /**/ ret = (uint32_t)((int32_t)ret >> shift); }
@@ -84,8 +84,8 @@ TRIVM_TREE_ADV64: x
 0x02    MUL64       TWO_ARGS  { ret = arg0 * arg1; }                                                                                               TRIVM_EXT_INT64
 0x03    AND64       TWO_ARGS  { ret = arg0 & arg1; }                                                                                               TRIVM_EXT_INT64
 0x04    UDIV64      TWO_ARGS  { arg1 = check_div64_0(vm, arg0, arg1); /**/ ret = arg0 / arg1; }                                                    TRIVM_EXT_INT64
-0x05    SDIV64      TWO_ARGS  { arg1 = check_div64_0(vm, arg0, arg1); /**/ ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1); }                      TRIVM_EXT_INT64
-0x06    UMOD64      TWO_ARGS  { arg1 = check_div64_0(vm, arg0, arg1); /**/ ret = arg0 % arg1; }                                                    TRIVM_EXT_INT64
+0x05    UMOD64      TWO_ARGS  { arg1 = check_div64_0(vm, arg0, arg1); /**/ ret = arg0 % arg1; }                                                    TRIVM_EXT_INT64
+0x06    SDIV64      TWO_ARGS  { arg1 = check_div64_0(vm, arg0, arg1); /**/ arg1 = check_sdiv64(vm, arg0, arg1); ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1); }   TRIVM_EXT_INT64
 0x07    SMOD64      TWO_ARGS  { arg1 = check_div64_0(vm, arg0, arg1); /**/ ret = (uint64_t)((int64_t)arg0 % (int64_t)arg1); }                      TRIVM_EXT_INT64
 0x08    SHL64       TWO_ARGS  { uint32_t shift = (uint32_t)arg1 & 0x3F; /**/ ret = arg0 << shift; }                                                TRIVM_EXT_INT64
 0x09    EXTS64      TWO_ARGS  { uint32_t shift = (uint32_t)arg1 & 0x3F; /**/ ret = arg0 << shift; /**/ ret = (uint64_t)((int64_t)ret >> shift); }  TRIVM_EXT_INT64

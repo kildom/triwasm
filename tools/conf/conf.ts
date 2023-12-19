@@ -16,6 +16,7 @@ export interface ConfFaults {
     accessOutOfBounds: boolean;
     readOnly: boolean;
     divisionByZero: boolean;
+    divisionOverflow: boolean;
     auxStackOverflow: boolean;
     auxStackUnderflow: boolean;
 }
