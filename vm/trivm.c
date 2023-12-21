@@ -73,6 +73,9 @@
 #ifndef TRIVM_FAULT_AUX_STACK_UNDERFLOW
 #define TRIVM_FAULT_AUX_STACK_UNDERFLOW  0
 #endif
+#ifndef TRIVM_FAULT_TRUNC_INVALID
+#define TRIVM_FAULT_TRUNC_INVALID  0
+#endif
 
 #if TRIVM_ALL_FAULTS
 #undef TRIVM_FAULT_INSTR_OUT_OF_BOUNDS
@@ -85,6 +88,7 @@
 #undef TRIVM_FAULT_STACK_UNDERFLOW
 #undef TRIVM_FAULT_AUX_STACK_OVERFLOW
 #undef TRIVM_FAULT_AUX_STACK_UNDERFLOW
+#undef TRIVM_FAULT_TRUNC_INVALID
 #define TRIVM_FAULT_INSTR_OUT_OF_BOUNDS  1
 #define TRIVM_FAULT_INSTR_INVALID        1
 #define TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS 1
@@ -95,6 +99,7 @@
 #define TRIVM_FAULT_STACK_UNDERFLOW      1
 #define TRIVM_FAULT_AUX_STACK_OVERFLOW   1
 #define TRIVM_FAULT_AUX_STACK_UNDERFLOW  1
+#define TRIVM_FAULT_TRUNC_INVALID        1
 #endif
 
 
@@ -105,16 +110,17 @@
 
 /* ================================================== Fault types =================================================== */
 
-#define TRIVM_FAULT_STACK_OVERFLOW       0
-#define TRIVM_FAULT_STACK_UNDERFLOW      1
-#define TRIVM_FAULT_INSTR_OUT_OF_BOUNDS  2
-#define TRIVM_FAULT_INSTR_INVALID        3
-#define TRIVM_FAULT_ACCESS_OUT_OF_BOUNDS 4
-#define TRIVM_FAULT_READ_ONLY            5
-#define TRIVM_FAULT_DIVISION_BY_ZERO     6
-#define TRIVM_FAULT_DIVISION_OVERFLOW    7
-#define TRIVM_FAULT_AUX_STACK_OVERFLOW   8
-#define TRIVM_FAULT_AUX_STACK_UNDERFLOW  9
+#define TRIVM_FAULT_NUMBER_STACK_OVERFLOW       0
+#define TRIVM_FAULT_NUMBER_STACK_UNDERFLOW      1
+#define TRIVM_FAULT_NUMBER_INSTR_OUT_OF_BOUNDS  2
+#define TRIVM_FAULT_NUMBER_INSTR_INVALID        3
+#define TRIVM_FAULT_NUMBER_ACCESS_OUT_OF_BOUNDS 4
+#define TRIVM_FAULT_NUMBER_READ_ONLY            5
+#define TRIVM_FAULT_NUMBER_DIVISION_BY_ZERO     6
+#define TRIVM_FAULT_NUMBER_DIVISION_OVERFLOW    7
+#define TRIVM_FAULT_NUMBER_AUX_STACK_OVERFLOW   8
+#define TRIVM_FAULT_NUMBER_AUX_STACK_UNDERFLOW  9
+#define TRIVM_FAULT_NUMBER_TRUNC_INVALID       10
 
 
 /* =============================================== Build-time checks ================================================ */
@@ -183,43 +189,41 @@
 
 /* ================================================ Fault triggering ================================================ */
 
-#define TRIGGER_FAULT_WITH_CODE(type, code, ...) do \
-	{ \
-		if (TRIVM_ENABLE_FAULT_##type) \
-		{ \
-			/*> FAULT: " #type ", code={code}, addr={vm->pc}# */ \
-			trigger_fault_with_code(vm, (TRIVM_FAULT_##type), (code)); \
-			__VA_ARGS__; \
-		} else { \
-			/*> IGNORED FAULT: " #type ", code={code}, addr={vm->pc}# */ \
-		} \
-	} while (0)
-
 #define TRIGGER_FAULT(type, ...) do \
 	{ \
-		if (TRIVM_ENABLE_FAULT_##type) \
+		if (TRIVM_FAULT_##type) \
 		{ \
 			/*> FAULT: " #type ", code={code}, addr={vm->pc}# */ \
-			trigger_fault(vm, (TRIVM_FAULT_##type)); \
+			trigger_fault(vm, (TRIVM_FAULT_NUMBER_##type)); \
 			__VA_ARGS__; \
 		} else { \
 			/*> IGNORED FAULT: " #type ", code={code}, addr={vm->pc}# */ \
 		} \
 	} while (0)
 
-static void trigger_fault_with_code(struct trivm_instance *vm, uint32_t type, uint32_t code)
-{
-	vm->tmp0 = type;
-	vm->tmp1 = code;
-	vm->tmp2 = vm->pc;
-	vm->pc = FAULT_ENTRY_OFFSET;
-}
+#define TRIGGER_FAULT_WITH_CODE(type, code, ...) do \
+	{ \
+		if (TRIVM_FAULT_##type) \
+		{ \
+			/*> FAULT: " #type ", code={code}, addr={vm->pc}# */ \
+			trigger_fault_with_code(vm, (TRIVM_FAULT_NUMBER_##type), (code)); \
+			__VA_ARGS__; \
+		} else { \
+			/*> IGNORED FAULT: " #type ", code={code}, addr={vm->pc}# */ \
+		} \
+	} while (0)
 
 static void trigger_fault(struct trivm_instance *vm, uint32_t type)
 {
 	vm->tmp0 = type;
 	vm->tmp2 = vm->pc;
 	vm->pc = FAULT_ENTRY_OFFSET;
+}
+
+static void trigger_fault_with_code(struct trivm_instance *vm, uint32_t type, uint32_t code)
+{
+	vm->tmp1 = code;
+	trigger_fault(vm, type);
 }
 
 
@@ -328,6 +332,84 @@ static uint64_t check_sdiv64(struct trivm_instance *vm, uint64_t arg0, uint64_t 
 		return 1;
 	}
 	return arg1;
+}
+
+static inline uint32_t trunc_f32_to_s32(struct trivm_instance *vm, uint32_t x) {
+    uint32_t x_rot = ((x << 1) | (x >> 31)) ^ 1;
+    if (x_rot <= 0x9E000000 || !TRIVM_FAULT_TRUNC_INVALID) {
+        return (int32_t)TO_F32(x);
+    } else {
+        TRIGGER_FAULT(TRUNC_INVALID);
+        return x;
+    }
+}
+
+static inline uint32_t trunc_f32_to_u32(struct trivm_instance *vm, uint32_t x) {
+    if (x < 0x4F800000 || (x >= 0x80000000 && x < 0xBF800000) || !TRIVM_FAULT_TRUNC_INVALID) {
+        return (uint32_t)TO_F32(x);
+    } else {
+        TRIGGER_FAULT(TRUNC_INVALID);
+        return x;
+    }
+}
+
+static inline uint64_t trunc_f32_to_s64(struct trivm_instance *vm, uint32_t x) {
+    uint32_t x_rot = ((x << 1) | (x >> 31)) ^ 1;
+    if (x_rot <= 0xBE000000 || !TRIVM_FAULT_TRUNC_INVALID) {
+        return (int64_t)TO_F32(x);
+    } else {
+        TRIGGER_FAULT(TRUNC_INVALID);
+        return x;
+    }
+}
+
+static inline uint64_t trunc_f32_to_u64(struct trivm_instance *vm, uint32_t x) {
+    if (x < 0x5F800000 || (x >= 0x80000000 && x < 0xBF800000) || !TRIVM_FAULT_TRUNC_INVALID) {
+        return (uint64_t)TO_F32(x);
+    } else {
+        TRIGGER_FAULT(TRUNC_INVALID);
+        return x;
+    }
+}
+
+static inline uint32_t trunc_f64_to_s32(struct trivm_instance *vm, uint64_t x) {
+    uint32_t hi = (uint32_t)(x >> 32);
+    if (hi < 0x41E00000 || (hi >= 0x80000000 && x < (uint64_t)0xC1E0000000200000uLL) || !TRIVM_FAULT_TRUNC_INVALID) {
+        return (int32_t)TO_F64(x);
+    } else {
+        TRIGGER_FAULT_WITH_CODE(TRUNC_INVALID, (uint32_t)(x >> 32));
+        return (uint32_t)x;
+    }
+}
+
+static inline uint32_t trunc_f64_to_u32(struct trivm_instance *vm, uint64_t x) {
+    uint32_t hi = (uint32_t)(x >> 32);
+    if (hi < 0x41F00000 || (hi >= 0x80000000 && hi < 0xBFF00000) || !TRIVM_FAULT_TRUNC_INVALID) {
+        return (uint32_t)TO_F64(x);
+    } else {
+        TRIGGER_FAULT_WITH_CODE(TRUNC_INVALID, (uint32_t)(x >> 32));
+        return (uint32_t)x;
+    }
+}
+
+static inline uint64_t trunc_f64_to_s64(struct trivm_instance *vm, uint64_t x) {
+    uint32_t hi = (uint32_t)(x >> 32);
+    if (hi < 0x43E00000 || (hi >= 0x80000000 && x <= (uint64_t)0xC3E0000000000000uLL) || !TRIVM_FAULT_TRUNC_INVALID) {
+        return (int64_t)TO_F64(x);
+    } else {
+        TRIGGER_FAULT(TRUNC_INVALID);
+        return x;
+    }
+}
+
+static inline uint64_t trunc_f64_to_u64(struct trivm_instance *vm, uint64_t x) {
+    uint32_t hi = (uint32_t)(x >> 32);
+    if (hi < 0x43F00000 || (hi >= 0x80000000 && hi < 0xBFF00000) || !TRIVM_FAULT_TRUNC_INVALID) {
+        return (uint64_t)TO_F64(x);
+    } else {
+        TRIGGER_FAULT(TRUNC_INVALID);
+        return x;
+    }
 }
 
 static bool trivm_instr_long(struct trivm_instance *vm, uint32_t code, uint32_t arg1_lo)
@@ -543,7 +625,7 @@ static bool trivm_instr(struct trivm_instance *vm, uint32_t code)
 	// 2. TRIWASM_FAULT_TRUNC is disabled:
 	//        Unsaturated trunc instructions will be the same as saturated.
 
-	uint32_t ret;
+	uint32_t ret = 0;
 	if ((op & 1) && ADV32_TREE_ENABLED)
 	{
 		/*>     Op:adv32 {$op_name_adv32(op)} */

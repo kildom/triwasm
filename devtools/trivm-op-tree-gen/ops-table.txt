@@ -71,8 +71,8 @@ TRIVM_TREE_ADV32: (x << 1) | 1
 0x2D    NEARESTF32   ONE_ARG     { float a1 = TO_F32(arg1); /**/ float r; /**/ r = roundf(a1); /**/ ret = TO_U32(r); }
 0x2E    SQRTF32      ONE_ARG     { float a1 = TO_F32(arg1); /**/ float r; /**/ r = sqrtf(a1); /**/ ret = TO_U32(r); }
 // 0x2F reserved
-0x30    TRUNCF32U    ONE_ARG     { float a1 = TO_F32(arg1); /**/ ret = (uint32_t)a1; }
-0x31    TRUNCF32S    ONE_ARG     { float a1 = TO_F32(arg1); /**/ ret = (int32_t)a1; }
+0x30    TRUNCF32U32  ONE_ARG     { ret = trunc_f32_to_u32(vm, arg1); }
+0x31    TRUNCF32S32  ONE_ARG     { ret = trunc_f32_to_s32(vm, arg1); }
 0x32    CONVF32U     ONE_ARG     { float r; /**/ r = (float)(uint32_t)arg1; /**/ ret = TO_U32(r); }
 0x33    CONVF32S     ONE_ARG     { float r; /**/ r = (float)(int32_t)arg1; /**/ ret = TO_U32(r); }
 
@@ -114,15 +114,17 @@ TRIVM_TREE_ADV64: x
 0x22    TRUNCF64    ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = trunc(a1); /**/ ret = TO_U64(r); }                               TRIVM_EXT_FLOAT64
 0x23    NEARESTF64  ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = round(a1); /**/ ret = TO_U64(r); }                               TRIVM_EXT_FLOAT64
 0x24    SQRTF64     ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = sqrt(a1); /**/ ret = TO_U64(r); }                                TRIVM_EXT_FLOAT64
-0x25    TRUNCF64U64 ONE_ARG   { double a1 = TO_F64(arg1); /**/ ret = (uint64_t)a1; }                                                               TRIVM_EXT_FLOAT64
-0x26    TRUNCF64S64 ONE_ARG   { double a1 = TO_F64(arg1); /**/ ret = (int64_t)a1; }                                                                TRIVM_EXT_FLOAT64
-0x27    DEMOTE      ONE_ARG   { double a1 = TO_F64(arg1); /**/ float r = (float)a1; /**/ ret = TO_U32(r); }                                        TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64
-0x28    PROMOTE     ONE_ARG   { float a1 = TO_F32(arg1); /**/ double r = (double)a1; /**/ ret = TO_U64(r); }                                       TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64
-0x29    TRUNCF32U64 ONE_ARG   { float a1 = TO_F32(arg1); /**/ ret = (uint64_t)a1; }                                                                TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
-0x2A    TRUNCF32S64 ONE_ARG   { float a1 = TO_F32(arg1); /**/ ret = (int64_t)a1; }                                                                 TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
-// 0x2B reserved
-0x2C    CONVF32U64  ONE_ARG   { float r; /**/ r = (float)(uint64_t)arg1; /**/ ret = TO_U32(r); }                                                   TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
-0x2D    CONVF32S64  ONE_ARG   { float r; /**/ r = (float)(int64_t)arg1; /**/ ret = TO_U32(r); }                                                    TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
-0x2E    CONVF64U64  ONE_ARG   { double r; /**/ r = (double)(uint64_t)arg1; /**/ ret = TO_U64(r); }                                                 TRIVM_EXT_FLOAT64
-0x2F    CONVF64S64  ONE_ARG   { double r; /**/ r = (double)(int64_t)arg1; /**/ ret = TO_U64(r); }                                                  TRIVM_EXT_FLOAT64
-0x30    NEG64       ONE_ARG   { ret = -arg1; }                                                                                                     TRIVM_EXT_INT64
+0x25    TRUNCF64U64 ONE_ARG   { ret = trunc_f64_to_u64(vm, arg1); }                                                                                TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64
+0x26    TRUNCF64S64 ONE_ARG   { ret = trunc_f64_to_s64(vm, arg1); }                                                                                TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64
+0x27    TRUNCF64U32 ONE_ARG   { ret = trunc_f64_to_u32(vm, arg1); }                                                                                TRIVM_EXT_FLOAT64
+0x28    TRUNCF64S32 ONE_ARG   { ret = trunc_f64_to_s32(vm, arg1); }                                                                                TRIVM_EXT_FLOAT64
+0x29    DEMOTE      ONE_ARG   { double a1 = TO_F64(arg1); /**/ float r = (float)a1; /**/ ret = TO_U32(r); }                                        TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64
+0x2A    PROMOTE     ONE_ARG   { float a1 = TO_F32(arg1); /**/ double r = (double)a1; /**/ ret = TO_U64(r); }                                       TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64
+0x2B    TRUNCF32U64 ONE_ARG   { ret = trunc_f32_to_u64(vm, (uint32_t)arg1); }                                                                      TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
+0x2C    TRUNCF32S64 ONE_ARG   { ret = trunc_f32_to_s64(vm, (uint32_t)arg1); }                                                                      TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
+// 0x2D reserved
+0x2E    CONVF32U64  ONE_ARG   { float r; /**/ r = (float)(uint64_t)arg1; /**/ ret = TO_U32(r); }                                                   TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
+0x2F    CONVF32S64  ONE_ARG   { float r; /**/ r = (float)(int64_t)arg1; /**/ ret = TO_U32(r); }                                                    TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64
+0x30    CONVF64U64  ONE_ARG   { double r; /**/ r = (double)(uint64_t)arg1; /**/ ret = TO_U64(r); }                                                 TRIVM_EXT_FLOAT64
+0x31    CONVF64S64  ONE_ARG   { double r; /**/ r = (double)(int64_t)arg1; /**/ ret = TO_U64(r); }                                                  TRIVM_EXT_FLOAT64
+0x32    NEG64       ONE_ARG   { ret = -arg1; }                                                                                                     TRIVM_EXT_INT64

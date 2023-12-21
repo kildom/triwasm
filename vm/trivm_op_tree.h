@@ -302,200 +302,198 @@ TODO: license
 #if !TRIVM_FAULT_INSTR_INVALID
 
 #define TRIVM_TREE_ADV32 \
-  if (op & 1 << 6) {                                        \
-    if (op & 1 << 5) {                                      \
-      if (op & 1 << 2) {                                    \
-        float r;                                            \
-        if (op & 1 << 1) {                                  \
-            /* CONVF32S 0x33 */ r = (float)(int32_t)arg1;   \
-        } else {                                            \
-            /* CONVF32U 0x32 */ r = (float)(uint32_t)arg1;  \
-        }                                                   \
-        ret = TO_U32(r);                                    \
-      } else {                                              \
-        float a1 = TO_F32(arg1);                            \
-        if (op & 1 << 1) {                                  \
-            /* TRUNCF32S 0x31 */ ret = (int32_t)a1;         \
-        } else {                                            \
-            /* TRUNCF32U 0x30 */ ret = (uint32_t)a1;        \
-        }                                                   \
-      }                                                     \
-    } else {                                                \
-      float a1 = TO_F32(arg1); float r;                     \
-      if (op & 1 << 3) {                                    \
-        if (op & 1 << 2) {                                  \
-            /* SQRTF32 0x2E */ r = sqrtf(a1);               \
-        } else {                                            \
-          if (op & 1 << 1) {                                \
-              /* NEARESTF32 0x2D */ r = roundf(a1);         \
-          } else {                                          \
-              /* TRUNCF32 0x2C */ r = truncf(a1);           \
-          }                                                 \
-        }                                                   \
-      } else {                                              \
-        if (op & 1 << 1) {                                  \
-            /* FLOORF32 0x2B */ r = floorf(a1);             \
-        } else {                                            \
-            /* CEILF32 0x2A */ r = ceilf(a1);               \
-        }                                                   \
-      }                                                     \
-      ret = TO_U32(r);                                      \
-    }                                                       \
-  } else {                                                  \
-    float a1 = TO_F32(arg1); float a0 = TO_F32(arg0);       \
-    if (op & 1 << 4) {                                      \
-        /* EQF32 0x8 */ ret = a0 == a1;                     \
-    } else {                                                \
-      if (op & 1 << 3) {                                    \
-        if (op & 1 << 2) {                                  \
-          if (op & 1 << 1) {                                \
-              /* GEF32 0x7 */ ret = a0 >= a1;               \
-          } else {                                          \
-              /* LEF32 0x6 */ ret = a0 <= a1;               \
-          }                                                 \
-        } else {                                            \
-          if (op & 1 << 1) {                                \
-              /* GTF32 0x5 */ ret = a0 > a1;                \
-          } else {                                          \
-              /* LTF32 0x4 */ ret = a0 < a1;                \
-          }                                                 \
-        }                                                   \
-      } else {                                              \
-        float r;                                            \
-        if (op & 1 << 2) {                                  \
-          if (op & 1 << 1) {                                \
-              /* DIVF32 0x3 */ r = a0 / a1;                 \
-          } else {                                          \
-              /* MULF32 0x2 */ r = a0 * a1;                 \
-          }                                                 \
-        } else {                                            \
-          if (op & 1 << 1) {                                \
-              /* SUBF32 0x1 */ r = a0 - a1;                 \
-          } else {                                          \
-              /* ADDF32 0x0 */ r = a0 + a1;                 \
-          }                                                 \
-        }                                                   \
-        ret = TO_U32(r);                                    \
-      }                                                     \
-    }                                                       \
-  }                                                         \
+  if (op & 1 << 6) {                                                  \
+    if (op & 1 << 5) {                                                \
+      if (op & 1 << 2) {                                              \
+        float r;                                                      \
+        if (op & 1 << 1) {                                            \
+            /* CONVF32S 0x33 */ r = (float)(int32_t)arg1;             \
+        } else {                                                      \
+            /* CONVF32U 0x32 */ r = (float)(uint32_t)arg1;            \
+        }                                                             \
+        ret = TO_U32(r);                                              \
+      } else {                                                        \
+        if (op & 1 << 1) {                                            \
+            /* TRUNCF32S32 0x31 */ ret = trunc_f32_to_s32(vm, arg1);  \
+        } else {                                                      \
+            /* TRUNCF32U32 0x30 */ ret = trunc_f32_to_u32(vm, arg1);  \
+        }                                                             \
+      }                                                               \
+    } else {                                                          \
+      float a1 = TO_F32(arg1); float r;                               \
+      if (op & 1 << 3) {                                              \
+        if (op & 1 << 2) {                                            \
+            /* SQRTF32 0x2E */ r = sqrtf(a1);                         \
+        } else {                                                      \
+          if (op & 1 << 1) {                                          \
+              /* NEARESTF32 0x2D */ r = roundf(a1);                   \
+          } else {                                                    \
+              /* TRUNCF32 0x2C */ r = truncf(a1);                     \
+          }                                                           \
+        }                                                             \
+      } else {                                                        \
+        if (op & 1 << 1) {                                            \
+            /* FLOORF32 0x2B */ r = floorf(a1);                       \
+        } else {                                                      \
+            /* CEILF32 0x2A */ r = ceilf(a1);                         \
+        }                                                             \
+      }                                                               \
+      ret = TO_U32(r);                                                \
+    }                                                                 \
+  } else {                                                            \
+    float a1 = TO_F32(arg1); float a0 = TO_F32(arg0);                 \
+    if (op & 1 << 4) {                                                \
+        /* EQF32 0x8 */ ret = a0 == a1;                               \
+    } else {                                                          \
+      if (op & 1 << 3) {                                              \
+        if (op & 1 << 2) {                                            \
+          if (op & 1 << 1) {                                          \
+              /* GEF32 0x7 */ ret = a0 >= a1;                         \
+          } else {                                                    \
+              /* LEF32 0x6 */ ret = a0 <= a1;                         \
+          }                                                           \
+        } else {                                                      \
+          if (op & 1 << 1) {                                          \
+              /* GTF32 0x5 */ ret = a0 > a1;                          \
+          } else {                                                    \
+              /* LTF32 0x4 */ ret = a0 < a1;                          \
+          }                                                           \
+        }                                                             \
+      } else {                                                        \
+        float r;                                                      \
+        if (op & 1 << 2) {                                            \
+          if (op & 1 << 1) {                                          \
+              /* DIVF32 0x3 */ r = a0 / a1;                           \
+          } else {                                                    \
+              /* MULF32 0x2 */ r = a0 * a1;                           \
+          }                                                           \
+        } else {                                                      \
+          if (op & 1 << 1) {                                          \
+              /* SUBF32 0x1 */ r = a0 - a1;                           \
+          } else {                                                    \
+              /* ADDF32 0x0 */ r = a0 + a1;                           \
+          }                                                           \
+        }                                                             \
+        ret = TO_U32(r);                                              \
+      }                                                               \
+    }                                                                 \
+  }                                                                   \
 
 #else
 
 #define TRIVM_TREE_ADV32 \
-  if (op & 1 << 6) {                                            \
-    if (op & 1 << 5) {                                          \
-      if (op & 1 << 4) {                                        \
-        goto invalid_instruction;                               \
-      } else {                                                  \
-        if (op & 1 << 3) {                                      \
-          goto invalid_instruction;                             \
-        } else {                                                \
-          if (op & 1 << 2) {                                    \
-            float r;                                            \
-            if (op & 1 << 1) {                                  \
-                /* CONVF32S 0x33 */ r = (float)(int32_t)arg1;   \
-            } else {                                            \
-                /* CONVF32U 0x32 */ r = (float)(uint32_t)arg1;  \
-            }                                                   \
-            ret = TO_U32(r);                                    \
-          } else {                                              \
-            float a1 = TO_F32(arg1);                            \
-            if (op & 1 << 1) {                                  \
-                /* TRUNCF32S 0x31 */ ret = (int32_t)a1;         \
-            } else {                                            \
-                /* TRUNCF32U 0x30 */ ret = (uint32_t)a1;        \
-            }                                                   \
-          }                                                     \
-        }                                                       \
-      }                                                         \
-    } else {                                                    \
-      float a1 = TO_F32(arg1); float r;                         \
-      if (op & 1 << 4) {                                        \
-        if (op & 1 << 3) {                                      \
-          if (op & 1 << 2) {                                    \
-            if (op & 1 << 1) {                                  \
-              goto invalid_instruction;                         \
-            } else {                                            \
-                /* SQRTF32 0x2E */ r = sqrtf(a1);               \
-            }                                                   \
-          } else {                                              \
-            if (op & 1 << 1) {                                  \
-                /* NEARESTF32 0x2D */ r = roundf(a1);           \
-            } else {                                            \
-                /* TRUNCF32 0x2C */ r = truncf(a1);             \
-            }                                                   \
-          }                                                     \
-        } else {                                                \
-          if (op & 1 << 2) {                                    \
-            if (op & 1 << 1) {                                  \
-                /* FLOORF32 0x2B */ r = floorf(a1);             \
-            } else {                                            \
-                /* CEILF32 0x2A */ r = ceilf(a1);               \
-            }                                                   \
-          } else {                                              \
-            goto invalid_instruction;                           \
-          }                                                     \
-        }                                                       \
-      } else {                                                  \
-        goto invalid_instruction;                               \
-      }                                                         \
-      ret = TO_U32(r);                                          \
-    }                                                           \
-  } else {                                                      \
-    float a1 = TO_F32(arg1); float a0 = TO_F32(arg0);           \
-    if (op & 1 << 5) {                                          \
-      goto invalid_instruction;                                 \
-    } else {                                                    \
-      if (op & 1 << 4) {                                        \
-        if (op & 1 << 3) {                                      \
-          goto invalid_instruction;                             \
-        } else {                                                \
-          if (op & 1 << 2) {                                    \
-            goto invalid_instruction;                           \
-          } else {                                              \
-            if (op & 1 << 1) {                                  \
-              goto invalid_instruction;                         \
-            } else {                                            \
-                /* EQF32 0x8 */ ret = a0 == a1;                 \
-            }                                                   \
-          }                                                     \
-        }                                                       \
-      } else {                                                  \
-        if (op & 1 << 3) {                                      \
-          if (op & 1 << 2) {                                    \
-            if (op & 1 << 1) {                                  \
-                /* GEF32 0x7 */ ret = a0 >= a1;                 \
-            } else {                                            \
-                /* LEF32 0x6 */ ret = a0 <= a1;                 \
-            }                                                   \
-          } else {                                              \
-            if (op & 1 << 1) {                                  \
-                /* GTF32 0x5 */ ret = a0 > a1;                  \
-            } else {                                            \
-                /* LTF32 0x4 */ ret = a0 < a1;                  \
-            }                                                   \
-          }                                                     \
-        } else {                                                \
-          float r;                                              \
-          if (op & 1 << 2) {                                    \
-            if (op & 1 << 1) {                                  \
-                /* DIVF32 0x3 */ r = a0 / a1;                   \
-            } else {                                            \
-                /* MULF32 0x2 */ r = a0 * a1;                   \
-            }                                                   \
-          } else {                                              \
-            if (op & 1 << 1) {                                  \
-                /* SUBF32 0x1 */ r = a0 - a1;                   \
-            } else {                                            \
-                /* ADDF32 0x0 */ r = a0 + a1;                   \
-            }                                                   \
-          }                                                     \
-          ret = TO_U32(r);                                      \
-        }                                                       \
-      }                                                         \
-    }                                                           \
-  }                                                             \
+  if (op & 1 << 6) {                                                      \
+    if (op & 1 << 5) {                                                    \
+      if (op & 1 << 4) {                                                  \
+        goto invalid_instruction;                                         \
+      } else {                                                            \
+        if (op & 1 << 3) {                                                \
+          goto invalid_instruction;                                       \
+        } else {                                                          \
+          if (op & 1 << 2) {                                              \
+            float r;                                                      \
+            if (op & 1 << 1) {                                            \
+                /* CONVF32S 0x33 */ r = (float)(int32_t)arg1;             \
+            } else {                                                      \
+                /* CONVF32U 0x32 */ r = (float)(uint32_t)arg1;            \
+            }                                                             \
+            ret = TO_U32(r);                                              \
+          } else {                                                        \
+            if (op & 1 << 1) {                                            \
+                /* TRUNCF32S32 0x31 */ ret = trunc_f32_to_s32(vm, arg1);  \
+            } else {                                                      \
+                /* TRUNCF32U32 0x30 */ ret = trunc_f32_to_u32(vm, arg1);  \
+            }                                                             \
+          }                                                               \
+        }                                                                 \
+      }                                                                   \
+    } else {                                                              \
+      float a1 = TO_F32(arg1); float r;                                   \
+      if (op & 1 << 4) {                                                  \
+        if (op & 1 << 3) {                                                \
+          if (op & 1 << 2) {                                              \
+            if (op & 1 << 1) {                                            \
+              goto invalid_instruction;                                   \
+            } else {                                                      \
+                /* SQRTF32 0x2E */ r = sqrtf(a1);                         \
+            }                                                             \
+          } else {                                                        \
+            if (op & 1 << 1) {                                            \
+                /* NEARESTF32 0x2D */ r = roundf(a1);                     \
+            } else {                                                      \
+                /* TRUNCF32 0x2C */ r = truncf(a1);                       \
+            }                                                             \
+          }                                                               \
+        } else {                                                          \
+          if (op & 1 << 2) {                                              \
+            if (op & 1 << 1) {                                            \
+                /* FLOORF32 0x2B */ r = floorf(a1);                       \
+            } else {                                                      \
+                /* CEILF32 0x2A */ r = ceilf(a1);                         \
+            }                                                             \
+          } else {                                                        \
+            goto invalid_instruction;                                     \
+          }                                                               \
+        }                                                                 \
+      } else {                                                            \
+        goto invalid_instruction;                                         \
+      }                                                                   \
+      ret = TO_U32(r);                                                    \
+    }                                                                     \
+  } else {                                                                \
+    float a1 = TO_F32(arg1); float a0 = TO_F32(arg0);                     \
+    if (op & 1 << 5) {                                                    \
+      goto invalid_instruction;                                           \
+    } else {                                                              \
+      if (op & 1 << 4) {                                                  \
+        if (op & 1 << 3) {                                                \
+          goto invalid_instruction;                                       \
+        } else {                                                          \
+          if (op & 1 << 2) {                                              \
+            goto invalid_instruction;                                     \
+          } else {                                                        \
+            if (op & 1 << 1) {                                            \
+              goto invalid_instruction;                                   \
+            } else {                                                      \
+                /* EQF32 0x8 */ ret = a0 == a1;                           \
+            }                                                             \
+          }                                                               \
+        }                                                                 \
+      } else {                                                            \
+        if (op & 1 << 3) {                                                \
+          if (op & 1 << 2) {                                              \
+            if (op & 1 << 1) {                                            \
+                /* GEF32 0x7 */ ret = a0 >= a1;                           \
+            } else {                                                      \
+                /* LEF32 0x6 */ ret = a0 <= a1;                           \
+            }                                                             \
+          } else {                                                        \
+            if (op & 1 << 1) {                                            \
+                /* GTF32 0x5 */ ret = a0 > a1;                            \
+            } else {                                                      \
+                /* LTF32 0x4 */ ret = a0 < a1;                            \
+            }                                                             \
+          }                                                               \
+        } else {                                                          \
+          float r;                                                        \
+          if (op & 1 << 2) {                                              \
+            if (op & 1 << 1) {                                            \
+                /* DIVF32 0x3 */ r = a0 / a1;                             \
+            } else {                                                      \
+                /* MULF32 0x2 */ r = a0 * a1;                             \
+            }                                                             \
+          } else {                                                        \
+            if (op & 1 << 1) {                                            \
+                /* SUBF32 0x1 */ r = a0 - a1;                             \
+            } else {                                                      \
+                /* ADDF32 0x0 */ r = a0 + a1;                             \
+            }                                                             \
+          }                                                               \
+          ret = TO_U32(r);                                                \
+        }                                                                 \
+      }                                                                   \
+    }                                                                     \
+  }                                                                       \
 
 #endif /* !TRIVM_FAULT_INSTR_INVALID */
 
@@ -517,560 +515,580 @@ TODO: license
   case TRIVM_OP_CODE_TRUNCF32: return "TRUNCF32"; \
   case TRIVM_OP_CODE_NEARESTF32: return "NEARESTF32"; \
   case TRIVM_OP_CODE_SQRTF32: return "SQRTF32"; \
-  case TRIVM_OP_CODE_TRUNCF32U: return "TRUNCF32U"; \
-  case TRIVM_OP_CODE_TRUNCF32S: return "TRUNCF32S"; \
+  case TRIVM_OP_CODE_TRUNCF32U32: return "TRUNCF32U32"; \
+  case TRIVM_OP_CODE_TRUNCF32S32: return "TRUNCF32S32"; \
   case TRIVM_OP_CODE_CONVF32U: return "CONVF32U"; \
   case TRIVM_OP_CODE_CONVF32S: return "CONVF32S"; \
 
 #if !TRIVM_FAULT_INSTR_INVALID
 
 #define TRIVM_TREE_ADV64 \
-  if ((op & 1 << 5 && (TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_INT64)) || !(TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {            \
-    if ((op & 1 << 4 && TRIVM_EXT_INT64) || !(TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                                                    \
-        /* NEG64 0x30 */ ret = -arg1;                                                                                                                                                                        \
-    } else {                                                                                                                                                                                                 \
-      if ((op & 1 << 3 && ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_FLOAT64)) || !(TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64))) {  \
-        if ((op & 1 << 2 && ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_FLOAT64)) || !((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                       \
-          if ((op & 1 << 1 && TRIVM_EXT_FLOAT64) || !(TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) {                                                                                                               \
-            double r;                                                                                                                                                                                        \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* CONVF64S64 0x2F */ r = (double)(int64_t)arg1;                                                                                                                                             \
-            } else {                                                                                                                                                                                         \
-                /* CONVF64U64 0x2E */ r = (double)(uint64_t)arg1;                                                                                                                                            \
-            }                                                                                                                                                                                                \
-            ret = TO_U64(r);                                                                                                                                                                                 \
-          } else {                                                                                                                                                                                           \
-            float r;                                                                                                                                                                                         \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* CONVF32S64 0x2D */ r = (float)(int64_t)arg1;                                                                                                                                              \
-            } else {                                                                                                                                                                                         \
-                /* CONVF32U64 0x2C */ r = (float)(uint64_t)arg1;                                                                                                                                             \
-            }                                                                                                                                                                                                \
-            ret = TO_U32(r);                                                                                                                                                                                 \
-          }                                                                                                                                                                                                  \
-        } else {                                                                                                                                                                                             \
-          float a1 = TO_F32(arg1);                                                                                                                                                                           \
-          if ((op & 1 << 1 && (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) || !((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                                            \
-              /* TRUNCF32S64 0x2A */ ret = (int64_t)a1;                                                                                                                                                      \
-          } else {                                                                                                                                                                                           \
-            if ((op & 1 << 0 && (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) || !(TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64)) {                                                                                      \
-                /* TRUNCF32U64 0x29 */ ret = (uint64_t)a1;                                                                                                                                                   \
-            } else {                                                                                                                                                                                         \
-                /* PROMOTE 0x28 */ double r = (double)a1; ret = TO_U64(r);                                                                                                                                   \
-            }                                                                                                                                                                                                \
-          }                                                                                                                                                                                                  \
-        }                                                                                                                                                                                                    \
-      } else {                                                                                                                                                                                               \
-        double a1 = TO_F64(arg1);                                                                                                                                                                            \
-        if ((op & 1 << 2 && (TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64))) || !TRIVM_EXT_FLOAT64) {                                                                                        \
-          if ((op & 1 << 1 && (TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64))) || !TRIVM_EXT_FLOAT64) {                                                                                      \
-            if ((op & 1 << 0 && (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64)) || !TRIVM_EXT_FLOAT64) {                                                                                                           \
-                /* DEMOTE 0x27 */ float r = (float)a1; ret = TO_U32(r);                                                                                                                                      \
-            } else {                                                                                                                                                                                         \
-                /* TRUNCF64S64 0x26 */ ret = (int64_t)a1;                                                                                                                                                    \
-            }                                                                                                                                                                                                \
-          } else {                                                                                                                                                                                           \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* TRUNCF64U64 0x25 */ ret = (uint64_t)a1;                                                                                                                                                   \
-            } else {                                                                                                                                                                                         \
-                /* SQRTF64 0x24 */ double r; r = sqrt(a1); ret = TO_U64(r);                                                                                                                                  \
-            }                                                                                                                                                                                                \
-          }                                                                                                                                                                                                  \
-        } else {                                                                                                                                                                                             \
-          double r;                                                                                                                                                                                          \
-          if (op & 1 << 1) {                                                                                                                                                                                 \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* NEARESTF64 0x23 */ r = round(a1);                                                                                                                                                         \
-            } else {                                                                                                                                                                                         \
-                /* TRUNCF64 0x22 */ r = trunc(a1);                                                                                                                                                           \
-            }                                                                                                                                                                                                \
-          } else {                                                                                                                                                                                           \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* FLOORF64 0x21 */ r = floor(a1);                                                                                                                                                           \
-            } else {                                                                                                                                                                                         \
-                /* CEILF64 0x20 */ r = ceil(a1);                                                                                                                                                             \
-            }                                                                                                                                                                                                \
-          }                                                                                                                                                                                                  \
-          ret = TO_U64(r);                                                                                                                                                                                   \
-        }                                                                                                                                                                                                    \
-      }                                                                                                                                                                                                      \
-    }                                                                                                                                                                                                        \
-  } else {                                                                                                                                                                                                   \
-    if ((op & 1 << 4 && (TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) || !TRIVM_EXT_INT64) {                                                                                                                       \
-      if ((op & 1 << 3 && TRIVM_EXT_FLOAT64) || !(TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {                                                                                                                   \
-        double a1 = TO_F64(arg1);                                                                                                                                                                            \
-        if (op & 1 << 2) {                                                                                                                                                                                   \
-            /* EQF64 0x1C */ double a0 = TO_F64(arg0); ret = a0 == a1;                                                                                                                                       \
-        } else {                                                                                                                                                                                             \
-          if (op & 1 << 1) {                                                                                                                                                                                 \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* GEF64 0x1B */ double a0 = TO_F64(arg0); ret = a0 >= a1;                                                                                                                                   \
-            } else {                                                                                                                                                                                         \
-                /* LEF64 0x1A */ double a0 = TO_F64(arg0); ret = a0 <= a1;                                                                                                                                   \
-            }                                                                                                                                                                                                \
-          } else {                                                                                                                                                                                           \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* GTF64 0x19 */ double a0 = TO_F64(arg0); ret = a0 > a1;                                                                                                                                    \
-            } else {                                                                                                                                                                                         \
-                /* LTF64 0x18 */ double a0 = TO_F64(arg0); ret = a0 < a1;                                                                                                                                    \
-            }                                                                                                                                                                                                \
-          }                                                                                                                                                                                                  \
-        }                                                                                                                                                                                                    \
-      } else {                                                                                                                                                                                               \
-        if ((op & 1 << 2 && TRIVM_EXT_FLOAT64) || !TRIVM_EXT_INT64) {                                                                                                                                        \
-          double a1 = TO_F64(arg1); double a0 = TO_F64(arg0); double r;                                                                                                                                      \
-          if (op & 1 << 1) {                                                                                                                                                                                 \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* DIVF64 0x17 */ r = a0 / a1;                                                                                                                                                               \
-            } else {                                                                                                                                                                                         \
-                /* MULF64 0x16 */ r = a0 * a1;                                                                                                                                                               \
-            }                                                                                                                                                                                                \
-          } else {                                                                                                                                                                                           \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* SUBF64 0x15 */ r = a0 - a1;                                                                                                                                                               \
-            } else {                                                                                                                                                                                         \
-                /* ADDF64 0x14 */ r = a0 + a1;                                                                                                                                                               \
-            }                                                                                                                                                                                                \
-          }                                                                                                                                                                                                  \
-          ret = TO_U64(r);                                                                                                                                                                                   \
-        } else {                                                                                                                                                                                             \
-          if (op & 1 << 1) {                                                                                                                                                                                 \
-              /* XOR64 0x12 */ ret = arg0 ^ arg1;                                                                                                                                                            \
-          } else {                                                                                                                                                                                           \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* OR64 0x11 */ ret = arg0 | arg1;                                                                                                                                                           \
-            } else {                                                                                                                                                                                         \
-                /* EQ64 0x10 */ ret = arg0 == arg1;                                                                                                                                                          \
-            }                                                                                                                                                                                                \
-          }                                                                                                                                                                                                  \
-        }                                                                                                                                                                                                    \
-      }                                                                                                                                                                                                      \
-    } else {                                                                                                                                                                                                 \
-      if (op & 1 << 3) {                                                                                                                                                                                     \
-        if (op & 1 << 2) {                                                                                                                                                                                   \
-          if (op & 1 << 1) {                                                                                                                                                                                 \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* SGT64 0xF */ ret = (uint64_t)((int64_t)arg0 > (int64_t)arg1);                                                                                                                             \
-            } else {                                                                                                                                                                                         \
-                /* SLT64 0xE */ ret = (uint64_t)((int64_t)arg0 < (int64_t)arg1);                                                                                                                             \
-            }                                                                                                                                                                                                \
-          } else {                                                                                                                                                                                           \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* UGT64 0xD */ ret = arg0 > arg1;                                                                                                                                                           \
-            } else {                                                                                                                                                                                         \
-                /* ULT64 0xC */ ret = arg0 < arg1;                                                                                                                                                           \
-            }                                                                                                                                                                                                \
-          }                                                                                                                                                                                                  \
-        } else {                                                                                                                                                                                             \
-          uint32_t shift = (uint32_t)arg1 & 0x3F;                                                                                                                                                            \
-          if (op & 1 << 1) {                                                                                                                                                                                 \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* SSHR64 0xB */ ret = (uint64_t)((int64_t)arg0 >> shift);                                                                                                                                   \
-            } else {                                                                                                                                                                                         \
-                /* USHR64 0xA */ ret = arg0 >> shift;                                                                                                                                                        \
-            }                                                                                                                                                                                                \
-          } else {                                                                                                                                                                                           \
-            ret = arg0 << shift;                                                                                                                                                                             \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* EXTS64 0x9 */ ret = (uint64_t)((int64_t)ret >> shift);                                                                                                                                    \
-            } else {                                                                                                                                                                                         \
-                /* SHL64 0x8 */                                                                                                                                                                              \
-            }                                                                                                                                                                                                \
-          }                                                                                                                                                                                                  \
-        }                                                                                                                                                                                                    \
-      } else {                                                                                                                                                                                               \
-        if (op & 1 << 2) {                                                                                                                                                                                   \
-          arg1 = check_div64_0(vm, arg0, arg1);                                                                                                                                                              \
-          if (op & 1 << 1) {                                                                                                                                                                                 \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* SMOD64 0x7 */ ret = (uint64_t)((int64_t)arg0 % (int64_t)arg1);                                                                                                                            \
-            } else {                                                                                                                                                                                         \
-                /* SDIV64 0x6 */ arg1 = check_sdiv64(vm, arg0, arg1); ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1);                                                                                       \
-            }                                                                                                                                                                                                \
-          } else {                                                                                                                                                                                           \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* UMOD64 0x5 */ ret = arg0 % arg1;                                                                                                                                                          \
-            } else {                                                                                                                                                                                         \
-                /* UDIV64 0x4 */ ret = arg0 / arg1;                                                                                                                                                          \
-            }                                                                                                                                                                                                \
-          }                                                                                                                                                                                                  \
-        } else {                                                                                                                                                                                             \
-          if (op & 1 << 1) {                                                                                                                                                                                 \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* AND64 0x3 */ ret = arg0 & arg1;                                                                                                                                                           \
-            } else {                                                                                                                                                                                         \
-                /* MUL64 0x2 */ ret = arg0 * arg1;                                                                                                                                                           \
-            }                                                                                                                                                                                                \
-          } else {                                                                                                                                                                                           \
-            if (op & 1 << 0) {                                                                                                                                                                               \
-                /* SUB64 0x1 */ ret = arg0 - arg1;                                                                                                                                                           \
-            } else {                                                                                                                                                                                         \
-                /* ADD64 0x0 */ ret = arg0 + arg1;                                                                                                                                                           \
-            }                                                                                                                                                                                                \
-          }                                                                                                                                                                                                  \
-        }                                                                                                                                                                                                    \
-      }                                                                                                                                                                                                      \
-    }                                                                                                                                                                                                        \
-  }                                                                                                                                                                                                          \
+  if ((op & 1 << 5 && (TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_INT64)) || !(TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {  \
+    if ((op & 1 << 4 && (TRIVM_EXT_FLOAT64 || TRIVM_EXT_INT64)) || !(TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                   \
+      if ((op & 1 << 1 && TRIVM_EXT_INT64) || !TRIVM_EXT_FLOAT64) {                                                                                                                                                                          \
+          /* NEG64 0x32 */ ret = -arg1;                                                                                                                                                                                                      \
+      } else {                                                                                                                                                                                                                               \
+        double r;                                                                                                                                                                                                                            \
+        if (op & 1 << 0) {                                                                                                                                                                                                                   \
+            /* CONVF64S64 0x31 */ r = (double)(int64_t)arg1;                                                                                                                                                                                 \
+        } else {                                                                                                                                                                                                                             \
+            /* CONVF64U64 0x30 */ r = (double)(uint64_t)arg1;                                                                                                                                                                                \
+        }                                                                                                                                                                                                                                    \
+        ret = TO_U64(r);                                                                                                                                                                                                                     \
+      }                                                                                                                                                                                                                                      \
+    } else {                                                                                                                                                                                                                                 \
+      if ((op & 1 << 3 && (TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) || !(TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64))) {                                    \
+        if ((op & 1 << 2 && (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) || !(TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                                                         \
+          if (op & 1 << 1) {                                                                                                                                                                                                                 \
+            float r;                                                                                                                                                                                                                         \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* CONVF32S64 0x2F */ r = (float)(int64_t)arg1;                                                                                                                                                                              \
+            } else {                                                                                                                                                                                                                         \
+                /* CONVF32U64 0x2E */ r = (float)(uint64_t)arg1;                                                                                                                                                                             \
+            }                                                                                                                                                                                                                                \
+            ret = TO_U32(r);                                                                                                                                                                                                                 \
+          } else {                                                                                                                                                                                                                           \
+              /* TRUNCF32S64 0x2C */ ret = trunc_f32_to_s64(vm, (uint32_t)arg1);                                                                                                                                                             \
+          }                                                                                                                                                                                                                                  \
+        } else {                                                                                                                                                                                                                             \
+          if ((op & 1 << 1 && ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) || !(TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64))) {                                                   \
+            if ((op & 1 << 0 && (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) || !(TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64)) {                                                                                                                      \
+                /* TRUNCF32U64 0x2B */ ret = trunc_f32_to_u64(vm, (uint32_t)arg1);                                                                                                                                                           \
+            } else {                                                                                                                                                                                                                         \
+                /* PROMOTE 0x2A */ float a1 = TO_F32(arg1); double r = (double)a1; ret = TO_U64(r);                                                                                                                                          \
+            }                                                                                                                                                                                                                                \
+          } else {                                                                                                                                                                                                                           \
+            if ((op & 1 << 0 && (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64)) || !TRIVM_EXT_FLOAT64) {                                                                                                                                           \
+                /* DEMOTE 0x29 */ double a1 = TO_F64(arg1); float r = (float)a1; ret = TO_U32(r);                                                                                                                                            \
+            } else {                                                                                                                                                                                                                         \
+                /* TRUNCF64S32 0x28 */ ret = trunc_f64_to_s32(vm, arg1);                                                                                                                                                                     \
+            }                                                                                                                                                                                                                                \
+          }                                                                                                                                                                                                                                  \
+        }                                                                                                                                                                                                                                    \
+      } else {                                                                                                                                                                                                                               \
+        if ((op & 1 << 2 && (TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64))) || !TRIVM_EXT_FLOAT64) {                                                                                                                          \
+          if ((op & 1 << 1 && ((TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64) || TRIVM_EXT_FLOAT64)) || !(TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64))) {                                                                            \
+            if ((op & 1 << 0 && TRIVM_EXT_FLOAT64) || !(TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64)) {                                                                                                                                             \
+                /* TRUNCF64U32 0x27 */ ret = trunc_f64_to_u32(vm, arg1);                                                                                                                                                                     \
+            } else {                                                                                                                                                                                                                         \
+                /* TRUNCF64S64 0x26 */ ret = trunc_f64_to_s64(vm, arg1);                                                                                                                                                                     \
+            }                                                                                                                                                                                                                                \
+          } else {                                                                                                                                                                                                                           \
+            if ((op & 1 << 0 && (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64)) || !TRIVM_EXT_FLOAT64) {                                                                                                                                             \
+                /* TRUNCF64U64 0x25 */ ret = trunc_f64_to_u64(vm, arg1);                                                                                                                                                                     \
+            } else {                                                                                                                                                                                                                         \
+                /* SQRTF64 0x24 */ double a1 = TO_F64(arg1); double r; r = sqrt(a1); ret = TO_U64(r);                                                                                                                                        \
+            }                                                                                                                                                                                                                                \
+          }                                                                                                                                                                                                                                  \
+        } else {                                                                                                                                                                                                                             \
+          double a1 = TO_F64(arg1); double r;                                                                                                                                                                                                \
+          if (op & 1 << 1) {                                                                                                                                                                                                                 \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* NEARESTF64 0x23 */ r = round(a1);                                                                                                                                                                                         \
+            } else {                                                                                                                                                                                                                         \
+                /* TRUNCF64 0x22 */ r = trunc(a1);                                                                                                                                                                                           \
+            }                                                                                                                                                                                                                                \
+          } else {                                                                                                                                                                                                                           \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* FLOORF64 0x21 */ r = floor(a1);                                                                                                                                                                                           \
+            } else {                                                                                                                                                                                                                         \
+                /* CEILF64 0x20 */ r = ceil(a1);                                                                                                                                                                                             \
+            }                                                                                                                                                                                                                                \
+          }                                                                                                                                                                                                                                  \
+          ret = TO_U64(r);                                                                                                                                                                                                                   \
+        }                                                                                                                                                                                                                                    \
+      }                                                                                                                                                                                                                                      \
+    }                                                                                                                                                                                                                                        \
+  } else {                                                                                                                                                                                                                                   \
+    if ((op & 1 << 4 && (TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) || !TRIVM_EXT_INT64) {                                                                                                                                                       \
+      if ((op & 1 << 3 && TRIVM_EXT_FLOAT64) || !(TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {                                                                                                                                                   \
+        double a1 = TO_F64(arg1);                                                                                                                                                                                                            \
+        if (op & 1 << 2) {                                                                                                                                                                                                                   \
+            /* EQF64 0x1C */ double a0 = TO_F64(arg0); ret = a0 == a1;                                                                                                                                                                       \
+        } else {                                                                                                                                                                                                                             \
+          if (op & 1 << 1) {                                                                                                                                                                                                                 \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* GEF64 0x1B */ double a0 = TO_F64(arg0); ret = a0 >= a1;                                                                                                                                                                   \
+            } else {                                                                                                                                                                                                                         \
+                /* LEF64 0x1A */ double a0 = TO_F64(arg0); ret = a0 <= a1;                                                                                                                                                                   \
+            }                                                                                                                                                                                                                                \
+          } else {                                                                                                                                                                                                                           \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* GTF64 0x19 */ double a0 = TO_F64(arg0); ret = a0 > a1;                                                                                                                                                                    \
+            } else {                                                                                                                                                                                                                         \
+                /* LTF64 0x18 */ double a0 = TO_F64(arg0); ret = a0 < a1;                                                                                                                                                                    \
+            }                                                                                                                                                                                                                                \
+          }                                                                                                                                                                                                                                  \
+        }                                                                                                                                                                                                                                    \
+      } else {                                                                                                                                                                                                                               \
+        if ((op & 1 << 2 && TRIVM_EXT_FLOAT64) || !TRIVM_EXT_INT64) {                                                                                                                                                                        \
+          double a1 = TO_F64(arg1); double a0 = TO_F64(arg0); double r;                                                                                                                                                                      \
+          if (op & 1 << 1) {                                                                                                                                                                                                                 \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* DIVF64 0x17 */ r = a0 / a1;                                                                                                                                                                                               \
+            } else {                                                                                                                                                                                                                         \
+                /* MULF64 0x16 */ r = a0 * a1;                                                                                                                                                                                               \
+            }                                                                                                                                                                                                                                \
+          } else {                                                                                                                                                                                                                           \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* SUBF64 0x15 */ r = a0 - a1;                                                                                                                                                                                               \
+            } else {                                                                                                                                                                                                                         \
+                /* ADDF64 0x14 */ r = a0 + a1;                                                                                                                                                                                               \
+            }                                                                                                                                                                                                                                \
+          }                                                                                                                                                                                                                                  \
+          ret = TO_U64(r);                                                                                                                                                                                                                   \
+        } else {                                                                                                                                                                                                                             \
+          if (op & 1 << 1) {                                                                                                                                                                                                                 \
+              /* XOR64 0x12 */ ret = arg0 ^ arg1;                                                                                                                                                                                            \
+          } else {                                                                                                                                                                                                                           \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* OR64 0x11 */ ret = arg0 | arg1;                                                                                                                                                                                           \
+            } else {                                                                                                                                                                                                                         \
+                /* EQ64 0x10 */ ret = arg0 == arg1;                                                                                                                                                                                          \
+            }                                                                                                                                                                                                                                \
+          }                                                                                                                                                                                                                                  \
+        }                                                                                                                                                                                                                                    \
+      }                                                                                                                                                                                                                                      \
+    } else {                                                                                                                                                                                                                                 \
+      if (op & 1 << 3) {                                                                                                                                                                                                                     \
+        if (op & 1 << 2) {                                                                                                                                                                                                                   \
+          if (op & 1 << 1) {                                                                                                                                                                                                                 \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* SGT64 0xF */ ret = (uint64_t)((int64_t)arg0 > (int64_t)arg1);                                                                                                                                                             \
+            } else {                                                                                                                                                                                                                         \
+                /* SLT64 0xE */ ret = (uint64_t)((int64_t)arg0 < (int64_t)arg1);                                                                                                                                                             \
+            }                                                                                                                                                                                                                                \
+          } else {                                                                                                                                                                                                                           \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* UGT64 0xD */ ret = arg0 > arg1;                                                                                                                                                                                           \
+            } else {                                                                                                                                                                                                                         \
+                /* ULT64 0xC */ ret = arg0 < arg1;                                                                                                                                                                                           \
+            }                                                                                                                                                                                                                                \
+          }                                                                                                                                                                                                                                  \
+        } else {                                                                                                                                                                                                                             \
+          uint32_t shift = (uint32_t)arg1 & 0x3F;                                                                                                                                                                                            \
+          if (op & 1 << 1) {                                                                                                                                                                                                                 \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* SSHR64 0xB */ ret = (uint64_t)((int64_t)arg0 >> shift);                                                                                                                                                                   \
+            } else {                                                                                                                                                                                                                         \
+                /* USHR64 0xA */ ret = arg0 >> shift;                                                                                                                                                                                        \
+            }                                                                                                                                                                                                                                \
+          } else {                                                                                                                                                                                                                           \
+            ret = arg0 << shift;                                                                                                                                                                                                             \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* EXTS64 0x9 */ ret = (uint64_t)((int64_t)ret >> shift);                                                                                                                                                                    \
+            } else {                                                                                                                                                                                                                         \
+                /* SHL64 0x8 */                                                                                                                                                                                                              \
+            }                                                                                                                                                                                                                                \
+          }                                                                                                                                                                                                                                  \
+        }                                                                                                                                                                                                                                    \
+      } else {                                                                                                                                                                                                                               \
+        if (op & 1 << 2) {                                                                                                                                                                                                                   \
+          arg1 = check_div64_0(vm, arg0, arg1);                                                                                                                                                                                              \
+          if (op & 1 << 1) {                                                                                                                                                                                                                 \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* SMOD64 0x7 */ ret = (uint64_t)((int64_t)arg0 % (int64_t)arg1);                                                                                                                                                            \
+            } else {                                                                                                                                                                                                                         \
+                /* SDIV64 0x6 */ arg1 = check_sdiv64(vm, arg0, arg1); ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1);                                                                                                                       \
+            }                                                                                                                                                                                                                                \
+          } else {                                                                                                                                                                                                                           \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* UMOD64 0x5 */ ret = arg0 % arg1;                                                                                                                                                                                          \
+            } else {                                                                                                                                                                                                                         \
+                /* UDIV64 0x4 */ ret = arg0 / arg1;                                                                                                                                                                                          \
+            }                                                                                                                                                                                                                                \
+          }                                                                                                                                                                                                                                  \
+        } else {                                                                                                                                                                                                                             \
+          if (op & 1 << 1) {                                                                                                                                                                                                                 \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* AND64 0x3 */ ret = arg0 & arg1;                                                                                                                                                                                           \
+            } else {                                                                                                                                                                                                                         \
+                /* MUL64 0x2 */ ret = arg0 * arg1;                                                                                                                                                                                           \
+            }                                                                                                                                                                                                                                \
+          } else {                                                                                                                                                                                                                           \
+            if (op & 1 << 0) {                                                                                                                                                                                                               \
+                /* SUB64 0x1 */ ret = arg0 - arg1;                                                                                                                                                                                           \
+            } else {                                                                                                                                                                                                                         \
+                /* ADD64 0x0 */ ret = arg0 + arg1;                                                                                                                                                                                           \
+            }                                                                                                                                                                                                                                \
+          }                                                                                                                                                                                                                                  \
+        }                                                                                                                                                                                                                                    \
+      }                                                                                                                                                                                                                                      \
+    }                                                                                                                                                                                                                                        \
+  }                                                                                                                                                                                                                                          \
 
 #else
 
 #define TRIVM_TREE_ADV64 \
-  if (op & 1 << 5) {                                                                                                                     \
-    if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_INT64)) {  \
-      if (op & 1 << 4) {                                                                                                                 \
-        if (TRIVM_EXT_INT64) {                                                                                                           \
-          if (op & 1 << 3) {                                                                                                             \
-            goto invalid_instruction;                                                                                                    \
-          } else {                                                                                                                       \
-            if (TRIVM_EXT_INT64) {                                                                                                       \
-              if (op & 1 << 2) {                                                                                                         \
-                goto invalid_instruction;                                                                                                \
-              } else {                                                                                                                   \
-                if (TRIVM_EXT_INT64) {                                                                                                   \
-                  if (op & 1 << 1) {                                                                                                     \
-                    goto invalid_instruction;                                                                                            \
-                  } else {                                                                                                               \
-                    if (TRIVM_EXT_INT64) {                                                                                               \
-                      if (op & 1 << 0) {                                                                                                 \
-                        goto invalid_instruction;                                                                                        \
-                      } else {                                                                                                           \
-                        if (TRIVM_EXT_INT64) {                                                                                           \
-                            /* NEG64 0x30 */ ret = -arg1;                                                                                \
-                        } else {                                                                                                         \
-                          goto invalid_instruction;                                                                                      \
-                        }                                                                                                                \
-                      }                                                                                                                  \
-                    } else {                                                                                                             \
-                      goto invalid_instruction;                                                                                          \
-                    }                                                                                                                    \
-                  }                                                                                                                      \
-                } else {                                                                                                                 \
-                  goto invalid_instruction;                                                                                              \
-                }                                                                                                                        \
-              }                                                                                                                          \
-            } else {                                                                                                                     \
-              goto invalid_instruction;                                                                                                  \
-            }                                                                                                                            \
-          }                                                                                                                              \
-        } else {                                                                                                                         \
-          goto invalid_instruction;                                                                                                      \
-        }                                                                                                                                \
-      } else {                                                                                                                           \
-        if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                 \
-          if (op & 1 << 3) {                                                                                                             \
-            if (((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_FLOAT64)) {             \
-              if (op & 1 << 2) {                                                                                                         \
-                if (((TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_FLOAT64)) {                                                     \
-                  if (op & 1 << 1) {                                                                                                     \
-                    if (TRIVM_EXT_FLOAT64) {                                                                                             \
-                      double r;                                                                                                          \
-                      if (op & 1 << 0) {                                                                                                 \
-                          /* CONVF64S64 0x2F */ r = (double)(int64_t)arg1;                                                               \
-                      } else {                                                                                                           \
-                          /* CONVF64U64 0x2E */ r = (double)(uint64_t)arg1;                                                              \
-                      }                                                                                                                  \
-                      ret = TO_U64(r);                                                                                                   \
-                    } else {                                                                                                             \
-                      goto invalid_instruction;                                                                                          \
-                    }                                                                                                                    \
-                  } else {                                                                                                               \
-                    if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) {                                                                        \
-                      float r;                                                                                                           \
-                      if (op & 1 << 0) {                                                                                                 \
-                          /* CONVF32S64 0x2D */ r = (float)(int64_t)arg1;                                                                \
-                      } else {                                                                                                           \
-                          /* CONVF32U64 0x2C */ r = (float)(uint64_t)arg1;                                                               \
-                      }                                                                                                                  \
-                      ret = TO_U32(r);                                                                                                   \
-                    } else {                                                                                                             \
-                      goto invalid_instruction;                                                                                          \
-                    }                                                                                                                    \
-                  }                                                                                                                      \
-                } else {                                                                                                                 \
-                  goto invalid_instruction;                                                                                              \
-                }                                                                                                                        \
-              } else {                                                                                                                   \
-                if (((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                              \
-                  float a1 = TO_F32(arg1);                                                                                               \
-                  if (op & 1 << 1) {                                                                                                     \
-                    if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) {                                                                        \
-                      if (op & 1 << 0) {                                                                                                 \
-                        goto invalid_instruction;                                                                                        \
-                      } else {                                                                                                           \
-                        if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) {                                                                    \
-                            /* TRUNCF32S64 0x2A */ ret = (int64_t)a1;                                                                    \
-                        } else {                                                                                                         \
-                          goto invalid_instruction;                                                                                      \
-                        }                                                                                                                \
-                      }                                                                                                                  \
-                    } else {                                                                                                             \
-                      goto invalid_instruction;                                                                                          \
-                    }                                                                                                                    \
-                  } else {                                                                                                               \
-                    if (((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                          \
-                      if (op & 1 << 0) {                                                                                                 \
-                        if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) {                                                                    \
-                            /* TRUNCF32U64 0x29 */ ret = (uint64_t)a1;                                                                   \
-                        } else {                                                                                                         \
-                          goto invalid_instruction;                                                                                      \
-                        }                                                                                                                \
-                      } else {                                                                                                           \
-                        if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64)) {                                                                  \
-                            /* PROMOTE 0x28 */ double r = (double)a1; ret = TO_U64(r);                                                   \
-                        } else {                                                                                                         \
-                          goto invalid_instruction;                                                                                      \
-                        }                                                                                                                \
-                      }                                                                                                                  \
-                    } else {                                                                                                             \
-                      goto invalid_instruction;                                                                                          \
-                    }                                                                                                                    \
-                  }                                                                                                                      \
-                } else {                                                                                                                 \
-                  goto invalid_instruction;                                                                                              \
-                }                                                                                                                        \
-              }                                                                                                                          \
-            } else {                                                                                                                     \
-              goto invalid_instruction;                                                                                                  \
-            }                                                                                                                            \
-          } else {                                                                                                                       \
-            if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64))) {                                                       \
-              double a1 = TO_F64(arg1);                                                                                                  \
-              if (op & 1 << 2) {                                                                                                         \
-                if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64))) {                                                   \
-                  if (op & 1 << 1) {                                                                                                     \
-                    if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64))) {                                               \
-                      if (op & 1 << 0) {                                                                                                 \
-                        if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64)) {                                                                  \
-                            /* DEMOTE 0x27 */ float r = (float)a1; ret = TO_U32(r);                                                      \
-                        } else {                                                                                                         \
-                          goto invalid_instruction;                                                                                      \
-                        }                                                                                                                \
-                      } else {                                                                                                           \
-                        if (TRIVM_EXT_FLOAT64) {                                                                                         \
-                            /* TRUNCF64S64 0x26 */ ret = (int64_t)a1;                                                                    \
-                        } else {                                                                                                         \
-                          goto invalid_instruction;                                                                                      \
-                        }                                                                                                                \
-                      }                                                                                                                  \
-                    } else {                                                                                                             \
-                      goto invalid_instruction;                                                                                          \
-                    }                                                                                                                    \
-                  } else {                                                                                                               \
-                    if (TRIVM_EXT_FLOAT64) {                                                                                             \
-                      if (op & 1 << 0) {                                                                                                 \
-                          /* TRUNCF64U64 0x25 */ ret = (uint64_t)a1;                                                                     \
-                      } else {                                                                                                           \
-                          /* SQRTF64 0x24 */ double r; r = sqrt(a1); ret = TO_U64(r);                                                    \
-                      }                                                                                                                  \
-                    } else {                                                                                                             \
-                      goto invalid_instruction;                                                                                          \
-                    }                                                                                                                    \
-                  }                                                                                                                      \
-                } else {                                                                                                                 \
-                  goto invalid_instruction;                                                                                              \
-                }                                                                                                                        \
-              } else {                                                                                                                   \
-                if (TRIVM_EXT_FLOAT64) {                                                                                                 \
-                  double r;                                                                                                              \
-                  if (op & 1 << 1) {                                                                                                     \
-                    if (op & 1 << 0) {                                                                                                   \
-                        /* NEARESTF64 0x23 */ r = round(a1);                                                                             \
-                    } else {                                                                                                             \
-                        /* TRUNCF64 0x22 */ r = trunc(a1);                                                                               \
-                    }                                                                                                                    \
-                  } else {                                                                                                               \
-                    if (op & 1 << 0) {                                                                                                   \
-                        /* FLOORF64 0x21 */ r = floor(a1);                                                                               \
-                    } else {                                                                                                             \
-                        /* CEILF64 0x20 */ r = ceil(a1);                                                                                 \
-                    }                                                                                                                    \
-                  }                                                                                                                      \
-                  ret = TO_U64(r);                                                                                                       \
-                } else {                                                                                                                 \
-                  goto invalid_instruction;                                                                                              \
-                }                                                                                                                        \
-              }                                                                                                                          \
-            } else {                                                                                                                     \
-              goto invalid_instruction;                                                                                                  \
-            }                                                                                                                            \
-          }                                                                                                                              \
-        } else {                                                                                                                         \
-          goto invalid_instruction;                                                                                                      \
-        }                                                                                                                                \
-      }                                                                                                                                  \
-    } else {                                                                                                                             \
-      goto invalid_instruction;                                                                                                          \
-    }                                                                                                                                    \
-  } else {                                                                                                                               \
-    if ((TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {                                                                                        \
-      if (op & 1 << 4) {                                                                                                                 \
-        if ((TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {                                                                                    \
-          if (op & 1 << 3) {                                                                                                             \
-            if (TRIVM_EXT_FLOAT64) {                                                                                                     \
-              double a1 = TO_F64(arg1);                                                                                                  \
-              if (op & 1 << 2) {                                                                                                         \
-                if (op & 1 << 1) {                                                                                                       \
-                  goto invalid_instruction;                                                                                              \
-                } else {                                                                                                                 \
-                  if (TRIVM_EXT_FLOAT64) {                                                                                               \
-                    if (op & 1 << 0) {                                                                                                   \
-                      goto invalid_instruction;                                                                                          \
-                    } else {                                                                                                             \
-                      if (TRIVM_EXT_FLOAT64) {                                                                                           \
-                          /* EQF64 0x1C */ double a0 = TO_F64(arg0); ret = a0 == a1;                                                     \
-                      } else {                                                                                                           \
-                        goto invalid_instruction;                                                                                        \
-                      }                                                                                                                  \
-                    }                                                                                                                    \
-                  } else {                                                                                                               \
-                    goto invalid_instruction;                                                                                            \
-                  }                                                                                                                      \
-                }                                                                                                                        \
-              } else {                                                                                                                   \
-                if (op & 1 << 1) {                                                                                                       \
-                  if (op & 1 << 0) {                                                                                                     \
-                      /* GEF64 0x1B */ double a0 = TO_F64(arg0); ret = a0 >= a1;                                                         \
-                  } else {                                                                                                               \
-                      /* LEF64 0x1A */ double a0 = TO_F64(arg0); ret = a0 <= a1;                                                         \
-                  }                                                                                                                      \
-                } else {                                                                                                                 \
-                  if (op & 1 << 0) {                                                                                                     \
-                      /* GTF64 0x19 */ double a0 = TO_F64(arg0); ret = a0 > a1;                                                          \
-                  } else {                                                                                                               \
-                      /* LTF64 0x18 */ double a0 = TO_F64(arg0); ret = a0 < a1;                                                          \
-                  }                                                                                                                      \
-                }                                                                                                                        \
-              }                                                                                                                          \
-            } else {                                                                                                                     \
-              goto invalid_instruction;                                                                                                  \
-            }                                                                                                                            \
-          } else {                                                                                                                       \
-            if ((TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {                                                                                \
-              if (op & 1 << 2) {                                                                                                         \
-                if (TRIVM_EXT_FLOAT64) {                                                                                                 \
-                  double a1 = TO_F64(arg1); double a0 = TO_F64(arg0); double r;                                                          \
-                  if (op & 1 << 1) {                                                                                                     \
-                    if (op & 1 << 0) {                                                                                                   \
-                        /* DIVF64 0x17 */ r = a0 / a1;                                                                                   \
-                    } else {                                                                                                             \
-                        /* MULF64 0x16 */ r = a0 * a1;                                                                                   \
-                    }                                                                                                                    \
-                  } else {                                                                                                               \
-                    if (op & 1 << 0) {                                                                                                   \
-                        /* SUBF64 0x15 */ r = a0 - a1;                                                                                   \
-                    } else {                                                                                                             \
-                        /* ADDF64 0x14 */ r = a0 + a1;                                                                                   \
-                    }                                                                                                                    \
-                  }                                                                                                                      \
-                  ret = TO_U64(r);                                                                                                       \
-                } else {                                                                                                                 \
-                  goto invalid_instruction;                                                                                              \
-                }                                                                                                                        \
-              } else {                                                                                                                   \
-                if (TRIVM_EXT_INT64) {                                                                                                   \
-                  if (op & 1 << 1) {                                                                                                     \
-                    if (op & 1 << 0) {                                                                                                   \
-                      goto invalid_instruction;                                                                                          \
-                    } else {                                                                                                             \
-                      if (TRIVM_EXT_INT64) {                                                                                             \
-                          /* XOR64 0x12 */ ret = arg0 ^ arg1;                                                                            \
-                      } else {                                                                                                           \
-                        goto invalid_instruction;                                                                                        \
-                      }                                                                                                                  \
-                    }                                                                                                                    \
-                  } else {                                                                                                               \
-                    if (op & 1 << 0) {                                                                                                   \
-                        /* OR64 0x11 */ ret = arg0 | arg1;                                                                               \
-                    } else {                                                                                                             \
-                        /* EQ64 0x10 */ ret = arg0 == arg1;                                                                              \
-                    }                                                                                                                    \
-                  }                                                                                                                      \
-                } else {                                                                                                                 \
-                  goto invalid_instruction;                                                                                              \
-                }                                                                                                                        \
-              }                                                                                                                          \
-            } else {                                                                                                                     \
-              goto invalid_instruction;                                                                                                  \
-            }                                                                                                                            \
-          }                                                                                                                              \
-        } else {                                                                                                                         \
-          goto invalid_instruction;                                                                                                      \
-        }                                                                                                                                \
-      } else {                                                                                                                           \
-        if (TRIVM_EXT_INT64) {                                                                                                           \
-          if (op & 1 << 3) {                                                                                                             \
-            if (op & 1 << 2) {                                                                                                           \
-              if (op & 1 << 1) {                                                                                                         \
-                if (op & 1 << 0) {                                                                                                       \
-                    /* SGT64 0xF */ ret = (uint64_t)((int64_t)arg0 > (int64_t)arg1);                                                     \
-                } else {                                                                                                                 \
-                    /* SLT64 0xE */ ret = (uint64_t)((int64_t)arg0 < (int64_t)arg1);                                                     \
-                }                                                                                                                        \
-              } else {                                                                                                                   \
-                if (op & 1 << 0) {                                                                                                       \
-                    /* UGT64 0xD */ ret = arg0 > arg1;                                                                                   \
-                } else {                                                                                                                 \
-                    /* ULT64 0xC */ ret = arg0 < arg1;                                                                                   \
-                }                                                                                                                        \
-              }                                                                                                                          \
-            } else {                                                                                                                     \
-              uint32_t shift = (uint32_t)arg1 & 0x3F;                                                                                    \
-              if (op & 1 << 1) {                                                                                                         \
-                if (op & 1 << 0) {                                                                                                       \
-                    /* SSHR64 0xB */ ret = (uint64_t)((int64_t)arg0 >> shift);                                                           \
-                } else {                                                                                                                 \
-                    /* USHR64 0xA */ ret = arg0 >> shift;                                                                                \
-                }                                                                                                                        \
-              } else {                                                                                                                   \
-                ret = arg0 << shift;                                                                                                     \
-                if (op & 1 << 0) {                                                                                                       \
-                    /* EXTS64 0x9 */ ret = (uint64_t)((int64_t)ret >> shift);                                                            \
-                } else {                                                                                                                 \
-                    /* SHL64 0x8 */                                                                                                      \
-                }                                                                                                                        \
-              }                                                                                                                          \
-            }                                                                                                                            \
-          } else {                                                                                                                       \
-            if (op & 1 << 2) {                                                                                                           \
-              arg1 = check_div64_0(vm, arg0, arg1);                                                                                      \
-              if (op & 1 << 1) {                                                                                                         \
-                if (op & 1 << 0) {                                                                                                       \
-                    /* SMOD64 0x7 */ ret = (uint64_t)((int64_t)arg0 % (int64_t)arg1);                                                    \
-                } else {                                                                                                                 \
-                    /* SDIV64 0x6 */ arg1 = check_sdiv64(vm, arg0, arg1); ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1);               \
-                }                                                                                                                        \
-              } else {                                                                                                                   \
-                if (op & 1 << 0) {                                                                                                       \
-                    /* UMOD64 0x5 */ ret = arg0 % arg1;                                                                                  \
-                } else {                                                                                                                 \
-                    /* UDIV64 0x4 */ ret = arg0 / arg1;                                                                                  \
-                }                                                                                                                        \
-              }                                                                                                                          \
-            } else {                                                                                                                     \
-              if (op & 1 << 1) {                                                                                                         \
-                if (op & 1 << 0) {                                                                                                       \
-                    /* AND64 0x3 */ ret = arg0 & arg1;                                                                                   \
-                } else {                                                                                                                 \
-                    /* MUL64 0x2 */ ret = arg0 * arg1;                                                                                   \
-                }                                                                                                                        \
-              } else {                                                                                                                   \
-                if (op & 1 << 0) {                                                                                                       \
-                    /* SUB64 0x1 */ ret = arg0 - arg1;                                                                                   \
-                } else {                                                                                                                 \
-                    /* ADD64 0x0 */ ret = arg0 + arg1;                                                                                   \
-                }                                                                                                                        \
-              }                                                                                                                          \
-            }                                                                                                                            \
-          }                                                                                                                              \
-        } else {                                                                                                                         \
-          goto invalid_instruction;                                                                                                      \
-        }                                                                                                                                \
-      }                                                                                                                                  \
-    } else {                                                                                                                             \
-      goto invalid_instruction;                                                                                                          \
-    }                                                                                                                                    \
-  }                                                                                                                                      \
+  if (op & 1 << 5) {                                                                                                                                                               \
+    if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64) || TRIVM_EXT_INT64)) {  \
+      if (op & 1 << 4) {                                                                                                                                                           \
+        if ((TRIVM_EXT_FLOAT64 || TRIVM_EXT_INT64)) {                                                                                                                              \
+          if (op & 1 << 3) {                                                                                                                                                       \
+            goto invalid_instruction;                                                                                                                                              \
+          } else {                                                                                                                                                                 \
+            if ((TRIVM_EXT_FLOAT64 || TRIVM_EXT_INT64)) {                                                                                                                          \
+              if (op & 1 << 2) {                                                                                                                                                   \
+                goto invalid_instruction;                                                                                                                                          \
+              } else {                                                                                                                                                             \
+                if ((TRIVM_EXT_FLOAT64 || TRIVM_EXT_INT64)) {                                                                                                                      \
+                  if (op & 1 << 1) {                                                                                                                                               \
+                    if (TRIVM_EXT_INT64) {                                                                                                                                         \
+                      if (op & 1 << 0) {                                                                                                                                           \
+                        goto invalid_instruction;                                                                                                                                  \
+                      } else {                                                                                                                                                     \
+                        if (TRIVM_EXT_INT64) {                                                                                                                                     \
+                            /* NEG64 0x32 */ ret = -arg1;                                                                                                                          \
+                        } else {                                                                                                                                                   \
+                          goto invalid_instruction;                                                                                                                                \
+                        }                                                                                                                                                          \
+                      }                                                                                                                                                            \
+                    } else {                                                                                                                                                       \
+                      goto invalid_instruction;                                                                                                                                    \
+                    }                                                                                                                                                              \
+                  } else {                                                                                                                                                         \
+                    if (TRIVM_EXT_FLOAT64) {                                                                                                                                       \
+                      double r;                                                                                                                                                    \
+                      if (op & 1 << 0) {                                                                                                                                           \
+                          /* CONVF64S64 0x31 */ r = (double)(int64_t)arg1;                                                                                                         \
+                      } else {                                                                                                                                                     \
+                          /* CONVF64U64 0x30 */ r = (double)(uint64_t)arg1;                                                                                                        \
+                      }                                                                                                                                                            \
+                      ret = TO_U64(r);                                                                                                                                             \
+                    } else {                                                                                                                                                       \
+                      goto invalid_instruction;                                                                                                                                    \
+                    }                                                                                                                                                              \
+                  }                                                                                                                                                                \
+                } else {                                                                                                                                                           \
+                  goto invalid_instruction;                                                                                                                                        \
+                }                                                                                                                                                                  \
+              }                                                                                                                                                                    \
+            } else {                                                                                                                                                               \
+              goto invalid_instruction;                                                                                                                                            \
+            }                                                                                                                                                                      \
+          }                                                                                                                                                                        \
+        } else {                                                                                                                                                                   \
+          goto invalid_instruction;                                                                                                                                                \
+        }                                                                                                                                                                          \
+      } else {                                                                                                                                                                     \
+        if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                 \
+          if (op & 1 << 3) {                                                                                                                                                       \
+            if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                                                       \
+              if (op & 1 << 2) {                                                                                                                                                   \
+                if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) {                                                                                                                      \
+                  if (op & 1 << 1) {                                                                                                                                               \
+                    float r;                                                                                                                                                       \
+                    if (op & 1 << 0) {                                                                                                                                             \
+                        /* CONVF32S64 0x2F */ r = (float)(int64_t)arg1;                                                                                                            \
+                    } else {                                                                                                                                                       \
+                        /* CONVF32U64 0x2E */ r = (float)(uint64_t)arg1;                                                                                                           \
+                    }                                                                                                                                                              \
+                    ret = TO_U32(r);                                                                                                                                               \
+                  } else {                                                                                                                                                         \
+                    if (op & 1 << 0) {                                                                                                                                             \
+                      goto invalid_instruction;                                                                                                                                    \
+                    } else {                                                                                                                                                       \
+                      if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) {                                                                                                                \
+                          /* TRUNCF32S64 0x2C */ ret = trunc_f32_to_s64(vm, (uint32_t)arg1);                                                                                       \
+                      } else {                                                                                                                                                     \
+                        goto invalid_instruction;                                                                                                                                  \
+                      }                                                                                                                                                            \
+                    }                                                                                                                                                              \
+                  }                                                                                                                                                                \
+                } else {                                                                                                                                                           \
+                  goto invalid_instruction;                                                                                                                                        \
+                }                                                                                                                                                                  \
+              } else {                                                                                                                                                             \
+                if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                                                   \
+                  if (op & 1 << 1) {                                                                                                                                               \
+                    if (((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64) || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64))) {                                                                    \
+                      if (op & 1 << 0) {                                                                                                                                           \
+                        if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_INT64)) {                                                                                                              \
+                            /* TRUNCF32U64 0x2B */ ret = trunc_f32_to_u64(vm, (uint32_t)arg1);                                                                                     \
+                        } else {                                                                                                                                                   \
+                          goto invalid_instruction;                                                                                                                                \
+                        }                                                                                                                                                          \
+                      } else {                                                                                                                                                     \
+                        if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64)) {                                                                                                            \
+                            /* PROMOTE 0x2A */ float a1 = TO_F32(arg1); double r = (double)a1; ret = TO_U64(r);                                                                    \
+                        } else {                                                                                                                                                   \
+                          goto invalid_instruction;                                                                                                                                \
+                        }                                                                                                                                                          \
+                      }                                                                                                                                                            \
+                    } else {                                                                                                                                                       \
+                      goto invalid_instruction;                                                                                                                                    \
+                    }                                                                                                                                                              \
+                  } else {                                                                                                                                                         \
+                    if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64))) {                                                                                         \
+                      if (op & 1 << 0) {                                                                                                                                           \
+                        if ((TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64)) {                                                                                                            \
+                            /* DEMOTE 0x29 */ double a1 = TO_F64(arg1); float r = (float)a1; ret = TO_U32(r);                                                                      \
+                        } else {                                                                                                                                                   \
+                          goto invalid_instruction;                                                                                                                                \
+                        }                                                                                                                                                          \
+                      } else {                                                                                                                                                     \
+                        if (TRIVM_EXT_FLOAT64) {                                                                                                                                   \
+                            /* TRUNCF64S32 0x28 */ ret = trunc_f64_to_s32(vm, arg1);                                                                                               \
+                        } else {                                                                                                                                                   \
+                          goto invalid_instruction;                                                                                                                                \
+                        }                                                                                                                                                          \
+                      }                                                                                                                                                            \
+                    } else {                                                                                                                                                       \
+                      goto invalid_instruction;                                                                                                                                    \
+                    }                                                                                                                                                              \
+                  }                                                                                                                                                                \
+                } else {                                                                                                                                                           \
+                  goto invalid_instruction;                                                                                                                                        \
+                }                                                                                                                                                                  \
+              }                                                                                                                                                                    \
+            } else {                                                                                                                                                               \
+              goto invalid_instruction;                                                                                                                                            \
+            }                                                                                                                                                                      \
+          } else {                                                                                                                                                                 \
+            if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64))) {                                                                                                   \
+              if (op & 1 << 2) {                                                                                                                                                   \
+                if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64))) {                                                                                               \
+                  if (op & 1 << 1) {                                                                                                                                               \
+                    if (((TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64) || TRIVM_EXT_FLOAT64)) {                                                                                           \
+                      if (op & 1 << 0) {                                                                                                                                           \
+                        if (TRIVM_EXT_FLOAT64) {                                                                                                                                   \
+                            /* TRUNCF64U32 0x27 */ ret = trunc_f64_to_u32(vm, arg1);                                                                                               \
+                        } else {                                                                                                                                                   \
+                          goto invalid_instruction;                                                                                                                                \
+                        }                                                                                                                                                          \
+                      } else {                                                                                                                                                     \
+                        if ((TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64)) {                                                                                                              \
+                            /* TRUNCF64S64 0x26 */ ret = trunc_f64_to_s64(vm, arg1);                                                                                               \
+                        } else {                                                                                                                                                   \
+                          goto invalid_instruction;                                                                                                                                \
+                        }                                                                                                                                                          \
+                      }                                                                                                                                                            \
+                    } else {                                                                                                                                                       \
+                      goto invalid_instruction;                                                                                                                                    \
+                    }                                                                                                                                                              \
+                  } else {                                                                                                                                                         \
+                    if ((TRIVM_EXT_FLOAT64 || (TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64))) {                                                                                           \
+                      if (op & 1 << 0) {                                                                                                                                           \
+                        if ((TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64)) {                                                                                                              \
+                            /* TRUNCF64U64 0x25 */ ret = trunc_f64_to_u64(vm, arg1);                                                                                               \
+                        } else {                                                                                                                                                   \
+                          goto invalid_instruction;                                                                                                                                \
+                        }                                                                                                                                                          \
+                      } else {                                                                                                                                                     \
+                        if (TRIVM_EXT_FLOAT64) {                                                                                                                                   \
+                            /* SQRTF64 0x24 */ double a1 = TO_F64(arg1); double r; r = sqrt(a1); ret = TO_U64(r);                                                                  \
+                        } else {                                                                                                                                                   \
+                          goto invalid_instruction;                                                                                                                                \
+                        }                                                                                                                                                          \
+                      }                                                                                                                                                            \
+                    } else {                                                                                                                                                       \
+                      goto invalid_instruction;                                                                                                                                    \
+                    }                                                                                                                                                              \
+                  }                                                                                                                                                                \
+                } else {                                                                                                                                                           \
+                  goto invalid_instruction;                                                                                                                                        \
+                }                                                                                                                                                                  \
+              } else {                                                                                                                                                             \
+                if (TRIVM_EXT_FLOAT64) {                                                                                                                                           \
+                  double a1 = TO_F64(arg1); double r;                                                                                                                              \
+                  if (op & 1 << 1) {                                                                                                                                               \
+                    if (op & 1 << 0) {                                                                                                                                             \
+                        /* NEARESTF64 0x23 */ r = round(a1);                                                                                                                       \
+                    } else {                                                                                                                                                       \
+                        /* TRUNCF64 0x22 */ r = trunc(a1);                                                                                                                         \
+                    }                                                                                                                                                              \
+                  } else {                                                                                                                                                         \
+                    if (op & 1 << 0) {                                                                                                                                             \
+                        /* FLOORF64 0x21 */ r = floor(a1);                                                                                                                         \
+                    } else {                                                                                                                                                       \
+                        /* CEILF64 0x20 */ r = ceil(a1);                                                                                                                           \
+                    }                                                                                                                                                              \
+                  }                                                                                                                                                                \
+                  ret = TO_U64(r);                                                                                                                                                 \
+                } else {                                                                                                                                                           \
+                  goto invalid_instruction;                                                                                                                                        \
+                }                                                                                                                                                                  \
+              }                                                                                                                                                                    \
+            } else {                                                                                                                                                               \
+              goto invalid_instruction;                                                                                                                                            \
+            }                                                                                                                                                                      \
+          }                                                                                                                                                                        \
+        } else {                                                                                                                                                                   \
+          goto invalid_instruction;                                                                                                                                                \
+        }                                                                                                                                                                          \
+      }                                                                                                                                                                            \
+    } else {                                                                                                                                                                       \
+      goto invalid_instruction;                                                                                                                                                    \
+    }                                                                                                                                                                              \
+  } else {                                                                                                                                                                         \
+    if ((TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {                                                                                                                                  \
+      if (op & 1 << 4) {                                                                                                                                                           \
+        if ((TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {                                                                                                                              \
+          if (op & 1 << 3) {                                                                                                                                                       \
+            if (TRIVM_EXT_FLOAT64) {                                                                                                                                               \
+              double a1 = TO_F64(arg1);                                                                                                                                            \
+              if (op & 1 << 2) {                                                                                                                                                   \
+                if (op & 1 << 1) {                                                                                                                                                 \
+                  goto invalid_instruction;                                                                                                                                        \
+                } else {                                                                                                                                                           \
+                  if (TRIVM_EXT_FLOAT64) {                                                                                                                                         \
+                    if (op & 1 << 0) {                                                                                                                                             \
+                      goto invalid_instruction;                                                                                                                                    \
+                    } else {                                                                                                                                                       \
+                      if (TRIVM_EXT_FLOAT64) {                                                                                                                                     \
+                          /* EQF64 0x1C */ double a0 = TO_F64(arg0); ret = a0 == a1;                                                                                               \
+                      } else {                                                                                                                                                     \
+                        goto invalid_instruction;                                                                                                                                  \
+                      }                                                                                                                                                            \
+                    }                                                                                                                                                              \
+                  } else {                                                                                                                                                         \
+                    goto invalid_instruction;                                                                                                                                      \
+                  }                                                                                                                                                                \
+                }                                                                                                                                                                  \
+              } else {                                                                                                                                                             \
+                if (op & 1 << 1) {                                                                                                                                                 \
+                  if (op & 1 << 0) {                                                                                                                                               \
+                      /* GEF64 0x1B */ double a0 = TO_F64(arg0); ret = a0 >= a1;                                                                                                   \
+                  } else {                                                                                                                                                         \
+                      /* LEF64 0x1A */ double a0 = TO_F64(arg0); ret = a0 <= a1;                                                                                                   \
+                  }                                                                                                                                                                \
+                } else {                                                                                                                                                           \
+                  if (op & 1 << 0) {                                                                                                                                               \
+                      /* GTF64 0x19 */ double a0 = TO_F64(arg0); ret = a0 > a1;                                                                                                    \
+                  } else {                                                                                                                                                         \
+                      /* LTF64 0x18 */ double a0 = TO_F64(arg0); ret = a0 < a1;                                                                                                    \
+                  }                                                                                                                                                                \
+                }                                                                                                                                                                  \
+              }                                                                                                                                                                    \
+            } else {                                                                                                                                                               \
+              goto invalid_instruction;                                                                                                                                            \
+            }                                                                                                                                                                      \
+          } else {                                                                                                                                                                 \
+            if ((TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)) {                                                                                                                          \
+              if (op & 1 << 2) {                                                                                                                                                   \
+                if (TRIVM_EXT_FLOAT64) {                                                                                                                                           \
+                  double a1 = TO_F64(arg1); double a0 = TO_F64(arg0); double r;                                                                                                    \
+                  if (op & 1 << 1) {                                                                                                                                               \
+                    if (op & 1 << 0) {                                                                                                                                             \
+                        /* DIVF64 0x17 */ r = a0 / a1;                                                                                                                             \
+                    } else {                                                                                                                                                       \
+                        /* MULF64 0x16 */ r = a0 * a1;                                                                                                                             \
+                    }                                                                                                                                                              \
+                  } else {                                                                                                                                                         \
+                    if (op & 1 << 0) {                                                                                                                                             \
+                        /* SUBF64 0x15 */ r = a0 - a1;                                                                                                                             \
+                    } else {                                                                                                                                                       \
+                        /* ADDF64 0x14 */ r = a0 + a1;                                                                                                                             \
+                    }                                                                                                                                                              \
+                  }                                                                                                                                                                \
+                  ret = TO_U64(r);                                                                                                                                                 \
+                } else {                                                                                                                                                           \
+                  goto invalid_instruction;                                                                                                                                        \
+                }                                                                                                                                                                  \
+              } else {                                                                                                                                                             \
+                if (TRIVM_EXT_INT64) {                                                                                                                                             \
+                  if (op & 1 << 1) {                                                                                                                                               \
+                    if (op & 1 << 0) {                                                                                                                                             \
+                      goto invalid_instruction;                                                                                                                                    \
+                    } else {                                                                                                                                                       \
+                      if (TRIVM_EXT_INT64) {                                                                                                                                       \
+                          /* XOR64 0x12 */ ret = arg0 ^ arg1;                                                                                                                      \
+                      } else {                                                                                                                                                     \
+                        goto invalid_instruction;                                                                                                                                  \
+                      }                                                                                                                                                            \
+                    }                                                                                                                                                              \
+                  } else {                                                                                                                                                         \
+                    if (op & 1 << 0) {                                                                                                                                             \
+                        /* OR64 0x11 */ ret = arg0 | arg1;                                                                                                                         \
+                    } else {                                                                                                                                                       \
+                        /* EQ64 0x10 */ ret = arg0 == arg1;                                                                                                                        \
+                    }                                                                                                                                                              \
+                  }                                                                                                                                                                \
+                } else {                                                                                                                                                           \
+                  goto invalid_instruction;                                                                                                                                        \
+                }                                                                                                                                                                  \
+              }                                                                                                                                                                    \
+            } else {                                                                                                                                                               \
+              goto invalid_instruction;                                                                                                                                            \
+            }                                                                                                                                                                      \
+          }                                                                                                                                                                        \
+        } else {                                                                                                                                                                   \
+          goto invalid_instruction;                                                                                                                                                \
+        }                                                                                                                                                                          \
+      } else {                                                                                                                                                                     \
+        if (TRIVM_EXT_INT64) {                                                                                                                                                     \
+          if (op & 1 << 3) {                                                                                                                                                       \
+            if (op & 1 << 2) {                                                                                                                                                     \
+              if (op & 1 << 1) {                                                                                                                                                   \
+                if (op & 1 << 0) {                                                                                                                                                 \
+                    /* SGT64 0xF */ ret = (uint64_t)((int64_t)arg0 > (int64_t)arg1);                                                                                               \
+                } else {                                                                                                                                                           \
+                    /* SLT64 0xE */ ret = (uint64_t)((int64_t)arg0 < (int64_t)arg1);                                                                                               \
+                }                                                                                                                                                                  \
+              } else {                                                                                                                                                             \
+                if (op & 1 << 0) {                                                                                                                                                 \
+                    /* UGT64 0xD */ ret = arg0 > arg1;                                                                                                                             \
+                } else {                                                                                                                                                           \
+                    /* ULT64 0xC */ ret = arg0 < arg1;                                                                                                                             \
+                }                                                                                                                                                                  \
+              }                                                                                                                                                                    \
+            } else {                                                                                                                                                               \
+              uint32_t shift = (uint32_t)arg1 & 0x3F;                                                                                                                              \
+              if (op & 1 << 1) {                                                                                                                                                   \
+                if (op & 1 << 0) {                                                                                                                                                 \
+                    /* SSHR64 0xB */ ret = (uint64_t)((int64_t)arg0 >> shift);                                                                                                     \
+                } else {                                                                                                                                                           \
+                    /* USHR64 0xA */ ret = arg0 >> shift;                                                                                                                          \
+                }                                                                                                                                                                  \
+              } else {                                                                                                                                                             \
+                ret = arg0 << shift;                                                                                                                                               \
+                if (op & 1 << 0) {                                                                                                                                                 \
+                    /* EXTS64 0x9 */ ret = (uint64_t)((int64_t)ret >> shift);                                                                                                      \
+                } else {                                                                                                                                                           \
+                    /* SHL64 0x8 */                                                                                                                                                \
+                }                                                                                                                                                                  \
+              }                                                                                                                                                                    \
+            }                                                                                                                                                                      \
+          } else {                                                                                                                                                                 \
+            if (op & 1 << 2) {                                                                                                                                                     \
+              arg1 = check_div64_0(vm, arg0, arg1);                                                                                                                                \
+              if (op & 1 << 1) {                                                                                                                                                   \
+                if (op & 1 << 0) {                                                                                                                                                 \
+                    /* SMOD64 0x7 */ ret = (uint64_t)((int64_t)arg0 % (int64_t)arg1);                                                                                              \
+                } else {                                                                                                                                                           \
+                    /* SDIV64 0x6 */ arg1 = check_sdiv64(vm, arg0, arg1); ret = (uint64_t)((int64_t)arg0 / (int64_t)arg1);                                                         \
+                }                                                                                                                                                                  \
+              } else {                                                                                                                                                             \
+                if (op & 1 << 0) {                                                                                                                                                 \
+                    /* UMOD64 0x5 */ ret = arg0 % arg1;                                                                                                                            \
+                } else {                                                                                                                                                           \
+                    /* UDIV64 0x4 */ ret = arg0 / arg1;                                                                                                                            \
+                }                                                                                                                                                                  \
+              }                                                                                                                                                                    \
+            } else {                                                                                                                                                               \
+              if (op & 1 << 1) {                                                                                                                                                   \
+                if (op & 1 << 0) {                                                                                                                                                 \
+                    /* AND64 0x3 */ ret = arg0 & arg1;                                                                                                                             \
+                } else {                                                                                                                                                           \
+                    /* MUL64 0x2 */ ret = arg0 * arg1;                                                                                                                             \
+                }                                                                                                                                                                  \
+              } else {                                                                                                                                                             \
+                if (op & 1 << 0) {                                                                                                                                                 \
+                    /* SUB64 0x1 */ ret = arg0 - arg1;                                                                                                                             \
+                } else {                                                                                                                                                           \
+                    /* ADD64 0x0 */ ret = arg0 + arg1;                                                                                                                             \
+                }                                                                                                                                                                  \
+              }                                                                                                                                                                    \
+            }                                                                                                                                                                      \
+          }                                                                                                                                                                        \
+        } else {                                                                                                                                                                   \
+          goto invalid_instruction;                                                                                                                                                \
+        }                                                                                                                                                                          \
+      }                                                                                                                                                                            \
+    } else {                                                                                                                                                                       \
+      goto invalid_instruction;                                                                                                                                                    \
+    }                                                                                                                                                                              \
+  }                                                                                                                                                                                \
 
 #endif /* !TRIVM_FAULT_INSTR_INVALID */
 
@@ -1113,6 +1131,8 @@ TODO: license
   case TRIVM_OP_CODE_SQRTF64: return "SQRTF64"; \
   case TRIVM_OP_CODE_TRUNCF64U64: return "TRUNCF64U64"; \
   case TRIVM_OP_CODE_TRUNCF64S64: return "TRUNCF64S64"; \
+  case TRIVM_OP_CODE_TRUNCF64U32: return "TRUNCF64U32"; \
+  case TRIVM_OP_CODE_TRUNCF64S32: return "TRUNCF64S32"; \
   case TRIVM_OP_CODE_DEMOTE: return "DEMOTE"; \
   case TRIVM_OP_CODE_PROMOTE: return "PROMOTE"; \
   case TRIVM_OP_CODE_TRUNCF32U64: return "TRUNCF32U64"; \
@@ -1166,8 +1186,8 @@ TODO: license
 #define TRIVM_OP_CODE_TRUNCF32 0x59
 #define TRIVM_OP_CODE_NEARESTF32 0x5B
 #define TRIVM_OP_CODE_SQRTF32 0x5D
-#define TRIVM_OP_CODE_TRUNCF32U 0x61
-#define TRIVM_OP_CODE_TRUNCF32S 0x63
+#define TRIVM_OP_CODE_TRUNCF32U32 0x61
+#define TRIVM_OP_CODE_TRUNCF32S32 0x63
 #define TRIVM_OP_CODE_CONVF32U 0x65
 #define TRIVM_OP_CODE_CONVF32S 0x67
 #define TRIVM_OP_CODE_ADD64 0x0
@@ -1205,14 +1225,16 @@ TODO: license
 #define TRIVM_OP_CODE_SQRTF64 0x24
 #define TRIVM_OP_CODE_TRUNCF64U64 0x25
 #define TRIVM_OP_CODE_TRUNCF64S64 0x26
-#define TRIVM_OP_CODE_DEMOTE 0x27
-#define TRIVM_OP_CODE_PROMOTE 0x28
-#define TRIVM_OP_CODE_TRUNCF32U64 0x29
-#define TRIVM_OP_CODE_TRUNCF32S64 0x2A
-#define TRIVM_OP_CODE_CONVF32U64 0x2C
-#define TRIVM_OP_CODE_CONVF32S64 0x2D
-#define TRIVM_OP_CODE_CONVF64U64 0x2E
-#define TRIVM_OP_CODE_CONVF64S64 0x2F
-#define TRIVM_OP_CODE_NEG64 0x30
+#define TRIVM_OP_CODE_TRUNCF64U32 0x27
+#define TRIVM_OP_CODE_TRUNCF64S32 0x28
+#define TRIVM_OP_CODE_DEMOTE 0x29
+#define TRIVM_OP_CODE_PROMOTE 0x2A
+#define TRIVM_OP_CODE_TRUNCF32U64 0x2B
+#define TRIVM_OP_CODE_TRUNCF32S64 0x2C
+#define TRIVM_OP_CODE_CONVF32U64 0x2E
+#define TRIVM_OP_CODE_CONVF32S64 0x2F
+#define TRIVM_OP_CODE_CONVF64U64 0x30
+#define TRIVM_OP_CODE_CONVF64S64 0x31
+#define TRIVM_OP_CODE_NEG64 0x32
 
 #endif /* _TRIVM_OP_TREE_H_ */

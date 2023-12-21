@@ -19,6 +19,7 @@ export interface ConfFaults {
     divisionOverflow: boolean;
     auxStackOverflow: boolean;
     auxStackUnderflow: boolean;
+    truncInvalid: boolean;
 }
 
 export interface ConfMemory {

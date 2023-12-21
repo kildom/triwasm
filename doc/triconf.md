@@ -98,6 +98,8 @@ See [program memory](trivm/Architecture/Program.md) for details.
   Disabled by default.
 * `TRIVM_FAULT_AUX_STACK_UNDERFLOW` - enable [AUX_STACK_UNDERFLOW](trivm/Architecture/VMFaults.md#AUX_STACK_UNDERFLOW) fault.
   Disabled by default.
+* `TRIVM_FAULT_TRUNC_INVALID` - enable [TRUNC_INVALID](trivm/Architecture/VMFaults.md#TRUNC_INVALID) fault.
+  Disabled by default.
 
 See [faults](trivm/Architecture/VMFaults.md) for details.
 

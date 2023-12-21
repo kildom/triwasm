@@ -280,6 +280,7 @@ export function parseConf(path: Path): Conf {
         divisionOverflow: getBool(defs, 'TRIVM_FAULT_DIVISION_OVERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
         auxStackOverflow: getBool(defs, 'TRIVM_FAULT_AUX_STACK_OVERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
         auxStackUnderflow: getBool(defs, 'TRIVM_FAULT_AUX_STACK_UNDERFLOW') || getBool(defs, 'TRIVM_ALL_FAULTS'),
+        truncInvalid: getBool(defs, 'TRIVM_FAULT_TRUNC_INVALID') || getBool(defs, 'TRIVM_ALL_FAULTS'),
     };
 
     let memory: ConfMemory = {
