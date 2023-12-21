@@ -586,3 +586,146 @@ void exec(u8 code) {
     // TODO: check if ptr is still valid (also at the beginning)
 }
 ```
+
+
+# TRUNC operation
+
+Handling of TRUNC operation can be implemented on both host or guest.
+On guest makes more sense, but if host platform may cause exception
+for invalid input, then it should also do some checking.
+This can be configurable, and checking enabled by default.
+Checking can produce flag (e.g. in `GPR3`) that can be used by
+guest to simpler detection of fault or saturation.
+
+## Sample Guest implementation
+
+```sh
+
+convertF64toS64_without_fault: # (TRIWASM_FAULT_TRUNC disabled)
+TRUNCF64S64 # inlined
+
+########################################################
+
+convertF64toS64_with_fault:
+WRITE32 GPR1
+# x:lo, x:hi
+READ32 x:lo
+READ32 x:hi
+AND 0x7FFFFFFF       # 11
+# x:lo, x:hi, x_without_sign:lo x_without_sign:hi
+NEG 0 # TODO: maximum value that causes (or not causes, what is smaller) fault
+NEG 0 # ...
+CALL __triwasm__triwasm_lib_i64_lt # OR LT64 if int64 extension is enabled
+BRF trigger_trunc_fault
+# x:lo, x:hi
+TRUNCF64S64
+READ32 GPR1
+WRITE32 PC
+
+########################################################
+
+trigger_trunc_fault:
+# x:lo, x:hi
+NEG -(TRIWASM_FAULT_TRUNC)
+WRITE32 GPR0
+# GPR1 already have address
+WRITE32 GRP2
+WRITE32 GRP3
+BR $_triwasm_fault_trigger
+
+########################################################
+
+convertF64toS64_saturated:
+# x:lo, x:hi, ret
+READ32 x:hi
+READ32 x:lo
+NOT
+NOT
+OR       # 5
+# x:lo, x:hi, ret, x_compressed
+READ32 x_compressed
+AND 0x7FFFFFFF       # 11
+# x:lo, x:hi, ret, x_compressed, x_without_sign
+READ32 x_without_sign
+ULT 0x42E00000
+BRT return_convert
+UGT 0x7FF00000
+BRT return_zero
+SGT 0
+BRT return_max  # 30
+# x:lo, x:hi, ret
+NEG -(1)
+SHL 31
+NEG 0     # 36
+return_top:
+WRITE32 x:hi
+WRITE32 x:lo
+WRITE32 PC    # 39
+
+return_convert:
+# x:lo, x:hi, ret, x_compressed, x_without_sign
+WRITE32 GPR0
+WRITE32 GPR0
+WRITE32 GPR0
+TRUNCF64S64
+READ32 GPR0
+WRITE32 PC      # 46
+
+return_zero:
+# x:lo, x:hi, ret, x_compressed
+AND 0
+READ32 [SP]
+BR return_top  # 51
+
+return_max:
+# x:lo, x:hi, ret
+NEG -(-1)
+READ32 [SP]
+USHR 1
+BR return_top  # 68 bytes total
+
+
+```
+
+## Sample Guest implementation if host has TRUNC fault enabled
+
+```sh
+
+
+convertF64toS64_with_fault:
+TRUNCF64S64 # inlined
+
+$_trunc_saturated_area_begin:
+
+convertF64toS64_saturated:
+.REF saturated_fault_handler_part # enable saturated_fault_handler part if any of saturated trunc instruction is present
+# x:lo, x:hi, ret
+WRITE32 WASM_GPR0 # WASM_GPR0 must be addressable with two bytes instructions
+TRUNCF64S64
+READ32 WASM_GPR0
+WRITE32 PC
+# Here will land fault handler if fault was triggered
+# ... detect what to return min/max/zero
+READ32 WASM_GPR0
+WRITE32 PC
+
+$_trunc_saturated_area_end:
+
+# fault hadnler
+# ...
+.begin discardable
+saturated_fault_handler_part:
+READ32 GPR1
+UGT $_trunc_saturated_area_begin
+BRF skip_saturated
+READ32 GPR1
+ULT $_trunc_saturated_area_end
+BRF skip_saturated
+READ32 GPR1
+ADD 3
+WRITE32 PC
+skip_saturated:
+.end
+#...
+
+```

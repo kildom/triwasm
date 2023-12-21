@@ -120,6 +120,33 @@ See [tables](trivm/Architecture/Tables.md) for details.
 * `TRIVM_STDLIB` - use stdlib functions in VM core source code, for example: `memset`, `memcpy`.
   Enabled by default.
 
+### Floating points
+
+The following options are available if you enable floating point extension (`float32` or `float64`).
+
+* `TRIVM_TRUNC32_UNDEFINED`, `TRIVM_TRUNC64_UNDEFINED` - enabling it will cause undefined behavior
+  of virtual machine's `trunc` instructions when input is out of range of output integer.
+  It reduces some code on host side, but increases size and time of converting floating points numbers
+  to integers on guest side.
+  Disabled by default.
+
+* `TRIVM_TRUNC32_SATURATED`, `TRIVM_TRUNC64_SATURATED` - this tels the VM that host platform architecture
+  do saturated float to integer conversion compatible with WASM `trunc_sat` instructions.
+  This will reduce range checking on the host which cause a little smaller and faster VM.
+  Disabled by default.
+
+  "Compatible with WASM `trunc_sat` instructions" means that a C conversion like this:
+  ```c
+  int conv(float x) { return (int)x; };
+  ```
+  will return:
+  * `0` if `x` in `NaN`,
+  * `-0x80000000` if `x` is `-Inf` or below range of `int` type,
+  * `0x7FFFFFFF` if `x` is `+Inf` or above range of `int` type,
+  * truncated value of `x` otherwise.
+
+  This also applies to other integer types with minimum and maximum values adjusted accordingly.
+
 ## Host-guest interface
 
 Special comment that starts with `/* triVM interface:` defines API interface

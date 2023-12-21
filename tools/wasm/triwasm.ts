@@ -78,11 +78,5 @@ moduleDebug(main, ModuleStage.AfterReducer, conf.args.output.withExtension('redu
 
 /*
 
-//new ModuleDebug(main, ModuleStage.AfterResolver).diagnose();
-
-reduce(main);
-
-new ModuleDebug(main, ModuleStage.AfterReducer).diagnose();
-
 generate(main);
 */

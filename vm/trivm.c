@@ -28,6 +28,18 @@
 #ifndef TRIVM_STDLIB
 #define TRIVM_STDLIB                     1
 #endif
+#ifndef TRIVM_TRUNC32_UNDEFINED
+#define TRIVM_TRUNC32_UNDEFINED          0
+#endif
+#ifndef TRIVM_TRUNC64_UNDEFINED
+#define TRIVM_TRUNC64_UNDEFINED          0
+#endif
+#ifndef TRIVM_TRUNC32_SATURATED
+#define TRIVM_TRUNC32_SATURATED          0
+#endif
+#ifndef TRIVM_TRUNC64_SATURATED
+#define TRIVM_TRUNC64_SATURATED          0
+#endif
 #ifndef TRIVM_ALL_FAULTS
 #define TRIVM_ALL_FAULTS                 0
 #endif
@@ -504,6 +516,32 @@ static bool trivm_instr(struct trivm_instance *vm, uint32_t code)
 		arg0 = mem_pop(vm);
 		/*>     Arg0 pop {{arg0}} */
 	}
+
+	// TODO: (or not) Put flags from "fenv.h" to GPRn if TRIVM_FENV is enabled to simplify trunc overflow detection on guest side. (OR NOT)
+	// https://en.cppreference.com/w/cpp/numeric/fenv
+
+	// TODO: VM trunc instructions may optionally return saturated value.
+	// There are different ways to do this:
+	// 1. VM trunc outside its bounds is undefined:
+	//        guest is responsible for handling all.
+	//        TRIVM_TRUNC32_UNDEFINED=1, TRIVM_TRUNC64_UNDEFINED=1 (disabled by default)
+	// 2. Platform trunc always returns saturated values as defined by WASM "trunc_sat" instructions.
+	//        guest will use them directly
+	//        TRIVM_TRUNC32_SATURATED=1, TRIVM_TRUNC64_SATURATED=1 (disabled by default)
+	// 3. Platform trunc returns undefined values outside is bounds (or different than WASM "trunc_sat"), but have "fenv.h"
+	//        guest will use them directly, host will saturate them with help from "fenv.h".
+	//        TRIVM_USE_FENV=1 (disabled by default)
+	// 4. Platform trunc returns undefined values outside its bounds (or different than WASM "trunc_sat"), and does not have "fenv.h"
+	//    or host may crash when outside its bounds.
+	//        guest will use them directly, host will saturate them by comparing floating values before truncating.
+	//        [no additional options]
+
+	// TODO: Guest side of it:
+	// 1. TRIWASM_FAULT_TRUNC is enabled:
+	//        Unsaturated trunc instructions will be compiled to function call that after truncation, check if result is
+	//        min or max. If it is, check if input is in range, and trigger fault if not.
+	// 2. TRIWASM_FAULT_TRUNC is disabled:
+	//        Unsaturated trunc instructions will be the same as saturated.
 
 	uint32_t ret;
 	if ((op & 1) && ADV32_TREE_ENABLED)
