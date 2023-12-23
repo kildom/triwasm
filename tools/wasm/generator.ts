@@ -245,7 +245,8 @@ enum BranchCondition {
 }
 
 function generateBranch(ctx: Ctx, target: WasmBlock, direction: WasmBranchDir | undefined, condition: BranchCondition,
-                        allowFallback: boolean): boolean {
+    allowFallback: boolean): boolean {
+
     let targetData = getBlockData(ctx, target);
     let instr = target.parentInstruction;
     let conditionDone = false;
@@ -302,7 +303,8 @@ function generateBranch(ctx: Ctx, target: WasmBlock, direction: WasmBranchDir | 
 }
 
 function generateIf(ctx: Ctx, instr: WasmInstrBr | WasmInstrBrTable, target: WasmBlock,
-                    direction: WasmBranchDir | undefined, condition: BranchCondition, allowFallback: boolean) {
+    direction: WasmBranchDir | undefined, condition: BranchCondition, allowFallback: boolean) {
+
     pop(ctx, 1);
     let outStart = ctx.moduleData.output.length;
     let conditionDone = generateBranch(ctx, target, direction, condition, allowFallback);
@@ -590,7 +592,7 @@ function popPush(ctx: Ctx, popCount: number, pushCount: number) {
     ctx.funcData.stackSize += pushCount;
 }
 
-let simpleGenerators: { [key: number]: [((ctx: any) => string), number, number] } = {
+let simpleGenerators: { [key: number]: [((ctx: any) => string), number, number]; } = {
     // -- Simple instructions - begin of source code generated with help of "gen-instr.ts" script --
 
     /* eslint-disable @typescript-eslint/no-unused-vars */

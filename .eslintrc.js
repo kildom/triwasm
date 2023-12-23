@@ -31,15 +31,7 @@ module.exports = {
     'rules': {
         'indent': [
             'warn',
-            4,
-            {
-                'FunctionDeclaration': {
-                    'parameters': 'first'
-                },
-                'FunctionExpression': {
-                    'parameters': 'first'
-                },
-            }
+            4
         ],
         'linebreak-style': [
             'error',

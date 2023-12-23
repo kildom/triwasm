@@ -26,8 +26,8 @@ export enum StackModifyMode {
 }
 
 export function getInstrPopPush(func: WasmFunction, block: WasmBlock,
-                                instr: WasmInstr, stack?: ValueType[], throwErrors?: boolean,
-                                stackModifyMode: StackModifyMode = StackModifyMode.NONE): PopPushResult {
+    instr: WasmInstr, stack?: ValueType[], throwErrors?: boolean,
+    stackModifyMode: StackModifyMode = StackModifyMode.NONE): PopPushResult {
 
     let res: PopPushResult = {
         errors: [],

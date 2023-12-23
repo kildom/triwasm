@@ -765,7 +765,7 @@ export class WasmParser {
         return this.blockStack.at(-1 - index) as WasmBlock;
     }
 
-    private parseMemArg(input: BinaryInput): { offset: number, memory: WasmMemory } {
+    private parseMemArg(input: BinaryInput): { offset: number, memory: WasmMemory; } {
         let memory = pick(this.module.memories, 0, 'Memory index out of range.');
         let align = input.u32();
         if (align & 0x40) {
@@ -781,7 +781,7 @@ export class WasmParser {
     }
 
     private createInstrWithBlock(id: number, opcode: WasmInstrWithBlockOP | WasmInstrIfOP, type: FunctionType,
-                                 parentBlock: WasmBlock | undefined): WasmInstrWithBlock | WasmInstrIf {
+        parentBlock: WasmBlock | undefined): WasmInstrWithBlock | WasmInstrIf {
 
         let instr: WasmInstrWithBlock | WasmInstrIf;
         if (opcode != OP.IF) {

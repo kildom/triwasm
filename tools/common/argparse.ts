@@ -568,7 +568,8 @@ export class ArgsParser<T> {
 }
 
 export function parse<T>(usage: string, output: T, filters?: { [name: string]: FilterFunction; },
-                         postProcess?: PostProcessFunction<T>, args?: string[]) {
+    postProcess?: PostProcessFunction<T>, args?: string[]) {
+
     let a = new ArgsParser(usage, filters, postProcess);
     return a.parse(output, args);
 }

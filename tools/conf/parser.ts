@@ -45,7 +45,8 @@ function getBool(defs: { [name: string]: string | undefined; }, name: string, de
 }
 
 function getInt(defs: { [name: string]: string | undefined; }, name: string, defaultValue: number, minValue?: number,
-                maxValue?: number): number {
+    maxValue?: number): number {
+
     if (!(name in defs)) {
         return defaultValue;
     }
@@ -166,7 +167,8 @@ function parseParameters(params: string, configText: string): ConfParameter[] {
 }
 
 function addFunction(functions: ConfFunction[], functionsUsage: Map<number, string>, entry: ConfInterfaceEntry,
-                     attrs: string = '', results: string, params: string) {
+    attrs: string = '', results: string, params: string) {
+
     attrs = attrs.trim().toUpperCase();
     let result: ConfFunction = {
         ...entry,
