@@ -114,8 +114,8 @@ TRIVM_TREE_ADV64: x
 0x22    TRUNCF64    ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = trunc(a1); /**/ ret = TO_U64(r); }                               TRIVM_EXT_FLOAT64
 0x23    NEARESTF64  ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = round(a1); /**/ ret = TO_U64(r); }                               TRIVM_EXT_FLOAT64
 0x24    SQRTF64     ONE_ARG   { double a1 = TO_F64(arg1); /**/ double r; /**/ r = sqrt(a1); /**/ ret = TO_U64(r); }                                TRIVM_EXT_FLOAT64
-0x25    TRUNCF64U64 ONE_ARG   { ret = trunc_f64_to_u64(vm, arg1); }                                                                                TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64
-0x26    TRUNCF64S64 ONE_ARG   { ret = trunc_f64_to_s64(vm, arg1); }                                                                                TRIVM_EXT_FLOAT64 && TRIVM_EXT_INT64
+0x25    TRUNCF64U64 ONE_ARG   { ret = trunc_f64_to_u64(vm, arg1); }                                                                                TRIVM_EXT_FLOAT64
+0x26    TRUNCF64S64 ONE_ARG   { ret = trunc_f64_to_s64(vm, arg1); }                                                                                TRIVM_EXT_FLOAT64
 0x27    TRUNCF64U32 ONE_ARG   { ret = trunc_f64_to_u32(vm, arg1); }                                                                                TRIVM_EXT_FLOAT64
 0x28    TRUNCF64S32 ONE_ARG   { ret = trunc_f64_to_s32(vm, arg1); }                                                                                TRIVM_EXT_FLOAT64
 0x29    DEMOTE      ONE_ARG   { double a1 = TO_F64(arg1); /**/ float r = (float)a1; /**/ ret = TO_U32(r); }                                        TRIVM_EXT_FLOAT32 && TRIVM_EXT_FLOAT64

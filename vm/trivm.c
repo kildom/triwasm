@@ -252,7 +252,7 @@ NO_INLINE
 static uint32_t mem_pop(struct trivm_instance *vm)
 {
 	uint32_t result = 0;
-	if (vm->sp > 0)
+	if (vm->sp > 0) // TODO: Those checks are invalid - fix them!
 	{
 		result = *(uint32_t*)(&vm->ram[vm->sp]);
 	}
@@ -397,7 +397,7 @@ static inline uint64_t trunc_f64_to_s64(struct trivm_instance *vm, uint64_t x) {
     if (hi < 0x43E00000 || (hi >= 0x80000000 && x <= (uint64_t)0xC3E0000000000000uLL) || !TRIVM_FAULT_TRUNC_INVALID) {
         return (int64_t)TO_F64(x);
     } else {
-        TRIGGER_FAULT(TRUNC_INVALID);
+        TRIGGER_FAULT_WITH_CODE(TRUNC_INVALID, (uint32_t)(x >> 32));
         return x;
     }
 }
@@ -407,7 +407,7 @@ static inline uint64_t trunc_f64_to_u64(struct trivm_instance *vm, uint64_t x) {
     if (hi < 0x43F00000 || (hi >= 0x80000000 && hi < 0xBFF00000) || !TRIVM_FAULT_TRUNC_INVALID) {
         return (uint64_t)TO_F64(x);
     } else {
-        TRIGGER_FAULT(TRUNC_INVALID);
+        TRIGGER_FAULT_WITH_CODE(TRUNC_INVALID, (uint32_t)(x >> 32));
         return x;
     }
 }
@@ -504,7 +504,7 @@ static void trivm_instr_unwind(struct trivm_instance *vm, uint32_t arg1, uint32_
 	{
 		TRIGGER_FAULT_WITH_CODE(STACK_UNDERFLOW, vm->sp - total, return);
 	}
-	
+
 	if (vm->sp < total || vm->sp - total > vm->ram_size || vm->sp >= vm->ram_size)
 	{
 		return;
@@ -575,6 +575,7 @@ static bool trivm_instr(struct trivm_instance *vm, uint32_t code)
 		arg1 |= read_prog(vm) << 24;
 		arg1 = (uint32_t)((int32_t)arg1 >> arg1_shift);
 		/*>     Arg1 imm {{arg1}}, bits {#32 - arg1_shift} */
+		break;
 	default: //CODE_INSTR_ARG_POP
 		arg1_shift = 0;
 		arg1 = mem_pop(vm);
