@@ -13,3 +13,4 @@ node_modules
 /tools/wasm/res.ts
 /doc/triwasm/cmd.md
 /test/__old/*.html
+/temp/

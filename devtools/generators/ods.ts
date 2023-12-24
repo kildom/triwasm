@@ -73,17 +73,33 @@ function getElementsByTagName(root: Node | Node[], tagName: string): Element[] {
 /**
  * Convert string to an identifier name.
  */
-function asIdentifier(name: string, firstUpperCase: boolean = false): string {
-    return name.trim()
-        .replace(/[^a-z0-9]/gi, ' ')
-        .replace(/([0-9]+)/g, ' $1 ')
+export function asIdentifier(name: string, upperCase: 'word' | 'first' | 'all' = 'word',
+    separateNumbers: boolean = true): string {
+
+    let tokens = name.trim()
+        .replace(/[^a-z0-9]/gi, ' ');
+    if (separateNumbers) {
+        tokens = tokens
+            .replace(/([0-9]+)/g, ' $1 ');
+    }
+    tokens = tokens
         .replace(/(?<![A-Z])([A-Z])/g, ' $1')
         .replace(/(?<=[A-Z][A-Z])([a-z])/g, ' $1')
         .replace(/ +/g, ' ')
         .trim()
-        .toLowerCase()
-        .replace(/ [a-z0-9]/gi, m => m.trim().toUpperCase())
-        .replace(/^./gi, m => firstUpperCase ? m.toUpperCase() : m.toLowerCase());
+        .toLowerCase();
+    if (upperCase === 'all') {
+        return tokens
+            .replace(/ /g, '_')
+            .toUpperCase();
+    } else if (upperCase === 'word') {
+        return tokens
+            .replace(/ [a-z0-9]/gi, m => m.trim().toUpperCase());
+    } else {
+        return tokens
+            .replace(/ [a-z0-9]/gi, m => m.trim().toUpperCase())
+            .replace(/^./gi, m => m.toUpperCase());
+    }
 }
 
 /**

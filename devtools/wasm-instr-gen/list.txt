@@ -4,6 +4,7 @@ Always generate and commit it when you change anything in the source file.
 
 ------------------------------------------- instr -------------------------------------------
 Name: instr
+Columns: instruction | immediate | binaryOpcode | parser | type | reduction | afterReduction | generate
 Headers: Instruction | Immediate | Binary Opcode | Parser | Type | Reduction | After reduction | Generate
 Description:  |  |  |  |  |  |  | 
 unreachable |  | 0x00 |  | [t1∗]→[t2∗] | ! | false | 
@@ -216,15 +217,15 @@ TRIVM.LOCAL_GET32 |  | -5 |  | []→[i32] |  | true | !
 TRIVM.LOCAL_GET64 |  | -6 |  | []→[i32 i32] |  | #mem64 | !
 TRIVM.LOCAL_SET32 |  | -7 |  | [i32]→[] |  | true | !
 TRIVM.LOCAL_SET64 |  | -8 |  | [i32 i32]→[] |  | #mem64 | !
-TRIVM.GLOBAL_GET32 |  | -9 |  | []→[i32] |  | true | !
-TRIVM.GLOBAL_GET64 |  | -10 |  | []→[i32 i32] |  | #mem64 | !
-TRIVM.GLOBAL_SET32 |  | -11 |  | [i32]→[] |  | true | !
-TRIVM.GLOBAL_SET64 |  | -12 |  | [i32 i32]→[] |  | #mem64 | !
+TRIVM.GLOBAL_GET32 |  | -9 |  | []→[i32] |  | true | READ32 $_global_{global.index} + {offset}
+TRIVM.GLOBAL_GET64 |  | -10 |  | []→[i32 i32] |  | #mem64 | READ64 $_global_{global.index} + {offset}
+TRIVM.GLOBAL_SET32 |  | -11 |  | [i32]→[] |  | true | WRITE32 $_global_{global.index} + {offset}
+TRIVM.GLOBAL_SET64 |  | -12 |  | [i32 i32]→[] |  | #mem64 | WRITE64 $_global_{global.index} + {offset}
 TRIVM.RAW |  | -13 |  | [t1∗]→[t2∗] |  | true | !
 TRIVM.SHL_CONST |  | -100 |  | [i32]→[i32] |  | true | SHL {value}
 TRIVM.USHR_CONST |  | -101 |  | [i32]→[i32] |  | true | USHR {value}
 TRIVM.SSHR_CONST |  | -102 |  | [i32]→[i32] |  | true | SSHR {value}
 TRIVM.EXTS_CONST |  | -103 |  | [i32]→[i32] |  | true | EXTS {value}
-TRIVM.EXTS64_CONST |  | -104 |  | [i64]→[i64] | sdfgfg writeFileSync afdf | #i64 | EXTS64 {value}
+TRIVM.EXTS64_CONST |  | -104 |  | [i64]→[i64] |  | #i64 | EXTS64 {value}
 
 
