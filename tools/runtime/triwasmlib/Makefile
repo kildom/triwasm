@@ -9,6 +9,6 @@ SRC:=./i64.c \
 	./general.c \
 	./stubs.c
 
-CFLAGS:=
+CFLAGS:=-msimd128 -fno-vectorize -fno-slp-vectorize -mno-tail-call
 
 include ../common/Makefile.common
