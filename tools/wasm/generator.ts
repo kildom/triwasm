@@ -12,17 +12,17 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { OP } from './opcodes';
+import { OP, OP_NAMES } from './opcodes';
 import * as OpType from './opcodeTypes';
 import {
-    EnterBlockCtx, EnterFunctionCtx, EnterInstrCtx, ExitBlockCtx, ExitFunctionCtx, walkFunctions
+    EnterBlockCtx, EnterFunctionCtx, EnterInstrCtx, ExitBlockCtx, ExitFunctionCtx, ExitInstrCtx, walkFunctions
 } from './moduleWalker';
 import {
     GlobalKind,
     valueTypeWords, WasmBlock, WasmBranchDir, WasmFunctionKind, WasmInstr, WasmInstrBr, WasmInstrBrTable, WasmModule
 } from './wasmModule';
 import { WasmConf } from './args';
-import { getInstrPopPush } from './instrStack';
+import { PopPushResult, getInstrPopPush } from './instrStack';
 
 interface ModuleData {
     conf: WasmConf;
@@ -48,9 +48,10 @@ interface InstrData {
 
 type Ctx = EnterInstrCtx<ModuleData, FunctionData, BlockData, InstrData>;
 type AnyCtx = EnterFunctionCtx<ModuleData> |
-    ExitFunctionCtx<ModuleData, FunctionData> |
     EnterBlockCtx<ModuleData, FunctionData, BlockData, InstrData> |
-    EnterInstrCtx<ModuleData, FunctionData, BlockData, InstrData>;
+    ExitBlockCtx<ModuleData, FunctionData, BlockData, InstrData> |
+    EnterInstrCtx<ModuleData, FunctionData, BlockData, InstrData> |
+    ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>;
 
 function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
     let localsOffsets: number[] = [];
@@ -89,9 +90,11 @@ function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
         if (ctx.func.locals.length > 0) {
             let localsSize = frameSize - localsOffset;
             if (localsSize >= 16) {
-                ctx.moduleData.output.push('READSP');
-                ctx.moduleData.output.push(`SUB -${localsSize}`);
-                ctx.moduleData.output.push('WRITESP');
+                output(ctx, [
+                    'READSP',
+                    `SUB -${localsSize}`,
+                    'WRITESP',
+                ]);
             } else {
                 for (let i = 0; i < localsSize; i += 4) {
                     ctx.moduleData.output.push('READSP');
@@ -121,21 +124,61 @@ function exitFunction(ctx: ExitFunctionCtx<ModuleData, FunctionData>) {
 
 function enterBlock(ctx: EnterBlockCtx<ModuleData, FunctionData, BlockData, InstrData>): BlockData {
     let paramsWords = valueTypeWords(ctx.block.type.params);
-    return {
+
+    let res : BlockData = {
         stackBase: ctx.funcData.stackSize - paramsWords,
         paramsWords,
         resultsWords: valueTypeWords(ctx.block.type.results),
     };
+
+    output(ctx, `block_${ctx.block.parentInstruction.id}_begin:`, undefined,
+        ctx.block.parentInstruction.opcode !== OP.TRIVM_FUNCTION ?
+            `base: ${res.stackBase}, ${res.paramsWords} => ${res.resultsWords}` :
+            'function block');
+
+    return res;
 }
 
 function exitBlock(ctx: ExitBlockCtx<ModuleData, FunctionData, BlockData, InstrData>): void {
+    output(ctx, `block_${ctx.block.parentInstruction.id}_end:`);
+
+}
+
+function output(ctx: AnyCtx, code: string[] | string, popPush?: PopPushResult, comment?: string): void {
+    let output = ctx.moduleData.output;
+    let indent = '  '.repeat('blockStack' in ctx ? ctx.blockStack.length : 0);
+    if (typeof(code) === 'object') {
+        for (let i = 0; i < code.length - 1; i++) {
+            output.push(indent + code[i] + ' # ...');
+        }
+        code = code[code.length - 1];
+    }
+    code = indent + code + '       ';
+    if (popPush && 'funcData' in ctx && (popPush.poppedWords > 0 || popPush.pushedWords > 0)) {
+        let stackSize = ctx.funcData.stackSize;
+        let newStackSize = stackSize - (popPush?.poppedWords || 0) + (popPush?.pushedWords || 0);
+        code += ` # ${stackSize}`;
+        if (popPush.poppedWords > 0) {
+            code += ` - ${popPush.poppedWords}`;
+        }
+        if (popPush.pushedWords > 0) {
+            code += ` + ${popPush.pushedWords}`;
+        }
+        code += ` = ${newStackSize}`;
+    }
+    if ('instr' in ctx) {
+        code += ` # ${ctx.instr.id} # ${OP_NAMES[ctx.instr.opcode]}`;
+    }
+    if (comment) {
+        code += ' # ' + comment;
+    }
+    output.push(code);
 }
 
 function enterInstr(ctx: Ctx): InstrData {
     let instrData: InstrData = {
     };
     let instr = ctx.instr;
-    let output = ctx.moduleData.output;
 
     let popPush = getInstrPopPush(ctx.func, ctx.block, instr, undefined, true);
 
@@ -200,8 +243,8 @@ function enterInstr(ctx: Ctx): InstrData {
         break;
     }
     case OP.TRIVM_LOCAL_SET32: {
-        ctx.moduleData.output.push(`WRITE32 [SP] - ${4 * (ctx.funcData.stackSize - popPush.poppedWords)
-            + ctx.funcData.frameSize - ctx.funcData.localsOffsets[instr.index] - instr.offset}`);
+        output(ctx, `WRITE32 [SP] - ${4 * (ctx.funcData.stackSize - popPush.poppedWords)
+            + ctx.funcData.frameSize - ctx.funcData.localsOffsets[instr.index] - instr.offset}`, popPush);
         break;
     }
     case OP.TRIVM_LOCAL_SET64: {
@@ -221,7 +264,7 @@ function enterInstr(ctx: Ctx): InstrData {
             if (typeof (simpleGen) !== 'string') {
                 simpleGen = simpleGen(instr);
             }
-            ctx.moduleData.output.push(simpleGen);
+            output(ctx, simpleGen, popPush);
         } else {
             throw new Error(`Unimplemented ${instr.id}`);
         }

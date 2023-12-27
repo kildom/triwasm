@@ -139,6 +139,23 @@ TRIVM_ASSEMBLY(
     "WRITE PC\n"
     )
 uint64_t udivmod64_asm(uint64_t a, uint64_t b);
+/*
+    zeros = count_leading_zeros(b)
+    b <<= zeros
+    shift = 1 << zeros
+    result = 0
+    loop_start:
+        x = a - b
+        if (!carry_from_last_subtraction) {
+            a = x
+            result |= shift
+        }
+        b >>= 1
+        shift >>= 1
+        if (shift) goto loop_start
+    return everything from stack:
+        al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, ret
+*/
 
 TRIVM_ASSEMBLY(
     // al, ah, bl, bh, ret
