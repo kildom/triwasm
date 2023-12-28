@@ -7,41 +7,44 @@ export enum WalkResult {
     SKIP_SIBLINGS = 2,
 }
 
-export interface WalkFunctionListener<FunctionData, BlockData, InstrData> {
-
+export interface WalkFunctionContext<BlockData, InstrData> {
     module: WasmModule;           // Input module
     func: WasmFunction;           // Current function
-    funcData?: FunctionData;      // Current function data
     block?: WasmBlock;            // Current block or a block that we are entering
     blockData?: BlockData;        // Current block data
     blockStack: WasmBlock[];      // Stack of parent blocks, not including entering or exiting block,
     blockDataStack: BlockData[];  // Stack of parent block's data
     instr?: WasmInstr;            // Current instruction
     instrData?: InstrData;        // Current instruction data
-    instrIndex?: number;          // Current instruction index within containing block
+    instrIndex: number;           // Current instruction index within containing block
     instrStack: WasmInstr[];      // Stack of parent block instructions (not including function body)
     instrDataStack: InstrData[];  // Stack of data associated with with elements of instrStack
     instrIndexStack: number[];    // Stack of parent block instructions indexes within theirs parent blocks
+}
 
-    enterFunction?: (ctx: this) => WalkResult | undefined | void;
-    exitFunction?: (ctx: this) => WalkResult.CONTINUE | WalkResult.SKIP_SIBLINGS | undefined | void;
-    enterBlock?: (ctx: this) => WalkResult.CONTINUE | WalkResult.SKIP_CHILDREN | undefined | void;
-    exitBlock?: (ctx: this) => void;
-    enterInstr?: (ctx: this) => WalkResult | undefined | void;
-    exitInstr?: (ctx: this) => WalkResult.CONTINUE | WalkResult.SKIP_SIBLINGS | undefined | void;
+export interface WalkFunctionListener<BlockData, InstrData,
+    T extends WalkFunctionContext<BlockData, InstrData> = WalkFunctionContext<BlockData, InstrData>>
+    extends WalkFunctionContext<BlockData, InstrData> {
+    enterFunction?: (ctx: T) => WalkResult | undefined | void;
+    exitFunction?: (ctx: T) => WalkResult.CONTINUE | WalkResult.SKIP_SIBLINGS | undefined | void;
+    enterBlock?: (ctx: T) => WalkResult.CONTINUE | WalkResult.SKIP_CHILDREN | undefined | void;
+    exitBlock?: (ctx: T) => void;
+    enterInstr?: (ctx: T) => WalkResult | undefined | void;
+    exitInstr?: (ctx: T) => WalkResult.CONTINUE | WalkResult.SKIP_SIBLINGS | undefined | void;
 }
 
 function callCallback(ctx: any, func: any): WalkResult {
     let res = func?.call?.(ctx, ctx);
-    if (typeof(res) === 'number') {
+    if (typeof (res) === 'number') {
         return res as WalkResult;
     } else {
         return WalkResult.CONTINUE;
     }
 }
 
-export function walkFunctions<FunctionData, BlockData, InstrData>(
-    ctx: WalkFunctionListener<FunctionData, BlockData, InstrData>
+export function walkFunctions<BlockData, InstrData,
+    T extends WalkFunctionContext<BlockData, InstrData> = WalkFunctionContext<BlockData, InstrData>>(
+    ctx: WalkFunctionListener<BlockData, InstrData, T>
 ) {
 
     let next: WalkResult | undefined | void;
@@ -49,7 +52,6 @@ export function walkFunctions<FunctionData, BlockData, InstrData>(
     for (let i = 0; i < ctx.module.functions.length; i++) {
         let func = ctx.module.functions[i];
         ctx.func = func;
-        ctx.funcData = undefined;
         ctx.block = undefined;
         ctx.blockData = undefined;
         ctx.blockStack = [];

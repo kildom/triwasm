@@ -1,4 +1,5 @@
 
+#define TRIVM_EXT_UNWIND 1
 
 #define TRIVM_MEM_SIZE 65536
 

@@ -36,5 +36,10 @@
       "**/node_modules/*/**",
       "**/__old*/**",
       "**/test/wasm/testsuite/repo/**"
+    ],
+    "cSpell.words": [
+        "discardable",
+        "trivm",
+        "UNWINDRET"
     ]
 }

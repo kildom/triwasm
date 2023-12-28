@@ -60,8 +60,8 @@ TRIVM_EXPORT(f64_sqrt)            u64 trivm_f64_sqrt(u64 a, u64 b) { return 0; }
 //TRIVM_EXPORT(i32_clz)             u32 trivm_i32_clz(u32 a) { return 0; }
 TRIVM_EXPORT(i32_ctz)             u32 trivm_i32_ctz(u32 a) { return 0; }
 TRIVM_EXPORT(i32_popcnt)          u32 trivm_i32_popcnt(u32 a) { return 0; }
-TRIVM_EXPORT(i32_rotl)            u32 trivm_i32_rotl(u32 a) { return 0; }
-TRIVM_EXPORT(i32_rotr)            u32 trivm_i32_rotr(u32 a) { return 0; }
+TRIVM_EXPORT(i32_rotl)            u32 trivm_i32_rotl(u32 a, u32 b) { return 0; }
+TRIVM_EXPORT(i32_rotr)            u32 trivm_i32_rotr(u32 a, u32 b) { return 0; }
 TRIVM_EXPORT(i32_trunc_f32_s)     s32 trivm_i32_trunc_f32_s(u32 a) { return 0; }
 TRIVM_EXPORT(i32_trunc_f32_u)     u32 trivm_i32_trunc_f32_u(u32 a) { return 0; }
 TRIVM_EXPORT(i32_trunc_f64_s)     s32 trivm_i32_trunc_f64_s(u64 a) { return 0; }
@@ -121,43 +121,43 @@ TRIVM_EXPORT_ASSEMBLY(
     void, unwind_shorts, (),
     ".begin\n"
     "__triwasmlib_unwind_ret16:\n"
-    "READ TMP0\n" // TODO: if (in caller) read of return address and push of unwind parameter
-    "READ TMP1\n" // are switched then caller can call __triwasmlib_unwind8 directly
-    "WRITE TMP0\n"
-    "WRITE TMP1\n"
+    "READ32 GPR0\n" // TODO: if (in caller) read of return address and push of unwind parameter
+    "READ32 GPR1\n" // are switched then caller can call __triwasmlib_unwind8 directly
+    "WRITE32 GPR0\n"
+    "WRITE32 GPR1\n"
     ".ref __triwasmlib_unwind16\n"
     ".end\n"
     ".begin\n"
     "__triwasmlib_unwind16:\n"
-    "READ [SP] + 4\n"
+    "READ32 [SP] + 4\n"
     "AND 0xFFFF\n"
-    "WRITE [SP] + 4\n"
+    "WRITE32 [SP] + 4\n"
     "BR __triwasmlib_unwind32\n"
     ".end\n"
     ".begin\n"
     "__triwasmlib_unwind_ret8:\n"
-    "READ TMP0\n" // TODO: if (in caller) read of return address and push of unwind parameter
-    "READ TMP1\n" // are switched then caller can call __triwasmlib_unwind8 directly
-    "WRITE TMP0\n"
-    "WRITE TMP1\n"
+    "READ32 GPR0\n" // TODO: if (in caller) read of return address and push of unwind parameter
+    "READ32 GPR1\n" // are switched then caller can call __triwasmlib_unwind8 directly
+    "WRITE32 GPR0\n"
+    "WRITE32 GPR1\n"
     ".ref __triwasmlib_unwind8\n"
     ".end\n"
     ".begin\n"
     "__triwasmlib_unwind8:\n"
-    "READ [SP] + 4\n"
+    "READ32 [SP] + 4\n"
     "AND 0xFF\n"
-    "WRITE [SP] + 4\n"
+    "WRITE32 [SP] + 4\n"
     ".ref __triwasmlib_unwind32\n"
     ".end\n"
     ".begin\n"
     "__triwasmlib_unwind32:\n"
-    "DUP\n"
-    "READ [SP] + 8\n"
-    "DUP\n"
+    "READ32 [SP]\n"
+    "READ32 [SP] + 8\n"
+    "READ32 [SP]\n"
     "AND 0xF\n"
-    "WRITE [SP] + 8\n"
+    "WRITE32 [SP] + 8\n"
     "USHR 4\n"
-    "WRITE [SP] + 8\n"
+    "WRITE32 [SP] + 8\n"
     ".ref __triwasmlib_unwind\n"
     ".end\n"
     ".begin\n"
@@ -167,7 +167,7 @@ TRIVM_EXPORT_ASSEMBLY(
 
 TRIVM_EXPORT_ASSEMBLY(
     void, call_indirect, (void),
-    "WRITE TMP0\n");
+    "WRITE32 GPR0\n");
 
 /*IMPORT(a, b) void func(u32 y, u32 x);
 TRIVM_EXPORT(tttttttttttttttttttttt) void tttttttttt(char *ptr, u64 val) {

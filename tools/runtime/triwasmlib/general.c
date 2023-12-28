@@ -16,49 +16,49 @@ TRIVM_EXPORT_ASSEMBLY(
 TRIVM_EXPORT_ASSEMBLY(
     u32, select32, (u32 a, u32 b, u32 cond),
     ".local is_true\n"
-    "WRITE32 TMP0\n"
+    "WRITE32 GPR0\n"
     "BRT is_true\n"
     "READ32 [SP]\n"
     "WRITE32 [SP] - 4\n"
     "is_true:\n"
-    "WRITE32 TMP1\n"
-    "READ32 TMP0\n"
+    "WRITE32 GPR1\n"
+    "READ32 GPR0\n"
     "WRITE32 PC\n");
 
 
 TRIVM_EXPORT_ASSEMBLY(
     u64, select64, (u64 a, u64 b, u32 cond),
     ".local is_true\n"
-    "WRITE32 TMP0\n"
+    "WRITE32 GPR0\n"
     "BRT is_true\n"
     "WRITE32 [SP] - 4\n"
     "WRITE32 [SP] - 4\n"
-    "READ32 TMP0\n"
+    "READ32 GPR0\n"
     "WRITE32 PC\n"
     "is_true:\n"
-    "WRITE32 TMP1\n"
-    "WRITE32 TMP1\n"
-    "READ32 TMP0\n"
+    "WRITE32 GPR1\n"
+    "WRITE32 GPR1\n"
+    "READ32 GPR0\n"
     "WRITE32 PC\n");
 
 
 TRIVM_EXPORT_ASSEMBLY(
     v128, select128, (v128 a, v128 b, u32 cond),
     ".local is_true\n"
-    "WRITE32 TMP0\n"
+    "WRITE32 GPR0\n"
     "BRT is_true\n"
     "WRITE32 [SP] - 12\n"
     "WRITE32 [SP] - 12\n"
     "WRITE32 [SP] - 12\n"
     "WRITE32 [SP] - 12\n"
-    "READ32 TMP0\n"
+    "READ32 GPR0\n"
     "WRITE32 PC\n"
     "is_true:\n"
-    "WRITE32 TMP1\n"
-    "WRITE32 TMP1\n"
-    "WRITE32 TMP1\n"
-    "WRITE32 TMP1\n"
-    "READ32 TMP0\n"
+    "WRITE32 GPR1\n"
+    "WRITE32 GPR1\n"
+    "WRITE32 GPR1\n"
+    "WRITE32 GPR1\n"
+    "READ32 GPR0\n"
     "WRITE32 PC\n");
 
 

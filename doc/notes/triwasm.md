@@ -19,7 +19,7 @@ At any point:
     * Benefits (only if memory alignment enabled):
       * No need to check SP after each `WRITE`, `WRITE64` and `REDUCE` instructions (faster execution and smaller footprint).
       * VM pointer checking done by the interface don't need to check lower boudary (before, `SP` had to be protectd from accidental host write).
-      * One more `TMP2` register that is accesible with 1-byte instructions OR `ASP`, because it is often used.
+      * One more `GPR2` register that is accesible with 1-byte instructions OR `ASP`, because it is often used.
     * Cost:
       * Two additional core instruction will increase footprint and reduce unused opcodes for the future.
   * Add option to ignore some or all unresolved imports. Calling ignored import function will cause triVM exception.
@@ -203,7 +203,7 @@ At any point:
   ```
 * Improved br_tables with bit tree:
   * The same br targets can be merged
-  * No need to use `TMP0`, last deciding tree branch can use value on stack instead of duplicating it.
+  * No need to use `GPR0`, last deciding tree branch can use value on stack instead of duplicating it.
   * Code
     ```
     READ [SP]
@@ -259,7 +259,7 @@ At any point:
             BRT target2
             ### target1
         target2_skip:
-        WRITE TMP0
+        WRITE GPR0
         target2:
         ### target2
     bits_1xx:

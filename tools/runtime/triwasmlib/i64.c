@@ -5,12 +5,12 @@
 #include <wasm_simd128.h>
 
 TRIVM_INLINE_ASSEMBLY(
-    "// empty\n"
+    "# nop\n"
     )
 uint64_t make64(uint32_t h, uint32_t l);
 
 TRIVM_INLINE_ASSEMBLY(
-    "// empty\n"
+    "# nop\n"
     )
 v128 make128(uint64_t h, uint64_t l);
 
@@ -71,72 +71,72 @@ TRIVM_ASSEMBLY(
     ".LOCAL skip_res"
     ".LOCAL add_res"
     // al, ah, bl, bh, ret, ret_latest
-    "WRITE GPR1\n"
+    "WRITE32 GPR1\n"
     // al, ah, bl, bh, ret
-    "READ [SP] - 8\n"
-    "READ [SP] - 8\n"
+    "READ32 [SP] - 8\n"
+    "READ32 [SP] - 8\n"
     "CALL __triwasmlib__clz64\n"
     // al, ah, bl, bh, ret, zeros
-    "READ [SP] - 12\n"
-    "READ [SP] - 12\n"
-    "READ [SP] - 8\n"
+    "READ32 [SP] - 12\n"
+    "READ32 [SP] - 12\n"
+    "READ32 [SP] - 8\n"
     "CALL __triwasmlib__shl64\n"
     // al, ah, bl, bh, ret, zeros, bl, bh
-    "WRITE [SP] - 12\n"
-    "WRITE [SP] - 12\n"
+    "WRITE32 [SP] - 12\n"
+    "WRITE32 [SP] - 12\n"
     // al, ah, bl, bh, ret, zeros
-    "WRITE GPR0\n"
+    "WRITE32 GPR0\n"
     "NEG -1\n"
     "NEG 0\n"
-    "READ [SP]\n"
-    "READ [SP]\n"
-    "READ GPR0\n"
+    "READ32 [SP]\n"
+    "READ32 [SP]\n"
+    "READ32 GPR0\n"
     "CALL __triwasmlib__shl64\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi
     "loop_start:\n"
-    "READ [SP] - 32\n"
-    "READ [SP] - 32\n"
-    "READ [SP] - 32\n"
-    "READ [SP] - 32\n"
+    "READ32 [SP] - 32\n"
+    "READ32 [SP] - 32\n"
+    "READ32 [SP] - 32\n"
+    "READ32 [SP] - 32\n"
     ".REF __triwasmlib__sub64_save_carry"  //TODO: Referencing this label will enable discardable block in sub64 that saves carry to GPR0
     "CALL __triwasmlib__sub64\n"
-    "READ GRP0\n"
+    "READ32 GRP0\n"
     "BRF add_res\n"
-    "WRITE GRP0\n"
-    "WRITE GRP0\n"
+    "WRITE32 GRP0\n"
+    "WRITE32 GRP0\n"
     "BR skip_res\n"
     "add_res:"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, al, ah
-    "WRITE [SP] - 32\n"
-    "WRITE [SP] - 32\n"
+    "WRITE32 [SP] - 32\n"
+    "WRITE32 [SP] - 32\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi
-    "READ [SP] - 12\n"
-    "READ [SP] - 12\n"
+    "READ32 [SP] - 12\n"
+    "READ32 [SP] - 12\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, shift:lo, shift:hi
     "CALL __triwasmlib__or64\n"
     "skip_res:\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi
-    "READ [SP] - 24\n"
-    "READ [SP] - 24\n"
+    "READ32 [SP] - 24\n"
+    "READ32 [SP] - 24\n"
     "CALL __triwasmlib__ushr64_1\n"
-    "WRITE [SP] - 24\n"
-    "WRITE [SP] - 24\n"
-    "READ [SP] - 12\n"
-    "READ [SP] - 12\n"
+    "WRITE32 [SP] - 24\n"
+    "WRITE32 [SP] - 24\n"
+    "READ32 [SP] - 12\n"
+    "READ32 [SP] - 12\n"
     "CALL __triwasmlib__ushr64_1\n"
-    "READ [SP] - 4\n"
-    "READ [SP] - 4\n"
+    "READ32 [SP] - 4\n"
+    "READ32 [SP] - 4\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, shift:lo, shift:hi, shift:lo, shift:hi
-    "WRITE [SP] - 20\n"
-    "WRITE [SP] - 20\n"
+    "WRITE32 [SP] - 20\n"
+    "WRITE32 [SP] - 20\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, shift:lo, shift:hi
     "OR\n"
     "BRT loop_start\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi
-    "READ [SP] - 16\n"
+    "READ32 [SP] - 16\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, ret
-    "READ GPR1\n"
-    "WRITE PC\n"
+    "READ32 GPR1\n"
+    "WRITE32 PC\n"
     )
 uint64_t udivmod64_asm(uint64_t a, uint64_t b);
 /*
@@ -237,23 +237,23 @@ uint32_t i64_le_s(uint32_t ah, uint32_t al, uint32_t bh, uint32_t bl)
 }
 
 TRIVM_ASSEMBLY(
-    "READ [SP]\n"
-    "PUSH 0\n"
-    "WRITE [SP] + 1\n"
+    "READ32 [SP]\n"
+    "NEG 0\n"
+    "WRITE32 [SP] + 1\n"
     "JUMP udivmod64"
     )
 uint64_t udiv64(uint64_t b, uint64_t a);
 
 TRIVM_ASSEMBLY(
-    "READ [SP]\n"
-    "PUSH 1\n"
-    "WRITE [SP] + 1\n"
+    "READ32 [SP]\n"
+    "NEG -1\n"
+    "WRITE32 [SP] + 1\n"
     "JUMP udivmod64"
     )
 uint64_t umod64(uint64_t b, uint64_t a);
 
 TRIVM_EXPORT_INLINE_ASSEMBLY(
     uint64_t, i64_extend_i32_s, (uint32_t a),
-    "READ [SP]\n"
+    "READ32 [SP]\n"
     "SSHR 31\n"
 );

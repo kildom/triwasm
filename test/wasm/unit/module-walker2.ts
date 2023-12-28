@@ -8,7 +8,6 @@ import { WasmParser } from '../../../tools/wasm/wasmParser';
 
 const CTX_KEYS: string[] = [
     'func',
-    'funcData',
     'block',
     'blockData',
     'blockStack',
@@ -264,7 +263,6 @@ function walkRecursive(out: string[], options: Options, module: WasmModule) {
     }
 }
 
-type FunctionData = string;
 type BlockData = string;
 type InstrData = string;
 
@@ -272,19 +270,18 @@ function assert(cond: any) {
     if (!cond) throw new Error('assert');
 }
 
-class TestWalker implements WalkFunctionListener<FunctionData, BlockData, InstrData> {
+class TestWalker implements WalkFunctionListener<BlockData, InstrData> {
 
     out: string[] = [];
 
     func!: WasmFunction;           // Current function
-    funcData?: FunctionData;      // Current function data
     block?: WasmBlock;            // Current block or a block that we are entering
     blockData?: BlockData;        // Current block data
     blockStack!: WasmBlock[];      // Stack of parent blocks, not including entering or exiting block,
     blockDataStack!: BlockData[];  // Stack of parent block's data
     instr?: WasmInstr;            // Current instruction
     instrData?: InstrData;        // Current instruction data
-    instrIndex?: number;          // Current instruction index within containing block
+    instrIndex!: number;          // Current instruction index within containing block
     instrStack!: WasmInstr[];      // Stack of parent block instructions (not including function body)
     instrDataStack!: InstrData[];  // Stack of data associated with with elements of instrStack
     instrIndexStack!: number[];    // Stack of parent block instructions indexes within theirs parent blocks
@@ -298,7 +295,6 @@ class TestWalker implements WalkFunctionListener<FunctionData, BlockData, InstrD
     enterFunction(ctx: any) {
         assert(this === ctx);
         this.out.push('enterFunction ' + dumpObject(ctx));
-        this.funcData = id(this.func);
         this.instrData = id(this.func.block?.parentInstruction);
         return this.options.enterFunction();
     }

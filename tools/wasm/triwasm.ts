@@ -15,8 +15,7 @@
 import { Path } from '../common/path';
 import { getWasmConf, WasmArgsMerge } from './args';
 import { evaluateConstExpressions } from './constEvaluator';
-import { generate } from './generator';
-//import { generate } from './generator';
+import { Generator } from './generator';
 import { LinkResolver } from './linkResolver';
 import { moduleDebug, ModuleStage } from './moduleDebug';
 import { ModuleMerger } from './moduleMerger';
@@ -77,4 +76,9 @@ reduce(main, conf);
 
 moduleDebug(main, ModuleStage.AfterReducer, conf.args.output.withExtension('reduced.html'));
 
-generate(main, conf);
+let generator = new Generator(conf);
+try {
+    generator.generate(main);
+} finally {
+    console.log(generator.getOutput());
+}

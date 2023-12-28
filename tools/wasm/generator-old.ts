@@ -369,18 +369,18 @@ function enterInstr(ctx: Ctx): InstrData {
             generateBranch(ctx, instr.targets[1], undefined, BranchCondition.NONE, true);
             break;
         }
-        output(ctx, 'WRITE TMP0');
+        output(ctx, 'WRITE32 GPR0');
         pop(ctx, 1);
         let valueOffset = 0;
         for (let i = 0; i < instr.targets.length - 1; i++) {
             let target = instr.targets[i];
             if (i - valueOffset == 128 && instr.targets.length - i > 4) {
                 valueOffset += 128;
-                output(ctx, 'READ TMP0');
+                output(ctx, 'READ32 GPR0');
                 output(ctx, 'ADD -128');
-                output(ctx, 'WRITE TMP0');
+                output(ctx, 'WRITE32 GPR0');
             }
-            output(ctx, 'READ TMP0');
+            output(ctx, 'READ32 GPR0');
             push(ctx, 1);
             if (i - valueOffset == 0) {
                 generateIf(ctx, instr, target, undefined, BranchCondition.NEGATIVE, false);
@@ -676,7 +676,7 @@ let simpleGenerators: { [key: number]: [((ctx: any) => string), number, number];
     [OP.F64_SUB]: [(ctx: any) => 'SUBF64', 4, 2],
     [OP.F64_MUL]: [(ctx: any) => 'MULF64', 4, 2],
     [OP.F64_DIV]: [(ctx: any) => 'DIVF64', 4, 2],
-    [OP.TRIVM_POP]: [(ctx: any) => 'READ32 TMP0', 1, 0],
+    [OP.TRIVM_POP]: [(ctx: any) => 'READ32 GPR0', 1, 0],
     [OP.TRIVM_DUP32]: [(ctx: any) => 'READ32 [SP]', 1, 2],
     [OP.TRIVM_DUP64]: [(ctx: any) => 'READ64 [SP] - 4', 2, 4],
 

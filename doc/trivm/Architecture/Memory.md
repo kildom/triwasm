@@ -109,12 +109,12 @@ It contains 32-bit registers that controls triVM.
 
 Address | Name | Description
 --------|------|------------
-0x00 | TMP0 | Temporary register 0
-0x04 | TMP1 | Temporary register 1
+0x00 | GPR0 | General propose register 0
+0x04 | GPR1 | General propose register 1
 0x08 | SP   | Stack Pointer
 0x0C | PC   | Program Counter
-0x10 | TMP2 | Temporary register 2
-0x14 | TMP3 | Temporary register 3
+0x10 | GPR2 | General propose register 2
+0x14 | GPR3 | General propose register 3
 0x18 | PMB  | Program Memory Base
 0x1C | MAB  | Memory Access Base
 0x20 | SBL  | Stack Boundary Low
@@ -133,7 +133,7 @@ it can use them as general purpose registers (like `TMPn` registers).
 They are general purpose registers.
 They are intended to store some short-term immidiate values.
 
-`TMP0` and `TMP1` can be accessed with one-byte instructions,
+`GPR0` and `GPR1` can be accessed with one-byte instructions,
 so using them to store data can reduce bytecode size.
 
 If VM Faults are enabled, triVM stores VM Fault information in them just before entering VM Fault handler.

@@ -483,22 +483,22 @@ invalid_instruction:
 static void trivm_instr_unwind(struct trivm_instance *vm, uint32_t arg1, uint32_t arg1_shift)
 {
 	uint32_t keep;
-	uint32_t reduce;
+	uint32_t skip;
 	uint32_t total;
 	uint32_t mask;
 	uint32_t return_address = vm->pc;
-	uint8_t middle = (32 - arg1_shift) / 2;
+	uint8_t middle = (32 - arg1_shift) / 2 + 1;
 
 	mask = (1 << middle) - 1;
-	reduce = (arg1 & mask) + 1;
-	keep = (arg1 >> middle) & mask;
+	skip = (arg1 & mask) + 1;
+	keep = (arg1 >> middle) & (mask >> 2);
 	if (keep & 1) {
 		keep -= 1;
 		return_address = mem_pop(vm);
 	}
-	reduce *= 4;
+	skip *= 4;
 	keep *= 2;
-	total = reduce + keep;
+	total = skip + keep;
 
 	if (vm->sp < total || vm->sp - total < vm->spl)
 	{

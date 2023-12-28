@@ -52,9 +52,9 @@
                       JUMP __triwasmlib__unwind
     
     optimized_common_part:
-    WRITE TMP0
+    WRITE GPR0
     ... using tmp0 is forbidden here
-    READ TMP0
+    READ GPR0
     WRITE PC
     ```
   * For LR return address:
@@ -126,7 +126,7 @@
   * Example
     ```c
     struct my_globals {
-      uint32_t TMP0_reg;
+      uint32_t GPR0_reg;
       uint32_t PC_reg;
       //...
       uint32_t ASPH_reg;
