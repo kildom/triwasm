@@ -31,7 +31,7 @@ export class Path {
         for (let part of this.parts) {
             if (part == '.') {
                 // skip current dir
-            } else if (part == '..' && result.length) {
+            } else if (part == '..' && result.length && result.at(-1) != '..') {
                 result.splice(result.length - 1);
             } else {
                 result.push(part);
