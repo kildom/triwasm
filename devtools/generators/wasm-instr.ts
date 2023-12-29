@@ -81,11 +81,11 @@ function generateManualGenerators(instrInfo: InstrInfo[]) {
         if (!info.generate || info.generate !== '!') {
             continue;
         }
-        text += `    case OP.${info.enumValue}: {\n`;
-        text += '        break;\n';
-        text += '    }\n';
+        text += `        case OP.${info.enumValue}: {\n`;
+        text += '            break;\n';
+        text += '        }\n';
     }
-    writeOutput('tools/wasm/generator.ts', true, text, '    ', 'Generators');
+    writeOutput('tools/wasm/generator.ts', true, text, '        ', 'Generators');
 }
 
 function generateSimpleGenerators(instrInfo: InstrInfo[]) {

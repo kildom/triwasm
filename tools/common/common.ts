@@ -51,11 +51,11 @@ export function enumize<E>(x: number, enumObject?: any): E {
 
 let stackSizeLimit = 100000;
 
-export function extendArray(base: unknown[], add: unknown[]) {
+export function extendArray<T = unknown>(base: unknown[], add: unknown[]): T[] {
     if (add.length <= stackSizeLimit) {
         try {
             base.push(...add);
-            return;
+            return base as T[];
         } catch (ex) {
             stackSizeLimit = Math.ceil(stackSizeLimit / 2);
         }
@@ -76,6 +76,8 @@ export function extendArray(base: unknown[], add: unknown[]) {
             }
         }
     }
+
+    return base as T[];
 }
 
 export function dedent(text: string | string[] | undefined, split: true, format?: boolean): string[];

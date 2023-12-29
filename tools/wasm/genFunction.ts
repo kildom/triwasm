@@ -14,19 +14,19 @@
 
 import { OP, OP_NAMES } from './opcodes';
 import * as OpType from './opcodeTypes';
-import { WalkFunctionContext, WalkFunctionListener, WalkResult, walkFunctions } from './moduleWalker2';
+import { WalkFunctionListener, WalkResult, walkFunctions } from './moduleWalker2';
 import {
     FunctionType,
-    GlobalKind,
     NumberType,
     RefType,
     ValueType,
-    valueTypeWords, VectorType, WasmBlock, WasmBranchDir, WasmFunction, WasmFunctionKind, WasmInstr, WasmInstrBr, WasmInstrBrTable, WasmModule
+    valueTypeWords, VectorType, WasmBlock, WasmBranchDir, WasmFunction, WasmFunctionKind, WasmInstr, WasmModule
 } from './wasmModule';
-import { WasmArgs, WasmConf, WasmFaults, getWasmConf } from './args';
+import { WasmArgs, WasmConf, WasmFaults } from './args';
 import { PopPushResult, getInstrPopPush } from './instrStack';
 import { dedent, exhaustiveCheck, extendArray } from '../common/common';
 import { Conf, ConfExtensions } from '../conf/conf';
+import { CodeOutput, dumpType, dumpWords, toIntLiteral } from './codeOutput';
 
 interface BlockData {
     stackBase: number;
@@ -43,45 +43,8 @@ enum BranchCondition {
     NEGATIVE = 'BRF',
 }
 
-function dumpType(value: ValueType[] | ValueType | FunctionType): string {
-    if (typeof value === 'number') {
-        switch (value) {
-        case NumberType.I32: return 'i32';
-        case NumberType.I64: return 'i64';
-        case NumberType.F32: return 'f32';
-        case NumberType.F64: return 'f64';
-        case RefType.FUNCREF: return 'funcref';
-        case RefType.EXTERNREF: return 'externref';
-        case VectorType.V128: return 'v128';
-        default: exhaustiveCheck(value); return '';
-        }
-    } else if (value instanceof Array) {
-        return value.map(x => dumpType(x)).join(', ');
-    } else if (value.results.length == 0) {
-        return `(${dumpType(value.params)}) => void`;
-    } else if (value.results.length == 1) {
-        return `(${dumpType(value.params)}) => ${dumpType(value.results)}`;
-    } else {
-        return `(${dumpType(value.params)}) => (${dumpType(value.results)})`;
-    }
-}
+export class FuncGenerator extends CodeOutput implements WalkFunctionListener<BlockData, InstrData> {
 
-function dumpWords(words: number): string {
-    if (words > 0) {
-        return `${words} (${4 * words})`;
-    } else {
-        return words.toString();
-    }
-}
-
-function toIntLiteral(value: number, bits: number): number {
-    let shift = 32 - bits;
-    return ((value << shift) & 0xFFFFFFFF) >> shift;
-}
-
-export class Generator implements WalkFunctionListener<BlockData, InstrData> {
-
-    module!: WasmModule;
     func!: WasmFunction;
     block?: WasmBlock;
     blockData?: BlockData;
@@ -96,16 +59,15 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
 
     // Current function information
     stackSize: number = 0;
-    stackAdjust: number = 0;
     localsOffsets: number[] = [];
     localsStartOffset: number = 0;
     frameSize: number = 0;
     returnAddressOffset: number = 0;
+    localLabels: string[] = [];
 
     popPush?: PopPushResult;
 
     // Output
-    out: string[][] = [[]];
     outLastInstr?: WasmInstr;
     outLastPopPush?: PopPushResult;
     uniqueCounter: number = 0;
@@ -116,27 +78,34 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
     vmConf: Conf;
     extensions: ConfExtensions;
 
+    // Generating specific function
+    requireFunc?: WasmFunction;
+    inline?: boolean;
+
     constructor(
-        public conf: WasmConf
+        public module: WasmModule,
+        public conf: WasmConf,
     ) {
+        super();
         this.args = conf.args;
         this.faults = conf.faults;
         this.vmConf = conf.vmConf;
         this.extensions = conf.vmConf.extensions;
     }
 
-    public generate(module: WasmModule) {
-        this.module = module;
-        this.out = [[]];
+    public generate(asArray: false, func?: WasmFunction, inline?: boolean): string;
+    public generate(asArray: true, func?: WasmFunction, inline?: boolean): string[];
+    public generate(asArray: boolean, func?: WasmFunction, inline?: boolean): string | string[] {
+        this.requireFunc = func;
+        this.inline = inline;
+        this.initOutput();
         walkFunctions(this);
+        let res = this.getOutput(asArray);
+        this.initOutput();
+        return res;
     }
 
-    public getOutput(): string {
-        return this.out.map(x => x.join('\n')).join('\n');
-    }
-
-    private output(code: string | string[], comment?: string) {
-        let stackSize = this.stackSize - this.stackAdjust;
+    public output(code: string | string[], comment?: string) {
         let out = this.out.at(-1) as string[];
         let ind = '  '.repeat(this.blockStack.length);
         if (typeof (code) === 'string') {
@@ -148,7 +117,7 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
             this.outLastInstr = this.instr;
         }
         if (this.instr && this.popPush && this.popPush !== this.outLastPopPush) {
-            allComments += ` # stack: ${dumpWords(stackSize)}`;
+            allComments += ` # stack: ${dumpWords(this.stackSize)}`;
             if (this.popPush.poppedWords > 0) {
                 allComments += ` - ${dumpWords(this.popPush.poppedWords)}`;
             }
@@ -156,7 +125,7 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
                 allComments += ` + ${dumpWords(this.popPush.pushedWords)}`;
             }
             if (this.popPush.poppedWords > 0 || this.popPush.pushedWords > 0) {
-                let newStackSize = stackSize - this.popPush.poppedWords + this.popPush.pushedWords;
+                let newStackSize = this.stackSize - this.popPush.poppedWords + this.popPush.pushedWords;
                 allComments += ` => ${dumpWords(newStackSize)}`;
             }
             this.outLastPopPush = this.popPush;
@@ -170,24 +139,10 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
         }
     }
 
-    private outputRaw(code: string[]) {
-        extendArray(this.out.at(-1) as string[], code);
-    }
-
-    private captureBegin() {
-        this.out.push([]);
-    }
-
-    private captureEndGet(): string[] {
-        let res = this.out.pop();
-        if (res === undefined || this.out.length === 0) {
-            throw new Error('Internal error: output stack underflow');
-        }
-        return res;
-    }
-
-    private captureEndCommit() {
-        this.outputRaw(this.captureEndGet());
+    private outputLocalLabel(label: string, comment?: string) {
+        label = label.trim().replace(/:$/, '');
+        this.localLabels.push(label);
+        this.output(label + ':', comment);
     }
 
     private generateWasmFunc() {
@@ -201,8 +156,10 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
         }
 
         // Return address
-        this.returnAddressOffset = this.frameSize;
-        this.frameSize += 4;
+        if (!this.inline) {
+            this.returnAddressOffset = this.frameSize;
+            this.frameSize += 4;
+        }
 
         // Function locals
         this.localsStartOffset = this.frameSize;
@@ -213,12 +170,19 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
 
         // Initial stack
         this.stackSize = 0;
-        this.stackAdjust = 0;
 
-        this.output([
-            '.begin discardable',
-            `${this.func.name}:`,
-        ], `WASM function ${dumpType(this.func.type)}`);
+        if (!this.inline) {
+            this.output('.begin discardable');
+        } else {
+            this.output('.begin');
+        }
+        this.captureBegin();
+        this.localLabels = [];
+        if (!this.inline) {
+            this.output(`${this.func.name}:`, `WASM function ${dumpType(this.func.type)}`);
+        } else {
+            this.output(`# inlined ${this.func.name}:`, `WASM function ${dumpType(this.func.type)}`);
+        }
         if (this.frameSize > this.localsStartOffset) {
             let localsSize = this.frameSize - this.localsStartOffset;
             let code: string[];
@@ -267,7 +231,11 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
             }
         }
 
-        if (this.extensions.unwind && skipWords <= 0x20000 && keepWords < 0x4000) {
+        let optKey = `${keepWords},${skipWords}`;
+
+        if (!ret && UNWIND_OPTIMIZED_CASES[optKey]) {
+            this.output(UNWIND_OPTIMIZED_CASES[optKey]);
+        } else if (this.extensions.unwind && skipWords <= 0x20000 && keepWords < 0x4000) {
             if (ret) {
                 this.output(`UNWINDRET ${keepWords}, ${skipWords}`);
             } else {
@@ -319,7 +287,7 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
         let keepWords: number;
         let skipWords: number;
 
-        if (isReturn) {
+        if (isReturn && !this.inline) {
             keepWords = valueTypeWords(this.func.type.results);
             // TODO: Add bytes/words to identifiers (this.stackSize, e.t.c.) to avoid confusion.
             skipWords = (this.frameSize / 4) + this.stackSize - keepWords;
@@ -337,8 +305,13 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
                 this.generateUnwind(keepWords, skipWords, true);
             }
         } else {
-            keepWords = valueTypeWords((direction == WasmBranchDir.Forward) ? target.type.results : target.type.params);
-            skipWords = this.stackSize - targetData.stackBase - keepWords;
+            if (isReturn) {
+                keepWords = valueTypeWords(this.func.type.results);
+                skipWords = (this.frameSize / 4) + this.stackSize - keepWords;
+            } else {
+                keepWords = valueTypeWords((direction == WasmBranchDir.Forward) ? target.type.results : target.type.params);
+                skipWords = this.stackSize - targetData.stackBase - keepWords;
+            }
             let unwindGenerated = this.generateUnwind(keepWords, skipWords, false);
             if (direction === WasmBranchDir.Backward) {
                 if (condition !== BranchCondition.NONE && !unwindGenerated) {
@@ -377,9 +350,7 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
 
         this.captureBegin();
         this.stackSize--;
-        this.stackAdjust--;
         let conditionDone = this.generateBranch(target, direction, condition, allowFallback);
-        this.stackAdjust++;
         this.stackSize++;
         if (!conditionDone && condition !== BranchCondition.NONE) {
             let branchCode = this.captureEndGet();
@@ -387,13 +358,16 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
             let uid = this.uniqueCounter++;
             this.output(`${instrName} $_br_skip_${this.instr!.id}_${uid}`);
             this.outputRaw(branchCode);
-            this.output(`$_br_skip_${this.instr!.id}_${uid}:`); // TODO: Does br_if skips block parameters if false?
+            this.outputLocalLabel(`$_br_skip_${this.instr!.id}_${uid}:`);
         } else {
             this.captureEndCommit();
         }
     }
 
     enterFunction() {
+        if (this.requireFunc && this.requireFunc !== this.func) {
+            return WalkResult.SKIP_CHILDREN;
+        }
         switch (this.func.kind) {
         case WasmFunctionKind.ANNOTATION:
         case WasmFunctionKind.INLINE_ASSEMBLY:
@@ -418,6 +392,9 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
     }
 
     exitFunction() {
+        if (this.requireFunc === this.func) {
+            return WalkResult.SKIP_SIBLINGS;
+        }
         switch (this.func.kind) {
         case WasmFunctionKind.ANNOTATION:
         case WasmFunctionKind.INLINE_ASSEMBLY:
@@ -427,9 +404,13 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
         case WasmFunctionKind.IMPORT:
         case WasmFunctionKind.ASSEMBLY:
             return;
-        case WasmFunctionKind.WASM:
+        case WasmFunctionKind.WASM: {
+            let bodyCode = this.captureEndGet();
+            this.output('.local ' + this.localLabels.join(', '));
+            this.outputRaw(bodyCode);
             this.output(['.end', ''], this.func.name);
             return;
+        }
         default:
             exhaustiveCheck(this.func.kind);
             return;
@@ -445,7 +426,7 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
             paramsWords,
             resultsWords,
         };
-        this.output(`$_block_${this.block!.parentInstruction.id}:`,
+        this.outputLocalLabel(`$_block_${this.block!.parentInstruction.id}:`,
             this.block!.parentInstruction.opcode === OP.TRIVM_FUNCTION ? 'function block' :
                 (paramsWords + resultsWords > 0) ? `base: ${dumpWords(stackBase)}, ${dumpWords(paramsWords)} ` +
                     `=> ${dumpWords(resultsWords)}` :
@@ -455,9 +436,9 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
     exitBlock() {
         this.stackSize = this.blockData!.stackBase + this.blockData!.resultsWords;
         if (this.block!.parentInstruction.opcode === OP.IF && !this.block!.parentInstruction.withElse) {
-            this.output(`$_block_${this.block!.parentInstruction.id}_else:`);
+            this.outputLocalLabel(`$_block_${this.block!.parentInstruction.id}_else:`);
         }
-        this.output(`$_block_${this.block!.parentInstruction.id}_end:`);
+        this.outputLocalLabel(`$_block_${this.block!.parentInstruction.id}_end:`);
     }
 
     enterInstr() {
@@ -500,10 +481,12 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
             break;
         }
         case OP.BR_IF: {
+            this.output('# br_if');
             this.generateIf(this.instr.target, this.instr.direction, BranchCondition.POSITIVE, true);
             break;
         }
         case OP.BR_TABLE: {
+            this.output('# br_table');
             if (this.instr.targets.length == 2) {
                 this.generateIf(this.instr.targets[0], undefined, BranchCondition.NEGATIVE, false);
             } else {
@@ -559,11 +542,11 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
             break;
         }
         case OP.TABLE_GET: {
-            throw new Error(`Unimplemented ${this.instr.id}`);
+            throw new Error(`Unimplemented ${this.instr.id}`); // TODO: Implement tables
             break;
         }
         case OP.TABLE_SET: {
-            throw new Error(`Unimplemented ${this.instr.id}`);
+            throw new Error(`Unimplemented ${this.instr.id}`); // TODO: Implement tables
             break;
         }
         case OP.REF_FUNC: {
@@ -577,7 +560,8 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
             break;
         }
         case OP.TRIVM_LOCAL_GET64: {
-            throw new Error(`Unimplemented ${this.instr.id}`);
+            this.output(`READ64 [SP] - ${4 * this.stackSize
+                + this.frameSize - this.localsOffsets[this.instr.index] - this.instr.offset - 4}`);
             break;
         }
         case OP.TRIVM_LOCAL_SET32: {
@@ -586,7 +570,8 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
             break;
         }
         case OP.TRIVM_LOCAL_SET64: {
-            throw new Error(`Unimplemented ${this.instr.id}`);
+            this.output(`WRITE64 [SP] - ${4 * (this.stackSize - this.popPush.poppedWords)
+                + this.frameSize - this.localsOffsets[this.instr.index] - this.instr.offset - 4}`);
             break;
         }
         case OP.TRIVM_RAW: {
@@ -614,264 +599,7 @@ export class Generator implements WalkFunctionListener<BlockData, InstrData> {
         this.stackSize += this.popPush.pushedWords;
         this.popPush = undefined;
     }
-
-    exitInstr() {
-
-    }
 }
-
-/*
-function enterFunction(ctx: EnterFunctionCtx<ModuleData>): FunctionData {
-    let localsOffsets: number[] = [];
-    let frameSize = 0;
-
-    console.log(ctx.func.name);
-
-    // Function parameters
-    for (let p of ctx.func.type.params) {
-        localsOffsets.push(frameSize);
-        frameSize += 4 * valueTypeWords(p);
-    }
-
-    let returnAddressOffset = frameSize;
-
-    // Return address
-    frameSize += 4;
-
-    let localsOffset = frameSize;
-
-    // Function locals
-    for (let p of ctx.func.locals) {
-        localsOffsets.push(frameSize);
-        frameSize += 4 * valueTypeWords(p);
-    }
-
-    switch (ctx.func.kind) {
-    case WasmFunctionKind.ANNOTATION:
-    case WasmFunctionKind.LINK:
-    case WasmFunctionKind.INLINE_ASSEMBLY:
-    case WasmFunctionKind.UNUSED:
-    case WasmFunctionKind.IMPORT:
-        ctx.walkFunction = false;
-        break;
-    case WasmFunctionKind.WASM:
-        if (ctx.func.locals.length > 0) {
-            let localsSize = frameSize - localsOffset;
-            if (localsSize >= 16) {
-                output(ctx, [
-                    'READSP',
-                    `SUB -${localsSize}`,
-                    'WRITESP',
-                ]);
-            } else {
-                for (let i = 0; i < localsSize; i += 4) {
-                    ctx.moduleData.output.push('READSP');
-                }
-            }
-        }
-        ctx.walkFunction = true;
-        break;
-    case WasmFunctionKind.ASSEMBLY:
-        ctx.walkFunction = false;
-        break;
-    default:
-        break;
-    }
-
-    return {
-        stackSize: 0,
-        localsOffsets,
-        returnAddressOffset,
-        frameSize,
-    };
-}
-
-function exitFunction(ctx: ExitFunctionCtx<ModuleData, FunctionData>) {
-    return ctx.func.kind !== WasmFunctionKind.WASM;
-}
-
-function enterBlock(ctx: EnterBlockCtx<ModuleData, FunctionData, BlockData, InstrData>): BlockData {
-    let paramsWords = valueTypeWords(ctx.block.type.params);
-
-    let res: BlockData = {
-        stackBase: ctx.funcData.stackSize - paramsWords,
-        paramsWords,
-        resultsWords: valueTypeWords(ctx.block.type.results),
-    };
-
-    output(ctx, `block_${ctx.block.parentInstruction.id}_begin:`, undefined,
-        ctx.block.parentInstruction.opcode !== OP.TRIVM_FUNCTION ?
-            `base: ${res.stackBase}, ${res.paramsWords} => ${res.resultsWords}` :
-            'function block');
-
-    return res;
-}
-
-function exitBlock(ctx: ExitBlockCtx<ModuleData, FunctionData, BlockData, InstrData>): void {
-    output(ctx, `block_${ctx.block.parentInstruction.id}_end:`);
-
-}
-
-function output(ctx: AnyCtx, code: string[] | string, popPush?: PopPushResult, comment?: string): void {
-    let output = ctx.moduleData.output;
-    let indent = '  '.repeat('blockStack' in ctx ? ctx.blockStack.length : 0);
-    if (typeof (code) === 'object') {
-        for (let i = 0; i < code.length - 1; i++) {
-            output.push(indent + code[i] + ' # ...');
-        }
-        code = code[code.length - 1];
-    }
-    code = indent + code + '       ';
-    if (popPush && 'funcData' in ctx && (popPush.poppedWords > 0 || popPush.pushedWords > 0)) {
-        let stackSize = ctx.funcData.stackSize;
-        let newStackSize = stackSize - (popPush?.poppedWords || 0) + (popPush?.pushedWords || 0);
-        code += ` # ${stackSize}`;
-        if (popPush.poppedWords > 0) {
-            code += ` - ${popPush.poppedWords}`;
-        }
-        if (popPush.pushedWords > 0) {
-            code += ` + ${popPush.pushedWords}`;
-        }
-        code += ` = ${newStackSize}`;
-    }
-    if ('instr' in ctx) {
-        code += ` # ${ctx.instr.id} # ${OP_NAMES[ctx.instr.opcode]}`;
-    }
-    if (comment) {
-        code += ' # ' + comment;
-    }
-    output.push(code);
-}
-
-function enterInstr(ctx: Ctx): InstrData {
-    let instrData: InstrData = {
-    };
-    let instr = ctx.instr;
-
-    let popPush = getInstrPopPush(ctx.func, ctx.block, instr, undefined, true);
-
-
-    switch (instr.opcode) {
-    // ---- Generators - begin - generated with help of "wasm-instr.ts" script ----
-
-    case OP.BLOCK: {
-        // Handled by enterBlock
-        break;
-    }
-    case OP.LOOP: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.IF: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.ELSE: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.END: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.BR: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.BR_IF: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.BR_TABLE: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.CALL: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.TABLE_GET: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.TABLE_SET: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.REF_FUNC: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.TRIVM_LOCAL_GET32: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.TRIVM_LOCAL_GET64: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.TRIVM_LOCAL_SET32: {
-        output(ctx, `WRITE32 [SP] - ${4 * (ctx.funcData.stackSize - popPush.poppedWords)
-            + ctx.funcData.frameSize - ctx.funcData.localsOffsets[instr.index] - instr.offset}`, popPush);
-        break;
-    }
-    case OP.TRIVM_LOCAL_SET64: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-    case OP.TRIVM_RAW: {
-        throw new Error(`Unimplemented ${instr.id}`);
-        break;
-    }
-
-    // ---- Generators - end - generated with help of "wasm-instr.ts" script ----
-
-    default: {
-        let simpleGen = simpleGenerators[instr.opcode];
-        if (simpleGen) {
-            if (typeof (simpleGen) !== 'string') {
-                simpleGen = simpleGen(instr);
-            }
-            output(ctx, simpleGen, popPush);
-        } else {
-            throw new Error(`Unimplemented ${instr.id}`);
-        }
-        break;
-    }
-    }
-
-    ctx.funcData.stackSize -= popPush.poppedWords;
-    ctx.funcData.stackSize += popPush.pushedWords;
-
-    return instrData;
-}
-
-function exitInstr(/*ctx: ExitInstrCtx<ModuleData, FunctionData, BlockData, InstrData>* /): void {
-}
-
-export function generate(module: WasmModule, conf: WasmConf) {
-    let output: string[] = [];
-    try {
-        walkFunctions(module,
-            {
-                conf,
-                output,
-                uniqueCounter: 0,
-            },
-            {
-                enterFunction,
-                exitFunction,
-                enterBlock,
-                exitBlock,
-                enterInstr,
-                exitInstr,
-            });
-    } finally {
-        console.log(output.join('\n'));
-    }
-}
-
-*/
 
 const simpleGenerators: { [key: number]: string | ((instr: any) => string); } = {
     // ---- Simple generators - begin - generated with help of "wasm-instr.ts" script ----
@@ -989,4 +717,13 @@ const simpleGenerators: { [key: number]: string | ((instr: any) => string); } = 
     /* eslint-enable max-len */
 
     // ---- Simple generators - end - generated with help of "wasm-instr.ts" script ----
+};
+
+const UNWIND_OPTIMIZED_CASES: {[key:string]: string[]} = {
+    // 'keep,skip': [ instructions ]
+    '0,1': [ 'WRITE32 GPR0' ],
+    '1,1': [ 'WRITE32 [SP]' ],
+    '0,2': [ 'WRITE32 GPR0', 'WRITE32 GPR0' ],
+    '1,2': [ 'WRITE32 [SP] - 4', 'WRITE32 GPR0' ],
+    '2,2': [ 'WRITE32 [SP] - 4', 'WRITE32 [SP] - 4' ],
 };

@@ -15,7 +15,8 @@
 import { Path } from '../common/path';
 import { getWasmConf, WasmArgsMerge } from './args';
 import { evaluateConstExpressions } from './constEvaluator';
-import { Generator } from './generator';
+import { FuncGenerator } from './genFunction';
+import { GlobalsGenerator } from './genGlobal';
 import { LinkResolver } from './linkResolver';
 import { moduleDebug, ModuleStage } from './moduleDebug';
 import { ModuleMerger } from './moduleMerger';
@@ -76,9 +77,26 @@ reduce(main, conf);
 
 moduleDebug(main, ModuleStage.AfterReducer, conf.args.output.withExtension('reduced.html'));
 
-let generator = new Generator(conf);
+/*
+let generator = new FuncGenerator(main, conf);
 try {
-    generator.generate(main);
-} finally {
-    console.log(generator.getOutput());
+    console.log(generator.generate(false));
+} catch (err) {
+    console.log(generator.getOutput(false));
+    throw err;
 }
+*/
+
+let globalsGenerator = new GlobalsGenerator(main, conf);
+globalsGenerator.generate();
+
+console.log('\n\n# ----------------------- placementConstInit ------------------------');
+console.log(globalsGenerator.placementConstInit.getOutput(false));
+console.log('\n\n# ----------------------- placementDynamicInit ------------------------');
+console.log(globalsGenerator.placementDynamicInit.getOutput(false));
+console.log('\n\n# ----------------------- placementProgram ------------------------');
+console.log(globalsGenerator.placementProgram.getOutput(false));
+console.log('\n\n# ----------------------- constInit ------------------------');
+console.log(globalsGenerator.constInit.getOutput(false));
+console.log('\n\n# ----------------------- dynamicInit ------------------------');
+console.log(globalsGenerator.dynamicInit.getOutput(false));

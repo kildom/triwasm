@@ -20,6 +20,13 @@ export function skeleton(module: WasmModule, conf: Conf, gen: Generator) {
 #                             CONSTATNS
 ########################################################################
 
+<% if (conf.program.rom) { %>
+    $_PROGRAM_MEMORY_BASE = 0x80000000
+    .base $_PROGRAM_MEMORY_BASE
+<% } else { %>
+    $_PROGRAM_MEMORY_BASE = 0
+    .base $_PROGRAM_MEMORY_BASE
+<% } %>
 
 # triWASM Faults
 TRIWASM_FAULT_UNREACHABLE = 16
@@ -48,8 +55,6 @@ ASPH = 44
 
 
 <% if (conf.program.rom) { %>
-    $_PROGRAM_MEMORY_BASE = 0x80000000
-    .base $_PROGRAM_MEMORY_BASE
     BR $_main_entry
     .pma 3
     <% if (conf.faults.anyVmFault) { %>
@@ -57,8 +62,6 @@ ASPH = 44
         .ref $_fault_handler
     <% } %>
 <% } else { %>
-    $_PROGRAM_MEMORY_BASE = 0
-    .base $_PROGRAM_MEMORY_BASE
     .data8 <%= gen.staticMemory.slice(0, REGISTERS_END).join(',') %>
     BR $_main_entry
     .pma <%= REGISTERS_END %> + 3
@@ -107,6 +110,42 @@ BR $_trivm_fault_handler_weak
 $_trivm_fault_handler = $_trivm_fault_handler_weak
 .end
 .end
+
+
+# global placement
+.vma 0x50 # globals start
+$_global_1_weak:
+.begin discardable
+$_global_1:
+.data32 0
+.ref $_global_1_init
+.end
+$_global_2_weak:
+.begin discardable
+$_global_2:
+.data32 0
+.ref $_global_2_init
+.end
+
+# global init (dynamic initializer in startup code)
+.begin discardable
+$_global_1_init:
+NEG -(434343)
+WRITE32 $_global_1_weak
+.end
+
+
+# global init (const initializer in memory init table)
+.data8 24, $_memory_init_table_chunk_3_end - $_memory_init_table_chunk_3_start
+$_memory_init_table_chunk_3_start:
+# ...
+.begin discardable
+$_global_2_init:
+.data32 434343
+.end
+# ...
+$_memory_init_table_chunk_3_end:
+
 
 
 ########################################################################
