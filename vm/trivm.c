@@ -412,7 +412,7 @@ static inline uint64_t trunc_f64_to_u64(struct trivm_instance *vm, uint64_t x) {
     }
 }
 
-static bool trivm_instr_long(struct trivm_instance *vm, uint32_t code, uint32_t arg1_lo)
+static int trivm_instr_long(struct trivm_instance *vm, uint32_t code, uint32_t arg1_lo)
 {
 	uint32_t op = (code >> 8) & 0x3F;
 	uint64_t arg1;
@@ -468,12 +468,12 @@ static bool trivm_instr_long(struct trivm_instance *vm, uint32_t code, uint32_t 
 		mem_push(vm, (uint32_t)(ret >> 32));
 	}
 
-	return true;
+	return 0;
 
 #if TRIVM_FAULT_INSTR_INVALID
 invalid_instruction:
 	TRIGGER_FAULT(INSTR_INVALID);
-	return true;
+	return 0;
 #endif
 }
 
@@ -530,9 +530,10 @@ static void trivm_instr_unwind(struct trivm_instance *vm, uint32_t arg1, uint32_
 
 /* ========================================== Core instructions execution =========================================== */
 
-void trivm_instr_ext(struct trivm_instance *vm, uint32_t id)
+int trivm_instr_ext(struct trivm_instance *vm, uint32_t id)
 {
 	// TODO: external call
+	return 0;
 }
 
 static uint32_t check_div_0(struct trivm_instance *vm, uint32_t arg0, uint32_t arg1)
@@ -555,7 +556,7 @@ static uint32_t check_sdiv(struct trivm_instance *vm, uint32_t arg0, uint32_t ar
 	return arg1;
 }
 
-static bool trivm_instr(struct trivm_instance *vm, uint32_t code)
+static int trivm_instr(struct trivm_instance *vm, uint32_t code)
 {
 	uint32_t arg1 = 0;
 	uint32_t arg1_shift = 24;
@@ -641,12 +642,12 @@ static bool trivm_instr(struct trivm_instance *vm, uint32_t code)
 
 	mem_push(vm, ret);
 
-	return true;
+	return 0;
 
 #if TRIVM_FAULT_INSTR_INVALID
 invalid_instruction:
 	TRIGGER_FAULT(INSTR_INVALID);
-	return true;
+	return 0;
 #endif
 }
 
@@ -828,49 +829,49 @@ skip_access_size_mul:
 
 /* =============================================== Bytecode executor ================================================ */
 
-static bool trivm_step(struct trivm_instance *vm)
+static int trivm_step(struct trivm_instance *vm)
 {
 	uint32_t code;
 
 #if TRIVM_ENABLE_ROM
 	if (vm->pc > vm->rom_size - CODE_MAX_SIZE)
 	{
-		TRIGGER_FAULT(INSTR_OUT_OF_BOUNDS, return true);
+		TRIGGER_FAULT(INSTR_OUT_OF_BOUNDS, return 0);
 	}
 #else
 	if (vm->pc > vm->ram_size - CODE_MAX_SIZE)
 	{
-		TRIGGER_FAULT(INSTR_OUT_OF_BOUNDS, return true);
+		TRIGGER_FAULT(INSTR_OUT_OF_BOUNDS, return 0);
 	}
 #endif
 
 	if ((int32_t)vm->sp < (int32_t)vm->spl)
 	{
-		TRIGGER_FAULT_WITH_CODE(STACK_UNDERFLOW, vm->sp, { vm->sp = vm->spl; return true; });
+		TRIGGER_FAULT_WITH_CODE(STACK_UNDERFLOW, vm->sp, { vm->sp = vm->spl; return 0; });
 	}
 
 	if ((int32_t)vm->asp > (int32_t)vm->asph)
 	{
-		TRIGGER_FAULT(AUX_STACK_UNDERFLOW, { vm->asph = 0x7FFFFFFF; return true; });
+		TRIGGER_FAULT(AUX_STACK_UNDERFLOW, { vm->asph = 0x7FFFFFFF; return 0; });
 	}
 
 	if (TRIVM_FAULT_STACK_OVERFLOW && vm->aspl == 0x80000000)
 	{
 		if ((int32_t)vm->sp > (int32_t)(vm->asp - vm->sph))
 		{
-			TRIGGER_FAULT(STACK_OVERFLOW, { vm->sph = 0x7FFFFFFF; return true; });
+			TRIGGER_FAULT(STACK_OVERFLOW, { vm->sph = 0x7FFFFFFF; return 0; });
 		}
 	}
 	else
 	{
 		if ((int32_t)vm->sp > (int32_t)vm->sph)
 		{
-			TRIGGER_FAULT(STACK_OVERFLOW, { vm->sph = 0x7FFFFFFF; return true; });
+			TRIGGER_FAULT(STACK_OVERFLOW, { vm->sph = 0x7FFFFFFF; return 0; });
 		}
 
 		if ((int32_t)vm->asp < (int32_t)vm->aspl)
 		{
-			TRIGGER_FAULT(AUX_STACK_OVERFLOW, { vm->aspl = 0x80000000; return true; });
+			TRIGGER_FAULT(AUX_STACK_OVERFLOW, { vm->aspl = 0x80000000; return 0; });
 		}
 	}
 
@@ -885,28 +886,31 @@ static bool trivm_step(struct trivm_instance *vm)
 	{
 		/*> MEM opcode {code} */
 		trivm_mem(vm, code);
-		return true;
+		return 0;
 	}
 }
 
 
-bool trivm_run(struct trivm_instance *vm, uint32_t limit)
+int trivm_run(struct trivm_instance *vm, uint32_t limit)
 {
-	bool result = true;
+	int result = 0;
 	/*> RUN limit={{limit}} */
-	while (limit > 0 && result)
+	while (limit > 0 && result >= 0)
 	{
 		/*> STEP limit={{limit}} ... */
 		result = trivm_step(vm);
+		if (result > 0) {
+			result = trivm_instr_ext(vm, result);
+		}
 		/*> ... */
 		if (limit != TRIVM_INFINITELY)
 		{
 			limit--;
 		}
-		/*> ?!result? EXIT to native */
+		/*> ?result < 0? EXIT to native */
 	}
 	/*> RUN done */
-	return result;
+	return result + 1; // 1 - limit, 0 - normal, -1... - error
 }
 
 

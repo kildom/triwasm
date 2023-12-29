@@ -36,8 +36,8 @@ Name: TRIVM_TREE_CORE
 Columns: code | name | numArgs | extensions | sourceCode
 Headers: Code | Name | Num Args | Extensions | Source Code
 Description: x << 2 |  |  |  | 
-0x00 | BRT | 2 |  | if (arg0) { vm->pc = arg1_pc; } |  | return true;
-0x01 | BRF | 2 |  | if (!arg0) { vm->pc = arg1_pc; } |  | return true;
+0x00 | BRT | 2 |  | if (arg0) { vm->pc = arg1_pc; } |  | return 0;
+0x01 | BRF | 2 |  | if (!arg0) { vm->pc = arg1_pc; } |  | return 0;
 0x02 | ADD | 2 |  | ret = arg0 + arg1;
 0x03 | SUB | 2 |  | ret = arg0 - arg1;
 0x04 | MUL | 2 |  | ret = arg0 * arg1;
@@ -59,11 +59,11 @@ Description: x << 2 |  |  |  |
 0x14 | EQ | 2 |  | ret = arg0 == arg1;
 0x15 | NOT | 1 |  | ret = !arg1;
 0x16 | NEG | 1 |  | ret = -arg1;
-0x17 | CALL | 1 |  | ret = vm->pc; | vm->pc = arg1_pc;
-0x18 | BR | 1 |  | vm->pc = arg1_pc; | return true;
-0x19 | WRITESP | 1 |  | vm->sp = arg1 & ~3; |  | return true;
-0x1A | UNWIND | 1 | UNWIND | trivm_instr_unwind(vm, arg1, arg1_shift); |  | return true;
-0x1B | EXT | 1 |  | if (arg1 == (uint32_t)(-1)) return false; | trivm_instr_ext(vm, arg1); | return true;
+0x17 | HOST | 1 |  | return arg1;
+0x18 | CALL | 1 |  | ret = vm->pc; | vm->pc = arg1_pc;
+0x19 | BR | 1 |  | ret = vm->pc; | vm->pc = arg1_pc; | return 0;
+0x1A | WRITESP | 1 |  | vm->sp = arg1 & ~3; |  | return 0;
+0x1B | UNWIND | 1 | UNWIND | trivm_instr_unwind(vm, arg1, arg1_shift); |  | return 0;
 0x1C | READSP | 1 |  | ret = vm->sp; | vm->pc--;
 0x1D | # reserved |  |  | 
 0x1E | # extended 32-bit instructions |  |  | 

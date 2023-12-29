@@ -146,7 +146,10 @@ Content of the stack after this instruction depends on host function.
 
 | Opcode | Name | Operation Pseudo Code                                                   |
 |--------|------|-------------------------------------------------------------------------|
-| 0x20   | HOST | If `value1 == -1` then return to host else call host function `value1`. |
+| 0x20   | HOST | If `value1 >= 1`, call host function.
+|        |      | If `value1 == 0`, do nothing.
+|        |      | If `value1 == -1`, return to host normally.
+|        |      | If `value1 <= -2`, return to host with code.
 
 ## READ, WRITE
 
