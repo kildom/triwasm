@@ -13,6 +13,7 @@
  */
 
 import { Path } from '../common/path';
+import { TimePref } from '../common/timepref';
 import { getWasmConf, WasmArgsMerge } from './args';
 import { evaluateConstExpressions } from './constEvaluator';
 import { FuncGenerator } from './genFunction';
@@ -26,12 +27,19 @@ import { WasmParser } from './wasmParser';
 
 // Get configuration from command line and config file.
 
+let t = new TimePref();
+t.enabled = false;
+
+t.start();
 let conf = getWasmConf();
+t.print('Load config');
 
 // Parse main module
 
+t.start();
 let parser = new WasmParser();
 let main = parser.parse(conf.args.input, 0);
+t.print('Parse main');
 moduleDebug(main, ModuleStage.AfterParser, conf.args.output.withExtension('main.parsed.html'));
 
 // Merge triwasmlib, softfloatlib and any user provided modules to merge.
@@ -53,39 +61,50 @@ let mergeModules: WasmArgsMerge[] = [
 let merger = new ModuleMerger(main);
 let offsets = main.logicalOffsets.end;
 for (let mergeModule of mergeModules) {
+    t.start();
     let mod = parser.parse(mergeModule.file, offsets);
+    t.print(`Parse ${mergeModule.name}`);
     offsets = mod.logicalOffsets.end;
     moduleDebug(mod, ModuleStage.AfterParser, conf.args.output.withExtension(mergeModule.name + '.parsed.html'));
+    t.start();
     merger.merge(mod, mergeModule.name);
+    t.print(`Merge ${mergeModule.name}`);
 }
 
 moduleDebug(main, ModuleStage.AfterParser, conf.args.output.withExtension('merged.html'));
 
 // Evaluate constant expressions.
 
+t.start();
 evaluateConstExpressions(main);
+t.print('Constant expressions');
 
 moduleDebug(main, ModuleStage.AfterParser, conf.args.output.withExtension('eval.html'));
 
 // Resolve dependencies.
 
+t.start();
 let resolver = new LinkResolver(conf);
 resolver.resolve(main);
+t.print('Resolver');
 moduleDebug(main, ModuleStage.AfterResolver, conf.args.output.withExtension('resolved.html'));
 
+t.start();
 reduce(main, conf);
+t.print('Reducer');
 
 moduleDebug(main, ModuleStage.AfterReducer, conf.args.output.withExtension('reduced.html'));
 
-/*
 let generator = new FuncGenerator(main, conf);
 try {
-    console.log(generator.generate(false));
+    t.start();
+    let code = generator.generate(false);
+    t.print('Function generator');
+    console.log(code);
 } catch (err) {
     console.log(generator.getOutput(false));
     throw err;
 }
-*/
 
 let globalsGenerator = new GlobalsGenerator(main, conf);
 globalsGenerator.generate();

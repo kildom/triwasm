@@ -45,7 +45,7 @@ export interface WasmFaults extends ConfFaults {
     faultTableIndex: boolean;
     faultNullCall: boolean;
     faultInvalidExport: boolean;
-    anyVMFault: boolean;
+    anyVmFault: boolean;
     anyWASMFault: boolean;
     anyFault: boolean;
 }
@@ -101,7 +101,7 @@ export function getWasmConf(cmdLineArgs?: string[]) {
         faultTableIndex: !args.disableFaultAll && !args.disableFaultTableIndex,
         faultNullCall: !args.disableFaultAll && !args.disableFaultNullCall,
         faultInvalidExport: !args.disableFaultAll && !args.disableFaultInvalidExport,
-        anyVMFault: false,
+        anyVmFault: false,
         anyWASMFault: false,
         anyFault: false,
     };
@@ -110,8 +110,8 @@ export function getWasmConf(cmdLineArgs?: string[]) {
         vmConf,
         faults,
     };
-    faults.anyVMFault = Object.values(vmConf.faults).some(x => x);
+    faults.anyVmFault = Object.values(vmConf.faults).some(x => x);
     faults.anyWASMFault = faults.faultUnreachable || faults.faultTableIndex || faults.faultNullCall || faults.faultInvalidExport;
-    faults.anyFault = faults.anyVMFault || faults.anyWASMFault;
+    faults.anyFault = faults.anyVmFault || faults.anyWASMFault;
     return conf;
 }

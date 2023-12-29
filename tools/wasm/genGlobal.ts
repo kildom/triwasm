@@ -20,7 +20,7 @@ export class GlobalsGenerator {
     constInit = new CodeOutput();
     dynamicInit = new CodeOutput();
 
-    funcGenerator:FuncGenerator;
+    funcGenerator: FuncGenerator;
 
     constructor(
         public module: WasmModule,
@@ -40,7 +40,7 @@ export class GlobalsGenerator {
         this.constInit.initOutput();
         this.dynamicInit.initOutput();
         // TODO: Allocate import/export globals at their location first.
-        for (let global of this.module.globals) {
+        for (let global of this.module.globals.filter(g => !g.deleted)) {
             let words = valueTypeWords(global.type);
             if (words > 2) {
                 throw new Error('Not implemented');

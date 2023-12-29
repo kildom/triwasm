@@ -169,6 +169,8 @@ function parseParameters(params: string, configText: string): ConfParameter[] {
 function addFunction(functions: ConfFunction[], functionsUsage: Map<number, string>, entry: ConfInterfaceEntry,
     attrs: string = '', results: string, params: string) {
 
+    // TODOv1: Allow imported functions with negative indexes to allow exit from VM with code.
+
     attrs = attrs.trim().toUpperCase();
     let result: ConfFunction = {
         ...entry,

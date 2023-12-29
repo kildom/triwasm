@@ -67,7 +67,7 @@ export class ModuleMerger {
     public merge(module: WasmModule, name?: string) {
         let all = [...module.memories, ...module.data, ...module.tables, ...module.elements, ...module.globals];
         for (let entity of all) {
-            entity.deleted = true;
+            entity.deleted = true; // TODO: add checks in other files if we are referencing deleted entities
         }
         this.setExportedModuleName(module, name || `__unnamed__module${this.counter}`);
         this.mainModule.functions.push(... module.functions);

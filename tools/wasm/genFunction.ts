@@ -44,6 +44,7 @@ enum BranchCondition {
 }
 
 export class FuncGenerator extends CodeOutput implements WalkFunctionListener<BlockData, InstrData> {
+    // TODOv1: Separate CodeOutput object, but keep this.output() method.
 
     func!: WasmFunction;
     block?: WasmBlock;

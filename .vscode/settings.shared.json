@@ -41,5 +41,8 @@
         "discardable",
         "trivm",
         "UNWINDRET"
+    ],
+    "cSpell.enableFiletypes": [
+      "trivm-triasm"
     ]
 }

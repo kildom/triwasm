@@ -4,17 +4,12 @@ import * as path from 'node:path';
 
 function templateToCode(text: string): string {
     let code = ('%>' + text.trim() + '<%').replace(/%>([\s\S]*?)<%(?!=)/g, (_, m) => {
-        let concat = ('%>' + m + '<%=').replace(/\s*%>([\s\S]*?)<%=\s*/g, (_, m2) => {
-            return ')+' + JSON.stringify(m2) + '+(';
-        });
-        while (concat.at(-1) != '"') {
-            concat = concat.substring(0, concat.length - 1);
-        }
-        while (concat[0] != '"') {
-            concat = concat.substring(1);
-        }
-        if (concat != '""') {
-            return `output.push(${concat});`;
+        let code2 = m
+            .split(/<%=(.*?)%>/)
+            .map((v: string, i: number) => (i % 2) === 0 ? `print(${JSON.stringify(v)});` : `print(${v});`)
+            .join('\n');
+        if (code2 !== 'print("");') {
+            return code2;
         } else {
             return '';
         }
