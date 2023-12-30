@@ -4,35 +4,65 @@
  * SPDX-License-Identifier: 0BSD
  */
 
+/* eslint-disable max-len */
+/* eslint-disable quotes */
+
 import { WasmModule } from './wasmModule';
 import { WasmConf } from './args';
 import { CodeOutput } from './codeOutput';
+import { FuncGenerator } from './genFunction';
 import { GlobalsGenerator } from './genGlobal';
 
-export function skeleton(module: WasmModule, globals: GlobalsGenerator, conf: WasmConf, output: CodeOutput) {
-    /* eslint-disable max-len */
-    /* eslint-disable quotes */
-    function print(s?: string | string[]) {
-        if (s) {
-            if (typeof s === 'string') {
-                output.output(s);
-            } else {
-                output.outputRaw(s);
-            }
+export function skeleton(
+    module: WasmModule,
+    funcGen: FuncGenerator,
+    globalsGen: GlobalsGenerator,
+    conf: WasmConf,
+    output: CodeOutput
+) {
+    function print(s?: any) {
+        if (s === undefined) {
+            // skip
+        } else if (typeof s === 'object') {
+            output.outputRaw(s);
+        } else if (typeof s === 'string') {
+            output.outputPart(s);
+        } else {
+            output.outputPart(s.toString());
         }
     }
+
+    globalsGen.generate();
 %>
 
 # Globals:
 # $_program_memory_base - base address of program memory in virtual address space (0 for RAM program, 0x80000000 for ROM programs)
 # $_vm_registers_end - end of triVM registers space
 
-$_program_memory_base = 0x80000000
-.base $_program_memory_base
+# ===========================================================
+# ======================== CONSTANTS ========================
+# ===========================================================
+
+TRIWASM_FAULT_UNREACHABLE = 64
+TRIWASM_FAULT_TABLE_INDEX = 65
+TRIWASM_FAULT_NULL_CALL = 66
+TRIWASM_FAULT_INVALID_EXPORT = 67
+
+<% if (conf.vmConf.extensions.int64 || conf.vmConf.extensions.float64) { %>
+    $_STACK_POP_MAX_BYTES = 8 + 8
+<% } else if (conf.vmConf.extensions.mem64) { %>
+    $_STACK_POP_MAX_BYTES = 4 + 8
+<% } else { %>
+    $_STACK_POP_MAX_BYTES = 4 + 4
+<% } %> # TODOv1: Check all instructions if this conditions are true
+
 
 # ===========================================================
 # ======================= DATA MEMORY =======================
 # ===========================================================
+
+$_program_memory_base = 0x80000000
+.base $_program_memory_base
 
 # VM Registers
 GPR0 = 0
@@ -57,6 +87,7 @@ GSPH = 44
 $_external_globals_end = $_vm_registers_end
 
 # triWASM additional general purpose globals
+$_triwasm_internal_globals_begin:
 .begin discardable
 $_triwasm_global0:
 .data32 0
@@ -73,16 +104,18 @@ $_triwasm_global2:
 $_triwasm_global4:
 .data32 0
 .end
+$_triwasm_internal_globals_end:
 
-# Internal, mutable, const-initialized globals
-<%= globals.placementConstInit.getOutput(true) %>
-
-# Internal, mutable, dynamic-initialized globals
-<%= globals.placementDynamicInit.getOutput(true) %>
+# Globals
+<%= globalsGen.dataMemory.getOutput(true) %>
 
 # Growable tables pointers
 # TODOv3: Put here pointers to growable tables.
 <%= /* tables.placementGrowableTablePointers.getOutput(true) */ %>
+
+# Internal globals
+$_startup_executed_flag:
+.data32 0 # TODOv1: Will be set by memory initialization table during startup
 
 # Fixed tables
 # TODOv1: Put here fixed tables.
@@ -103,16 +136,16 @@ $_vm_stack_start:
 
 .vma $_program_memory_base
 
+# ===================== MAIN AND FAULT ENTRIES ======================
+
 BR $_main_entry
-
 .vma $_program_memory_base + 3
-
 <% if (conf.faults.anyVmFault) { %>
     # Fault is next instruction, so no need to do BR
     .ref $_fault_handler
 <% } %>
 
-# ===================== FAULT HANDLER ENTRY ======================
+# ===================== FAULT HANDLER ======================
 
 .begin discardable
 $_fault_handler:
@@ -145,6 +178,259 @@ BR $_trivm_fault_handler_weak
 $_trivm_fault_handler = $_trivm_default_fault_handler
 .end
 .end
+
+# ===================== MAIN ENTRY HANDLER ======================
+
+$_main_entry:
+.begin
+READ32 $_startup_executed_flag
+.local skip_startup
+BRT skip_startup
+
+# Startup code
+CALL $_initialize_stack
+
+# Memory initialization table copy
+.begin
+NEG 0
+NEG -$_memory_init_table_start
+.local copy_next_block
+copy_next_block:
+# ..., dst, src
+# Read block gap bytes.
+READ32 [SP]
+READ8U [POP]
+READ32 [SP]
+EQ 255
+.local skip_32_bits
+BRF skip_32_bits
+    # ..., dst, src-1, 255
+    WRITE32 GPR0
+    READ32 [SP]
+    UREAD32 [POP] + 1
+    # ..., dst, src-5, gap_bytes
+    READ32 [SP] - 4
+    ADD 4
+    WRITE32 [SP] - 4
+    # ..., dst, src-1, gap_bytes
+skip_32_bits:
+READ32 [SP]
+EQ 254
+.local exit_mem_init
+BRT exit_mem_init
+skip_32_bits:
+# ..., dst, src-1, gap_bytes
+# Fill dst with "gap_bytes" zeros.
+.local next_gap_byte
+.local gap_finished
+next_gap_byte:
+    READ32 [SP]
+    BRF gap_finished
+    READ32 [SP] - 8
+    READ32 [SP]
+    NEG 0
+    WRITE32 [POP]
+    ADD 1
+    WRITE32 [SP] - 8
+    SUB 1
+    BR next_gap_byte
+gap_finished:
+# ..., dst, src-1, 0
+WRITE32 GPR0
+READ32 [SP]
+READ8U [POP] + 1
+READ32 [SP] - 4
+ADD 2
+WRITE32 [SP] - 4
+# ..., dst, src, copy_bytes
+CALL $_mem_copy_and_update
+# ..., dst, src
+BR copy_next_block
+exit_mem_init:
+WRITE32 GPR0
+WRITE32 GPR0
+.end
+
+# Globals dynamic initialization
+<%= globalsGen.dynamicInit.getOutput(true) %>
+
+# Calling exported function
+
+skip_startup:
+NEG -$_normal_return_to_host
+<% if (conf.faults.invalidExport) { %>
+    READ32 GPR0
+    ULT <%= module.exportFunctionTable.length %>
+    .local skip_invalid_export
+    BRT skip_invalid_export
+    $_trigger_invalid_export_fault:
+    NEG -TRIWASM_FAULT_INVALID_EXPORT
+    READ32 GPR0
+    BR $_trigger_fault_with_code
+    skip_invalid_export:
+<% } else { %>
+    .begin discardable
+    $_trigger_invalid_export_fault = $_normal_return_to_host
+    .end
+<% } %>
+READ32 GPR0
+<% if (conf.smallProgramModel) { %>
+    MUL 2
+    READ16U [POP] + $_export_table + $_program_memory_base
+<% } else { %>
+    MUL 4
+    READ32 [POP] + $_export_table + $_program_memory_base
+<% } %>
+WRITE32 PC
+.end
+
+.begin
+$_initialize_stack:
+WRITE32 GPR3
+NEG -($_vm_stack_start + $_STACK_POP_MAX_BYTES)
+WRITESP
+READ32 GPR3
+<% if (conf.faults.stackUnderflow) { %>
+    NEG -($_vm_stack_start + $_STACK_POP_MAX_BYTES)
+    WRITE32 SPL
+<% } %>
+<% if (conf.faults.stackOverflow) { %>
+    # TODO: setup max stack size (SPH)
+<% } %>
+WRITE32 PC
+.end
+
+# Export table
+
+<% if (conf.smallProgramModel) { %>
+    .align 2
+    $_export_table:
+    .data16 <%= module.exportFunctionTable.map(func => func ? func.name : '$_trigger_invalid_export_fault').join(', ') %>
+<% } else { %>
+    .align 4
+    $_export_table:
+    .data32 <%= module.exportFunctionTable.map(func => func ? func.name : '$_trigger_invalid_export_fault').join(', ') %>
+<% } %>
+
+# ===================== UTILITY FUNCTIONS ======================
+
+.begin
+$_mem_copy_and_update:
+# ..., dst, src, copy_bytes, ret
+READ32 [SP] - 4
+.local done
+BRF done
+READ32 [SP] - 4
+SUB 1
+WRITE32 [SP] - 4
+READ32 [SP] - 8
+READ32 [SP]
+ADD 1
+WRITE32 [SP] - 12
+# ..., dst, src+1, copy_bytes-1, ret, src
+READ8U [POP]
+# ..., dst, src+1, copy_bytes-1, ret, value
+READ32 [SP] - 16
+READ32 [SP]
+ADD 1
+WRITE32 [SP] - 20
+# ..., dst+1, src+1, copy_bytes-1, ret, value, dst
+WRITE8 [POP]
+# ..., dst+1, src+1, copy_bytes-1, ret
+BR $_mem_copy_and_update
+done:
+# ..., dst+copy_bytes, src+copy_bytes, 0, ret
+WRITE32 [SP]
+# ..., dst+copy_bytes, src+copy_bytes, ret
+WRITE32 PC
+.end
+
+.begin discardable
+$_normal_return_to_host:
+HOST -1
+.end
+
+.begin discardable
+$_trigger_null_call:
+NEG -TRIWASM_FAULT_NULL_CALL
+.ref $_trigger_fault # Fall through to $_trigger_fault
+.end
+
+.begin discardable
+$_trigger_fault:
+WRITE32 GPR0
+.ref $_trigger_fault_tail # Fall through to $_trigger_fault_tail
+.end
+
+.begin discardable
+$_trigger_fault_tail:
+WRITE32 GPR2
+BR $_fault_handler
+.end
+
+.begin discardable
+$_trigger_fault_with_code:
+WRITE32 GPR0
+WRITE32 GPR1
+BR $_trigger_fault_tail
+.end
+
+.begin discardable
+$_trigger_fault_with_two_codes:
+WRITE32 GPR0
+WRITE32 GPR1
+WRITE32 GPR3
+BR $_trigger_fault_tail
+.end
+
+.begin discardable
+$_trigger_fault_with_three_codes:
+WRITE32 GPR0
+WRITE32 GPR1
+WRITE32 GPR3
+WRITE32 $_triwasm_global0 # TODOv1: Check order of registers
+BR $_trigger_fault_tail
+.end
+
+# ===================== FUNCTIONS BODY ======================
+
+<%= funcGen.generate(true) %>
+
+# ===================== MEMORY INIT TABLE ======================
+# TODOv1: Memory initialization table
+$_memory_init_table_start = vma()
+
+# Special directives for the memory initialization table:
+# ..skip N - skip N bytes
+# ..skip N, EXP - skip EXP bytes, maximum value of expression is N
+# ..part N - start unbreakable part of the table with maximum size of N bytes
+# ..end - end part
+
+# Registers initialization
+..skip 24 # GPR0, PC, GSP, GPR1, GPR2, GPR3 - not needed or cannot be touched
+..part 24
+.data32 0 # AMB0 - TODOv1: initialize WASM memory base
+.data32 0 # AMB1 - TODOv1: set to internal, immutable, const-init globals
+.data32 0 # SPL - TODOv1: initialize
+.data32 0 # SPH - TODOv1: initialize
+.data32 0 # GSPL - TODOv1: initialize
+.data32 0 # GSPH - TODOv1: initialize
+..end
+
+# Interface globals
+# TODOv2: Put here exported globals initialization and gaps in imported globals.
+
+# Internal globals gap size
+..skip 16, $_triwasm_internal_globals_end - $_triwasm_internal_globals_begin
+
+# Globals in init table
+<%= globalsGen.initTable.getOutput(true) %>
+
+# Memory initialization end marker
+.data8 254
+
+# Globals in program memory
+<%= globalsGen.programMemory.getOutput(true) %>
 
 # ===================== WEAK SYMBOLS ======================
 

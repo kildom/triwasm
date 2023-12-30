@@ -15,15 +15,19 @@
 import { Path } from '../common/path';
 import { TimePref } from '../common/timepref';
 import { getWasmConf, WasmArgsMerge } from './args';
+import { CodeOutput } from './codeOutput';
 import { evaluateConstExpressions } from './constEvaluator';
 import { FuncGenerator } from './genFunction';
 import { GlobalsGenerator } from './genGlobal';
 import { LinkResolver } from './linkResolver';
-import { moduleDebug, ModuleStage } from './moduleDebug';
+import { /*moduleDebug,*/ ModuleStage } from './moduleDebug';
 import { ModuleMerger } from './moduleMerger';
 import { reduce } from './reducer';
+import { skeleton } from './skeleton';
 //import { reduce } from './reducer';
 import { WasmParser } from './wasmParser';
+
+function moduleDebug(...args: any[]): void { }
 
 // Get configuration from command line and config file.
 
@@ -95,7 +99,18 @@ t.print('Reducer');
 
 moduleDebug(main, ModuleStage.AfterReducer, conf.args.output.withExtension('reduced.html'));
 
-let generator = new FuncGenerator(main, conf);
+let funcGen = new FuncGenerator(main, conf);
+let globalsGen = new GlobalsGenerator(main, conf);
+let output = new CodeOutput();
+
+t.start();
+skeleton(main, funcGen, globalsGen, conf, output);
+t.print('Generator');
+
+new Path('temp/out.triasm').write(output.getOutput(false));
+
+
+/*
 try {
     t.start();
     let code = generator.generate(false);
@@ -119,3 +134,4 @@ console.log('\n\n# ----------------------- constInit ------------------------');
 console.log(globalsGenerator.constInit.getOutput(false));
 console.log('\n\n# ----------------------- dynamicInit ------------------------');
 console.log(globalsGenerator.dynamicInit.getOutput(false));
+*/

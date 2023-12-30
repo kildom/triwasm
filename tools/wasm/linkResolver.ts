@@ -66,6 +66,9 @@ export class LinkResolver {
                             }
                             func.hostExportIndexes.push(hostFunction.index);
                             doneExports.add(hostFunction);
+                            // TODOv2: for regcall functions, create a assembly wrapper function that pushes regs
+                            // to stack and calls actual function. Place in this table a wrapper function.
+                            module.exportFunctionTable[hostFunction.index] = func;
                         }
                     }
                 }
@@ -78,6 +81,9 @@ export class LinkResolver {
                 throw new Error(`Unsatisfied export ${hostFunction.fullName}.`);
             }
         }
+
+        // Place 'undefined' in table empty elements.
+        module.exportFunctionTable = [...module.exportFunctionTable];
     }
 
     private resolveInternalLinks(module: WasmModule) {

@@ -495,6 +495,7 @@ export class WasmModule {
     public stackPointerDetector?: WasmFunction;
     public startFunction?: WasmFunction;
     public exported: Map<string, Map<string, WasmFunction>> = new Map();
+    public exportFunctionTable: (WasmFunction | undefined)[] = [];
     public logicalOffsets: { start: number, end: number } = { start: 0, end: 0 };
 
     public getExported(module: string, name: string, required: true): WasmFunction;

@@ -41,10 +41,10 @@ export interface WasmArgs {
 }
 
 export interface WasmFaults extends ConfFaults {
-    faultUnreachable: boolean;
-    faultTableIndex: boolean;
-    faultNullCall: boolean;
-    faultInvalidExport: boolean;
+    unreachable: boolean;
+    tableIndex: boolean;
+    nullCall: boolean;
+    invalidExport: boolean;
     anyVmFault: boolean;
     anyWASMFault: boolean;
     anyFault: boolean;
@@ -54,6 +54,8 @@ export interface WasmConf {
     args: WasmArgs;
     vmConf: Conf;
     faults: WasmFaults;
+    smallProgramModel: boolean;
+    smallDataModel: boolean;
 }
 
 const filters = {
@@ -97,10 +99,10 @@ export function getWasmConf(cmdLineArgs?: string[]) {
     let vmConf = parseConf(args.config);
     let faults: WasmFaults = {
         ...vmConf.faults,
-        faultUnreachable: !args.disableFaultAll && !args.disableFaultUnreachable,
-        faultTableIndex: !args.disableFaultAll && !args.disableFaultTableIndex,
-        faultNullCall: !args.disableFaultAll && !args.disableFaultNullCall,
-        faultInvalidExport: !args.disableFaultAll && !args.disableFaultInvalidExport,
+        unreachable: !args.disableFaultAll && !args.disableFaultUnreachable,
+        tableIndex: !args.disableFaultAll && !args.disableFaultTableIndex,
+        nullCall: !args.disableFaultAll && !args.disableFaultNullCall,
+        invalidExport: !args.disableFaultAll && !args.disableFaultInvalidExport,
         anyVmFault: false,
         anyWASMFault: false,
         anyFault: false,
@@ -109,9 +111,11 @@ export function getWasmConf(cmdLineArgs?: string[]) {
         args,
         vmConf,
         faults,
+        smallProgramModel: vmConf.program.max <= 32 * 1024,
+        smallDataModel: vmConf.memory.max <= 64 * 1024,
     };
     faults.anyVmFault = Object.values(vmConf.faults).some(x => x);
-    faults.anyWASMFault = faults.faultUnreachable || faults.faultTableIndex || faults.faultNullCall || faults.faultInvalidExport;
+    faults.anyWASMFault = faults.unreachable || faults.tableIndex || faults.nullCall || faults.invalidExport;
     faults.anyFault = faults.anyVmFault || faults.anyWASMFault;
     return conf;
 }

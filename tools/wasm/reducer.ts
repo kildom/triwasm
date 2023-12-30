@@ -164,7 +164,7 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
     // -- Begin of source code generated with help of "gen-instr.ts" script --
 
     case OP.UNREACHABLE: {
-        if (conf.faults.faultUnreachable) {
+        if (conf.faults.unreachable) {
             newBody.push({
                 id: instrId(instr),
                 opcode: OP.TRIVM_RAW,

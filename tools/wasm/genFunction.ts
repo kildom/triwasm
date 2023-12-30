@@ -135,7 +135,7 @@ export class FuncGenerator extends CodeOutput implements WalkFunctionListener<Bl
             allComments += ` # ${comment}`;
         }
         for (let line of code) {
-            out.push(`${ind}${line}${allComments}`);
+            out.push(`${ind}${line}${allComments}\n`);
             allComments = '';
         }
     }

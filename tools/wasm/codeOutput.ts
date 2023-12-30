@@ -79,16 +79,32 @@ export class CodeOutput {
     public getOutput(asArray: boolean): string | string[] {
         let res: string | string[];
         if (this.out.length === 1) {
-            res = asArray ? this.out[0] : this.out[0].join('\n');
+            res = asArray ? this.out[0] : this.out[0].join('');
         } else if (asArray) {
             res = this.out.reduce((p, x) => extendArray<string>(p, x), []);
         } else {
-            res = this.out.map(x => x.join('\n')).join('\n');
+            res = this.out.map(x => x.join('')).join('');
         }
         return res;
     }
 
     public output(code: string | string[], comment?: string) {
+        let out = this.out.at(-1) as string[];
+        if (typeof (code) === 'string') {
+            code = [code];
+        }
+        if (comment) {
+            comment += ` # ${comment}`;
+        } else {
+            comment = '';
+        }
+        for (let line of code) {
+            out.push(`${line}${comment}\n`);
+            comment = '';
+        }
+    }
+
+    public outputPart(code: string | string[], comment?: string) {
         let out = this.out.at(-1) as string[];
         if (typeof (code) === 'string') {
             code = [code];
