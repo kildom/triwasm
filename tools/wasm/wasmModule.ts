@@ -470,6 +470,8 @@ export class WasmMemory extends WasmEntity {
 
 export class WasmTable extends WasmEntity {
     public deleted = false;
+    public growable = false; // TODOv2: Implement growable tables
+    public mutable = false;
     constructor(
         public type: RefType,
         public limits: Limits

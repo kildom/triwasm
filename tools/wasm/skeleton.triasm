@@ -12,11 +12,13 @@ import { WasmConf } from './args';
 import { CodeOutput } from './codeOutput';
 import { FuncGenerator } from './genFunction';
 import { GlobalsGenerator } from './genGlobal';
+import { TablesGenerator } from './genTable';
 
 export function skeleton(
     module: WasmModule,
     funcGen: FuncGenerator,
     globalsGen: GlobalsGenerator,
+    tablesGen: TablesGenerator,
     conf: WasmConf,
     output: CodeOutput
 ) {
@@ -33,6 +35,7 @@ export function skeleton(
     }
 
     globalsGen.generate();
+    tablesGen.generate();
 %>
 
 # Globals:
@@ -431,6 +434,9 @@ $_memory_init_table_start = vma()
 
 # Globals in program memory
 <%= globalsGen.programMemory.getOutput(true) %>
+
+# Tables in program memory
+<%= tablesGen.programMemory.getOutput(true) %>
 
 # ===================== WEAK SYMBOLS ======================
 

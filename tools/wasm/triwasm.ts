@@ -19,6 +19,7 @@ import { CodeOutput } from './codeOutput';
 import { evaluateConstExpressions } from './constEvaluator';
 import { FuncGenerator } from './genFunction';
 import { GlobalsGenerator } from './genGlobal';
+import { TablesGenerator } from './genTable';
 import { LinkResolver } from './linkResolver';
 import { /*moduleDebug,*/ ModuleStage } from './moduleDebug';
 import { ModuleMerger } from './moduleMerger';
@@ -101,10 +102,13 @@ moduleDebug(main, ModuleStage.AfterReducer, conf.args.output.withExtension('redu
 
 let funcGen = new FuncGenerator(main, conf);
 let globalsGen = new GlobalsGenerator(main, conf);
+let tablesGen = new TablesGenerator(main, conf);
 let output = new CodeOutput();
 
+//console.log(JSON.stringify(conf, null, 2));
+
 t.start();
-skeleton(main, funcGen, globalsGen, conf, output);
+skeleton(main, funcGen, globalsGen, tablesGen, conf, output);
 t.print('Generator');
 
 new Path('temp/out.triasm').write(output.getOutput(false));
