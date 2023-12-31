@@ -11,12 +11,14 @@ import { WasmModule } from './wasmModule';
 import { WasmConf } from './args';
 import { CodeOutput } from './codeOutput';
 import { FuncGenerator } from './genFunction';
+import { MemoryGenerator } from './genMemory';
 import { GlobalsGenerator } from './genGlobal';
 import { TablesGenerator } from './genTable';
 
 export function skeleton(
     module: WasmModule,
     funcGen: FuncGenerator,
+    memoryGen: MemoryGenerator,
     globalsGen: GlobalsGenerator,
     tablesGen: TablesGenerator,
     conf: WasmConf,
@@ -34,6 +36,7 @@ export function skeleton(
         }
     }
 
+    memoryGen.generate();
     globalsGen.generate();
     tablesGen.generate();
 %>
@@ -64,14 +67,15 @@ TRIWASM_FAULT_INVALID_EXPORT = 67
 # ======================= DATA MEMORY =======================
 # ===========================================================
 
+# Two memory model starts program memory at 0x80000000
 $_program_memory_base = 0x80000000
 .base $_program_memory_base
 
 # VM Registers
 GPR0 = 0
-PC = 4
+GPR1 = 4
 GSP = 8
-GPR1 = 12
+PC = 12
 GPR2 = 16
 GPR3 = 20
 AMB0 = 24
@@ -81,8 +85,20 @@ SPH = 36
 GSPL = 40
 GSPH = 44
 
-# Allocating data after the register
-# Data is just declared, actual content will be put into "memory initialization table".
+# VM Registers initialization
+.begin movable $_memory_init_table
+..skip 24 # GPR0, PC, GSP, GPR1, GPR2, GPR3 - not needed or cannot be touched
+..part 8
+# TODOv1: initialize AMB registers
+.data32 0 # AMB0
+.data32 0 # AMB1
+..end
+..skip 16 # SPL, SPH, GSPL, GSPH - initialized by stack initialization
+.end
+
+# TODO: Move the rest of init memory here as movable blocks.
+
+# Initial stack starts just after the registers
 .vma 48
 
 # External globals
@@ -116,10 +132,6 @@ $_triwasm_internal_globals_end:
 # TODOv3: Put here pointers to growable tables.
 <%= /* tables.placementGrowableTablePointers.getOutput(true) */ %>
 
-# Internal globals
-$_startup_executed_flag:
-.data32 0 # TODOv1: Will be set by memory initialization table during startup
-
 # Fixed tables
 # TODOv1: Put here fixed tables.
 <%= /* tables.placementFixedTables.getOutput(true) */ %>
@@ -131,7 +143,7 @@ $_startup_executed_flag:
 
 # Start of triVM stack free space
 .align 4
-$_vm_stack_start:
+$_vm_stack_start = vma()
 
 # ===========================================================
 # ===================== PROGRAM MEMORY ======================
@@ -186,9 +198,9 @@ $_trivm_fault_handler = $_trivm_default_fault_handler
 
 $_main_entry:
 .begin
-READ32 $_startup_executed_flag
-.local skip_startup
-BRT skip_startup
+READSP
+EQ $_initial_sp_value
+BRF skip_startup
 
 # Startup code
 CALL $_initialize_stack
@@ -400,25 +412,17 @@ BR $_trigger_fault_tail
 <%= funcGen.generate(true) %>
 
 # ===================== MEMORY INIT TABLE ======================
-# TODOv1: Memory initialization table
-$_memory_init_table_start = vma()
-
-# Special directives for the memory initialization table:
+# Special pseudo-directives for the memory initialization table:
 # ..skip N - skip N bytes
 # ..skip N, EXP - skip EXP bytes, maximum value of expression is N
 # ..part N - start unbreakable part of the table with maximum size of N bytes
+# ..part discardable N - start unbreakable discardable part of the table with maximum size of N bytes
 # ..end - end part
 
-# Registers initialization
-..skip 24 # GPR0, PC, GSP, GPR1, GPR2, GPR3 - not needed or cannot be touched
-..part 24
-.data32 0 # AMB0 - TODOv1: initialize WASM memory base
-.data32 0 # AMB1 - TODOv1: set to internal, immutable, const-init globals
-.data32 0 # SPL - TODOv1: initialize
-.data32 0 # SPH - TODOv1: initialize
-.data32 0 # GSPL - TODOv1: initialize
-.data32 0 # GSPH - TODOv1: initialize
-..end
+$_memory_init_table_start = vma()
+.place $_memory_init_table
+.data8 254 # Memory initialization end marker
+
 
 # Interface globals
 # TODOv2: Put here exported globals initialization and gaps in imported globals.
@@ -429,8 +433,12 @@ $_memory_init_table_start = vma()
 # Globals in init table
 <%= globalsGen.initTable.getOutput(true) %>
 
-# Memory initialization end marker
-.data8 254
+..finalize
+
+# Memory data in init table
+<%= memoryGen.initTable.getOutput(true) %>
+
+
 
 # Globals in program memory
 <%= globalsGen.programMemory.getOutput(true) %>

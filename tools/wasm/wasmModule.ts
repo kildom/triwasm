@@ -403,6 +403,7 @@ export enum ElementKind {
 
 export class WasmElement {
     public deleted = false;
+    public index: number = 0;
     kind: ElementKind = ElementKind.ACTIVE;
     table?: WasmTable;
     offset?: WasmFunction;
@@ -416,6 +417,7 @@ export enum DataKind {
 
 export class WasmData {
     public deleted = false;
+    public index: number = 0;
     public kind: DataKind = DataKind.ACTIVE;
     public content: Uint8Array = allowTemporaryNull as Uint8Array; // will be filled during data section parsing
     public memory?: WasmMemory;

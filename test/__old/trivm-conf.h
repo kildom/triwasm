@@ -1,7 +1,7 @@
 
 #define TRIVM_EXT_UNWIND 1
 
-#define TRIVM_MEM_SIZE 65536
+#define TRIVM_MEM_SIZE 196608
 #define TRIVM_PROGRAM_SIZE_MAX 32768
 
 /* triVM interface:

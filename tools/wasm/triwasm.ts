@@ -19,6 +19,7 @@ import { CodeOutput } from './codeOutput';
 import { evaluateConstExpressions } from './constEvaluator';
 import { FuncGenerator } from './genFunction';
 import { GlobalsGenerator } from './genGlobal';
+import { MemoryGenerator } from './genMemory';
 import { TablesGenerator } from './genTable';
 import { LinkResolver } from './linkResolver';
 import { /*moduleDebug,*/ ModuleStage } from './moduleDebug';
@@ -101,6 +102,7 @@ t.print('Reducer');
 moduleDebug(main, ModuleStage.AfterReducer, conf.args.output.withExtension('reduced.html'));
 
 let funcGen = new FuncGenerator(main, conf);
+let memoryGen = new MemoryGenerator(main, conf);
 let globalsGen = new GlobalsGenerator(main, conf);
 let tablesGen = new TablesGenerator(main, conf);
 let output = new CodeOutput();
@@ -108,7 +110,7 @@ let output = new CodeOutput();
 //console.log(JSON.stringify(conf, null, 2));
 
 t.start();
-skeleton(main, funcGen, globalsGen, tablesGen, conf, output);
+skeleton(main, funcGen, memoryGen, globalsGen, tablesGen, conf, output);
 t.print('Generator');
 
 new Path('temp/out.triasm').write(output.getOutput(false));

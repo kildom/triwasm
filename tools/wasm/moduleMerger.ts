@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { WasmEntity, WasmModule } from './wasmModule';
+import { WasmData, WasmElement, WasmEntity, WasmModule } from './wasmModule';
 
 
 const TRIVM_THIS_MODULE_NAME = '__trivm_this_module__';
@@ -43,12 +43,14 @@ export class ModuleMerger {
         this.orderEntities(this.mainModule.memories);
         this.orderEntities(this.mainModule.tables);
         this.orderEntities(this.mainModule.globals);
+        this.orderEntities(this.mainModule.data);
+        this.orderEntities(this.mainModule.elements);
         for (let i = 0; i < this.mainModule.functions.length; i++) {
             this.mainModule.functions[i].name = `$_function_${i}`;
         }
     }
 
-    private orderEntities(entities: WasmEntity[]) {
+    private orderEntities(entities: (WasmEntity | WasmElement | WasmData)[]) {
         for (let i = 0; i < entities.length; i++) {
             entities[i].index = i;
         }

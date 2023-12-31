@@ -173,7 +173,7 @@
 #define CODE_LONG_ARG0 0x8000
 #define CODE_LONG_ARG1 0x4000
 
-#define CODE_MEM_BASE1_BIT 6
+#define CODE_MEM_BASE0_BIT 5
 #define CODE_MEM_BASE1 (1 << 6)
 #define CODE_MEM_BASE0 (1 << 5)
 #define CODE_MEM_WRITE_FLAG (1 << 4)
@@ -749,13 +749,22 @@ skip_access_size_mul:
 
 	if (!(code & CODE_MEM_BASE0))
 	{
-		addr += vm->amb[(code >> CODE_MEM_BASE0_BIT) | ((x + 0x40000000) >> 31)]; // TODO: or ((x >> 30) + 1) >> 1 if smaller on Thumb2
+		addr += vm->amb[(code >> CODE_MEM_BASE0_BIT)]; // TODOv2: Consider following improvement for smaller local variables access:
+		/*
+		1. when base==AMB1, offset is 4 bit, no non-word access, no extended bits in offset, no pop
+		2. change "READSP" instruction to instruction "LOCAL imm" that: x = amb1, amb1 = sp + imm, push x
+		USAGE:
+			LOCAL -12 / 4
+			READ AMB1
+			ADD 48
+			WRITE SP
+		Question: How to return (old AMB1 must be restored)?
+		*/
 		/*> base AMB{#code >> CODE_MEM_BASE1_BIT} {{vm->amb[code >> CODE_MEM_BASE1_BIT]}} -> {addr} */
 	}
 	else if (code & CODE_MEM_BASE1)
 	{
 		addr = vm->sp - addr;
-		/*> base SP {{vm->sp}} -> {addr} */
 	}
 	else
 	{

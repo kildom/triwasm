@@ -74,6 +74,7 @@ export class TablesGenerator {
 
     public generate(): void {
         this.dataMemory.initOutput();
+        this.programMemory.initOutput();
         this.initTable.initOutput();
         this.dynamicInit.initOutput();
 

@@ -30,14 +30,14 @@ struct trivm_instance
 #endif
 	/* Start of area accessible by the triVM bytecode */
 	union {
-		uint32_t tmp0;     /**< triVM Temporary register 0 */
+		uint32_t gpr0;     /**< triVM Temporary register 0 */
 		uint8_t ram[1];    /**< RAM memory */
 	};
+	uint32_t gpr1;     /**< triVM Temporary register 1 */
+	uint32_t gsp;       /**< Guest stack pointer */
 	uint32_t pc;       /**< triVM Program counter - offset in ROM independent from rom_base */
-	uint32_t asp;       /**< Auxilary stack pointer */ // TODO: Rename to GSP (Guest Stack Pointer)
-	uint32_t tmp1;     /**< triVM Temporary register 1 */
-	uint32_t tmp2;     /**< triVM Temporary register 2 */
-	uint32_t tmp3;     /**< triVM Temporary register 3 */
+	uint32_t gpr2;     /**< triVM Temporary register 2 */
+	uint32_t gpr3;     /**< triVM Temporary register 3 */
 	uint32_t amb[4];
 	uint32_t spl; /**< Minimum value for stack if stack guard is enabled */
 	uint32_t sph; /**< Minimum value for stack if stack guard is enabled */
