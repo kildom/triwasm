@@ -23,30 +23,31 @@
 struct trivm_instance
 {
 	uint32_t ram_size; /**< Size of the RAM memory */
-	uint32_t sp;       /**< triVM Stack pointer - offset in RAM */
+	uint32_t sp;       /**< triVM Stack pointer */
 #if TRIVM_ENABLE_ROM
 	uint32_t rom_size; /**< Size of the ROM memory */
 	const uint8_t *rom;   /**< Pointer to ROM memory */
 #endif
 	/* Start of area accessible by the triVM bytecode */
 	union {
-		uint32_t gpr0;     /**< triVM Temporary register 0 */
+		uint32_t pc;     /**< triVM Program counter - offset in ROM independent from rom_base */
 		uint8_t ram[1];    /**< RAM memory */
 	};
-	uint32_t gpr1;     /**< triVM Temporary register 1 */
-	uint32_t gsp;       /**< Guest stack pointer */
-	uint32_t pc;       /**< triVM Program counter - offset in ROM independent from rom_base */
+	uint32_t gpr0;       /**< triVM Temporary register 0 */
+	uint32_t gpr1;       /**< triVM Temporary register 1 */
+	uint32_t sp_shadow;   /**< triVM Stack pointer accessible by guest */
+	uint32_t gsp;      /**< Guest stack pointer */
+	uint32_t mab[4];  /**< Memory Access Base */
 	uint32_t gpr2;     /**< triVM Temporary register 2 */
 	uint32_t gpr3;     /**< triVM Temporary register 3 */
-	uint32_t amb[4];
 	uint32_t spl; /**< Minimum value for stack if stack guard is enabled */
 	uint32_t sph; /**< Minimum value for stack if stack guard is enabled */
-	uint32_t aspl; /**< Minimum value for stack if stack guard is enabled */
-	uint32_t asph; /**< Minimum value for stack if stack guard is enabled */
+	uint32_t gspl; /**< Minimum value for guest stack if stack guard is enabled */
+	uint32_t gsph; /**< Minimum value for guest stack if stack guard is enabled */
 };
 
 struct trivm_instance *trivm_init(uint8_t *memory, uint32_t memory_size, const uint8_t *rom, uint32_t program_size);
 
-bool trivm_run(struct trivm_instance *vm, uint32_t limit);
+int trivm_run(struct trivm_instance *vm, uint32_t limit);
 
 #endif

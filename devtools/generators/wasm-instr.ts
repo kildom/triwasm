@@ -85,7 +85,7 @@ function generateManualGenerators(instrInfo: InstrInfo[]) {
         text += '            break;\n';
         text += '        }\n';
     }
-    writeOutput('tools/wasm/generator.ts', true, text, '        ', 'Generators');
+    writeOutput('tools/wasm/genFunction.ts', true, text, '        ', 'Generators');
 }
 
 function generateSimpleGenerators(instrInfo: InstrInfo[]) {
@@ -102,7 +102,7 @@ function generateSimpleGenerators(instrInfo: InstrInfo[]) {
         }
     }
     text += '    /* eslint-enable max-len */\n';
-    writeOutput('tools/wasm/generator.ts', false, text, '    ', 'Simple generators');
+    writeOutput('tools/wasm/genFunction.ts', false, text, '    ', 'Simple generators');
 }
 
 function replaceOutput(text: string, content: string, indent: string, title: string): string {

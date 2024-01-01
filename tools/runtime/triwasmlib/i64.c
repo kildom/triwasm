@@ -87,7 +87,7 @@ TRIVM_ASSEMBLY(
     // al, ah, bl, bh, ret, zeros
     "WRITE32 GPR0\n"
     "NEG -1\n"
-    "NEG 0\n"
+    "READ32 MAB0\n"
     "READ32 [SP]\n"
     "READ32 [SP]\n"
     "READ32 GPR0\n"
@@ -238,7 +238,7 @@ uint32_t i64_le_s(uint32_t ah, uint32_t al, uint32_t bh, uint32_t bl)
 
 TRIVM_ASSEMBLY(
     "READ32 [SP]\n"
-    "NEG 0\n"
+    "READ32 MAB0\n"
     "WRITE32 [SP] + 1\n"
     "JUMP udivmod64"
     )

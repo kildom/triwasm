@@ -550,6 +550,22 @@ export class FuncGenerator extends CodeOutput implements WalkFunctionListener<Bl
             throw new Error(`Unimplemented ${this.instr.id}`); // TODO: Implement tables
             break;
         }
+        case OP.I32_CONST: {
+            if (this.instr.value === 0) {
+                this.output('READ32 MAB0');
+            } else {
+                this.output(`NEG -(${this.instr.value})`);
+            }
+            break;
+        }
+        case OP.I64_CONST: {
+            if (this.instr.value === 0n) {
+                this.output(['READ32 MAB0', 'READ32 MAB0']);
+            } else {
+                this.output(`NEG64 -(${this.instr.value})`);
+            }
+            break;
+        }
         case OP.REF_FUNC: {
             let target = this.instr.func.resolved;
             this.output(`NEG -(${target.name})`);
@@ -617,8 +633,6 @@ const simpleGenerators: { [key: number]: string | ((instr: any) => string); } = 
     [OP.I64_STORE]: (instr: OpType.I64_STORE) => `UWRITE64 [AMB0] + [POP] + ${instr.offset}`,
     [OP.I32_STORE8]: (instr: OpType.I32_STORE8) => `UWRITE8 [AMB0] + [POP] + ${instr.offset}`,
     [OP.I32_STORE16]: (instr: OpType.I32_STORE16) => `UWRITE16 [AMB0] + [POP] + ${instr.offset}`,
-    [OP.I32_CONST]: (instr: OpType.I32_CONST) => `NEG -(${instr.value})`,
-    [OP.I64_CONST]: (instr: OpType.I64_CONST) => `NEG64 -(${instr.value})`,
     [OP.I32_EQZ]: 'NOT',
     [OP.I32_EQ]: 'EQ',
     [OP.I32_LT_S]: 'SLT',

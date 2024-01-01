@@ -62,9 +62,9 @@ Description: x << 2 |  |  |  |
 0x17 | HOST | 1 |  | return arg1;
 0x18 | CALL | 1 |  | ret = vm->pc; | vm->pc = arg1_pc;
 0x19 | BR | 1 |  | ret = vm->pc; | vm->pc = arg1_pc; | return 0;
-0x1A | WRITESP | 1 |  | vm->sp = arg1 & ~3; |  | return 0;
-0x1B | UNWIND | 1 | UNWIND | trivm_instr_unwind(vm, arg1, arg1_shift); |  | return 0;
-0x1C | READSP | 1 |  | ret = vm->sp; | vm->pc--;
+0x1A | UNWIND | 1 | UNWIND | trivm_instr_unwind(vm, arg1, arg1_shift); |  | return 0;
+0x1B | # reserved |  |  | 
+0x1C | # reserved |  |  | 
 0x1D | # reserved |  |  | 
 0x1E | # extended 32-bit instructions |  |  | 
 0x1F | # extended 64-bit instructions |  |  | 

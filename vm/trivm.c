@@ -173,19 +173,6 @@
 #define CODE_LONG_ARG0 0x8000
 #define CODE_LONG_ARG1 0x4000
 
-#define CODE_MEM_BASE0_BIT 5
-#define CODE_MEM_BASE1 (1 << 6)
-#define CODE_MEM_BASE0 (1 << 5)
-#define CODE_MEM_WRITE_FLAG (1 << 4)
-#define CODE_MEM_POP (1 << 3)
-#define CODE_MEM_ARGS (1 << 2)
-#define CODE_MEM_OFFSET_MASK 3
-
-#define CODE_MEM_MODE_BYTE (1 << 2)
-#define CODE_MEM_MODE_SIGN_EXT (1 << 1)
-#define CODE_MEM_MODE_NON64 (1 << 1)
-#define CODE_MEM_MODE_NON32 (1 << 0)
-
 
 /* ================================================ Fault triggering ================================================ */
 
@@ -523,7 +510,7 @@ static void trivm_instr_unwind(struct trivm_instance *vm, uint32_t arg1, uint32_
 	}
 #endif
 
-	vm->sp -= reduce;
+	vm->sp -= skip;
 	vm->pc = return_address;
 }
 
@@ -656,6 +643,22 @@ invalid_instruction:
 
 static void trivm_mem(struct trivm_instance *vm, uint32_t code)
 {
+#define CODE_MEM_SP (1 << 6)
+#define CODE_MEM_WRITE_SHIFT 5
+#define CODE_MEM_WRITE (1 << CODE_MEM_WRITE_SHIFT)
+#define CODE_MEM_MAB_SHIFT 1
+#define CODE_MEM_MAB_LSB (1 << 1)
+#define CODE_MEM_POP (1 << 0)
+#define CODE_MEM_OFFSET_MASK 0x1F
+
+#define CODE_MEM_MORE_IMM (1 << 0)
+
+#define CODE_MEM_IMM_SMALL (1 << 0)
+#define CODE_MEM_IMM_64BIT (1 << 1)
+#define CODE_MEM_IMM_HALF_WORD (1 << 1)
+#define CODE_MEM_IMM_SIGN_EXT_SHIFT 2
+#define CODE_MEM_IMM_SIGN_EXT (1 << CODE_MEM_IMM_SIGN_EXT_SHIFT)
+
 	uint32_t access_size = 4;
 	uint32_t addr;
 	uint32_t value[TRIVM_EXT_MEM64 ? 2 : 1];
@@ -663,77 +666,81 @@ static void trivm_mem(struct trivm_instance *vm, uint32_t code)
 	uint8_t *ptr;
 	uint32_t offset;
 	uint32_t last;
+	uint32_t count;
 	uint32_t imm;
 
 	addr = code & CODE_MEM_OFFSET_MASK;
 
-	if (code & CODE_MEM_ARGS)
-	{
-		/*> ARGS ... */
-		uint32_t count = 5;
-		do
-		{
-			if (count == 0) {
-				TRIGGER_FAULT(INSTR_INVALID, { return; });
-				break;
-			}
-			imm = read_prog(vm);
-			/*> ARG byte {imm} */
-			addr <<= 7;
-			addr ^= imm;
-			count--;
-		} while (imm & 0x80);
-
-		/*> IMM {addr} */
-
-		if (addr & CODE_MEM_MODE_NON32) {
-			if (addr & CODE_MEM_MODE_BYTE) {
-				/*> 8-bit access */
-				access_size = 1;
-				if (addr & CODE_MEM_MODE_SIGN_EXT) {
-					sign_ext = 24;
-				}
-			} else {
-				/*> 16-bit access */
-				access_size = 2;
-				if (addr & CODE_MEM_MODE_SIGN_EXT) {
-					sign_ext = 16;
-				}
-			}
-			addr >>= 3;
-		} else {
-			if (TRIVM_EXT_MEM64) {
-				if (code & CODE_MEM_MODE_NON64) {
-					/*> 32-bit access */
-					addr >>= 2;
-				} else {
-					/*> 64-bit access */
-					access_size = 8;
-					/* `addr` is already valid, because two lower bits are 0 and expected: */
-					/* addr = (addr >> 2) * 4 */
-					/*> ... */
-					/*> bytes {#access_size}, sign ext shift {#sign_ext}, offset (items) {{addr}} */
-					goto skip_access_size_mul;
-				}
-			} else {
-				/*> 32-bit access */
-				addr >>= 1;
-			}
+	if (code & CODE_MEM_SP) {
+		// SP relative
+		code &= CODE_MEM_WRITE;
+		if (addr <= 0x1E) {
+			goto skip_get_args;
 		}
-		/*> ... */
 	} else {
-		/*> no ARGS */
+		// zero/AMB0 relative
+		addr = addr >> 2;
+		if (addr <= 0x05) {
+			code &= CODE_MEM_WRITE | CODE_MEM_POP | CODE_MEM_MAB_LSB;
+            goto skip_get_args;
+        }
+	}
+
+	/*> ARGS ... */
+	addr = 0;
+	count = 5;
+	do
+	{
+		if (count == 0) {
+			TRIGGER_FAULT(INSTR_INVALID, { return; });
+			break;
+		}
+		imm = read_prog(vm);
+		/*> ARG byte {imm} */
+		addr = (addr << 7) | (imm >> 1);
+		count--;
+	} while (imm & CODE_MEM_MORE_IMM);
+
+	if (code & CODE_MEM_SP) {
+		// SP relative
+		addr += 0x1F;
+	} else if (addr & CODE_MEM_IMM_SMALL) {
+		sign_ext = (addr & CODE_MEM_IMM_SIGN_EXT) << (4 - CODE_MEM_IMM_SIGN_EXT_SHIFT);
+		if (addr & CODE_MEM_IMM_HALF_WORD) {
+			/*> 16-bit access */
+			access_size = 2;
+		} else {
+			/*> 8-bit access */
+			access_size = 1;
+			sign_ext |= sign_ext >> 1;
+		}
+		addr >>= (2 + (code >> CODE_MEM_WRITE_SHIFT));
+	} else {
+		if (!TRIVM_EXT_MEM64) {
+			/*> 32-bit access */
+			addr <<= 1;
+		} else if (addr & CODE_MEM_IMM_64BIT) {
+			/*> 64-bit access */
+			access_size = 8;
+			/* `imm` is already valid, because two lower bits are 0 and expected: */
+			/* imm = (imm >> 2) * 4 */
+			/*> ... */
+			/*> bytes {#access_size}, sign ext shift {#sign_ext}, offset (items) {{addr}} */
+		}
+		goto skip_mul_args;
 	}
 
 	/*> bytes {#access_size}, sign ext shift {#sign_ext}, offset (items) {{addr}} */
 
+skip_get_args:
+
 	addr *= access_size;
 
-skip_access_size_mul:
+skip_mul_args:
 
 	/*> offset (bytes) {{addr}} */
 
-	if (code & CODE_MEM_WRITE_FLAG) {
+	if (code & CODE_MEM_WRITE) {
 		if (access_size == 8 && TRIVM_EXT_MEM64) {
 			value[1] = mem_pop(vm);
 		}
@@ -747,28 +754,11 @@ skip_access_size_mul:
 		/*> pop {{pop_value}} -> {addr} */
 	}
 
-	if (!(code & CODE_MEM_BASE0))
-	{
-		addr += vm->amb[(code >> CODE_MEM_BASE0_BIT)]; // TODOv2: Consider following improvement for smaller local variables access:
-		/*
-		1. when base==AMB1, offset is 4 bit, no non-word access, no extended bits in offset, no pop
-		2. change "READSP" instruction to instruction "LOCAL imm" that: x = amb1, amb1 = sp + imm, push x
-		USAGE:
-			LOCAL -12 / 4
-			READ AMB1
-			ADD 48
-			WRITE SP
-		Question: How to return (old AMB1 must be restored)?
-		*/
-		/*> base AMB{#code >> CODE_MEM_BASE1_BIT} {{vm->amb[code >> CODE_MEM_BASE1_BIT]}} -> {addr} */
-	}
-	else if (code & CODE_MEM_BASE1)
-	{
+	if (code & CODE_MEM_SP) {
+		// SP relative
 		addr = vm->sp - addr;
-	}
-	else
-	{
-		/*> base 0 -> {addr} */
+	} else {
+		addr += vm->mab[(code >> CODE_MEM_MAB_SHIFT) & 3];
 	}
 
 	/*> ADDRESS {addr} */
@@ -781,7 +771,7 @@ skip_access_size_mul:
 		offset = addr ^ 0x80000000;
 		last = vm->rom_size - access_size;
 		/*> ROM memory, last accessable address {last} */
-		if (code & CODE_MEM_WRITE_FLAG)
+		if (code & CODE_MEM_WRITE)
 		{
 			TRIGGER_FAULT_WITH_CODE(READ_ONLY, addr);
 			return;
@@ -805,7 +795,7 @@ skip_access_size_mul:
 	uint8_t* dst;
 	uint8_t* src;
 
-	if (code & CODE_MEM_WRITE_FLAG) {
+	if (code & CODE_MEM_WRITE) {
 		/*> WRITE */
 		dst = ptr;
 		src = (uint8_t*)&value;
@@ -825,7 +815,7 @@ skip_access_size_mul:
 	}
 #endif
 
-	if (!(code & CODE_MEM_WRITE_FLAG)) {
+	if (!(code & CODE_MEM_WRITE)) {
 		value[0] = (uint32_t)(((int32_t)value[0] << sign_ext) >> sign_ext);
 		/*> value hi={{access_size == 8 ? value[1] : 0}}, lo={{value[0]}} */
 		mem_push(vm, value[0]);
@@ -854,19 +844,21 @@ static int trivm_step(struct trivm_instance *vm)
 	}
 #endif
 
+	vm->sp_shadow = vm->sp;
+
 	if ((int32_t)vm->sp < (int32_t)vm->spl)
 	{
 		TRIGGER_FAULT_WITH_CODE(STACK_UNDERFLOW, vm->sp, { vm->sp = vm->spl; return 0; });
 	}
 
-	if ((int32_t)vm->asp > (int32_t)vm->asph)
+	if ((int32_t)vm->gsp > (int32_t)vm->gsph)
 	{
-		TRIGGER_FAULT(AUX_STACK_UNDERFLOW, { vm->asph = 0x7FFFFFFF; return 0; });
+		TRIGGER_FAULT(AUX_STACK_UNDERFLOW, { vm->gsph = 0x7FFFFFFF; return 0; });
 	}
 
-	if (TRIVM_FAULT_STACK_OVERFLOW && vm->aspl == 0x80000000)
+	if (TRIVM_FAULT_STACK_OVERFLOW && vm->gspl == 0x80000000)
 	{
-		if ((int32_t)vm->sp > (int32_t)(vm->asp - vm->sph))
+		if ((int32_t)vm->sp > (int32_t)(vm->gsp - vm->sph))
 		{
 			TRIGGER_FAULT(STACK_OVERFLOW, { vm->sph = 0x7FFFFFFF; return 0; });
 		}
@@ -878,9 +870,9 @@ static int trivm_step(struct trivm_instance *vm)
 			TRIGGER_FAULT(STACK_OVERFLOW, { vm->sph = 0x7FFFFFFF; return 0; });
 		}
 
-		if ((int32_t)vm->asp < (int32_t)vm->aspl)
+		if ((int32_t)vm->gsp < (int32_t)vm->gspl)
 		{
-			TRIGGER_FAULT(AUX_STACK_OVERFLOW, { vm->aspl = 0x80000000; return 0; });
+			TRIGGER_FAULT(AUX_STACK_OVERFLOW, { vm->gspl = 0x80000000; return 0; });
 		}
 	}
 
@@ -895,6 +887,7 @@ static int trivm_step(struct trivm_instance *vm)
 	{
 		/*> MEM opcode {code} */
 		trivm_mem(vm, code);
+		vm->sp = vm->sp_shadow & ~3;
 		return 0;
 	}
 }

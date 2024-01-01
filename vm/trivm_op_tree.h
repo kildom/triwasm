@@ -29,26 +29,14 @@
 #define TRIVM_TREE_CORE        \
     if (op & 1 << 6) {        \
         if (op & 1 << 5) {        \
-            if (op & 1 << 4) {        \
-                /* READSP 0x1C */        \
-                ret = vm->sp;        \
-                vm->pc--;        \
+            ret = vm->pc;        \
+            vm->pc = arg1_pc;        \
+            if (op & 1 << 2) {        \
+                /* BR 0x19 */        \
+                return 0;        \
             } else {        \
-                if (op & 1 << 3) {        \
-                    /* WRITESP 0x1A */        \
-                    vm->sp = arg1 & ~3;        \
-                    return 0;        \
-                } else {        \
-                    ret = vm->pc;        \
-                    vm->pc = arg1_pc;        \
-                    if (op & 1 << 2) {        \
-                        /* BR 0x19 */        \
-                        return 0;        \
-                    } else {        \
-                        /* CALL 0x18 */        \
-                        /* Nothing more to do. */        \
-                    }        \
-                }        \
+                /* CALL 0x18 */        \
+                /* Nothing more to do. */        \
             }        \
         } else {        \
             if (op & 1 << 4) {        \
@@ -181,33 +169,16 @@
 #define TRIVM_TREE_CORE        \
     if (op & 1 << 6) {        \
         if (op & 1 << 5) {        \
+            ret = vm->pc;        \
+            vm->pc = arg1_pc;        \
             if (op & 1 << 4) {        \
-                if (op & 1 << 3) {        \
-                    /* INVALID 0x1E, 0x1F */        \
-                    goto invalid_instruction;        \
-                } else {        \
-                    if (op & 1 << 2) {        \
-                        /* INVALID 0x1D */        \
-                        goto invalid_instruction;        \
-                    } else {        \
-                        /* READSP 0x1C */        \
-                        ret = vm->sp;        \
-                        vm->pc--;        \
-                    }        \
-                }        \
+                /* INVALID 0x1C, 0x1D, 0x1E, 0x1F */        \
+                goto invalid_instruction;        \
             } else {        \
                 if (op & 1 << 3) {        \
-                    if (op & 1 << 2) {        \
-                        /* INVALID 0x1B */        \
-                        goto invalid_instruction;        \
-                    } else {        \
-                        /* WRITESP 0x1A */        \
-                        vm->sp = arg1 & ~3;        \
-                        return 0;        \
-                    }        \
+                    /* INVALID 0x1A, 0x1B */        \
+                    goto invalid_instruction;        \
                 } else {        \
-                    ret = vm->pc;        \
-                    vm->pc = arg1_pc;        \
                     if (op & 1 << 2) {        \
                         /* BR 0x19 */        \
                         return 0;        \
@@ -348,30 +319,19 @@
 #define TRIVM_TREE_CORE        \
     if (op & 1 << 6) {        \
         if (op & 1 << 5) {        \
-            if (op & 1 << 4) {        \
-                /* READSP 0x1C */        \
-                ret = vm->sp;        \
-                vm->pc--;        \
+            if (op & 1 << 3) {        \
+                /* UNWIND 0x1A */        \
+                trivm_instr_unwind(vm, arg1, arg1_shift);        \
+                return 0;        \
             } else {        \
-                if (op & 1 << 3) {        \
-                    if (op & 1 << 2) {        \
-                        /* UNWIND 0x1B */        \
-                        trivm_instr_unwind(vm, arg1, arg1_shift);        \
-                    } else {        \
-                        /* WRITESP 0x1A */        \
-                        vm->sp = arg1 & ~3;        \
-                    }        \
+                ret = vm->pc;        \
+                vm->pc = arg1_pc;        \
+                if (op & 1 << 2) {        \
+                    /* BR 0x19 */        \
                     return 0;        \
                 } else {        \
-                    ret = vm->pc;        \
-                    vm->pc = arg1_pc;        \
-                    if (op & 1 << 2) {        \
-                        /* BR 0x19 */        \
-                        return 0;        \
-                    } else {        \
-                        /* CALL 0x18 */        \
-                        /* Nothing more to do. */        \
-                    }        \
+                    /* CALL 0x18 */        \
+                    /* Nothing more to do. */        \
                 }        \
             }        \
         } else {        \
@@ -506,29 +466,18 @@
     if (op & 1 << 6) {        \
         if (op & 1 << 5) {        \
             if (op & 1 << 4) {        \
-                if (op & 1 << 3) {        \
-                    /* INVALID 0x1E, 0x1F */        \
-                    goto invalid_instruction;        \
-                } else {        \
-                    if (op & 1 << 2) {        \
-                        /* INVALID 0x1D */        \
-                        goto invalid_instruction;        \
-                    } else {        \
-                        /* READSP 0x1C */        \
-                        ret = vm->sp;        \
-                        vm->pc--;        \
-                    }        \
-                }        \
+                /* INVALID 0x1C, 0x1D, 0x1E, 0x1F */        \
+                goto invalid_instruction;        \
             } else {        \
                 if (op & 1 << 3) {        \
                     if (op & 1 << 2) {        \
-                        /* UNWIND 0x1B */        \
-                        trivm_instr_unwind(vm, arg1, arg1_shift);        \
+                        /* INVALID 0x1B */        \
+                        goto invalid_instruction;        \
                     } else {        \
-                        /* WRITESP 0x1A */        \
-                        vm->sp = arg1 & ~3;        \
+                        /* UNWIND 0x1A */        \
+                        trivm_instr_unwind(vm, arg1, arg1_shift);        \
+                        return 0;        \
                     }        \
-                    return 0;        \
                 } else {        \
                     ret = vm->pc;        \
                     vm->pc = arg1_pc;        \
@@ -697,9 +646,7 @@
     case TRIVM_OP_CODE_HOST: return "HOST"; \
     case TRIVM_OP_CODE_CALL: return "CALL"; \
     case TRIVM_OP_CODE_BR: return "BR"; \
-    case TRIVM_OP_CODE_WRITESP: return "WRITESP"; \
     case TRIVM_OP_CODE_UNWIND: return "UNWIND"; \
-    case TRIVM_OP_CODE_READSP: return "READSP"; \
 
 #define TRIVM_OP_CODE_BRT 0x00
 #define TRIVM_OP_CODE_BRF 0x04
@@ -727,9 +674,7 @@
 #define TRIVM_OP_CODE_HOST 0x5C
 #define TRIVM_OP_CODE_CALL 0x60
 #define TRIVM_OP_CODE_BR 0x64
-#define TRIVM_OP_CODE_WRITESP 0x68
-#define TRIVM_OP_CODE_UNWIND 0x6C
-#define TRIVM_OP_CODE_READSP 0x70
+#define TRIVM_OP_CODE_UNWIND 0x68
 
 #if !TRIVM_FAULT_INSTR_INVALID
 

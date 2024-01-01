@@ -71,59 +71,43 @@ TRIWASM_FAULT_INVALID_EXPORT = 67
 $_program_memory_base = 0x80000000
 .base $_program_memory_base
 
-# VM Registers
-GPR0 = 0
-GPR1 = 4
-GSP = 8
-PC = 12
-GPR2 = 16
-GPR3 = 20
-AMB0 = 24
-AMB1 = 28
-SPL = 32
-SPH = 36
-GSPL = 40
-GSPH = 44
-
-# VM Registers initialization
-.begin movable $_memory_init_table
-..skip 24 # GPR0, PC, GSP, GPR1, GPR2, GPR3 - not needed or cannot be touched
-..part 8
-# TODOv1: initialize AMB registers
-.data32 0 # AMB0
-.data32 0 # AMB1
-..end
-..skip 16 # SPL, SPH, GSPL, GSPH - initialized by stack initialization
-.end
-
 # TODO: Move the rest of init memory here as movable blocks.
 
-# Initial stack starts just after the registers
-.vma 48
+# ======================= VM Registers =======================
+
+# Declaration
+PC = 0
+GPR0 = 4
+GPR1 = 8
+SP = 12
+GSP = 16
+MAB0 = 20
+MAB1 = 24
+MAB2 = 28
+MAB3 = 32
+GPR2 = 36
+GPR3 = 40
+SPL = 44
+SPH = 48
+GSPL = 52
+GSPH = 56
+.vma 60
+
+# Initialization
+.begin movable $_memory_init_table
+..skip 24 # PC, GPR0, GPR1, SP, GSP, MAB0 - not needed or cannot be touched
+..part 12
+# TODOv1: initialize AMB registers
+.data32 0 # MAB1
+.data32 0 # MAB2
+.data32 0 # MAB3
+..end
+..skip 24 # GPR2, GPR3, SPL, SPH, GSPL, GSPH - not needed or initialized by stack initialization
+.end
 
 # External globals
 # TODOv2: Put here imported and exported globals.
 $_external_globals_end = $_vm_registers_end
-
-# triWASM additional general purpose globals
-$_triwasm_internal_globals_begin:
-.begin discardable
-$_triwasm_global0:
-.data32 0
-.end
-.begin discardable
-$_triwasm_global1:
-.data32 0
-.end
-.begin discardable
-$_triwasm_global2:
-.data32 0
-.end
-.begin discardable
-$_triwasm_global4:
-.data32 0
-.end
-$_triwasm_internal_globals_end:
 
 # Globals
 <%= globalsGen.dataMemory.getOutput(true) %>
@@ -176,7 +160,6 @@ READ32 GPR0
 READ32 GPR1
 READ32 GPR3
 READ32 GPR2
-READ32 $_triwasm_global0
 # Put return address to allow return when possible
 READ32 GPR2
 BR $_trivm_fault_handler
@@ -207,7 +190,7 @@ CALL $_initialize_stack
 
 # Memory initialization table copy
 .begin
-NEG 0
+READ32 MAB0
 NEG -$_memory_init_table_start
 .local copy_next_block
 copy_next_block:
@@ -243,7 +226,7 @@ next_gap_byte:
     BRF gap_finished
     READ32 [SP] - 8
     READ32 [SP]
-    NEG 0
+    READ32 MAB0
     WRITE32 [POP]
     ADD 1
     WRITE32 [SP] - 8
@@ -395,15 +378,6 @@ $_trigger_fault_with_two_codes:
 WRITE32 GPR0
 WRITE32 GPR1
 WRITE32 GPR3
-BR $_trigger_fault_tail
-.end
-
-.begin discardable
-$_trigger_fault_with_three_codes:
-WRITE32 GPR0
-WRITE32 GPR1
-WRITE32 GPR3
-WRITE32 $_triwasm_global0 # TODOv1: Check order of registers
 BR $_trigger_fault_tail
 .end
 

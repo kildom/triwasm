@@ -13,37 +13,32 @@ Following diagrams shows each of the encoding type.
 
 ![Encoding](img/Encoding.drawio.svg)
 
-Immediate values are encoded in little endian byte order.
+Where:
 
-Immediate value in encodings B, C, F, G, J, K is always sign
-extended to 32-bit integer before executing the instruction.
-
-Immediate value in encodings M, N is always sign
-extended to 64-bit integer before executing the instruction.
-
-Flags LR, L0, L1 cannot be all zeros in a single instruction.
-
-The same `op code` value, but used in a different encodings may indicate different instructions.
-
-Encodings R and S contains series of 7-bit chunks for offset value.
-Bit 8 indicates that there are more chunks. Last chunk has eight bit cleared.
-This allows virtually unlimited instruction size,
-but it does not make sense to provide more bits than 32-bit integer can hold.
-
-Unlike immediate value, offset value is encoded in a big endian order.
-One or two most significant bits are in the first byte.
-The last byte contains 7 least significant bits.
-
-Depending on configuration, not all encodings are always used.
-Following table shows which encodings are used by each instruction set extension.
-
-|       |A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S
-|-------|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-
-|Core   |X|X|X|X| | | | | | | | | | | | |X|X|X
-|Unwind |X|X|X|X| | | | | | | | | | | | | | |
-|Float32| | | | |X|X|X|X| | | | | | | | | | |
-|Int64  |X|X|X|X| | | | |X|X|X|X|X|X|X|X| | |
-|Float64|X|X|X|X| | | | |X|X|X|X|X|X|X|X| | |
+* `op code` - the instruction code. The encodings use three different set of opcodes:
+  * *unwind* and *core* instructions (encoding A and B),
+  * *float32* instructions (encoding C and D),
+  * *float32* and *int64* instructions (encoding E to G).
+* `size` - the size of the following immediate value:
+  * 0 - 32 bits,
+  * 1 - 16 bits,
+  * 2 - 8 bits,
+* `immediate` - the instruction immediate value.
+  Immediate values are encoded in little endian byte order.
+  Immediate values are always sign-extended to target integer size before executing the instruction.
+* `LR` (long result) - if set, both words of the 64-bit result are pushed into the stack. If not, just lower
+  32 bits are pushed.
+* `L0`, `L1` (long argument 0/1) - if set, two words of of specified argument are popped from the stack.
+  If not, lower 32 bits are popped and remaining are sign-extended. For one-argument operations, the `L0` bit is ignored.
+  The `LR`, `L0`, `L1` bits cannot be all zeros in a single instruction.
+* `offset` - the offset added to (or subtracted from) the address. The offset is multiplied by the memory access width
+  (1, 2, or 4) with exception of 64-bit access which is multiplied by 4. Offset is encoded in big endian order.
+* `W` (write) - set for `WRITE` operations, cleared for `READ` operations.
+* `B` (base) - the register containing base address, `MAB0` or `MAB1` if `B` is one bit long, all `MAB` registers otherwise.
+* `P` (pop) - pop offset from the stack and add it to the address. For write operations, the offset is popped before
+  the value.
+* `H` (half-word) - if set, do 16-bit read write operation, 8-bit otherwise.
+* `S` (sign-extended) - if set, sign-extended the read value to 32-bits.
 
 > TODO: Split encoding diagram and add specific encoding image for each instruction.
 
