@@ -189,12 +189,12 @@ export class FuncGenerator extends CodeOutput implements WalkFunctionListener<Bl
             let code: string[];
             if (localsSize >= 16) {
                 code = [
-                    'READSP',
+                    'READ32 SP',
                     `SUB -${localsSize}`,
-                    'WRITESP',
+                    'WRITE32 SP',
                 ];
             } else {
-                code = new Array(localsSize / 4).fill('READSP');
+                code = new Array(localsSize / 4).fill('READ32 GPR0');
             }
             this.output(code, 'Allocate stack for locals');
         }

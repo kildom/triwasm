@@ -142,8 +142,8 @@
 #define FAULT_ENTRY_OFFSET (3 + STARTUP_ENTRY_OFFSET)
 
 #define TWO_BYTE_INSTR_ENABLED (TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT32 || TRIVM_EXT_FLOAT64)
-#define ADV32_TREE_ENABLED TRIVM_EXT_FLOAT32
-#define ADV64_TREE_ENABLED (TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)
+#define EXT32_TREE_ENABLED TRIVM_EXT_FLOAT32
+#define EXT64_TREE_ENABLED (TRIVM_EXT_INT64 || TRIVM_EXT_FLOAT64)
 
 #if defined(__GNUC__)
 /* In some cases, more size-optimal code is generated when a function is not inlined. */
@@ -202,14 +202,14 @@
 
 static void trigger_fault(struct trivm_instance *vm, uint32_t type)
 {
-	vm->tmp0 = type;
-	vm->tmp2 = vm->pc;
+	vm->gpr0 = type;
+	vm->gpr2 = vm->pc;
 	vm->pc = FAULT_ENTRY_OFFSET;
 }
 
 static void trigger_fault_with_code(struct trivm_instance *vm, uint32_t type, uint32_t code)
 {
-	vm->tmp1 = code;
+	vm->gpr1 = code;
 	trigger_fault(vm, type);
 }
 
@@ -428,7 +428,7 @@ static int trivm_instr_long(struct trivm_instance *vm, uint32_t code, uint32_t a
 	arg1 = (uint64_t)arg1_lo | ((uint64_t)arg1_hi << 32);
 
 	uint64_t arg0 = 0;
-	if (op < TRIVM_TREE_ADV64_FIRST_ONE_ARG)
+	if (op < TRIVM_TREE_EXT32_FIRST_ONE_ARG)
 	{
 		uint32_t arg0_lo = mem_pop(vm);
 		uint32_t arg0_hi;
@@ -447,7 +447,7 @@ static int trivm_instr_long(struct trivm_instance *vm, uint32_t code, uint32_t a
 	uint64_t ret;
 
 	/*>     Op:adv64 {$op_name_adv64(op)} */
-	TRIVM_TREE_ADV64;
+	TRIVM_TREE_EXT64;
 
 	mem_push(vm, (uint32_t)ret);
 	if (code & CODE_LONG_RES)
@@ -574,7 +574,7 @@ static int trivm_instr(struct trivm_instance *vm, uint32_t code)
 	if (TWO_BYTE_INSTR_ENABLED && (code & CODE_INSTR_OP_MASK_ADV) == CODE_INSTR_OP_MASK_ADV)
 	{
 		code = code | (read_prog(vm) << 8);
-		if (ADV64_TREE_ENABLED && ((code & 0xC004) != 0))
+		if (EXT64_TREE_ENABLED && ((code & 0xC004) != 0))
 		{
 			return trivm_instr_long(vm, code, arg1);
 		}
@@ -615,10 +615,10 @@ static int trivm_instr(struct trivm_instance *vm, uint32_t code)
 	//        Unsaturated trunc instructions will be the same as saturated.
 
 	uint32_t ret = 0;
-	if ((op & 1) && ADV32_TREE_ENABLED)
+	if ((op & 1) && EXT32_TREE_ENABLED)
 	{
 		/*>     Op:adv32 {$op_name_adv32(op)} */
-		TRIVM_TREE_ADV32;
+		TRIVM_TREE_EXT32;
 	}
 	else
 	{
@@ -935,7 +935,6 @@ struct trivm_instance *trivm_init(uint8_t *memory, uint32_t memory_size, const u
 	vm->rom_size = program_size;
 #endif
 	vm->ram_size = memory_size - TRIVM_MEMORY_HEADER;
-	vm->sp = offsetof(struct trivm_instance, pc) - TRIVM_MEMORY_HEADER;
 	if (STARTUP_ENTRY_OFFSET != 0) {
 		vm->pc = STARTUP_ENTRY_OFFSET;
 	}

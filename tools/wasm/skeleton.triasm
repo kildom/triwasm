@@ -71,16 +71,14 @@ TRIWASM_FAULT_INVALID_EXPORT = 67
 $_program_memory_base = 0x80000000
 .base $_program_memory_base
 
-# TODO: Move the rest of init memory here as movable blocks.
-
 # ======================= VM Registers =======================
 
 # Declaration
-PC = 0
-GPR0 = 4
-GPR1 = 8
+GPR0 = 0
+GPR1 = 4
+GSP = 8
 SP = 12
-GSP = 16
+PC = 16
 MAB0 = 20
 MAB1 = 24
 MAB2 = 28
@@ -93,52 +91,72 @@ GSPL = 52
 GSPH = 56
 .vma 60
 
+$_initial_sp_value = MAB0
+
 # Initialization
 .begin movable $_memory_init_table
-..skip 24 # PC, GPR0, GPR1, SP, GSP, MAB0 - not needed or cannot be touched
-..part 12
-# TODOv1: initialize AMB registers
-.data32 0 # MAB1
-.data32 0 # MAB2
-.data32 0 # MAB3
+..skip 28 # PC, GPR0, GPR1, SP, GSP, MAB0, MAB1 - not needed or cannot be touched
+..part 4
+.data32 $_program_memory_globals # MAB2
 ..end
-..skip 24 # GPR2, GPR3, SPL, SPH, GSPL, GSPH - not needed or initialized by stack initialization
+..skip 28 # MAB3, GPR2, GPR3, SPL, SPH, GSPL, GSPH - not needed or initialized by stack initialization
 .end
 
-# External globals
-# TODOv2: Put here imported and exported globals.
-$_external_globals_end = $_vm_registers_end
+# ======================= External globals =======================
 
-# Globals
+$_data_memory_globals = vma()
+
+# TODOv2: Put here imported and exported globals.
+
+# ======================= Globals in data memory =======================
+
 <%= globalsGen.dataMemory.getOutput(true) %>
 
-# Growable tables pointers
-# TODOv3: Put here pointers to growable tables.
-<%= /* tables.placementGrowableTablePointers.getOutput(true) */ %>
+# ======================= Tables in data memory =======================
 
-# Fixed tables
-# TODOv1: Put here fixed tables.
-<%= /* tables.placementFixedTables.getOutput(true) */ %>
+<%= tablesGen.dataMemory.getOutput(true) %>
 
-# Growable tables
-# TODOv3: Put here growable tables.
-# TODOv3: First growable table can be referenced directly since it will never move.
-<%= /* tables.placementGrowableTables.getOutput(true) */ %>
+# ======================= VM stack =======================
 
 # Start of triVM stack free space
+$_vm_stack_start_without_align = vma()
 .align 4
 $_vm_stack_start = vma()
+
+# Finalize memory initialization table pseudo-directives before stack begin
+.begin movable $_memory_init_table
+..skip 3, $_vm_stack_start - $_vm_stack_start_without_align
+..finalize
+.end
+
+# ======================= WASM data =======================
+
+.begin movable $_memory_init_table
+<%= memoryGen.initTable.getOutput(true) %>
+.data8 254 # Memory initialization end marker
+.end
+
+<%/*
+Special pseudo-directives for the memory initialization table:
+..skip N - skip N bytes
+..skip N, EXP - skip EXP bytes, maximum value of expression is N
+..part N - start unbreakable part of the table with maximum size of N bytes
+..part discardable N - start unbreakable discardable part of the table with maximum size of N bytes
+..end - end part
+..finalize - finalize memory initialization table pseudo-directives and set $_mem_init_final_skip
+             to remaining number of skip bytes for the next block.
+*/%>
 
 # ===========================================================
 # ===================== PROGRAM MEMORY ======================
 # ===========================================================
 
-.vma $_program_memory_base
+.pma 0
 
 # ===================== MAIN AND FAULT ENTRIES ======================
 
 BR $_main_entry
-.vma $_program_memory_base + 3
+.pma 3
 <% if (conf.faults.anyVmFault) { %>
     # Fault is next instruction, so no need to do BR
     .ref $_fault_handler
@@ -181,7 +199,7 @@ $_trivm_fault_handler = $_trivm_default_fault_handler
 
 $_main_entry:
 .begin
-READSP
+READ32 SP
 EQ $_initial_sp_value
 BRF skip_startup
 
@@ -218,23 +236,11 @@ EQ 254
 BRT exit_mem_init
 skip_32_bits:
 # ..., dst, src-1, gap_bytes
-# Fill dst with "gap_bytes" zeros.
-.local next_gap_byte
-.local gap_finished
-next_gap_byte:
-    READ32 [SP]
-    BRF gap_finished
-    READ32 [SP] - 8
-    READ32 [SP]
-    READ32 MAB0
-    WRITE32 [POP]
-    ADD 1
-    WRITE32 [SP] - 8
-    SUB 1
-    BR next_gap_byte
-gap_finished:
-# ..., dst, src-1, 0
-WRITE32 GPR0
+# Skip "gap_bytes" in dst.
+READ32 [SP] - 8
+ADD
+WRITE32 [SP] - 4
+# ..., dst, src-1
 READ32 [SP]
 READ8U [POP] + 1
 READ32 [SP] - 4
@@ -284,17 +290,74 @@ WRITE32 PC
 
 .begin
 $_initialize_stack:
-WRITE32 GPR3
-NEG -($_vm_stack_start + $_STACK_POP_MAX_BYTES)
-WRITESP
-READ32 GPR3
+# Initialize VM and guest stack pointers. This have to be done in right
+# order to avoid unintentionally triggering any stack fault.
+
+# Keep return address since it will not be available after SP change.
+WRITE32 MAB3
+
+# Disable stack overflow when shared stack is used.
+<% if (conf.faults.stackOverflow || conf.faults.guestStackOverflow) { %>
+    READ32 AMB0
+    WRITE32 GSPL
+<% } %>
+
+# Disable stack underflow.
 <% if (conf.faults.stackUnderflow) { %>
-    NEG -($_vm_stack_start + $_STACK_POP_MAX_BYTES)
+    READ32 AMB0
     WRITE32 SPL
 <% } %>
+
+# Disable stack overflow.
 <% if (conf.faults.stackOverflow) { %>
-    # TODO: setup max stack size (SPH)
+    NEG -(0xFFFFFFFF)
+    WRITE32 SPH
 <% } %>
+
+# Set stack pointer.
+NEG -($_vm_stack_start + $_STACK_POP_MAX_BYTES - 4)
+WRITE32 SP
+
+# Set guest stack pointer.
+<% if (conf.faults.guestStackUnderflow || conf.faults.guestStackOverflow) { %>
+    <% if (conf.faults.guestStackUnderflow) { %>
+        NEG -(0xFFFFFFFF)
+        WRITE32 GSPH
+    <% } %>
+    NEG -(0) # TODO: set guest stack initial value
+    WRITE32 GSP
+<% } %>
+
+# Setup guest stack pointer highest value.
+<% if (conf.faults.guestStackUnderflow) { %>
+    NEG -(0xFFFFFFFF) # TODO: set limiting value
+    WRITE32 GSPH
+<% } %>
+
+# Setup guest stack pointer lowest value.
+<% if (conf.faults.guestStackOverflow) { %>
+    NEG -(0) # TODO: set limiting value
+    WRITE32 GSPL
+<% } %>
+
+# Setup VM stack pointer highest value.
+<% if (conf.faults.guestStackUnderflow) { %>
+    NEG -(0xFFFFFFFF) # TODO: set limiting value
+    WRITE32 SPH
+<% } %>
+
+# Setup VM stack pointer lowest value.
+<% if (conf.faults.guestStackOverflow) { %>
+    READ32 SP
+    WRITE32 SPL
+<% } %>
+
+# Restore MAB1/3 and return
+READ32 MAB3
+NEG -(0) # TODO: initialize MAB1
+WRITE32 MAB1
+NEG -($_data_memory_globals)
+WRITE32 MAB3
 WRITE32 PC
 .end
 
@@ -386,41 +449,18 @@ BR $_trigger_fault_tail
 <%= funcGen.generate(true) %>
 
 # ===================== MEMORY INIT TABLE ======================
-# Special pseudo-directives for the memory initialization table:
-# ..skip N - skip N bytes
-# ..skip N, EXP - skip EXP bytes, maximum value of expression is N
-# ..part N - start unbreakable part of the table with maximum size of N bytes
-# ..part discardable N - start unbreakable discardable part of the table with maximum size of N bytes
-# ..end - end part
 
 $_memory_init_table_start = vma()
 .place $_memory_init_table
-.data8 254 # Memory initialization end marker
-
-
-# Interface globals
-# TODOv2: Put here exported globals initialization and gaps in imported globals.
-
-# Internal globals gap size
-..skip 16, $_triwasm_internal_globals_end - $_triwasm_internal_globals_begin
-
-# Globals in init table
-<%= globalsGen.initTable.getOutput(true) %>
-
-..finalize
-
-# Memory data in init table
-<%= memoryGen.initTable.getOutput(true) %>
-
-
 
 # Globals in program memory
+$_program_memory_globals = vma()
 <%= globalsGen.programMemory.getOutput(true) %>
 
 # Tables in program memory
 <%= tablesGen.programMemory.getOutput(true) %>
 
-# ===================== WEAK SYMBOLS ======================
+#tag WEAKSYMBOLS 
 
 .place $_weak_symbols
 

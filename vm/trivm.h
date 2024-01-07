@@ -30,18 +30,19 @@ struct trivm_instance
 #endif
 	/* Start of area accessible by the triVM bytecode */
 	union {
-		uint32_t pc;     /**< triVM Program counter - offset in ROM independent from rom_base */
+		uint32_t gpr0;       /**< triVM Temporary register 0 */
 		uint8_t ram[1];    /**< RAM memory */
 	};
-	uint32_t gpr0;       /**< triVM Temporary register 0 */
 	uint32_t gpr1;       /**< triVM Temporary register 1 */
-	uint32_t sp_shadow;   /**< triVM Stack pointer accessible by guest */
 	uint32_t gsp;      /**< Guest stack pointer */
+	uint32_t sp_shadow;   /**< triVM Stack pointer accessible by guest */
+	uint32_t pc;     /**< triVM Program counter - offset in ROM independent from rom_base */
 	uint32_t mab[4];  /**< Memory Access Base */
 	uint32_t gpr2;     /**< triVM Temporary register 2 */
 	uint32_t gpr3;     /**< triVM Temporary register 3 */
-	uint32_t spl; /**< Minimum value for stack if stack guard is enabled */
-	uint32_t sph; /**< Minimum value for stack if stack guard is enabled */
+	// TODOv1: Always set SP to SPL in case of stack overflow/underflow fault.
+	uint32_t spl; /**< Minimum value for stack if stack guard is enabled, SP reset value after the stack fault */
+	uint32_t sph; /**< Minimum value for stack if stack guard is enabled */ // TODOv1: Set to max in case of stack overflow/underflow fault.
 	uint32_t gspl; /**< Minimum value for guest stack if stack guard is enabled */
 	uint32_t gsph; /**< Minimum value for guest stack if stack guard is enabled */
 };

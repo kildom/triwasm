@@ -25,7 +25,6 @@ export class GlobalsGenerator {
     // Outputs
     dataMemory = new CodeOutput();
     programMemory = new CodeOutput();
-    initTable = new CodeOutput();
     dynamicInit = new CodeOutput();
 
     funcGenerator: FuncGenerator;
@@ -58,7 +57,6 @@ export class GlobalsGenerator {
     public generate(): void {
         this.dataMemory.initOutput();
         this.programMemory.initOutput();
-        this.initTable.initOutput();
         this.dynamicInit.initOutput();
 
         // Program memory immutable globals
@@ -85,13 +83,13 @@ export class GlobalsGenerator {
                 `.ref $_global_${global.index}_init`,
                 '.end']);
             // Put initial value into part of memory init table
-            this.initTable.output([
-                `..part ${4 * words}`,
-                '.begin discardable',
+            this.dataMemory.output([
+                '.begin movable $_memory_init_table',
+                `..part discardable ${4 * words}`,
                 `$_global_${global.index}_init:`,
                 `.data${32 * words} ${value}`,
-                '.end',
-                '..end']);
+                '..end',
+                '.end']);
         }
 
         // Dynamically initialized globals
@@ -110,7 +108,7 @@ export class GlobalsGenerator {
                 '.end',
                 `$_global_${global.index}_end = vma()`]);
             // Skip this data in memory init table because it will be initialized separately
-            this.initTable.output(`..skip ${4 * words}, $_global_${global.index}_end - $_global_${global.index}_begin`);
+            this.dataMemory.output(`..skip ${4 * words}, $_global_${global.index}_end - $_global_${global.index}_begin`);
             // Start initialization block
             this.dynamicInit.output([
                 '.begin discardable',

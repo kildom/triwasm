@@ -41,7 +41,6 @@ export class TablesGenerator {
     // Outputs
     dataMemory = new CodeOutput();
     programMemory = new CodeOutput();
-    initTable = new CodeOutput();
     dynamicInit = new CodeOutput();
 
     funcGenerator: FuncGenerator;
@@ -75,7 +74,6 @@ export class TablesGenerator {
     public generate(): void {
         this.dataMemory.initOutput();
         this.programMemory.initOutput();
-        this.initTable.initOutput();
         this.dynamicInit.initOutput();
 
         for (let element of this.module.elements) {
@@ -152,5 +150,6 @@ export class TablesGenerator {
             // TODOv2: implement passive table elements
             throw new Error('Not implemented');
         }
+        // TODOv2: First growable table can be referenced directly since it will never move.
     }
 }
