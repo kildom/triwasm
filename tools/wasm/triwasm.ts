@@ -19,6 +19,7 @@ import { CodeOutput } from './codeOutput';
 import { evaluateConstExpressions } from './constEvaluator';
 import { FuncGenerator } from './genFunction';
 import { GlobalsGenerator } from './genGlobal';
+import { InitTableGenerator } from './genInitTable';
 import { MemoryGenerator } from './genMemory';
 import { TablesGenerator } from './genTable';
 import { LinkResolver } from './linkResolver';
@@ -113,7 +114,13 @@ t.start();
 skeleton(main, funcGen, memoryGen, globalsGen, tablesGen, conf, output);
 t.print('Generator');
 
-new Path('temp/out.triasm').write(output.getOutput(false));
+t.start();
+let initTableGenerator = new InitTableGenerator();
+initTableGenerator.generate(output.getOutput(true));
+t.print('Post-process');
+
+new Path('temp/out-pre.triasm').write(output.getOutput(false));
+new Path('temp/out.triasm').write(initTableGenerator.output.getOutput(false));
 
 
 /*

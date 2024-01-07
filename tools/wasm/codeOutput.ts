@@ -120,8 +120,12 @@ export class CodeOutput {
         }
     }
 
-    public outputRaw(code: string[]) {
-        extendArray(this.out.at(-1) as string[], code);
+    public outputRaw(code: string[] | string) {
+        if (code instanceof Array) {
+            extendArray(this.out.at(-1) as string[], code);
+        } else {
+            this.out.at(-1)!.push(code);
+        }
     }
 
     public captureBegin() {

@@ -84,12 +84,10 @@ export class GlobalsGenerator {
                 '.end']);
             // Put initial value into part of memory init table
             this.dataMemory.output([
-                '.begin movable $_memory_init_table',
                 `..part discardable ${4 * words}`,
                 `$_global_${global.index}_init:`,
                 `.data${32 * words} ${value}`,
-                '..end',
-                '.end']);
+                '..end']);
         }
 
         // Dynamically initialized globals

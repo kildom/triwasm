@@ -94,13 +94,11 @@ GSPH = 56
 $_initial_sp_value = MAB0
 
 # Initialization
-.begin movable $_memory_init_table
 ..skip 28 # PC, GPR0, GPR1, SP, GSP, MAB0, MAB1 - not needed or cannot be touched
 ..part 4
 .data32 $_program_memory_globals # MAB2
 ..end
 ..skip 28 # MAB3, GPR2, GPR3, SPL, SPH, GSPL, GSPH - not needed or initialized by stack initialization
-.end
 
 # ======================= External globals =======================
 
@@ -124,10 +122,8 @@ $_vm_stack_start_without_align = vma()
 $_vm_stack_start = vma()
 
 # Finalize memory initialization table pseudo-directives before stack begin
-.begin movable $_memory_init_table
 ..skip 3, $_vm_stack_start - $_vm_stack_start_without_align
 ..finalize
-.end
 
 # ======================= WASM data =======================
 
@@ -354,7 +350,7 @@ WRITE32 SP
 
 # Restore MAB1/3 and return
 READ32 MAB3
-NEG -(0) # TODO: initialize MAB1
+NEG -(<%= memoryGen.wasmBase %>)
 WRITE32 MAB1
 NEG -($_data_memory_globals)
 WRITE32 MAB3

@@ -17,8 +17,8 @@ export interface ConfFaults {
     readOnly: boolean;
     divisionByZero: boolean;
     divisionOverflow: boolean;
-    auxStackOverflow: boolean;
-    auxStackUnderflow: boolean;
+    guestStackOverflow: boolean;
+    guestStackUnderflow: boolean;
     truncInvalid: boolean;
 }
 
