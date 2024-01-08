@@ -30,6 +30,7 @@
     "lint": "npx eslint tools",
 
     "gen-trivm-instr": "npx ts-node-esm devtools/generators/trivm-instr.ts",
+    "gen-triasm-instr": "npx ts-node-esm devtools/generators/triasm-instr.ts",
     "gen-wasm-instr": "npx ts-node-esm devtools/generators/wasm-instr.ts"
   },
   "author": "Dominik Kilian <kontakt@dominik.cc>",

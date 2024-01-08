@@ -676,7 +676,13 @@
 #define TRIVM_OP_CODE_BR 0x64
 #define TRIVM_OP_CODE_UNWIND 0x68
 
-#if !TRIVM_FAULT_INSTR_INVALID
+#if !TRIVM_EXT_FLOAT32
+
+#define TRIVM_TREE_EXT32 do { } while(0)
+
+#endif /* !TRIVM_EXT_FLOAT32 */
+
+#if TRIVM_EXT_FLOAT32 && !TRIVM_FAULT_INSTR_INVALID
 
 #define TRIVM_TREE_EXT32        \
     if (op & 1 << 6) {        \
@@ -777,9 +783,9 @@
         }        \
     }        \
 
-#endif /* !TRIVM_FAULT_INSTR_INVALID */
+#endif /* TRIVM_EXT_FLOAT32 && !TRIVM_FAULT_INSTR_INVALID */
 
-#if TRIVM_FAULT_INSTR_INVALID
+#if TRIVM_EXT_FLOAT32 && TRIVM_FAULT_INSTR_INVALID
 
 #define TRIVM_TREE_EXT32        \
     if (op & 1 << 6) {        \
@@ -925,7 +931,7 @@
         }        \
     }        \
 
-#endif /* TRIVM_FAULT_INSTR_INVALID */
+#endif /* TRIVM_EXT_FLOAT32 && TRIVM_FAULT_INSTR_INVALID */
 
 #define TRIVM_TREE_EXT32_LAST_TWO_ARGS 0x11
 #define TRIVM_TREE_EXT32_FIRST_ONE_ARG 0x59

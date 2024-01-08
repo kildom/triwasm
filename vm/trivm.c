@@ -67,11 +67,11 @@
 #ifndef TRIVM_FAULT_DIVISION_OVERFLOW
 #define TRIVM_FAULT_DIVISION_OVERFLOW     0
 #endif
-#ifndef TRIVM_FAULT_AUX_STACK_OVERFLOW
-#define TRIVM_FAULT_AUX_STACK_OVERFLOW   0
+#ifndef TRIVM_FAULT_GUEST_STACK_OVERFLOW
+#define TRIVM_FAULT_GUEST_STACK_OVERFLOW   0
 #endif
-#ifndef TRIVM_FAULT_AUX_STACK_UNDERFLOW
-#define TRIVM_FAULT_AUX_STACK_UNDERFLOW  0
+#ifndef TRIVM_FAULT_GUEST_STACK_UNDERFLOW
+#define TRIVM_FAULT_GUEST_STACK_UNDERFLOW  0
 #endif
 #ifndef TRIVM_FAULT_TRUNC_INVALID
 #define TRIVM_FAULT_TRUNC_INVALID  0
@@ -86,8 +86,8 @@
 #undef TRIVM_FAULT_DIVISION_OVERFLOW
 #undef TRIVM_FAULT_STACK_OVERFLOW
 #undef TRIVM_FAULT_STACK_UNDERFLOW
-#undef TRIVM_FAULT_AUX_STACK_OVERFLOW
-#undef TRIVM_FAULT_AUX_STACK_UNDERFLOW
+#undef TRIVM_FAULT_GUEST_STACK_OVERFLOW
+#undef TRIVM_FAULT_GUEST_STACK_UNDERFLOW
 #undef TRIVM_FAULT_TRUNC_INVALID
 #define TRIVM_FAULT_INSTR_OUT_OF_BOUNDS  1
 #define TRIVM_FAULT_INSTR_INVALID        1
@@ -97,8 +97,8 @@
 #define TRIVM_FAULT_DIVISION_OVERFLOW     1
 #define TRIVM_FAULT_STACK_OVERFLOW       1
 #define TRIVM_FAULT_STACK_UNDERFLOW      1
-#define TRIVM_FAULT_AUX_STACK_OVERFLOW   1
-#define TRIVM_FAULT_AUX_STACK_UNDERFLOW  1
+#define TRIVM_FAULT_GUEST_STACK_OVERFLOW   1
+#define TRIVM_FAULT_GUEST_STACK_UNDERFLOW  1
 #define TRIVM_FAULT_TRUNC_INVALID        1
 #endif
 
@@ -110,17 +110,17 @@
 
 /* ================================================== Fault types =================================================== */
 
-#define TRIVM_FAULT_NUMBER_STACK_OVERFLOW       0
-#define TRIVM_FAULT_NUMBER_STACK_UNDERFLOW      1
-#define TRIVM_FAULT_NUMBER_INSTR_OUT_OF_BOUNDS  2
-#define TRIVM_FAULT_NUMBER_INSTR_INVALID        3
-#define TRIVM_FAULT_NUMBER_ACCESS_OUT_OF_BOUNDS 4
-#define TRIVM_FAULT_NUMBER_READ_ONLY            5
-#define TRIVM_FAULT_NUMBER_DIVISION_BY_ZERO     6
-#define TRIVM_FAULT_NUMBER_DIVISION_OVERFLOW    7
-#define TRIVM_FAULT_NUMBER_AUX_STACK_OVERFLOW   8
-#define TRIVM_FAULT_NUMBER_AUX_STACK_UNDERFLOW  9
-#define TRIVM_FAULT_NUMBER_TRUNC_INVALID       10
+#define TRIVM_FAULT_NUMBER_STACK_OVERFLOW         0
+#define TRIVM_FAULT_NUMBER_STACK_UNDERFLOW        1
+#define TRIVM_FAULT_NUMBER_GUEST_STACK_OVERFLOW   2
+#define TRIVM_FAULT_NUMBER_GUEST_STACK_UNDERFLOW  3
+#define TRIVM_FAULT_NUMBER_INSTR_OUT_OF_BOUNDS    4
+#define TRIVM_FAULT_NUMBER_INSTR_INVALID          5
+#define TRIVM_FAULT_NUMBER_ACCESS_OUT_OF_BOUNDS   6
+#define TRIVM_FAULT_NUMBER_READ_ONLY              7
+#define TRIVM_FAULT_NUMBER_DIVISION_BY_ZERO       8
+#define TRIVM_FAULT_NUMBER_DIVISION_OVERFLOW      9
+#define TRIVM_FAULT_NUMBER_TRUNC_INVALID         10
 
 
 /* =============================================== Build-time checks ================================================ */
@@ -808,10 +808,10 @@ skip_mul_args:
 #if TRIVM_STDLIB
 	memcpy(dst, src, access_size);
 #else
-	uint8_t* end;
-	end = src + access_size;
+	uint8_t* end = src + access_size;
+	uint8_t* curr_dst = dst;
 	while (src < end) {
-		*dst++ = *src++;
+		*curr_dst++ = *src++;
 	}
 #endif
 
@@ -822,6 +822,8 @@ skip_mul_args:
 		if (access_size == 8 && TRIVM_EXT_MEM64) {
 			mem_push(vm, value[1]);
 		}
+	} else if (dst == (uint8_t*)&vm->sp_shadow) {
+		vm->sp = vm->sp_shadow & ~3;
 	}
 }
 
@@ -853,7 +855,7 @@ static int trivm_step(struct trivm_instance *vm)
 
 	if ((int32_t)vm->gsp > (int32_t)vm->gsph)
 	{
-		TRIGGER_FAULT(AUX_STACK_UNDERFLOW, { vm->gsph = 0x7FFFFFFF; return 0; });
+		TRIGGER_FAULT(GUEST_STACK_UNDERFLOW, { vm->gsph = 0x7FFFFFFF; return 0; });
 	}
 
 	if (TRIVM_FAULT_STACK_OVERFLOW && vm->gspl == 0x80000000)
@@ -872,7 +874,7 @@ static int trivm_step(struct trivm_instance *vm)
 
 		if ((int32_t)vm->gsp < (int32_t)vm->gspl)
 		{
-			TRIGGER_FAULT(AUX_STACK_OVERFLOW, { vm->gspl = 0x80000000; return 0; });
+			TRIGGER_FAULT(GUEST_STACK_OVERFLOW, { vm->gspl = 0x80000000; return 0; });
 		}
 	}
 
@@ -887,7 +889,6 @@ static int trivm_step(struct trivm_instance *vm)
 	{
 		/*> MEM opcode {code} */
 		trivm_mem(vm, code);
-		vm->sp = vm->sp_shadow & ~3;
 		return 0;
 	}
 }

@@ -1,7 +1,7 @@
 import { OP } from './opcodes';
 import { WasmInstr } from './wasmModule';
 
-// ---- Instruction types - begin - generated with help of "wasm-instr.ts" script ----
+// ---- Instruction types - begin - generated with help of script ----
 
 /* eslint-disable max-len */
 function ft_UNREACHABLE(i: WasmInstr) { if (i.opcode === OP.UNREACHABLE) return i; throw null; }
@@ -446,4 +446,4 @@ function ft_TRIVM_EXTS64_CONST(i: WasmInstr) { if (i.opcode === OP.TRIVM_EXTS64_
 export type TRIVM_EXTS64_CONST = ReturnType<typeof ft_TRIVM_EXTS64_CONST>;
 /* eslint-enable max-len */
 
-// ---- Instruction types - end - generated with help of "wasm-instr.ts" script ----
+// ---- Instruction types - end - generated with help of script ----

@@ -53,7 +53,7 @@ async function main() {
     file += '\n\n';
     file += '#ifndef _TRIVM_OP_TREE_H_\n';
     file += '#define _TRIVM_OP_TREE_H_\n\n';
-    for (let table of Object.values(data)) {
+    for (let table of Object.values(data).filter(t => t.name.startsWith('TRIVM_TREE_'))) {
         file += processTable(table);
     }
     file += '#endif /* _TRIVM_OP_TREE_H_ */\n';

@@ -197,11 +197,14 @@ export class InstrMaker {
         }
 
         case INSTR._LOCAL: {
-            if ((args as string) in this.currentBlock.locals) {
-                throw new CompilerError(this.params.lineNumber, '".LOCAL" variable already defined.');
+            let locals = (args as string).split(/\s*,\s*/);
+            for (let local of locals) {
+                if (local in this.currentBlock.locals) {
+                    throw new CompilerError(this.params.lineNumber, '".LOCAL" variable already defined.');
+                }
+                let name = `~LOCAL~${this.params.index}~${this.currentBlock.index}~${local}`;
+                this.currentBlock.locals[local] = name;
             }
-            let name = `~LOCAL~${this.params.index}~${this.currentBlock.index}~${args}`;
-            this.currentBlock.locals[args] = name;
             break;
         }
 

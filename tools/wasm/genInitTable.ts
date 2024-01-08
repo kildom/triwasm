@@ -1,3 +1,14 @@
+/*
+Special pseudo-directives for the memory initialization table:
+..skip N - skip N bytes
+..skip N, EXP - skip EXP bytes, maximum value of expression is N
+..part N - start unbreakable part of the table with maximum size of N bytes
+..part discardable N - start unbreakable discardable part of the table with maximum size of N bytes
+..end - end part
+..finalize - finalize memory initialization table pseudo-directives and set $_mem_init_final_skip
+             to remaining number of skip bytes for the next block.
+*/
+
 import { CodeOutput } from './codeOutput';
 
 const MAX_BLOCK_SKIP_BYTES = 253;
@@ -60,7 +71,7 @@ export class InitTableGenerator {
                 }
                 this.finalizeBlock();
                 this.skipMax += parseInt(m[1]);
-                this.skipExp += ` + ${m[2] || m[1]}`;
+                this.skipExp += ` + (${m[2] || m[1]})`;
             } else if ((m = lineTrimmed.match(/^\.\.part\s+(?:(discardable)\s+)?([0-9a-fx]+)\s*(?:#.*)?$/i))) {
                 if (inBlock || finalized) {
                     throw new Error('Unexpected ..part pseudo-directive');

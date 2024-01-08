@@ -43,7 +43,6 @@ export function skeleton(
 
 # Globals:
 # $_program_memory_base - base address of program memory in virtual address space (0 for RAM program, 0x80000000 for ROM programs)
-# $_vm_registers_end - end of triVM registers space
 
 # ===========================================================
 # ======================== CONSTANTS ========================
@@ -53,14 +52,18 @@ TRIWASM_FAULT_UNREACHABLE = 64
 TRIWASM_FAULT_TABLE_INDEX = 65
 TRIWASM_FAULT_NULL_CALL = 66
 TRIWASM_FAULT_INVALID_EXPORT = 67
+TRIVM_LAST_STACK_RELATED_FAULT = 3
 
 <% if (conf.vmConf.extensions.int64 || conf.vmConf.extensions.float64) { %>
     $_STACK_POP_MAX_BYTES = 8 + 8
+    $_STACK_PUSH_MAX_BYTES = 8
 <% } else if (conf.vmConf.extensions.mem64) { %>
     $_STACK_POP_MAX_BYTES = 4 + 8
+    $_STACK_PUSH_MAX_BYTES = 8
 <% } else { %>
     $_STACK_POP_MAX_BYTES = 4 + 4
-<% } %> # TODOv1: Check all instructions if this conditions are true
+    $_STACK_PUSH_MAX_BYTES = 4
+<% } %>
 
 
 # ===========================================================
@@ -74,23 +77,24 @@ $_program_memory_base = 0x80000000
 # ======================= VM Registers =======================
 
 # Declaration
-GPR0 = 0
-GPR1 = 4
-GSP = 8
-SP = 12
-PC = 16
-MAB0 = 20
-MAB1 = 24
-MAB2 = 28
-MAB3 = 32
-GPR2 = 36
-GPR3 = 40
-SPL = 44
-SPH = 48
-GSPL = 52
-GSPH = 56
+GPR0 = 0   # General purpose register 0
+GPR1 = 4   # General purpose register 1
+GSP = 8    # Guest stack pointer
+SP = 12    # Stack pointer
+PC = 16    # Program counter
+MAB0 = 20  # Memory address base 0 - always 0
+MAB1 = 24  # Memory address base 1 - WASM memory start address 
+MAB2 = 28  # Memory address base 2 - globals in program memory
+MAB3 = 32  # Memory address base 3 - globals in data memory
+GPR2 = 36  # General purpose register 2
+GPR3 = 40  # General purpose register 3
+SPL = 44   # Stack pointer lowest value
+SPH = 48   # Stack pointer highest value
+GSPL = 52  # Guest stack pointer lowest value
+GSPH = 56  # Guest stack pointer highest value
 .vma 60
 
+# VM sets temporary startup stack top to MAB0, so MAB1 to MAB3 are available as initial stack space.
 $_initial_sp_value = MAB0
 
 # Initialization
@@ -132,17 +136,6 @@ $_vm_stack_start = vma()
 .data8 254 # Memory initialization end marker
 .end
 
-<%/*
-Special pseudo-directives for the memory initialization table:
-..skip N - skip N bytes
-..skip N, EXP - skip EXP bytes, maximum value of expression is N
-..part N - start unbreakable part of the table with maximum size of N bytes
-..part discardable N - start unbreakable discardable part of the table with maximum size of N bytes
-..end - end part
-..finalize - finalize memory initialization table pseudo-directives and set $_mem_init_final_skip
-             to remaining number of skip bytes for the next block.
-*/%>
-
 # ===========================================================
 # ===================== PROGRAM MEMORY ======================
 # ===========================================================
@@ -164,7 +157,7 @@ BR $_main_entry
 $_fault_handler:
 # Reinitialize VM stack if fault code is 0 or 1 (stack overflow/underflow)
 READ32 GPR0
-UGT 1
+UGT TRIVM_LAST_STACK_RELATED_FAULT
 .local skip_sp_restore
 BRT skip_sp_restore
 CALL $_initialize_stack
@@ -174,7 +167,7 @@ READ32 GPR0
 READ32 GPR1
 READ32 GPR3
 READ32 GPR2
-# Put return address to allow return when possible
+# Put return address to allow return if possible
 READ32 GPR2
 BR $_trivm_fault_handler
 .end
@@ -183,7 +176,7 @@ BR $_trivm_fault_handler
 .begin discardable
 $_trivm_default_fault_handler:
 HOST -0x80000000 # Special exit code to host indicating fault unhandled by guest.
-BR $_trivm_fault_handler_weak
+BR $_trivm_default_fault_handler
 .end
 .begin movable $_weak_symbols
 .begin discardable
@@ -199,62 +192,60 @@ READ32 SP
 EQ $_initial_sp_value
 BRF skip_startup
 
-# Startup code
-CALL $_initialize_stack
+    # Startup code
+    CALL $_initialize_stack
 
-# Memory initialization table copy
-.begin
-READ32 MAB0
-NEG -$_memory_init_table_start
-.local copy_next_block
-copy_next_block:
-# ..., dst, src
-# Read block gap bytes.
-READ32 [SP]
-READ8U [POP]
-READ32 [SP]
-EQ 255
-.local skip_32_bits
-BRF skip_32_bits
-    # ..., dst, src-1, 255
-    WRITE32 GPR0
+    # Memory initialization table copy
+    .begin
+    READ32 MAB0
+    NEG -$_memory_init_table_start
+    .local copy_next_block
+    copy_next_block:
+    # ..., dst, src
+    # Read block gap bytes.
     READ32 [SP]
-    UREAD32 [POP] + 1
-    # ..., dst, src-5, gap_bytes
-    READ32 [SP] - 4
-    ADD 4
-    WRITE32 [SP] - 4
+    READ8U [POP]
+    READ32 [SP]
+    EQ 255
+    .local skip_32_bits
+    BRF skip_32_bits
+        # ..., dst, src-1, 255
+        WRITE32 GPR0
+        READ32 [SP]
+        ADD 1
+        READ32 [POP]
+        # ..., dst, src-5, gap_bytes
+        READ32 [SP] - 4
+        ADD 4
+        WRITE32 [SP] - 4
+        # ..., dst, src-1, gap_bytes
+    skip_32_bits:
+    READ32 [SP]
+    EQ 254
+    .local exit_mem_init
+    BRT exit_mem_init
     # ..., dst, src-1, gap_bytes
-skip_32_bits:
-READ32 [SP]
-EQ 254
-.local exit_mem_init
-BRT exit_mem_init
-skip_32_bits:
-# ..., dst, src-1, gap_bytes
-# Skip "gap_bytes" in dst.
-READ32 [SP] - 8
-ADD
-WRITE32 [SP] - 4
-# ..., dst, src-1
-READ32 [SP]
-READ8U [POP] + 1
-READ32 [SP] - 4
-ADD 2
-WRITE32 [SP] - 4
-# ..., dst, src, copy_bytes
-CALL $_mem_copy_and_update
-# ..., dst, src
-BR copy_next_block
-exit_mem_init:
-WRITE32 GPR0
-WRITE32 GPR0
-.end
+    # Skip "gap_bytes" in dst.
+    READ32 [SP] - 8
+    ADD
+    WRITE32 [SP] - 4
+    # ..., dst, src-1
+    READ32 [SP]
+    READ8U [POP] + 1
+    READ32 [SP] - 4
+    ADD 2
+    WRITE32 [SP] - 4
+    # ..., dst, src, copy_bytes
+    CALL $_mem_copy_and_update
+    # ..., dst, src
+    BR copy_next_block
+    exit_mem_init:
+    WRITE32 GPR0
+    WRITE32 GPR0
+    .end
 
-# Globals dynamic initialization
-<%= globalsGen.dynamicInit.getOutput(true) %>
-
-# Calling exported function
+    # Globals dynamic initialization
+    <%= globalsGen.dynamicInit.getOutput(true) %>
 
 skip_startup:
 NEG -$_normal_return_to_host
@@ -320,25 +311,25 @@ WRITE32 SP
         NEG -(0xFFFFFFFF)
         WRITE32 GSPH
     <% } %>
-    NEG -(0) # TODO: set guest stack initial value
+    READ32 AMB0 # TODOv2: set guest stack initial value
     WRITE32 GSP
 <% } %>
 
 # Setup guest stack pointer highest value.
 <% if (conf.faults.guestStackUnderflow) { %>
-    NEG -(0xFFFFFFFF) # TODO: set limiting value
+    NEG -(0xFFFFFFFF) # TODOv2: set limiting value
     WRITE32 GSPH
 <% } %>
 
 # Setup guest stack pointer lowest value.
 <% if (conf.faults.guestStackOverflow) { %>
-    NEG -(0) # TODO: set limiting value
+    NEG -(0) # TODOv2: set limiting value
     WRITE32 GSPL
 <% } %>
 
 # Setup VM stack pointer highest value.
 <% if (conf.faults.guestStackUnderflow) { %>
-    NEG -(0xFFFFFFFF) # TODO: set limiting value
+    NEG -(<%= conf.args.vmStackSize %> - $_STACK_PUSH_MAX_BYTES - 4)
     WRITE32 SPH
 <% } %>
 
@@ -456,8 +447,9 @@ $_program_memory_globals = vma()
 # Tables in program memory
 <%= tablesGen.programMemory.getOutput(true) %>
 
-#tag WEAKSYMBOLS 
+.assert pma() <= <%= conf.vmConf.program.max %>, "Program code exceeded program memory size."
 
+# Place weak symbols at the end
 .place $_weak_symbols
 
 <% } %>

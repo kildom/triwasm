@@ -448,7 +448,7 @@ export class FuncGenerator extends CodeOutput implements WalkFunctionListener<Bl
         this.popPush = getInstrPopPush(this.func, this.block as WasmBlock, this.instr, undefined, true);
 
         switch (this.instr.opcode) {
-        // ---- Generators - begin - generated with help of "wasm-instr.ts" script ----
+        // ---- Generators - begin - generated with help of script ----
 
         case OP.BLOCK: {
             this.popPush.poppedWords = 0; // Skip stack adjustment, handled by enterBlock
@@ -596,7 +596,7 @@ export class FuncGenerator extends CodeOutput implements WalkFunctionListener<Bl
             break;
         }
 
-        // ---- Generators - end - generated with help of "wasm-instr.ts" script ----
+        // ---- Generators - end - generated with help of script ----
 
         default: {
             let simpleGen = simpleGenerators[this.instr.opcode];
@@ -619,7 +619,7 @@ export class FuncGenerator extends CodeOutput implements WalkFunctionListener<Bl
 }
 
 const simpleGenerators: { [key: number]: string | ((instr: any) => string); } = {
-    // ---- Simple generators - begin - generated with help of "wasm-instr.ts" script ----
+    // ---- Simple generators - begin - generated with help of script ----
 
     /* eslint-disable max-len */
     [OP.NOP]: '# NOP',
@@ -731,7 +731,7 @@ const simpleGenerators: { [key: number]: string | ((instr: any) => string); } = 
     [OP.TRIVM_EXTS64_CONST]: (instr: OpType.TRIVM_EXTS64_CONST) => `EXTS64 ${instr.value}`,
     /* eslint-enable max-len */
 
-    // ---- Simple generators - end - generated with help of "wasm-instr.ts" script ----
+    // ---- Simple generators - end - generated with help of script ----
 };
 
 const UNWIND_OPTIMIZED_CASES: {[key:string]: string[]} = {

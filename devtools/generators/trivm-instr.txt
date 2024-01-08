@@ -33,128 +33,181 @@ Description:
 
 ------------------------------------------- trivmTreeCore -------------------------------------------
 Name: TRIVM_TREE_CORE
-Columns: code | name | numArgs | extensions | sourceCode
-Headers: Code | Name | Num Args | Extensions | Source Code
-Description: x << 2 |  |  |  | 
-0x00 | BRT | 2 |  | if (arg0) { vm->pc = arg1_pc; } |  | return 0;
-0x01 | BRF | 2 |  | if (!arg0) { vm->pc = arg1_pc; } |  | return 0;
-0x02 | ADD | 2 |  | ret = arg0 + arg1;
-0x03 | SUB | 2 |  | ret = arg0 - arg1;
-0x04 | MUL | 2 |  | ret = arg0 * arg1;
-0x05 | AND | 2 |  | ret = arg0 & arg1;
-0x06 | OR | 2 |  | ret = arg0 | arg1;
-0x07 | XOR | 2 |  | ret = arg0 ^ arg1;
-0x08 | UDIV | 2 |  | arg1 = check_div_0(vm, arg0, arg1); | ret = arg0 / arg1;
-0x09 | UMOD | 2 |  | arg1 = check_div_0(vm, arg0, arg1); | ret = arg0 % arg1;
-0x0A | SDIV | 2 |  | arg1 = check_div_0(vm, arg0, arg1); | arg1 = check_sdiv(vm, arg0, arg1); | ret = (int32_t)arg0 / (int32_t)arg1;
-0x0B | SMOD | 2 |  | arg1 = check_div_0(vm, arg0, arg1); | ret = (int32_t)arg0 % (int32_t)arg1;
-0x0C | SHL | 2 |  | uint32_t shift = arg1 & 0x1F; | ret = arg0 << shift;
-0x0D | EXTS | 2 |  | uint32_t shift = arg1 & 0x1F; | ret = arg0 << shift; | ret = (int32_t)ret >> shift;
-0x0E | USHR | 2 |  | uint32_t shift = arg1 & 0x1F; | ret = arg0 >> shift;
-0x0F | SSHR | 2 |  | uint32_t shift = arg1 & 0x1F; | ret = (int32_t)arg0 >> shift;
-0x10 | ULT | 2 |  | ret = arg0 < arg1;
-0x11 | UGT | 2 |  | ret = arg0 > arg1;
-0x12 | SLT | 2 |  | ret = (int32_t)arg0 < (int32_t)arg1;
-0x13 | SGT | 2 |  | ret = (int32_t)arg0 > (int32_t)arg1;
-0x14 | EQ | 2 |  | ret = arg0 == arg1;
-0x15 | NOT | 1 |  | ret = !arg1;
-0x16 | NEG | 1 |  | ret = -arg1;
-0x17 | HOST | 1 |  | return arg1;
-0x18 | CALL | 1 |  | ret = vm->pc; | vm->pc = arg1_pc;
-0x19 | BR | 1 |  | ret = vm->pc; | vm->pc = arg1_pc; | return 0;
-0x1A | UNWIND | 1 | UNWIND | trivm_instr_unwind(vm, arg1, arg1_shift); |  | return 0;
-0x1B | # reserved |  |  | 
-0x1C | # reserved |  |  | 
-0x1D | # reserved |  |  | 
-0x1E | # extended 32-bit instructions |  |  | 
-0x1F | # extended 64-bit instructions |  |  | 
+Columns: code | name | numArgs | literals | variants | triasmClass | extensions | sourceCode
+Headers: Code | Name | Num Args | Literals | Variants | triasm Class | Extensions | Source Code
+Description: x << 2 |  |  |  |  |  |  | 
+0x00 | BRT | 2 | 0-1 | 1 | BranchInstruction |  | if (arg0) { vm->pc = arg1_pc; } |  | return 0;
+0x01 | BRF | 2 | 0-1 | 1 | BranchInstruction |  | if (!arg0) { vm->pc = arg1_pc; } |  | return 0;
+0x02 | ADD | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = arg0 + arg1;
+0x03 | SUB | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = arg0 - arg1;
+0x04 | MUL | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = arg0 * arg1;
+0x05 | AND | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = arg0 & arg1;
+0x06 | OR | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = arg0 | arg1;
+0x07 | XOR | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = arg0 ^ arg1;
+0x08 | UDIV | 2 | 0-1 | 1 | SimpleCoreInstruction |  | arg1 = check_div_0(vm, arg0, arg1); | ret = arg0 / arg1;
+0x09 | UMOD | 2 | 0-1 | 1 | SimpleCoreInstruction |  | arg1 = check_div_0(vm, arg0, arg1); | ret = arg0 % arg1;
+0x0A | SDIV | 2 | 0-1 | 1 | SimpleCoreInstruction |  | arg1 = check_div_0(vm, arg0, arg1); | arg1 = check_sdiv(vm, arg0, arg1); | ret = (int32_t)arg0 / (int32_t)arg1;
+0x0B | SMOD | 2 | 0-1 | 1 | SimpleCoreInstruction |  | arg1 = check_div_0(vm, arg0, arg1); | ret = (int32_t)arg0 % (int32_t)arg1;
+0x0C | SHL | 2 | 0-1 | 1 | SimpleCoreInstruction |  | uint32_t shift = arg1 & 0x1F; | ret = arg0 << shift;
+0x0D | EXTS | 2 | 0-1 | 1 | SimpleCoreInstruction |  | uint32_t shift = arg1 & 0x1F; | ret = arg0 << shift; | ret = (int32_t)ret >> shift;
+0x0E | USHR | 2 | 0-1 | 1 | SimpleCoreInstruction |  | uint32_t shift = arg1 & 0x1F; | ret = arg0 >> shift;
+0x0F | SSHR | 2 | 0-1 | 1 | SimpleCoreInstruction |  | uint32_t shift = arg1 & 0x1F; | ret = (int32_t)arg0 >> shift;
+0x10 | ULT | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = arg0 < arg1;
+0x11 | UGT | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = arg0 > arg1;
+0x12 | SLT | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = (int32_t)arg0 < (int32_t)arg1;
+0x13 | SGT | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = (int32_t)arg0 > (int32_t)arg1;
+0x14 | EQ | 2 | 0-1 | 1 | SimpleCoreInstruction |  | ret = arg0 == arg1;
+0x15 | NOT | 1 | 0-1 | 1 | SimpleCoreInstruction |  | ret = !arg1;
+0x16 | NEG | 1 | 0-1 | 1 | SimpleCoreInstruction |  | ret = -arg1;
+0x17 | HOST | 1 | 0-1 | 1 | SimpleCoreInstruction |  | return arg1;
+0x18 | CALL | 1 | 0-1 | 1 | BranchInstruction |  | ret = vm->pc; | vm->pc = arg1_pc;
+0x19 | BR | 1 | 0-1 | 1 | BranchInstruction |  | ret = vm->pc; | vm->pc = arg1_pc; | return 0;
+0x1A | UNWIND | 1 | 0-2 | 1 |  | UNWIND | trivm_instr_unwind(vm, arg1, arg1_shift); |  | return 0;
+0x1B | # reserved |  |  |  |  |  | 
+0x1C | # reserved |  |  |  |  |  | 
+0x1D | # reserved |  |  |  |  |  | 
+0x1E | # extended 32-bit instructions |  |  |  |  |  | 
+0x1F | # extended 64-bit instructions |  |  |  |  |  | 
 
 
 ------------------------------------------- trivmTreeExt32 -------------------------------------------
 Name: TRIVM_TREE_EXT32
-Columns: code | name | numArgs | extensions | sourceCode
-Headers: Code | Name | Num Args | Extensions | Source Code
-Description: (x << 1) | 1 |  |  |  | 
-0x00 | ADDF32 | 2 |  | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); | float r; | r = a0 + a1; | ret = TO_U32(r);
-0x01 | SUBF32 | 2 |  | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); | float r; | r = a0 - a1; | ret = TO_U32(r);
-0x02 | MULF32 | 2 |  | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); | float r; | r = a0 * a1; | ret = TO_U32(r);
-0x03 | DIVF32 | 2 |  | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); | float r; | r = a0 / a1; | ret = TO_U32(r);
-0x04 | LTF32 | 2 |  | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); |  | ret = a0 < a1;
-0x05 | GTF32 | 2 |  | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); |  | ret = a0 > a1;
-0x06 | LEF32 | 2 |  | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); |  | ret = a0 <= a1;
-0x07 | GEF32 | 2 |  | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); |  | ret = a0 >= a1;
-0x08 | EQF32 | 2 |  | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); |  | ret = a0 == a1;
-0x09..0x29 | # reserved (aligned to 1 arg core instructions) |  |  | 
-0x2A..0x2B | # reserved (alignment to opcode to 4) |  |  | 
-0x2C | CEILF32 | 1 |  | float r; | float a1 = TO_F32(arg1); |  | r = ceilf(a1); | ret = TO_U32(r);
-0x2D | FLOORF32 | 1 |  | float r; | float a1 = TO_F32(arg1); |  | r = floorf(a1); | ret = TO_U32(r);
-0x2E | TRUNCF32 | 1 |  | float r; | float a1 = TO_F32(arg1); |  | r = truncf(a1); | ret = TO_U32(r);
-0x2F | NEARESTF32 | 1 |  | float r; | float a1 = TO_F32(arg1); |  | r = roundf(a1); | ret = TO_U32(r);
-0x30 | SQRTF32 | 1 |  | float r; | float a1 = TO_F32(arg1); |  | r = sqrtf(a1); | ret = TO_U32(r);
-0x31 | CONVF32U32 | 1 |  | float r; |  | r = (float)(uint32_t)arg1; | ret = TO_U32(r);
-0x32 | CONVF32S32 | 1 |  | float r; |  | r = (float)(int32_t)arg1; | ret = TO_U32(r);
-0x33 | # reserved (alignment to opcode to 4) |  |  | 
-0x34 | TRUNCF32U32 | 1 |  | ret = trunc_f32_to_u32(vm, arg1);
-0x35 | TRUNCF32S32 | 1 |  | ret = trunc_f32_to_s32(vm, arg1);
+Columns: code | name | numArgs | literals | variants | triasmClass | extensions | sourceCode
+Headers: Code | Name | Num Args | Literals | Variants | triasm Class | Extensions | Source Code
+Description: (x << 1) | 1 |  |  |  |  |  |  | 
+0x00 | ADDF32 | 2 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); | float r; | r = a0 + a1; | ret = TO_U32(r);
+0x01 | SUBF32 | 2 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); | float r; | r = a0 - a1; | ret = TO_U32(r);
+0x02 | MULF32 | 2 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); | float r; | r = a0 * a1; | ret = TO_U32(r);
+0x03 | DIVF32 | 2 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); | float r; | r = a0 / a1; | ret = TO_U32(r);
+0x04 | LTF32 | 2 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); |  | ret = a0 < a1;
+0x05 | GTF32 | 2 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); |  | ret = a0 > a1;
+0x06 | LEF32 | 2 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); |  | ret = a0 <= a1;
+0x07 | GEF32 | 2 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); |  | ret = a0 >= a1;
+0x08 | EQF32 | 2 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float a0 = TO_F32(arg0); | float a1 = TO_F32(arg1); |  | ret = a0 == a1;
+0x09..0x29 | # reserved (aligned to 1 arg core instructions) |  |  |  |  |  | 
+0x2A..0x2B | # reserved (alignment to opcode to 4) |  |  |  |  |  | 
+0x2C | CEILF32 | 1 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float r; | float a1 = TO_F32(arg1); |  | r = ceilf(a1); | ret = TO_U32(r);
+0x2D | FLOORF32 | 1 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float r; | float a1 = TO_F32(arg1); |  | r = floorf(a1); | ret = TO_U32(r);
+0x2E | TRUNCF32 | 1 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float r; | float a1 = TO_F32(arg1); |  | r = truncf(a1); | ret = TO_U32(r);
+0x2F | NEARESTF32 | 1 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float r; | float a1 = TO_F32(arg1); |  | r = roundf(a1); | ret = TO_U32(r);
+0x30 | SQRTF32 | 1 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float r; | float a1 = TO_F32(arg1); |  | r = sqrtf(a1); | ret = TO_U32(r);
+0x31 | CONVF32U32 | 1 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float r; |  | r = (float)(uint32_t)arg1; | ret = TO_U32(r);
+0x32 | CONVF32S32 | 1 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 | float r; |  | r = (float)(int32_t)arg1; | ret = TO_U32(r);
+0x33 | # reserved (alignment to opcode to 4) |  |  |  |  |  | 
+0x34 | TRUNCF32U32 | 1 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 |  | ret = trunc_f32_to_u32(vm, arg1);
+0x35 | TRUNCF32S32 | 1 | 0-1 | 1 | SimpleExt32Instruction | FLOAT32 |  | ret = trunc_f32_to_s32(vm, arg1);
 
 
 ------------------------------------------- trivmTreeExt64 -------------------------------------------
 Name: TRIVM_TREE_EXT64
-Columns: code | name | numArgs | extensions | sourceCode
-Headers: Code | Name | Num Args | Extensions | Source Code
-Description: x |  |  |  | 
-0x00 | ADD64 | 2 | INT64 | ret = arg0 + arg1;
-0x01 | SUB64 | 2 | INT64 | ret = arg0 - arg1;
-0x02 | MUL64 | 2 | INT64 | ret = arg0 * arg1;
-0x03 | AND64 | 2 | INT64 | ret = arg0 & arg1;
-0x04 | UDIV64 | 2 | INT64 | arg1 = check_div64_0(vm, arg0, arg1); |  | ret = arg0 / arg1;
-0x05 | UMOD64 | 2 | INT64 | arg1 = check_div64_0(vm, arg0, arg1); |  | ret = arg0 % arg1;
-0x06 | SDIV64 | 2 | INT64 | arg1 = check_div64_0(vm, arg0, arg1); | arg1 = check_sdiv64(vm, arg0, arg1); | ret = (int64_t)arg0 / (int64_t)arg1;
-0x07 | SMOD64 | 2 | INT64 | arg1 = check_div64_0(vm, arg0, arg1); |  | ret = (int64_t)arg0 % (int64_t)arg1;
-0x08 | SHL64 | 2 | INT64 | uint32_t shift = (uint32_t)arg1 & 0x3F; | ret = arg0 << shift;
-0x09 | EXTS64 | 2 | INT64 | uint32_t shift = (uint32_t)arg1 & 0x3F; | ret = arg0 << shift; | ret = (int64_t)ret >> shift;
-0x0A | USHR64 | 2 | INT64 | uint32_t shift = (uint32_t)arg1 & 0x3F; | ret = arg0 >> shift;
-0x0B | SSHR64 | 2 | INT64 | uint32_t shift = (uint32_t)arg1 & 0x3F; | ret = (int64_t)arg0 >> shift;
-0x0C | ULT64 | 2 | INT64 | ret = arg0 < arg1;
-0x0D | UGT64 | 2 | INT64 | ret = arg0 > arg1;
-0x0E | SLT64 | 2 | INT64 | ret = (int64_t)arg0 < (int64_t)arg1;
-0x0F | SGT64 | 2 | INT64 | ret = (int64_t)arg0 > (int64_t)arg1;
-0x10 | EQ64 | 2 | INT64 | ret = arg0 == arg1;
-0x11 | OR64 | 2 | INT64 | ret = arg0 | arg1;
-0x12 | XOR64 | 2 | INT64 | ret = arg0 ^ arg1;
-0x13 | # reserved |  |  | 
-0x14 | ADDF64 | 2 | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); | double r; | r = a0 + a1; | ret = TO_U64(r);
-0x15 | SUBF64 | 2 | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); | double r; | r = a0 - a1; | ret = TO_U64(r);
-0x16 | MULF64 | 2 | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); | double r; | r = a0 * a1; | ret = TO_U64(r);
-0x17 | DIVF64 | 2 | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); | double r; | r = a0 / a1; | ret = TO_U64(r);
-0x18 | LTF64 | 2 | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); |  | ret = a0 < a1;
-0x19 | GTF64 | 2 | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); |  | ret = a0 > a1;
-0x1A | LEF64 | 2 | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); |  | ret = a0 <= a1;
-0x1B | GEF64 | 2 | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); |  | ret = a0 >= a1;
-0x1C | EQF64 | 2 | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); |  | ret = a0 == a1;
-0x1D | # reserved |  |  | 
-0x1E | # reserved |  |  | 
-0x1F | # reserved |  |  | 
-0x20 | CEILF64 | 1 | FLOAT64 | double r; | double a1 = TO_F64(arg1); |  | r = ceil(a1); | ret = TO_U64(r);
-0x21 | FLOORF64 | 1 | FLOAT64 | double r; | double a1 = TO_F64(arg1); |  | r = floor(a1); | ret = TO_U64(r);
-0x22 | TRUNCF64 | 1 | FLOAT64 | double r; | double a1 = TO_F64(arg1); |  | r = trunc(a1); | ret = TO_U64(r);
-0x23 | NEARESTF64 | 1 | FLOAT64 | double r; | double a1 = TO_F64(arg1); |  | r = round(a1); | ret = TO_U64(r);
-0x24 | SQRTF64 | 1 | FLOAT64 | double r; | double a1 = TO_F64(arg1); |  | r = sqrt(a1); | ret = TO_U64(r);
-0x25 | CONVF64U64 | 1 | FLOAT64 | double r; |  | r = (double)(uint64_t)arg1; | ret = TO_U64(r);
-0x26 | CONVF64S64 | 1 | FLOAT64 | double r; |  | r = (double)(int64_t)arg1; | ret = TO_U64(r);
-0x27 | PROMOTE | 1 | FLOAT32 && FLOAT64 | double r; | float a1 = TO_F32(arg1); |  | r = (double)a1; | ret = TO_U64(r);
-0x28 | DEMOTE | 1 | FLOAT32 && FLOAT64 | float r; | double a1 = TO_F64(arg1); |  | r = (float)a1; | ret = TO_U32(r);
-0x29 | CONVF32U64 | 1 | FLOAT32 && INT64 | float r; |  | r = (float)(uint64_t)arg1; | ret = TO_U32(r);
-0x2A | CONVF32S64 | 1 | FLOAT32 && INT64 | float r; |  | r = (float)(int64_t)arg1; | ret = TO_U32(r);
-0x2B | # reserved |  |  | 
-0x2C | TRUNCF64U32 | 1 | FLOAT64 | ret = trunc_f64_to_u32(vm, arg1);
-0x2D | TRUNCF64S32 | 1 | FLOAT64 | ret = trunc_f64_to_s32(vm, arg1);
-0x2E | TRUNCF64U64 | 1 | FLOAT64 | ret = trunc_f64_to_u64(vm, arg1);
-0x2F | TRUNCF64S64 | 1 | FLOAT64 | ret = trunc_f64_to_s64(vm, arg1);
-0x30 | TRUNCF32U64 | 1 | FLOAT32 && INT64 | ret = trunc_f32_to_u64(vm, (uint32_t)arg1);
-0x31 | TRUNCF32S64 | 1 | FLOAT32 && INT64 | ret = trunc_f32_to_s64(vm, (uint32_t)arg1);
-0x32 | # reserved |  |  | 
-0x33 | # reserved |  |  | 
-0x34 | NEG64 | 1 | INT64 | ret = -arg1;
+Columns: code | name | numArgs | literals | variants | triasmClass | classArgs | extensions | sourceCode
+Headers: Code | Name | Num Args | Literals | Variants | triasm Class | Class Args | Extensions | Source Code
+Description: x |  |  |  |  |  |  |  | 
+0x00 | ADD64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = arg0 + arg1;
+0x01 | SUB64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = arg0 - arg1;
+0x02 | MUL64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = arg0 * arg1;
+0x03 | AND64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = arg0 & arg1;
+0x04 | UDIV64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | arg1 = check_div64_0(vm, arg0, arg1); |  | ret = arg0 / arg1;
+0x05 | UMOD64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | arg1 = check_div64_0(vm, arg0, arg1); |  | ret = arg0 % arg1;
+0x06 | SDIV64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | arg1 = check_div64_0(vm, arg0, arg1); | arg1 = check_sdiv64(vm, arg0, arg1); | ret = (int64_t)arg0 / (int64_t)arg1;
+0x07 | SMOD64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | arg1 = check_div64_0(vm, arg0, arg1); |  | ret = (int64_t)arg0 % (int64_t)arg1;
+0x08 | SHL64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | uint32_t shift = (uint32_t)arg1 & 0x3F; | ret = arg0 << shift;
+0x09 | EXTS64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | uint32_t shift = (uint32_t)arg1 & 0x3F; | ret = arg0 << shift; | ret = (int64_t)ret >> shift;
+0x0A | USHR64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | uint32_t shift = (uint32_t)arg1 & 0x3F; | ret = arg0 >> shift;
+0x0B | SSHR64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | uint32_t shift = (uint32_t)arg1 & 0x3F; | ret = (int64_t)arg0 >> shift;
+0x0C | ULT64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = arg0 < arg1;
+0x0D | UGT64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = arg0 > arg1;
+0x0E | SLT64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = (int64_t)arg0 < (int64_t)arg1;
+0x0F | SGT64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = (int64_t)arg0 > (int64_t)arg1;
+0x10 | EQ64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = arg0 == arg1;
+0x11 | OR64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = arg0 | arg1;
+0x12 | XOR64 | 2 | 0-1 | 10 | SimpleExt64Instruction |  | INT64 | ret = arg0 ^ arg1;
+0x13 | # reserved |  |  |  |  |  |  | 
+0x14 | ADDF64 | 2 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); | double r; | r = a0 + a1; | ret = TO_U64(r);
+0x15 | SUBF64 | 2 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); | double r; | r = a0 - a1; | ret = TO_U64(r);
+0x16 | MULF64 | 2 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); | double r; | r = a0 * a1; | ret = TO_U64(r);
+0x17 | DIVF64 | 2 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); | double r; | r = a0 / a1; | ret = TO_U64(r);
+0x18 | LTF64 | 2 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); |  | ret = a0 < a1;
+0x19 | GTF64 | 2 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); |  | ret = a0 > a1;
+0x1A | LEF64 | 2 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); |  | ret = a0 <= a1;
+0x1B | GEF64 | 2 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); |  | ret = a0 >= a1;
+0x1C | EQF64 | 2 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double a1 = TO_F64(arg1); | double a0 = TO_F64(arg0); |  | ret = a0 == a1;
+0x1D | # reserved |  |  |  |  |  |  | 
+0x1E | # reserved |  |  |  |  |  |  | 
+0x1F | # reserved |  |  |  |  |  |  | 
+0x20 | CEILF64 | 1 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double r; | double a1 = TO_F64(arg1); |  | r = ceil(a1); | ret = TO_U64(r);
+0x21 | FLOORF64 | 1 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double r; | double a1 = TO_F64(arg1); |  | r = floor(a1); | ret = TO_U64(r);
+0x22 | TRUNCF64 | 1 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double r; | double a1 = TO_F64(arg1); |  | r = trunc(a1); | ret = TO_U64(r);
+0x23 | NEARESTF64 | 1 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double r; | double a1 = TO_F64(arg1); |  | r = round(a1); | ret = TO_U64(r);
+0x24 | SQRTF64 | 1 | 0-1 | 1 | SimpleExt64Instruction |  | FLOAT64 | double r; | double a1 = TO_F64(arg1); |  | r = sqrt(a1); | ret = TO_U64(r);
+0x25 | CONVF64U64 | 1 | 0-1 | 2A | SimpleExt64Instruction |  | FLOAT64 | double r; |  | r = (double)(uint64_t)arg1; | ret = TO_U64(r);
+0x26 | CONVF64S64 | 1 | 0-1 | 2A | SimpleExt64Instruction |  | FLOAT64 | double r; |  | r = (double)(int64_t)arg1; | ret = TO_U64(r);
+0x27 | PROMOTE | 1 | 0-1 | 1 | SimpleExt64Instruction | halfArg1: true | FLOAT32 && FLOAT64 | double r; | float a1 = TO_F32(arg1); |  | r = (double)a1; | ret = TO_U64(r);
+0x28 | DEMOTE | 1 | 0-1 | 1 | SimpleExt64Instruction | halfResult: true | FLOAT32 && FLOAT64 | float r; | double a1 = TO_F64(arg1); |  | r = (float)a1; | ret = TO_U32(r);
+0x29 | CONVF32U64 | 1 | 0-1 | 2A | SimpleExt64Instruction | halfResult: true | FLOAT32 && INT64 | float r; |  | r = (float)(uint64_t)arg1; | ret = TO_U32(r);
+0x2A | CONVF32S64 | 1 | 0-1 | 2A | SimpleExt64Instruction | halfResult: true | FLOAT32 && INT64 | float r; |  | r = (float)(int64_t)arg1; | ret = TO_U32(r);
+0x2B | # reserved |  |  |  |  |  |  | 
+0x2C | TRUNCF64U32 | 1 | 0-1 | 1 | SimpleExt64Instruction | halfResult: true | FLOAT64 | ret = trunc_f64_to_u32(vm, arg1);
+0x2D | TRUNCF64S32 | 1 | 0-1 | 1 | SimpleExt64Instruction | halfResult: true | FLOAT64 | ret = trunc_f64_to_s32(vm, arg1);
+0x2E | TRUNCF64U64 | 1 | 0-1 | 2R | SimpleExt64Instruction |  | FLOAT64 | ret = trunc_f64_to_u64(vm, arg1);
+0x2F | TRUNCF64S64 | 1 | 0-1 | 2R | SimpleExt64Instruction |  | FLOAT64 | ret = trunc_f64_to_s64(vm, arg1);
+0x30 | TRUNCF32U64 | 1 | 0-1 | 2R | SimpleExt64Instruction | halfArg1: true | FLOAT32 && INT64 | ret = trunc_f32_to_u64(vm, (uint32_t)arg1);
+0x31 | TRUNCF32S64 | 1 | 0-1 | 2R | SimpleExt64Instruction | halfArg1: true | FLOAT32 && INT64 | ret = trunc_f32_to_s64(vm, (uint32_t)arg1);
+0x32 | # reserved |  |  |  |  |  |  | 
+0x33 | # reserved |  |  |  |  |  |  | 
+0x34 | NEG64 | 1 | 0-1 | 4 | SimpleExt64Instruction |  | INT64 | ret = -arg1;
+
+
+------------------------------------------- other -------------------------------------------
+Name: Other
+Columns: code | name | numArgs | literals | variants | triasmClass | extensions | classArgs
+Headers: Code | Name | Num Args | Literals | Variants | triasm Class | Extensions | Class Args
+Description: x |  |  |  |  |  |  | 
+ | READ8S |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 1 | signExtend: true |  | withBase: true
+ | READ8U |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 1 |  | withBase: true
+ | READ16S |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 2 | signExtend: true |  | withBase: true
+ | READ16U |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 2 |  | withBase: true
+ | READ32 |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 4 |  | withBase: true
+ | READ64 |  | 0..1 | 1 | ReadWriteInstruction | MEM64 | bytes: 8 |  | withBase: true
+ | WRITE8 |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 1 |  | withBase: true
+ | WRITE16 |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 2 |  | withBase: true
+ | WRITE32 |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 4 |  | withBase: true
+ | WRITE64 |  | 0..1 | 1 | ReadWriteInstruction | MEM64 | bytes: 8 |  | withBase: true
+ | UREAD8S |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 1 | signExtend: true | unaligned: true | withBase: true
+ | UREAD8U |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 1 |  | unaligned: true | withBase: true
+ | UREAD16S |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 2 | signExtend: true | unaligned: true | withBase: true
+ | UREAD16U |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 2 |  | unaligned: true | withBase: true
+ | UREAD32 |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 4 |  | unaligned: true | withBase: true
+ | UREAD64 |  | 0..1 | 1 | ReadWriteInstruction | MEM64 | bytes: 8 |  | unaligned: true | withBase: true
+ | UWRITE8 |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 1 |  | unaligned: true | withBase: true
+ | UWRITE16 |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 2 |  | unaligned: true | withBase: true
+ | UWRITE32 |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 4 |  | unaligned: true | withBase: true
+ | UWRITE64 |  | 0..1 | 1 | ReadWriteInstruction | MEM64 | bytes: 8 |  | unaligned: true | withBase: true
+ | .DATA8 |  | 0.. | 1 | DataInstruction |  | bytes: 1
+ | .DATA16 |  | 0.. | 1 | DataInstruction |  | bytes: 2
+ | .DATA32 |  | 0.. | 1 | DataInstruction |  | bytes: 4
+ | .DATA64 |  | 0.. | 1 | DataInstruction |  | bytes: 8
+ | .FILL |  | 1..1 | 1 | FillInstruction |  | bytes: 1
+ | .FILL8 |  | 2.. | 1 | FillInstruction |  | bytes: 1
+ | .FILL16 |  | 2.. | 1 | FillInstruction |  | bytes: 2
+ | .FILL32 |  | 2.. | 1 | FillInstruction |  | bytes: 4
+ | .FILL64 |  | 2.. | 1 | FillInstruction |  | bytes: 8
+ | .VMA |  | 1..1 | 1 | AddrInstruction |  | program: false
+ | .PMA |  | 1..1 | 1 | AddrInstruction |  | program: true
+ | .ALIGN |  | 1..1 | 1 | AlignInstruction |  | 
+ | .REF |  | 0..0 | 1 | RefInstruction |  | 
+ | .LOCAL |  | - | 1 |  |  | 
+ | .PRAGMA |  | - | 1 |  |  | 
+ | .ASSERT |  | - | 1 |  |  | 
+ | .PLACE |  | - | 1 | PlaceInstruction |  | 
+ | .BASE |  | 1..1 | 1 | BaseInstruction |  | 
+ | .EXT |  | - | 1 |  |  | 
+ | .BEGIN |  | - | 1 |  |  | 
+ | .END |  | 0..0 | 1 |  |  | 
+ | .IF |  | 1..1 | 1 |  |  | 
+ | .ELSE |  | 0..0 | 1 |  |  | 
+ | .ENDIF |  | 0..0 | 1 |  |  | 
+ | .MTABLE |  | 4.. | 1 |  |  | 
+ | ~ASSIGN |  | 1..1 | 1 |  |  | 
 
 

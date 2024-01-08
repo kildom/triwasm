@@ -1,10 +1,6 @@
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-
-import { Row, Table, asIdentifier, parseOds } from './ods';
-
-const tempPath = 'temp';
+import { Row, asIdentifier, parseOds } from './ods';
+import { writeOutput } from './common';
 
 const odsFile = 'devtools/wasm-instr-gen/list.ods';
 
@@ -104,54 +100,5 @@ function generateSimpleGenerators(instrInfo: InstrInfo[]) {
     text += '    /* eslint-enable max-len */\n';
     writeOutput('tools/wasm/genFunction.ts', false, text, '    ', 'Simple generators');
 }
-
-function replaceOutput(text: string, content: string, indent: string, title: string): string {
-    let header = `// ---- ${title} - begin - generated with help of "wasm-instr.ts" script ----`;
-    let footer = `// ---- ${title} - end - generated with help of "wasm-instr.ts" script ----`;
-    content = content.replace(/^(\s*\n)+/, '').trimEnd();
-    try {
-        let [a, b, c] = text.split(header);
-        if (!b || c) throw null;
-        let [d, e, f] = text.split(footer);
-        if (!e || f) throw null;
-        let begin = a + header;
-        let end = footer + e;
-        return begin + '\n\n' + content + '\n\n' + indent + end;
-    } catch (ex) {
-        console.error(`Cannot fit "${title}" to the output.`);
-        console.error('Add following lines:');
-        console.error(`    ${header}`);
-        console.error(`    ${footer}`);
-        process.exit(1);
-    }
-}
-
-const filesProcessed = new Set<string>();
-
-function writeOutput(origFile: string, manual: boolean, content: string, indent: string, title: string) {
-    let manualFile = path.join(tempPath, path.basename(origFile));
-    fs.mkdirSync(tempPath, { 'recursive': true });
-    if (manual) {
-        let text: string;
-        if (filesProcessed.has(origFile)) {
-            text = fs.readFileSync(manualFile, 'utf8');
-        } else {
-            text = fs.readFileSync(origFile, 'utf8');
-            filesProcessed.add(origFile);
-        }
-        text = replaceOutput(text, content, indent, title);
-        fs.writeFileSync(manualFile, text);
-    } else {
-        let text = fs.readFileSync(origFile, 'utf8');
-        text = replaceOutput(text, content, indent, title);
-        fs.writeFileSync(origFile, text);
-        if (filesProcessed.has(origFile)) {
-            text = fs.readFileSync(manualFile, 'utf8');
-            text = replaceOutput(text, content, indent, title);
-            fs.writeFileSync(manualFile, text);
-        }
-    }
-}
-
 
 main();
