@@ -1,10 +1,8 @@
-<a href="https://kildom.github.io/trivm/docs"><img src="doc/trivm/logo.svg" alt="triVM logo - box drawing with letter 't'" width="120" align="right"/></a>
+<a href="https://kildom.github.io/trivm/docs"><img src="doc/trivm/logo.svg" alt="triVM logo - box drawing with letter 't'" width="120" align="right"/></a><br /><br />
 
 # triVM
 
 **A minimalistic, embeddable and portable virtual machine.**
-
-<br clear="both"/>
 
 |
 [Website](https://kildom.github.io/trivm/docs)
@@ -43,7 +41,7 @@ Features that you will **NOT** see in triVM:
 
 ## Quick sample
 
-> #### `Note`
+> [!NOTE]
 > This is only an overview of the procedure. Detailed tutorial can be found in the [documentation](https://kildom.github.io/uvm-docs/docs/getting-started-c/).
 
 Configure triVM in on-line [configurator](https://kildom.github.io/uvm-docs/tools/configure.html) and download generated files.
