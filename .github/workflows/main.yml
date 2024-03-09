@@ -13,7 +13,7 @@ jobs:
       - name: Run tests
         run: |
           cd test/asm
-          npx ts-node vectors.ts
+          npx tsx vectors.ts
       - name: Build
         run: npm run build
   triasm-quickjs:

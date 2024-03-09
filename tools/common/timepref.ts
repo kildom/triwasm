@@ -1,13 +1,5 @@
 
-let startSeconds: number | undefined = undefined;
-
-function getTime() {
-    let [seconds, nanoseconds] = process.hrtime();
-    if (startSeconds === undefined) {
-        startSeconds = seconds;
-    }
-    return (seconds - startSeconds) * 1000 + nanoseconds / 1000000;
-}
+import { platform } from './platform';
 
 export class TimePref {
 
@@ -15,15 +7,15 @@ export class TimePref {
     time: number;
 
     constructor() {
-        this.time = getTime();
+        this.time = platform.getHRTimer();
     }
 
     start() {
-        this.time = getTime();
+        this.time = platform.getHRTimer();
     }
 
     get() {
-        return getTime() - this.time;
+        return platform.getHRTimer() - this.time;
     }
 
     print(label?: string) {

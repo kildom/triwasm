@@ -24,6 +24,7 @@ export interface Platform {
     readFile(path: string, binary: true): Uint8Array;
     readFile(path: string, binary?: false): string;
     writeFile(path: string, content: string | Uint8Array): void;
+    getHRTimer(): number;
     scriptFile: string;
     isWindows: boolean;
     info: string;

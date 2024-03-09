@@ -48,6 +48,13 @@ window._triwasm_browser_platform_impl :
         fs.writeFileSync(path, content);
     }
 
+    let startSeconds = process.hrtime()[0];
+
+    platform.getHRTimer = function() {
+        let [seconds, nanoseconds] = process.hrtime();
+        return (seconds - startSeconds) * 1000 + nanoseconds / 1000000;
+    }
+
     platform.scriptFile = __filename;
 
     platform.isWindows = process.platform.toLowerCase().startsWith('win');
@@ -95,6 +102,10 @@ window._triwasm_browser_platform_impl :
         } else {
             Deno.writeFileSync(path, content);
         }
+    }
+
+    platform.getHRTimer = function() {
+        return performance.now();
     }
 
     platform.scriptFile = (function() {
@@ -276,6 +287,10 @@ window._triwasm_browser_platform_impl :
         } finally {
             f.close();
         }
+    }
+
+    platform.getHRTimer = function() {
+        return os.now();
     }
 
     platform.scriptFile = scriptArgs[0];
