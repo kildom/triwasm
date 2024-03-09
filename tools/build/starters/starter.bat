@@ -22,9 +22,13 @@ goto :EOF
 :download
     echo Downloading Deno...
     set DENO_INSTALL=%EXT_DIR%\deno
-    :: TODO: Raise an issue in denoland/install_deno repository to add option that
-    :: prevents from changing the PATH environment variable.
-    powershell -command "irm https://deno.land/install.ps1 | iex"                 || exit /b
+    echo #!/usr/bin/env pwsh > %EXT_DIR%\deno\tmp1.ps1
+    echo $User = [System.EnvironmentVariableTarget]::User >> %EXT_DIR%\deno\tmp1.ps1
+    echo $OldPath = [System.Environment]::GetEnvironmentVariable('Path', $User) >> %EXT_DIR%\deno\tmp1.ps1
+    echo irm https://deno.land/install.ps1 ^| iex >> %EXT_DIR%\deno\tmp1.ps1
+    echo [System.Environment]::SetEnvironmentVariable('Path', $OldPath, $User) >> %EXT_DIR%\deno\tmp1.ps1
+    powershell -command "Get-Content "%EXT_DIR%\deno\tmp1.ps1" | iex"                 || exit /b
+    del %EXT_DIR%\deno\tmp1.ps1
     echo Done.
     echo Version information:
     call :find_engine                                                             || exit /b
