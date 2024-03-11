@@ -30,26 +30,26 @@ global.get | x | 0x23 | globalidx | []→[t] | ! | false |
 global.set | x | 0x24 | globalidx | [t]→[] | ! | false | 
 table.get | x | 0x25 | tableidx | [i32]→[t] | ! | true | !
 table.set | x | 0x26 | tableidx | [i32 t]→[] | ! | true | !
-i32.load | memarg | 0x28 | memarg | [i32]→[i32] | ## | true | UREAD32 [AMB0] + [POP] + {offset}
-i64.load | memarg | 0x29 | memarg | [i32]→[i64] | {#mem64} ## {elif ..offset == 0} @i64_load_0 {else} i32.const value:..offset ; @i64_load | #mem64 | UREAD64 [AMB0] + [POP] + {offset}
+i32.load | memarg | 0x28 | memarg | [i32]→[i32] | ## | true | UREAD32 [MAB1] + [POP] + {offset}
+i64.load | memarg | 0x29 | memarg | [i32]→[i64] | {#mem64} ## {elif ..offset == 0} @i64_load_0 {else} i32.const value:..offset ; @i64_load | #mem64 | UREAD64 [MAB1] + [POP] + {offset}
 f32.load | memarg | 0x2A | memarg | [i32]→[f32] | i32.load offset, memory | false | 
 f64.load | memarg | 0x2B | memarg | [i32]→[f64] | {#mem64} i64.load memory, offset {elif ..offset == 0} @i64_load_0 {else} i32.const value:..offset ; @i64_load | false | 
-i32.load8_s | memarg | 0x2C | memarg | [i32]→[i32] | ## | true | UREAD8S [AMB0] + [POP] + {offset}
-i32.load8_u | memarg | 0x2D | memarg | [i32]→[i32] | ## | true | UREAD8U [AMB0] + [POP] + {offset}
-i32.load16_s | memarg | 0x2E | memarg | [i32]→[i32] | ## | true | UREAD16S [AMB0] + [POP] + {offset}
-i32.load16_u | memarg | 0x2F | memarg | [i32]→[i32] | ## | true | UREAD16U [AMB0] + [POP] + {offset}
+i32.load8_s | memarg | 0x2C | memarg | [i32]→[i32] | ## | true | UREAD8S [MAB1] + [POP] + {offset}
+i32.load8_u | memarg | 0x2D | memarg | [i32]→[i32] | ## | true | UREAD8U [MAB1] + [POP] + {offset}
+i32.load16_s | memarg | 0x2E | memarg | [i32]→[i32] | ## | true | UREAD16S [MAB1] + [POP] + {offset}
+i32.load16_u | memarg | 0x2F | memarg | [i32]→[i32] | ## | true | UREAD16U [MAB1] + [POP] + {offset}
 i64.load8_s | memarg | 0x30 | memarg | [i32]→[i64] | i32.load8_s offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s | false | 
 i64.load8_u | memarg | 0x31 | memarg | [i32]→[i64] | i32.load8_u memory, offset ; i32.const value:0 | false | 
 i64.load16_s | memarg | 0x32 | memarg | [i32]→[i64] | i32.load16_s offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s | false | 
 i64.load16_u | memarg | 0x33 | memarg | [i32]→[i64] | i32.load16_u memory, offset ; i32.const value:0 | false | 
 i64.load32_s | memarg | 0x34 | memarg | [i32]→[i64] | i32.load offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s | false | 
 i64.load32_u | memarg | 0x35 | memarg | [i32]→[i64] | i32.load offset, memory ; i32.const value:0 | false | 
-i32.store | memarg | 0x36 | memarg | [i32 i32]→[] | ## | true | UWRITE32 [AMB0] + [POP] + {offset}
-i64.store | memarg | 0x37 | memarg | [i32 i64]→[] | {#mem64} ## {elif ..offset == 0} @i64_store_0 {else} i32.const value:..offset ; @i64_store {end} | #mem64 | UWRITE64 [AMB0] + [POP] + {offset}
+i32.store | memarg | 0x36 | memarg | [i32 i32]→[] | ## | true | UWRITE32 [MAB1] + [POP] + {offset}
+i64.store | memarg | 0x37 | memarg | [i32 i64]→[] | {#mem64} ## {elif ..offset == 0} @i64_store_0 {else} i32.const value:..offset ; @i64_store {end} | #mem64 | UWRITE64 [MAB1] + [POP] + {offset}
 f32.store | memarg | 0x38 | memarg | [i32 f32]→[] | i32.store offset, memory | false | 
 f64.store | memarg | 0x39 | memarg | [i32 f64]→[] | {#mem64} i64.store offset, memory {elif ..offset == 0} @i64_store_0 {else} i32.const value:..offset ; @i64_store {end} | false | 
-i32.store8 | memarg | 0x3A | memarg | [i32 i32]→[] | ## | true | UWRITE8 [AMB0] + [POP] + {offset}
-i32.store16 | memarg | 0x3B | memarg | [i32 i32]→[] | ## | true | UWRITE16 [AMB0] + [POP] + {offset}
+i32.store8 | memarg | 0x3A | memarg | [i32 i32]→[] | ## | true | UWRITE8 [MAB1] + [POP] + {offset}
+i32.store16 | memarg | 0x3B | memarg | [i32 i32]→[] | ## | true | UWRITE16 [MAB1] + [POP] + {offset}
 i64.store8 | memarg | 0x3C | memarg | [i32 i64]→[] | trivm.pop value: 1 ; i32.store8 offset, memory | false | 
 i64.store16 | memarg | 0x3D | memarg | [i32 i64]→[] | trivm.pop value: 1 ; i32.store16 offset, memory | false | 
 i64.store32 | memarg | 0x3E | memarg | [i32 i64]→[] | trivm.pop value: 1 ; i32.store offset, memory | false | 

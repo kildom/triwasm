@@ -66,7 +66,7 @@ Description: x << 2 |  |  |  |  |  |  |
 0x1B | # reserved |  |  |  |  |  | 
 0x1C | # reserved |  |  |  |  |  | 
 0x1D | # reserved |  |  |  |  |  | 
-0x1E | # extended 32-bit instructions |  |  |  |  |  | 
+0x1E | # extended 64 or 32-bit instructions |  |  |  |  |  | 
 0x1F | # extended 64-bit instructions |  |  |  |  |  | 
 
 
@@ -163,6 +163,7 @@ Name: Other
 Columns: code | name | numArgs | literals | variants | triasmClass | extensions | classArgs
 Headers: Code | Name | Num Args | Literals | Variants | triasm Class | Extensions | Class Args
 Description: x |  |  |  |  |  |  | 
+0x1A | UNWINDRET | 1 | 0-2 | 1 |  | UNWIND | withReturn: true
  | READ8S |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 1 | signExtend: true |  | withBase: true
  | READ8U |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 1 |  | withBase: true
  | READ16S |  | 0..1 | 1 | ReadWriteInstruction |  | bytes: 2 | signExtend: true |  | withBase: true
@@ -195,19 +196,19 @@ Description: x |  |  |  |  |  |  |
  | .VMA |  | 1..1 | 1 | AddrInstruction |  | program: false
  | .PMA |  | 1..1 | 1 | AddrInstruction |  | program: true
  | .ALIGN |  | 1..1 | 1 | AlignInstruction |  | 
- | .REF |  | 0..0 | 1 | RefInstruction |  | 
+ | .REF |  | 0.. | 1 | RefInstruction |  | 
  | .LOCAL |  | - | 1 |  |  | 
  | .PRAGMA |  | - | 1 |  |  | 
- | .ASSERT |  | - | 1 |  |  | 
+ | .ASSERT |  | 1..1 | 1 | AssertInstruction |  | 
  | .PLACE |  | - | 1 | PlaceInstruction |  | 
  | .BASE |  | 1..1 | 1 | BaseInstruction |  | 
  | .EXT |  | - | 1 |  |  | 
  | .BEGIN |  | - | 1 |  |  | 
  | .END |  | 0..0 | 1 |  |  | 
- | .IF |  | 1..1 | 1 |  |  | 
  | .ELSE |  | 0..0 | 1 |  |  | 
  | .ENDIF |  | 0..0 | 1 |  |  | 
- | .MTABLE |  | 4.. | 1 |  |  | 
- | ~ASSIGN |  | 1..1 | 1 |  |  | 
+ | .IF |  | 1..1 | 1 |  |  | 
+ | .MTABLE |  | 4.. | 1 | MTableInstruction |  | 
+ | ~ASSIGN |  | 1..1 | 1 | [undefined] |  | 
 
 

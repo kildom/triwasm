@@ -12,19 +12,24 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Compiler, EnabledExtensions, KNOWN_EXTENSIONS } from './compiler';
+import { dict } from '../common/common';
+import { Compiler } from './compiler';
 import { CompilerError } from './errors';
 import { ExprMaker } from './exprMaker';
 import { BytecodeGenerator } from './generator';
-import { BASE, INSTR, instrInfoById } from './instrInfo';
-import { instrParse } from './instrParser';
+import { BASE, EnabledExtensions, INSTR, KNOWN_EXTENSIONS, instrInfoById } from './instrInfo';
+import { InstrParserConsumer, instrParse } from './instrParser';
 import {
     AddrInstruction,
     AlignInstruction,
+    AssertInstruction,
     Assign, BaseInstruction, Block, BlockEnd, BranchInstruction, DataInstruction, FillInstruction, InstrBase,
     InstrParams,
-    PlaceInstruction, ReadSpInstruction, ReadWriteInstruction, RefInstruction,
+    MTableInstruction,
+    PlaceInstruction, ReadWriteInstruction, RefInstruction,
     SimpleCoreInstruction,
+    SimpleExt32Instruction,
+    SimpleExt64Instruction,
     UnwindInstruction
 } from './instructions';
 
@@ -34,45 +39,41 @@ interface AssignProxy {
     lineNumber: number;
 }
 
-export class InstrMaker {
+export class InstrMaker implements InstrParserConsumer {
 
-    private static parserInstrClasses: { [k: string]: any } = {
-        'sc': SimpleCoreInstruction,
-        'rw': ReadWriteInstruction,
-        'data': DataInstruction,
-        'fill': FillInstruction,
-        'br': BranchInstruction,
-        'READSP': ReadSpInstruction,
-        '.REF': RefInstruction,
-        '.PLACE': PlaceInstruction,
-        '.BASE': BaseInstruction,
-        '.ALIGN': AlignInstruction,
-        '.VMA': AddrInstruction,
-        '.PMA': AddrInstruction,
+    private static parserInstrClasses: { [k: string]: any; } = {
+        'SimpleCoreInstruction': SimpleCoreInstruction,
+        'BranchInstruction': BranchInstruction,
+        'SimpleExt32Instruction': SimpleExt32Instruction,
+        'SimpleExt64Instruction': SimpleExt64Instruction,
+        'ReadWriteInstruction': ReadWriteInstruction,
+        'DataInstruction': DataInstruction,
+        'FillInstruction': FillInstruction,
+        'AddrInstruction': AddrInstruction,
+        'AlignInstruction': AlignInstruction,
+        'RefInstruction': RefInstruction,
+        'PlaceInstruction': PlaceInstruction,
+        'BaseInstruction': BaseInstruction,
+        'MTableInstruction': MTableInstruction,
+        'AssertInstruction': AssertInstruction,
     };
 
     private instructions: InstrBase[] = [];
-    private blocks: Block[] = [];
     private rootBlock: Block;
-    private assignProxies: { [k: string]: AssignProxy } = {};
+    private assignProxies = dict<AssignProxy>();
     private extensions: EnabledExtensions = {};
     private currentBlock: Block;
     private params: InstrParams;
 
     constructor(public compiler: Compiler, private generator: BytecodeGenerator, private exprMaker: ExprMaker) {
-        this.params = new InstrParams(compiler, generator, 0, 1, instrInfoById[INSTR._BEGIN], exprMaker);
+        this.params = new InstrParams(compiler, generator, 0, 0, instrInfoById[INSTR._BEGIN], exprMaker);
         this.rootBlock = new Block(this.params, '', null);
         this.currentBlock = this.rootBlock;
-        this.blocks.push(this.rootBlock);
         this.instructions.push(this.rootBlock);
     }
 
     public getInstructions(): InstrBase[] {
         return this.instructions;
-    }
-
-    public getBlocks(): Block[] {
-        return this.blocks;
     }
 
     public getRootBlock(): Block {
@@ -121,21 +122,42 @@ export class InstrMaker {
         return name;
     }
 
-    onParserLine(lineNumber: number): void {
-        this.params.lineNumber = lineNumber;
-    }
-
-    onParserInstr(id: number, args: string, base: BASE): void {
+    onParserInstr(lineNumber: number, id: number, args: string, base: BASE): void {
         let info = instrInfoById[id];
-        for (let ext of info.condition) {
-            if (!(this.extensions as any)[ext]) {
-                throw new CompilerError(this.params.lineNumber, `Instruction belongs to disabled extension "${ext}".`);
-            }
-        }
+        this.params.lineNumber = lineNumber;
         this.params.index = this.instructions.length;
         this.params.info = info;
-        let instr: InstrBase | null = null;
+        if (!info.condition(this.extensions)) {
+            throw new CompilerError(this.params.lineNumber, `Instruction ${info.name} belongs to disabled extension.`);
+        }
+        let instr: InstrBase | undefined = undefined;
+
         switch (id) {
+        // ---- Instructions required special handling - begin - generated with help of script ----
+
+        case INSTR.UNWIND:
+        case INSTR.UNWINDRET:
+            if (args == '') {
+                instr = new SimpleCoreInstruction(this.params, args);
+            } else {
+                instr = new UnwindInstruction(this.params, args);
+            }
+            break;
+
+        case INSTR._LOCAL:
+            for (let local of args.split(/\s*,\s*/)) {
+                if (local in this.currentBlock.locals) {
+                    throw new CompilerError(this.params.lineNumber, '".LOCAL" variable already defined.');
+                }
+                let name = `~LOCAL~${this.params.index}~${this.currentBlock.index}~${local}`;
+                this.currentBlock.locals[local] = name;
+            }
+            break;
+
+        case INSTR._PRAGMA:
+            // TODOv1: Pragma instruction
+            break;
+
         case INSTR._EXT:
             for (let extName of args.toLowerCase().split(/\s*,\s*/)) {
                 if (KNOWN_EXTENSIONS.indexOf(extName) < 0) {
@@ -148,33 +170,31 @@ export class InstrMaker {
         case INSTR._BEGIN:
             this.currentBlock = new Block(this.params, args, this.currentBlock);
             instr = this.currentBlock;
-            this.blocks.push(this.currentBlock);
             break;
 
+        case INSTR._END:
         case INSTR._ELSE:
         case INSTR._ENDIF:
-        case INSTR._END:
             this.params.info = instrInfoById[INSTR._END];
             if (this.currentBlock === this.rootBlock) {
-                throw new CompilerError(this.params.lineNumber, '".END" directive without matching ".BEGIN".');
+                throw new CompilerError(this.params.lineNumber, `"${this.params.info.name}" directive without beginning.`);
             }
             this.currentBlock.end = new BlockEnd(this.params, this.currentBlock);
             instr = this.currentBlock.end;
             this.currentBlock = this.currentBlock.parent as Block;
-            if (id != INSTR._END) {
+            if (id === INSTR._ELSE || id === INSTR._ENDIF) {
                 let uid = (instr as BlockEnd).block.index - 1;
                 this.instructions.push(instr);
-                instr = null;
-                if (id == INSTR._ELSE) {
+                instr = undefined;
+                if (id === INSTR._ELSE) {
                     // .BEGIN discardable
                     this.params.info = instrInfoById[INSTR._BEGIN];
                     this.params.index = this.instructions.length;
                     this.currentBlock = new Block(this.params, 'discardable', this.currentBlock);
-                    this.blocks.push(this.currentBlock);
                     this.instructions.push(this.currentBlock);
                 }
                 // BlockElse:
-                this.onParserLabel(`__9s6SshMfvUS6_BlockElse_${uid}`);
+                this.onParserLabel(lineNumber, `__9s6SshMfvUS6_BlockElse_${uid}`);
             }
             break;
 
@@ -189,55 +209,38 @@ export class InstrMaker {
             this.params.info = instrInfoById[INSTR._BEGIN];
             this.params.index++;
             this.currentBlock = new Block(this.params, 'discardable', this.currentBlock);
-            this.blocks.push(this.currentBlock);
             this.instructions.push(this.currentBlock);
             // BlockThen:
-            this.onParserLabel(`__9s6SshMfvUS6_BlockThen_${uid}`);
+            this.onParserLabel(lineNumber, `__9s6SshMfvUS6_BlockThen_${uid}`);
             break;
         }
 
-        case INSTR._LOCAL: {
-            let locals = (args as string).split(/\s*,\s*/);
-            for (let local of locals) {
-                if (local in this.currentBlock.locals) {
-                    throw new CompilerError(this.params.lineNumber, '".LOCAL" variable already defined.');
-                }
-                let name = `~LOCAL~${this.params.index}~${this.currentBlock.index}~${local}`;
-                this.currentBlock.locals[local] = name;
-            }
-            break;
-        }
-
-        case INSTR.UNWIND:
-            if (args == '') {
-                instr = new SimpleCoreInstruction(this.params, args);
-            } else {
-                instr = new UnwindInstruction(this.params, args);
-            }
-            break;
+        // ---- Instructions required special handling - end - generated with help of script ----
 
         default: {
             let Class = InstrMaker.parserInstrClasses[info.instrClass];
             if (!Class) {
-                Class = InstrMaker.parserInstrClasses[info.name];
+                throw new Error('Internal error.');
             }
             instr = new Class(this.params, args, base);
             break;
         }
         }
-        if (instr !== null) {
+
+        if (instr) {
             this.instructions.push(instr);
         }
     }
 
-    onParserLabel(name: string): void {
-        this.onParserAssign(name, 'vma()');
+    onParserLabel(lineNumber: number, name: string): void {
+        this.onParserAssign(lineNumber, name, 'vma()');
     }
 
-    onParserAssign(name: string, value: string): void {
+    onParserAssign(lineNumber: number, name: string, value: string): void {
         let realName = this.getVariableRealName(name);
         this.params.index = this.instructions.length;
         this.params.info = instrInfoById[INSTR._ASSIGN];
+        this.params.lineNumber = lineNumber;
         let instr = new Assign(this.params, value, this.currentBlock);
         this.instructions.push(instr);
         if (realName in this.assignProxies) {
@@ -263,5 +266,4 @@ export class InstrMaker {
         }
         return this.assignProxies[realName];
     }
-
 }

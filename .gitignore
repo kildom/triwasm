@@ -12,5 +12,6 @@ node_modules
 /tools/wasm/skeleton.ts
 /tools/wasm/res.ts
 /doc/triwasm/cmd.md
+/doc/triasm/cmd.md
 /test/__old/*.html
 /temp/

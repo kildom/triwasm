@@ -12,7 +12,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { allowTemporaryNull } from '../common/common';
 import { CompilerError } from './errors';
 import { ExprParser, ExprParserConsumer, ExprParserError } from './exprParser';
 import { AsmFunctions } from './functions';
@@ -25,11 +24,10 @@ export type IdentifierProvider = (name: string) => { assignment: Assign | null }
 export class ExprMaker implements ExprParserConsumer {
 
     private parser: ExprParser;
-    private instr: InstrBase;
+    private instr!: InstrBase;
 
     constructor(private identifierProvider: IdentifierProvider) {
         this.parser = new ExprParser(this);
-        this.instr = allowTemporaryNull as InstrBase;
     }
 
     public makeOptionalExpression(instr: InstrBase, arg: string): ExprEval | null {
@@ -54,10 +52,10 @@ export class ExprMaker implements ExprParserConsumer {
             }
         }
         let info = instr.info;
-        if (info.args === null) {
+        if (info.literals === undefined) {
             throw new Error('Internal error');
         }
-        if (res.length < info.args[0] || res.length > info.args[1]) {
+        if (res.length < info.literals.min || res.length > info.literals.max) {
             throw new CompilerError(instr.lineNumber, 'Invalid number of arguments');
         }
         return res;

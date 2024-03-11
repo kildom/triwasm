@@ -14,58 +14,23 @@
 
 
 import { Compiler } from './compiler';
-import { ArgsParser } from '../common/argparse';
 import { platform } from '../common/platform';
+import { getAsmArgs } from './args';
 
-const usage = `
-Usage: triasm [options] <input>
-
-Compile triASM source code into triVM bytecode.
-
-<input>
-        The input triASM source code.
-
--o <file>
---output[1]=<file>
-        Put output to this file.
-
---version:!version
-        Print tool version.
-
---help:!help
-        Print this help text.
-`;
-
-const filters = {
-    version: () => {
-        console.log('TODO: version'); // TODO: print version
-        console.log('JavaScript runtime: ' + platform.info);
-        platform.exit(0);
-    }
-};
-
-
-class TriAsmArgs {
-    public output: string = '';
-    public input: string = '';
-    constructor() {
-        ArgsParser.parse(usage, this, filters);
-    }
-}
 
 function main() {
-    let args = new TriAsmArgs();
-    let input:string;
+    const args = getAsmArgs();
+    let input: string;
     try {
-        input = platform.readFile(args.input);
+        input = args.input.readString();
     } catch (ex) {
         console.log(`Cannot read "${args.input}" file: ${ex}`);
         platform.exit(1);
         return;
     }
-    let c = new Compiler();
-    let output = c.compile(input);
-    platform.writeFile(args.output, output);
+    let compiler = new Compiler();
+    let output = compiler.compile(input);
+    args.output.write(output);
 }
 
-main();
+platform.main(main);

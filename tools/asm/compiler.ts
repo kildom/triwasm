@@ -13,30 +13,15 @@
  */
 
 import { Block, BlockEnd, PlaceInstruction, InstrBase, ExprEval, ExprContext } from './instructions';
-import { allowTemporaryNull, ObjMarker } from '../common/common';
+import { ObjMarker } from '../common/common';
 import { InstrMaker } from './instrMaker';
 import { ExprMaker } from './exprMaker';
 import { CompilerError } from './errors';
 import { BytecodeGenerator } from './generator';
+import { EnabledExtensions } from './instrInfo';
 
 const MAX_RERUNS = 50;
 const MAX_INSTR_SIZE = 32;
-
-export interface EnabledExtensions {
-    unwind?: boolean;
-    mem64?: boolean;
-    i64?: boolean;
-    f32?: boolean;
-    f64?: boolean;
-}
-
-export const KNOWN_EXTENSIONS = [
-    'unwind',
-    'mem64',
-    'i64',
-    'f32',
-    'f64',
-];
 
 
 export class Compiler {
@@ -44,19 +29,15 @@ export class Compiler {
     public generator: BytecodeGenerator = new BytecodeGenerator();
     public preparation = true;
     public instructions: InstrBase[] = [];
-    public rootBlock: Block;
+    public rootBlock!: Block;
     public pmaBase: number = 0;
     public extensions: EnabledExtensions = {};
-
-    constructor() {
-        this.rootBlock = allowTemporaryNull as Block;
-    }
 
     compile(input: string) {
         // Parse input and make internal data structures from the input
         this.preparation = true;
         let instrMaker: InstrMaker;
-        let exprMaker = new ExprMaker((...args) => instrMaker.getIdentifier(...args));
+        let exprMaker = new ExprMaker((name: string) => instrMaker.getIdentifier(name));
         instrMaker = new InstrMaker(this, this.generator, exprMaker);
         instrMaker.parse(input);
         this.instructions = instrMaker.getInstructions();

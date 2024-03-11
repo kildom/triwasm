@@ -68,6 +68,7 @@ let newId = 0;
 let instrEnum = '';
 let instrInfoById = '';
 let instrInfoByName = '';
+let instrMakerCases = '';
 let instrNames: string[] = [];
 
 async function main() {
@@ -80,6 +81,7 @@ async function main() {
     writeOutput('tools/asm/instrInfo.ts', false, instrEnum, '    ', 'Instructions enumerator');
     writeOutput('tools/asm/instrInfo.ts', false, instrInfoById, '    ', 'Instructions information');
     writeOutput('tools/asm/instrInfo.ts', false, instrInfoByName, '    ', 'Instructions information by name');
+    writeOutput('tools/asm/instrMaker.ts', true, instrMakerCases, '        ', 'Instructions required special handling');
 }
 
 function processTable(table: Table): void {
@@ -165,7 +167,7 @@ function processInstr(raw: RowRaw, postfix: string, variantLiterals: string | un
         for (let ext of supportedExt) {
             condition = condition.replace(ext, `ext.${ext.toLowerCase()}`);
         }
-        condition = '(ext: any) => ' + condition;
+        condition = '(ext: EnabledExtensions) => ' + condition;
     }
     instrEnum += `    ${enumName} = ${id},\n`;
     instrInfoById += '    {\n';
@@ -180,6 +182,9 @@ function processInstr(raw: RowRaw, postfix: string, variantLiterals: string | un
     instrInfoById += '    },\n';
     instrInfoByName += `    ${stringifyExtJSONKey(name.toUpperCase())}: instrInfoById[INSTR.${enumName}],\n`;
     instrNames.push(name);
+    if (raw.triasmClass.trim() === '') {
+        instrMakerCases += `        case INSTR.${enumName}:\n            break;\n\n`;
+    }
 }
 
 

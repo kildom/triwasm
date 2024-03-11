@@ -95,6 +95,22 @@ export class BytecodeGenerator {
         }
     }
 
+    putImmediate64First(value: bigint, minSize: number) {
+        let size = this.getImmediateSize(value, minSize);
+        if (size > 4) {
+            this.putImmediate((value >> 32n) & 0xFFFFFFFFn, size - 4);
+        } else {
+            this.putImmediate(value & 0xFFFFFFFFn, size);
+        }
+    }
+
+    putImmediate64Last(value: bigint, minSize: number) {
+        let size = this.getImmediateSize(value, minSize);
+        if (size > 4) {
+            this.put32(Number(value & 0xFFFFFFFFn));
+        }
+    }
+
     getImmediateSize(value: bigint, minSize?: number) {
         minSize = minSize || 0;
         let valueInt = Number(value & 0xFFFFFFFFn);
@@ -104,6 +120,17 @@ export class BytecodeGenerator {
             return 2;
         } else {
             return 4;
+        }
+    }
+
+    getImmediate64Size(value: bigint, minSize: number = 0) {
+        let high = (value & 0xFFFFFFFF00000000n) >> 32n;
+        let low = value & 0xFFFFFFFFn;
+        let lowSignExt = ((low >> 31n) << 32n) - 1n;
+        if (high === lowSignExt && minSize <= 4) {
+            return this.getImmediateSize(low, minSize);
+        } else {
+            return 4 + this.getImmediateSize(high, minSize);
         }
     }
 

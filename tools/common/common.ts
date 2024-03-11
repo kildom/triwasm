@@ -1,7 +1,5 @@
 
 
-export const allowTemporaryNull: unknown = null;
-
 export const U16_MAX_VALUE = 0xFFFF;
 export const S16_MIN_VALUE = -0x8000;
 export const S16_MAX_VALUE = 0x7FFF;
@@ -116,4 +114,10 @@ export function dedent(text: string | string[] | undefined, split: boolean, form
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 export function exhaustiveCheck(...value: never[]) {
     return new Error('Exhaustive Check Assertion');
+}
+
+export type Dict<T> = { [key: string]: T };
+
+export function dict<T>(): Dict<T> {
+    return Object.create(null);
 }

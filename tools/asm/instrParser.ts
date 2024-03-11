@@ -21,98 +21,157 @@
  * Reconsider renaming "output object" to "consumer".
  */
 
+import cre from 'con-reg-exp';
 import { CompilerError } from './errors';
 import { instrInfoByName, BASE } from './instrInfo';
 
+const ws = cre.ignoreCase`repeat [ \t]`;
 
-/* reLine decoding:
- *     #empty       # no group
- *     label:       # group 1+2
- *     assign = 123 # group 1+3
- *     instr 123    # group 1+4
- *     no_arg_instr # group 1
- */
-const reLine = /^[ \t]*(?:([a-z_$@.][a-z_$@.0-9]*)[ \t]*(?:(:)[ \t]*|=[ \t]*([^\r\n# \t][^\r\n#]*)|[ \t]([^\r\n# \t:=][^\r\n#]*)|))?(?:#.*)?$/gmi;
+interface ReLineGroups {
+    name?: string;
+    label?: string;
+    assign?: string;
+    args?: string;
+}
 
-/* reBaseReg groups:
- *     1: AMBn if AMBn
- *     2: POP if AMBn
- *     3: SP if SP
- *     4: POP if SP
- *     5: POP if just POP
- *     6: arg sign: '+', '-', or empty
- */
-const reBaseReg = /^(?:\[\s*(AMB0|AMB1)\s*\]\s*(?:\+\s*\[\s*(POP)\s*\])?|\[\s*(SP)\s*\]\s*(?:-\s*\[\s*(POP)\s*\])?|\[\s*(POP)\s*\])\s*(\+|-|$)\s*/i;
+const reLine = cre.ignoreCase.sticky`
+    begin-of-line
+    ${ws}
+    optional {
+        name: {
+            [a-z_$@.]
+            repeat [a-z_$@.0-9]
+        }
+        {
+            ${ws}
+            label: ":"
+        } or {
+            ${ws}
+            "="
+            assign: repeat not [\r\n#]
+        } or {
+            [ \t]
+            args: repeat not [\r\n#]
+        } or {
+            // no arguments
+        }
+    }
+    ${ws}
+    optional {
+        "#"
+        repeat not term
+    }
+    (optional \r, \n) or end-of-text
+`;
+
+interface ReBaseRegGroups {
+    all: string;
+    sp?: string;
+    mab?: string;
+    ambPop?: string;
+    pop?: string;
+    popMab?: string;
+    sign?: string;
+}
+
+const reBaseReg = cre.ignoreCase`
+    begin-of-text
+    all: {
+        ${ws}
+        {
+            "[", ${ws}, sp: "SP", ${ws}, "]"
+        } or {
+            "[", ${ws}, "MAB", mab: [0-3], ${ws}, "]"
+            optional (${ws}, "+", ${ws}, "[", ${ws}, ambPop: "POP", ${ws}, "]")
+        } or {
+            "[", ${ws}, pop: "POP", ${ws}, "]"
+            optional (${ws}, "+", ${ws}, "[", ${ws}, "MAB", popMab: [0-3], ${ws}, "]")
+        }
+        ${ws}
+        optional sign: [+-]
+        ${ws}
+    }
+`;
 
 
 export interface InstrParserConsumer {
-    onParserLine(lineNumber: number): void;
-    onParserLabel(name: string): void;
-    onParserAssign(name: string, value: string): void;
-    onParserInstr(id: number, args: string, base: BASE): void;
+    onParserLabel(line: number, name: string): void;
+    onParserAssign(line: number, name: string, value: string): void;
+    onParserInstr(line: number, id: number, args: string, base: BASE): void;
 }
 
 
 function parseBase(args: string): [BASE, string] {
-    let m = args.match(reBaseReg);
-    if (m === null) {
-        return [BASE.ZERO, args];
+    let groups: ReBaseRegGroups | undefined = args.match(reBaseReg)?.groups as ReBaseRegGroups | undefined;
+    if (!groups) {
+        return [BASE.MAB0, args];
     }
-    args = args.substring(m[0].length).trim();
+    args = args.substring(groups.all.length).trim();
     if (args === '') {
         args = '0';
-    } else if (m[6] === '-') {
+    } else if (groups.sign === '-') {
         args = `0 - ${args}`;
     }
-    let base: BASE;
-    switch ((m[1] || m[3] || '').toUpperCase()) {
-    case 'AMB0': base = BASE.AMB0; break;
-    case 'AMB1': base = BASE.AMB1; break;
-    case 'SP': base = BASE.SP; break;
-    default: base = BASE.ZERO; break;
+    if (groups.sp) {
+        return [BASE.SP, args];
+    } else {
+        let base: BASE;
+        switch (groups.mab || groups.popMab) {
+        default:
+        case '0':
+            base = BASE.MAB0;
+            break;
+        case '1':
+            base = BASE.MAB1;
+            break;
+        case '2':
+            base = BASE.MAB2;
+            break;
+        case '3':
+            base = BASE.MAB3;
+            break;
+        }
+        if (groups.pop || groups.ambPop) {
+            base |= BASE.POP;
+        }
+        return [base, args];
     }
-    if (m[2] || m[4] || m[5]) {
-        base |= BASE.POP;
-    }
-    return [base, args];
 }
 
 
 export function instrParse(input: string, consumer: InstrParserConsumer): void {
     let line = 1;
-    let offset = 0;
-    input = input.replace(/\r\n/g, '\n');
-    for (let m of input.matchAll(reLine)) {
-        consumer.onParserLine(line);
-        if (input.substring(offset, m.index).trim() !== '') {
-            throw new CompilerError(line, 'Syntax error!');
-        }
-        offset = (m.index as number) + m[0].length;
-        if (m[1] === undefined) {
-            // skip comments and empty lines
-        } else if (m[2] !== undefined) {
-            consumer.onParserLabel(m[1]);
-        } else if (m[3] !== undefined) {
-            consumer.onParserAssign(m[1], m[3]);
+    let re = new RegExp(reLine);
+    let groups: ReLineGroups | undefined;
+    while (re.lastIndex < input.length && (groups = re.exec(input)?.groups as ReLineGroups | undefined)) {
+        if (!groups.name) {
+            // skip empty lines
         } else {
-            let name = m[1].toUpperCase();
-            let info = instrInfoByName[name];
-            if (!info) {
-                throw new CompilerError(line, 'Invalid instruction name!');
+            if (groups.label !== undefined) {
+                consumer.onParserLabel(line, groups.name);
+            } else if (groups.assign !== undefined) {
+                if (!groups.assign.trim()) {
+                    throw new CompilerError(line, 'Assigned value is empty.');
+                }
+                consumer.onParserAssign(line, groups.name, groups.assign.trim());
+            } else {
+                let name = groups.name.toUpperCase();
+                let info = instrInfoByName[name];
+                if (!info) {
+                    throw new CompilerError(line, 'Invalid instruction name!');
+                }
+                let args: string | undefined = groups.args?.trim() || '';
+                let base = BASE.MAB0;
+                if (info.instrOptions.withBase) {
+                    [base, args] = parseBase(args);
+                    args = args.trim();
+                }
+                consumer.onParserInstr(line, info.id, args, base);
             }
-            let args: string | undefined = m[4];
-            let base = BASE.ZERO;
-            if (args === undefined) {
-                args = '';
-            } else if (info.withBase) {
-                [base, args] = parseBase(args);
-            }
-            args = args.trim();
-            consumer.onParserInstr(info.id, args, base);
         }
         line++;
     }
-    if (input.substring(offset, input.length).trim() !== '') {
+    if (re.lastIndex != input.length) {
         throw new CompilerError(line, 'Syntax error!');
     }
 }

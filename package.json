@@ -4,31 +4,24 @@
   "version": "0.0.1",
   "description": "SDK for triVM",
   "scripts": {
+    "prebuild-triasm": "npx tsx devtools/wasm-instr-gen/res-gen.ts tools/asm/res.ts tools/asm/res/args.txt",
     "build-triasm": "tsc -p tools/asm/triasm.tsconfig.json",
-    "postbuild-triasm": "node tools/build/postbuild.js starters jsfixup",
-
+    "postbuild-triasm": "node tools/build/postbuild.js starters jsfixup && node bin/js/triasm.js --help-md > doc/triasm/cmd.md",
     "prebuild-triwasm": "npx tsx devtools/wasm-instr-gen/template-gen.ts tools/wasm/skeleton.triasm && npx prettier tools/wasm/skeleton.ts --write --ignore-path .prettierignore && npx tsx devtools/wasm-instr-gen/res-gen.ts tools/wasm/res.ts tools/wasm/res/dump-html.css tools/wasm/res/dump-html.js tools/wasm/res/args.txt",
     "build-triwasm": "tsc -p tools/wasm/triwasm.tsconfig.json",
     "postbuild-triwasm": "node tools/build/postbuild.js starters jsfixup && node bin/js/triwasm.js --help-md > doc/triwasm/cmd.md",
-
     "build-tricc": "tsc -p tools/cc/tricc.tsconfig.json",
     "postbuild-tricc": "node tools/build/postbuild.js starters jsfixup",
-
     "build-triconf": "tsc -p tools/conf/triconf.tsconfig.json",
     "postbuild-triconf": "node tools/build/postbuild.js starters jsfixup",
-
     "prebuild-runtime": "make -C tools/runtime/triwasmlib -j2 get-tools && make -C tools/runtime/softfloatlib -j2 get-tools",
     "build-runtime": "make -C tools/runtime/triwasmlib && make -C tools/runtime/softfloatlib",
-
     "build": "concurrently -c white,red,magenta,yellow,blue npm:build-runtime npm:build-triasm npm:build-triwasm npm:build-tricc npm:build-triconf",
     "build-clean": "node tools/build/postbuild.js clean",
     "rebuild": "npm run build-clean && npm run build",
-
     "build-tests": "tsc -p test/asm/vectors.tsconfig.json",
     "run-tests": "node --enable-source-maps test/output/asm/vectors.js",
-
     "lint": "npx eslint tools",
-
     "gen-trivm-instr": "npx tsx devtools/generators/trivm-instr.ts",
     "gen-triasm-instr": "npx tsx devtools/generators/triasm-instr.ts",
     "gen-wasm-instr": "npx tsx devtools/generators/wasm-instr.ts"
@@ -44,11 +37,14 @@
     "extract-zip": "^2.0.1",
     "ncp": "^2.0.0",
     "prettier": "3.0.0",
-    "tsx": "^10.9.1",
     "tsx": "^4.7.1",
     "typedoc": "^0.23.20",
     "typescript": "^4.9.5",
+    "vitest": "^1.3.1",
     "xml-js": "^1.6.11",
     "xml2js": "^0.4.23"
+  },
+  "dependencies": {
+    "con-reg-exp": "^0.2.4"
   }
 }

@@ -12,12 +12,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { BASE, instrInfoById, INSTR, InstrInfo, BASE_REG_MASK } from './instrInfo';
+import { BASE, instrInfoById, INSTR, InstrInfo } from './instrInfo';
 import { Compiler } from './compiler';
 import { ExprMaker } from './exprMaker';
 import { CompilerError } from './errors';
-import { allowTemporaryNull } from '../common/common';
 import { BytecodeGenerator } from './generator';
+import cre from 'con-reg-exp';
 
 const MAX_FILL_SIZE = 128 * 1024 * 1024;
 
@@ -48,7 +48,7 @@ export type ExprEval = (ctx: ExprContext) => bigint;
 export class ExprCycleError extends Error { }
 
 
-export class InstrParams {
+export class InstrParams { // TODO: Rename it
     constructor(
         public compiler: Compiler,
         public generator: BytecodeGenerator,
@@ -108,13 +108,12 @@ export class InstrBase {
 export class Block extends InstrBase {
     public discarded: boolean = false;
     public moveTo: string | null = null;
-    public end: BlockEnd;
+    public end!: BlockEnd;
     public locals: { [k: string]: string } = {};
     public deps: Set<Block> = new Set();
 
     constructor(params: InstrParams, args: string, public parent: Block | null) {
         super(params);
-        this.end = allowTemporaryNull as BlockEnd;
         let [blockType, blockArgs] = args.split(/\s+/, 2);
         blockArgs = (blockArgs || '').trim();
         switch (blockType.toUpperCase()) {
@@ -218,6 +217,92 @@ export class SimpleCoreInstruction extends InstrBase {
             this.generator.putImmediate(argValue, size);
         } else {
             this.generator.put8(SimpleCoreInstruction.INSTR_CODES[0] | (this.info.opcode << 2));
+        }
+    }
+}
+
+export class SimpleExt32Instruction extends InstrBase {
+
+    private static CODE_FIRST = [0xFB, 0xFA, 0xF9, 0, 0xF8];
+
+    private arg: ExprEval | null;
+
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        this.arg = params.exprMaker.makeOptionalExpression(this, args);
+    }
+    collectDeps(ctx: ExprContext) {
+        if (this.arg !== null) {
+            this.arg(ctx);
+        }
+    }
+    getSize(ctx: ExprContext): number {
+        if (this.arg !== null) {
+            let ctx2 = ctx.shallowClone({ mutable: false });
+            let argValue = this.arg(ctx2);
+            ctx2.shallowMergeToParent();
+            if (ctx2.mutable) {
+                return 3;
+            } else {
+                return 2 + this.generator.getImmediateSize(argValue);
+            }
+        } else {
+            return 2;
+        }
+    }
+    generate(minSize: number) {
+        if (this.arg !== null) {
+            let argValue = this.arg(new ExprContext());
+            let size = this.generator.getImmediateSize(argValue, minSize - 2);
+            this.generator.put8(SimpleExt32Instruction.CODE_FIRST[size]);
+            this.generator.putImmediate(argValue, size);
+            this.generator.put8(this.info.opcode);
+        } else {
+            this.generator.put8(SimpleExt32Instruction.CODE_FIRST[0]);
+            this.generator.put8(this.info.opcode);
+        }
+    }
+}
+
+export class SimpleExt64Instruction extends InstrBase {
+
+    private static CODE_FIRST = [0xFB, 0xFA, 0xF9, 0, 0xF8];
+
+    private arg: ExprEval | null;
+
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        this.arg = params.exprMaker.makeOptionalExpression(this, args);
+    }
+    collectDeps(ctx: ExprContext) {
+        if (this.arg !== null) {
+            this.arg(ctx);
+        }
+    }
+    getSize(ctx: ExprContext): number {
+        if (this.arg !== null) {
+            let ctx2 = ctx.shallowClone({ mutable: false });
+            let argValue = this.arg(ctx2);
+            ctx2.shallowMergeToParent();
+            if (ctx2.mutable) {
+                return 3;
+            } else {
+                void(argValue);
+                throw new Error('Not implemented');
+                // TODOv1: Size may be forced to have more than 4 bytes if both arg0 and result are 32-bit.
+                //return 2 + this.generator.getImmediate64Size(argValue);
+            }
+        } else {
+            return 2;
+        }
+    }
+    generate(minSize: number) {
+        if (this.arg !== null) {
+            void(minSize);
+            throw new Error('Not implemented'); // TODOv1: Implement ext64 instruction class
+        } else {
+            this.generator.put8(SimpleExt64Instruction.CODE_FIRST[0]);
+            this.generator.put8(this.info.opcode);
         }
     }
 }
@@ -375,9 +460,9 @@ export class ReadWriteInstruction extends InstrBase {
                 argValue = 0n;
             }
         }
-        if ((this.base & BASE_REG_MASK) == BASE.SP) {
+        /*if ((this.base & BASE_REG_MASK) == BASE.SP) {
             argValue = (-argValue) & 0xFFFFFFFFn;
-        }
+        }*/
         let align = this.bytes < 4 ? BigInt(this.bytes) : 4n;
         let doPop = !!(this.base & BASE.POP);
         if (!this.unaligned) {
@@ -442,7 +527,7 @@ export class ReadWriteInstruction extends InstrBase {
         totalSize += 1 + tailSize;
         if (!ctx) {
             this.generator.put8(
-                ((this.base & BASE_REG_MASK) << ReadWriteInstruction.BASE_SHIFT) |
+                //((this.base & BASE_REG_MASK) << ReadWriteInstruction.BASE_SHIFT) |
                 ((this.write ? 1 : 0) << ReadWriteInstruction.WRITE_SHIFT) |
                 ((doPop ? 1 : 0) << ReadWriteInstruction.POP_SHIFT) |
                 ((tailSize > 0 ? 1 : 0) << ReadWriteInstruction.MORE_SHIFT) |
@@ -654,4 +739,40 @@ export class BaseInstruction extends InstrBase {
         }
         this.compiler.pmaBase = Number(base);
     }
+}
+
+export class AssertInstruction extends InstrBase {
+    private arg: ExprEval;
+    private message: string;
+    constructor(params: InstrParams, args: string) {
+        super(params);
+        let groups = args.match(cre.cache`
+            expr: lazy-repeat any
+            ","
+            repeat whitespace
+            ["]
+            message: repeat any
+            ["]
+            repeat whitespace
+            end-of-text
+        `)?.groups;
+        if (!groups) {
+            throw new CompilerError(this.lineNumber, 'Invalid assertion.');
+        }
+        this.message = groups.message;
+        this.arg = params.exprMaker.makeSingleExpression(this, groups.expr);
+    }
+    collectDeps(ctx: ExprContext) {
+        this.arg(ctx);
+    }
+    generate() {
+        let ctx = new ExprContext();
+        let condition = this.arg(ctx);
+        if (condition === 0n) {
+            this.generator.error(new CompilerError(this.lineNumber, `Assertion: ${this.message}`));
+        }
+    }
+}
+
+export class MTableInstruction extends InstrBase {
 }

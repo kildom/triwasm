@@ -1,0 +1,26 @@
+
+ :# `triasm` command line arguments
+ :
+ USAGE:
+ :```
+ :triasm [options] <input>
+ :```
+ ;    triasm [options] <input>
+
+ Compile triASM source code into triVM bytecode.
+
+:Path[1] <input>
+    The input triASM source code.
+
+-o
+--output:Path <file>
+    Put output to this file.
+
+--version:!version
+    Print tool version.
+
+--help:!help
+    Print this help text.
+
+--help-md:!markdown
+    Display this information in Markdown format.
