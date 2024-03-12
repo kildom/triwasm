@@ -12,27 +12,152 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { CompilerError } from './errors';
 
-export class BytecodeGenerator {
-    public pma: number = 0;
-    public output: Uint8Array = new Uint8Array(65536);
-    private err?: Error;
 
-    constructor() {
+export interface BytecodeGenerator {
+    address: number;
+    reset(initialAddresses: number): void;
+    reserve(size: number): void;
+    put8(data: number): void;
+    put16(data: number): void;
+    put32(data: number): void;
+    put64(data: bigint): void;
+    putInt(value: bigint, bytes: number): void;
+    fill(value: number, size: number): void;
+    allocate(size: number): Uint8Array | undefined;
+}
+
+
+export class ProgramBytecodeGenerator implements BytecodeGenerator {
+
+    private offset: number = 0;
+    private initialAddresses: number = 0;
+    private output: Uint8Array = new Uint8Array(65536);
+
+    public get address(): number {
+        return this.offset + this.initialAddresses;
+    }
+
+    public set address(value: number) {
+        if (value < this.initialAddresses) {
+            throw new CompilerError(0, 'Internal error.');
+        }
+        this.offset = value - this.initialAddresses;
+        if (this.output.length < this.offset) {
+            this.reserve(this.offset - this.output.length);
+        }
+    }
+
+    public reset(initialAddresses: number): void {
+        this.offset = 0;
+        this.initialAddresses = initialAddresses;
+    }
+
+    public reserve(size: number): void {
+        if (this.offset + size > this.output.length) {
+            let old = this.output.subarray(0, this.offset);
+            this.output = new Uint8Array(2 * (this.offset + size));
+            this.output.set(old);
+        }
+    }
+
+    public put8(data: number): void {
+        this.output[this.offset++] = data;
+    }
+
+    public put16(data: number): void {
+        this.output[this.offset++] = data & 0xFF;
+        this.output[this.offset++] = (data >> 8) & 0xFF;
+    }
+
+    public put32(data: number): void {
+        this.output[this.offset++] = data & 0xFF;
+        this.output[this.offset++] = (data >> 8) & 0xFF;
+        this.output[this.offset++] = (data >> 16) & 0xFF;
+        this.output[this.offset++] = (data >> 24) & 0xFF;
+    }
+
+    public put64(data: bigint): void {
+        this.output[this.offset++] = Number(data & 0xFFn);
+        this.output[this.offset++] = Number((data >> 8n) & 0xFFn);
+        this.output[this.offset++] = Number((data >> 16n) & 0xFFn);
+        this.output[this.offset++] = Number((data >> 24n) & 0xFFn);
+        this.output[this.offset++] = Number((data >> 32n) & 0xFFn);
+        this.output[this.offset++] = Number((data >> 40n) & 0xFFn);
+        this.output[this.offset++] = Number((data >> 48n) & 0xFFn);
+        this.output[this.offset++] = Number((data >> 64n) & 0xFFn);
+    }
+
+    public putInt(value: bigint, bytes: number): void {
+        for (let i = 0; i < bytes; i++) {
+            this.output[this.offset++] = Number(value & 0xFFn);
+            value = value >> 8n;
+        }
+    }
+
+    public fill(value: number, size: number): void {
+        this.reserve(size);
+        this.output.fill(value & 0xFF, this.offset, this.offset + size);
+        this.offset += size;
+    }
+
+    public allocate(size: number): Uint8Array | undefined {
+        this.reserve(size);
+        let result = this.output.subarray(this.offset, this.offset + size);
+        return result;
+    }
+
+    public commit(buffer: Uint8Array | undefined, size: number): void {
+        this.offset += size;
     }
 
     public result(): Uint8Array {
-        if (this.err)
-            throw this.err;
-        return this.output.subarray(0, this.pma);
+        return this.output.subarray(0, this.offset);
     }
+}
 
-    public reset() {
-        this.pma = 0;
+
+export class NullBytecodeGenerator implements BytecodeGenerator {
+    public address: number;
+    public reset(initialAddresses: number): void {
+        this.address = initialAddresses;
+    }
+    public reserve(): void {
+    }
+    public put8(): void {
+        this.address++;
+    }
+    public put16(): void {
+        this.address += 2;
+    }
+    public put32(): void {
+        this.address += 4;
+    }
+    public put64(): void {
+        this.address += 8;
+    }
+    public putInt(value: bigint, bytes: number): void {
+        this.address += bytes;
+    }
+    public fill(value: number, size: number): void {
+        this.address += size;
+    }
+    public allocate(): Uint8Array | undefined {
+        return undefined;
+    }
+}
+
+
+/*
+    public reset(this: Private) {
+        this.addr = 0;
         this.err = undefined;
     }
 
     public reserve(size: number) {
+        let endAddress = this.addr + size;
+
         if (this.pma + size > this.output.length) {
             let old = this.output.subarray(0, this.pma);
             this.output = new Uint8Array(2 * (this.pma + size));
@@ -138,3 +263,8 @@ export class BytecodeGenerator {
         this.err = err;
     }
 }
+
+class Private extends BytecodeGenerator {
+    public addr: BytecodeGenerator['addr'];
+}
+*/

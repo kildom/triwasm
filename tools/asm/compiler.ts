@@ -17,7 +17,7 @@ import { ObjMarker } from '../common/common';
 import { InstrMaker } from './instrMaker';
 import { ExprMaker } from './exprMaker';
 import { CompilerError } from './errors';
-import { BytecodeGenerator } from './generator';
+import { BytecodeGenerator, NullBytecodeGenerator, ProgramBytecodeGenerator } from './generator';
 import { EnabledExtensions } from './instrInfo';
 
 const MAX_RERUNS = 50;
@@ -26,32 +26,36 @@ const MAX_INSTR_SIZE = 32;
 
 export class Compiler {
 
-    public generator: BytecodeGenerator = new BytecodeGenerator();
     public preparation = true;
     public instructions: InstrBase[] = [];
     public rootBlock!: Block;
     public pmaBase: number = 0;
     public extensions: EnabledExtensions = {};
+    private nullGenerator = new NullBytecodeGenerator();
+    private programGenerator = new ProgramBytecodeGenerator();
+    public generator: BytecodeGenerator;
 
     compile(input: string) {
+        this.generator = this.nullGenerator;
         // Parse input and make internal data structures from the input
         this.preparation = true;
         let instrMaker: InstrMaker;
         let exprMaker = new ExprMaker((name: string) => instrMaker.getIdentifier(name));
-        instrMaker = new InstrMaker(this, this.generator, exprMaker);
+        instrMaker = new InstrMaker(this, exprMaker);
         instrMaker.parse(input);
         this.instructions = instrMaker.getInstructions();
         this.rootBlock = instrMaker.getRootBlock();
         this.extensions = instrMaker.getExtensions();
         // Prepare blocks
         this.moveBlocks();
+        this.generator.reset(0);
         this.resolveBlockDependencies();
         // Prepare initial instruction addresses
+        this.generator.reset(0);
         this.initialAddresses();
         // Generate and return actual bytecode
         this.preparation = false;
-        this.generateCode();
-        return this.generator.result();
+        return this.generateCode();
     }
 
     moveBlocks() {
@@ -143,7 +147,7 @@ export class Compiler {
     }
 
     initialAddresses() {
-        let pma = 0;
+        let addr = 0;
         let ctx = new ExprContext();
         for (let index = 0; index < this.instructions.length; index++) {
             let instr = this.instructions[index];
@@ -151,29 +155,28 @@ export class Compiler {
                 index = instr.end!.index;
                 continue;
             }
-            instr.pma.current = pma;
+            instr.addr.current = addr;
             let size = instr.getSize(ctx);
-            pma += size;
-            instr.pma.end = pma;
+            addr += size;
+            instr.addr.end = addr;
         }
-        this.generator.reset();
-        this.generator.reserve(2 * pma);
     }
 
     generateCode() {
         let rerun = true;
         let rerunCounter = 0;
         do {
+            this.generator = this.nullGenerator;
+            this.generator.reset(0);
             rerunCounter++;
             if (rerunCounter > MAX_RERUNS) {
                 throw new CompilerError(0, 'Maximum number of generating reruns reached!');
             }
             for (let instr of this.instructions) {
-                instr.pma.old = instr.pma.current as number;
-                instr.pma.current = undefined;
-                instr.pma.estimated = undefined;
+                instr.addr.old = instr.addr.current as number;
+                instr.addr.current = undefined;
+                instr.addr.estimated = undefined;
             }
-            this.generator.reset();
             rerun = false;
             for (let index = 0; index < this.instructions.length; index++) {
                 let instr = this.instructions[index];
@@ -181,18 +184,27 @@ export class Compiler {
                     index = instr.end.index;
                     continue;
                 }
-                if (instr.pma.estimated !== undefined && instr.pma.estimated != this.generator.pma) {
+                if (instr.addr.estimated !== undefined && instr.addr.estimated != this.generator.address) {
                     rerun = true;
                 }
-                instr.pma.current = this.generator.pma;
+                instr.addr.current = this.generator.address;
                 this.generator.reserve(MAX_INSTR_SIZE);
-                instr.generate(Math.max(0, instr.pma.end - instr.pma.current));
-                instr.pma.end = this.generator.pma;
+                instr.generate(this.generator, Math.max(0, instr.addr.end - instr.addr.current));
+                instr.addr.end = this.generator.address;
+                if (instr.addr.current < this.pmaBase) {
+                    if (instr.addr.end > this.pmaBase) {
+                        throw new CompilerError(instr.lineNumber, 'Single instruction cannot span over data and program memory.');
+                    } else if (instr.addr.end === this.pmaBase) {
+                        this.generator = this.programGenerator;
+                        this.generator.reset(this.pmaBase);
+                    }
+                }
             }
         } while (rerun);
+        return this.programGenerator.result();
     }
 
-    checkDiv0(instr: InstrBase, ctx: ExprContext, expr: ExprEval) {
+    checkDiv0(instr: InstrBase, ctx: ExprContext, expr: ExprEval, message: string = 'Division by zero!') {
         let value: bigint;
         if (this.preparation) {
             let ctx2 = ctx.shallowClone({ mutable: false });
@@ -202,17 +214,22 @@ export class Compiler {
                 if (ctx2.mutable) {
                     return 1n;
                 } else {
-                    throw new CompilerError(instr.lineNumber, 'Division by zero!');
+                    throw new CompilerError(instr.lineNumber, message);
                 }
             }
         } else {
             value = expr(ctx);
             if (value == 0n) {
-                this.generator.error(new CompilerError(instr.lineNumber, 'Division by zero!'));
+                this.error(new CompilerError(instr.lineNumber, message));
                 return 1n;
             }
         }
         return value;
+    }
+
+    error(error: CompilerError) {
+        void(error);
+        // TODO: handle errors
     }
 
 }

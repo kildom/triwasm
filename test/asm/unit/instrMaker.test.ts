@@ -3,14 +3,12 @@ import { describe, expect, test, vi, beforeEach } from 'vitest';
 import * as instructions from '../../../tools/asm/instructions';
 import { Compiler } from '../../../tools/asm/compiler';
 import { ExprMaker } from '../../../tools/asm/exprMaker';
-import { BytecodeGenerator } from '../../../tools/asm/generator';
 import { InstrMaker } from '../../../tools/asm/instrMaker';
 import { BASE, INSTR, instrInfoById } from '../../../tools/asm/instrInfo';
 
 
 // Mocks of external objects
 const compiler = {} as Compiler;
-const generator = {} as BytecodeGenerator;
 const exprMaker = {} as ExprMaker;
 // List of instructions created by mocked instructions module
 let mockInstructions: any[] = [];
@@ -70,7 +68,6 @@ function expectInstruction(instrClass: any, lineNumber: number, index: number, i
     expect(fromShallowCopy(instrClass)).toHaveBeenNthCalledWith(count,
         expect.objectContaining({
             compiler,
-            generator,
             exprMaker,
             lineNumber,
             index,
@@ -97,7 +94,7 @@ describe('InstrMaker', () => {
 
     test('test', () => {
 
-        let maker = new InstrMaker(compiler, generator, exprMaker);
+        let maker = new InstrMaker(compiler, exprMaker);
         maker.parse(`
             ADD
             SUB 2

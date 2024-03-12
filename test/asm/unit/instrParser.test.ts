@@ -65,7 +65,8 @@ describe('instrParser', () => {
         expect(instr).toHaveBeenCalledTimes(10);
     });
     test('errors', () => {
-        expect(() => instrParse('InvalidInstr', consumerMock)).toThrowError(new CompilerError(1, 'Invalid instruction name!'));
+        expect(() => instrParse('InvalidInstr', consumerMock))
+            .toThrowError(new CompilerError(1, 'Invalid instruction name "INVALIDINSTR"!'));
         expect(() => instrParse('label: ADD', consumerMock)).toThrowError(new CompilerError(1, 'Syntax error!'));
         expect(() => instrParse('INVALID!CHAR', consumerMock)).toThrowError(new CompilerError(1, 'Syntax error!'));
         expect(() => instrParse('empty_value=\n', consumerMock)).toThrowError(new CompilerError(1, 'Assigned value is empty.'));

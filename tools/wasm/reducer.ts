@@ -168,7 +168,7 @@ function reduceInstr(ctx: Ctx, instrData: InstrData) {
             newBody.push({
                 id: instrId(instr),
                 opcode: OP.TRIVM_RAW,
-                code: 'CALL $__trigger_unreachable',
+                code: 'CALL $_trigger_unreachable',
                 type: {
                     params: [],
                     results: [],

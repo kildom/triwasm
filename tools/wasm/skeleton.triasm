@@ -399,6 +399,12 @@ HOST -1
 .end
 
 .begin discardable
+$_trigger_unreachable:
+NEG -TRIWASM_FAULT_UNREACHABLE
+BR $_trigger_fault
+.end
+
+.begin discardable
 $_trigger_null_call:
 NEG -TRIWASM_FAULT_NULL_CALL
 .ref $_trigger_fault # Fall through to $_trigger_fault

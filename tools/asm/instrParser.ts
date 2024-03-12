@@ -158,7 +158,7 @@ export function instrParse(input: string, consumer: InstrParserConsumer): void {
                 let name = groups.name.toUpperCase();
                 let info = instrInfoByName[name];
                 if (!info) {
-                    throw new CompilerError(line, 'Invalid instruction name!');
+                    throw new CompilerError(line, `Invalid instruction name "${name}"!`);
                 }
                 let args: string | undefined = groups.args?.trim() || '';
                 let base = BASE.MAB0;

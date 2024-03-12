@@ -43,23 +43,23 @@ export class AsmFunctions {
     }
 
     static func_vma(instr: InstrBase, ctx: ExprContext): bigint {
-        return AsmFunctions.func_pma(instr, ctx) + BigInt(instr.compiler.pmaBase);
-    }
-
-    static func_pma(instr: InstrBase, ctx: ExprContext): bigint {
         if (instr.compiler.preparation) {
             ctx.mutable = true;
             return 0n;
         } else {
-            if (instr.pma.current === undefined) {
-                if (instr.pma.estimated === undefined) {
-                    instr.pma.estimated = Math.max(instr.pma.old, instr.generator.pma);
+            if (instr.addr.current === undefined) {
+                if (instr.addr.estimated === undefined) {
+                    instr.addr.estimated = Math.max(instr.addr.old, instr.compiler.generator.address);
                 }
-                return BigInt(Math.max(instr.pma.estimated, instr.generator.pma));
+                return BigInt(Math.max(instr.addr.estimated, instr.compiler.generator.address));
             } else {
-                return BigInt(instr.pma.current);
+                return BigInt(instr.addr.current);
             }
         }
+    }
+
+    static func_pma(instr: InstrBase, ctx: ExprContext): bigint {
+        return AsmFunctions.func_vma(instr, ctx) - BigInt(instr.compiler.pmaBase);
     }
 
     static func_vma2pma(instr: InstrBase, ctx: ExprContext, vma: ExprEval): bigint {
@@ -121,7 +121,7 @@ export class AsmFunctions {
             }
             return BigInt(size);
         } else {
-            return this.func_pma(block.end, ctx) - this.func_pma(block, ctx);
+            return this.func_vma(block.end, ctx) - this.func_vma(block, ctx);
         }
     }
 

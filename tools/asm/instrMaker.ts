@@ -16,7 +16,6 @@ import { dict } from '../common/common';
 import { Compiler } from './compiler';
 import { CompilerError } from './errors';
 import { ExprMaker } from './exprMaker';
-import { BytecodeGenerator } from './generator';
 import { BASE, EnabledExtensions, INSTR, KNOWN_EXTENSIONS, instrInfoById } from './instrInfo';
 import { InstrParserConsumer, instrParse } from './instrParser';
 import {
@@ -65,8 +64,8 @@ export class InstrMaker implements InstrParserConsumer {
     private currentBlock: Block;
     private params: InstrParams;
 
-    constructor(public compiler: Compiler, private generator: BytecodeGenerator, private exprMaker: ExprMaker) {
-        this.params = new InstrParams(compiler, generator, 0, 0, instrInfoById[INSTR._BEGIN], exprMaker);
+    constructor(public compiler: Compiler, private exprMaker: ExprMaker) {
+        this.params = new InstrParams(compiler, 0, 0, instrInfoById[INSTR._BEGIN], exprMaker);
         this.rootBlock = new Block(this.params, '', null);
         this.currentBlock = this.rootBlock;
         this.instructions.push(this.rootBlock);
