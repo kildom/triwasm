@@ -16,7 +16,7 @@ import { dict } from '../common/common';
 import { Compiler } from './compiler';
 import { CompilerError } from './errors';
 import { ExprMaker } from './exprMaker';
-import { BASE, EnabledExtensions, INSTR, KNOWN_EXTENSIONS, instrInfoById } from './instrInfo';
+import { BASE, INSTR, KNOWN_EXTENSIONS, instrInfoById } from './instrInfo';
 import { InstrParserConsumer, instrParse } from './instrParser';
 import {
     AddrInstruction,
@@ -62,7 +62,6 @@ export class InstrMaker implements InstrParserConsumer {
     private instructions: InstrBase[] = [];
     private rootBlock: Block;
     private assignProxies = dict<AssignProxy>();
-    private extensions: EnabledExtensions = {};
     private currentBlock: Block;
     private params: InstrParams;
 
@@ -79,10 +78,6 @@ export class InstrMaker implements InstrParserConsumer {
 
     public getRootBlock(): Block {
         return this.rootBlock;
-    }
-
-    public getExtensions(): EnabledExtensions {
-        return this.extensions;
     }
 
     public parse(input: string) {
@@ -128,7 +123,7 @@ export class InstrMaker implements InstrParserConsumer {
         this.params.lineNumber = lineNumber;
         this.params.index = this.instructions.length;
         this.params.info = info;
-        if (!info.condition(this.extensions)) {
+        if (!info.condition(this.compiler.extensions)) {
             throw new CompilerError(this.params.lineNumber, `Instruction ${info.name} belongs to disabled extension.`);
         }
         let instr: InstrBase | undefined = undefined;
@@ -164,7 +159,7 @@ export class InstrMaker implements InstrParserConsumer {
                 if (KNOWN_EXTENSIONS.indexOf(extName) < 0) {
                     throw new CompilerError(this.params.lineNumber, `Unknown extension "${extName}".`);
                 }
-                (this.extensions as any)[extName] = true;
+                (this.compiler.extensions as any)[extName] = true;
             }
             break;
 

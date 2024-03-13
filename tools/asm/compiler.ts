@@ -46,7 +46,6 @@ export class Compiler {
         instrMaker.parse(input);
         this.instructions = instrMaker.getInstructions();
         this.rootBlock = instrMaker.getRootBlock();
-        this.extensions = instrMaker.getExtensions();
         // Prepare blocks
         this.moveBlocks();
         this.generator.reset(0);

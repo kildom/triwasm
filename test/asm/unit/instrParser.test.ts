@@ -6,13 +6,6 @@ import { instrParse, InstrParserConsumer } from '../../../tools/asm/instrParser'
 import { describe, expect, test, vi } from 'vitest';
 
 
-export interface InstrParserConsumersss {
-    onParserLine(lineNumber: number): void;
-    onParserLabel(name: string): void;
-    onParserAssign(name: string, value: string): void;
-    onParserInstr(id: number, args: string, base: BASE): void;
-}
-
 let consumerMock: InstrParserConsumer = {
     onParserLabel: () => { },
     onParserAssign: () => { },

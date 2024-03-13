@@ -386,3 +386,113 @@ next:               ## RESULT 1 5d<%=code%> 01 | 8x81 | 8x00 | 8x03 | 0 *124 | 1
 <% } %>
 
 ## GROUP_END
+
+## GROUP Read/Write aligned
+
+<% for (let [mabName, mabFlags] of Object.entries({
+    '': '2d0 0',
+    '[mab0]': '2d0 0',
+    '[mab1]': '2d1 0',
+    '[mab2]': '2d2 0',
+    '[mab3]': '2d3 0',
+    '[pop]': '2d0 1',
+    '[mab0] + [pop]': '2d0 1',
+    '[mab1] + [pop]': '2d1 1',
+    '[mab2] + [pop]': '2d2 1',
+    '[mab3] + [pop]': '2d3 1',
+})) { %>
+
+    <% for (let [name, flag] of Object.entries({'READ': 0, 'WRITE': 1})) { %>
+
+        <% if (ext.mem64) { %>
+            <%=name%>32 <%= mabName %> + 4 * 6        ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> |          5d6 0 0 0
+            <%=name%>32 <%= mabName %> + 4 * 31       ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> |         5d31 0 0 0
+            <%=name%>32 <%= mabName %> + 4 * 32       ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 7d1 1 |  5d0 0 0 0
+            <%=name%>32 <%= mabName %> + 4 * 33       ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 7d1 1 |  5d1 0 0 0
+            <%=name%>32 <%= mabName %> + 0x7FFFFFFC   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0000111 1 | 1111111 1 | 1111111 1 | 1111111 1 | 11111 0 0 0
+            <%=name%>32 <%= mabName %> + 0x80000000   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0001000 1 | 0000000 1 | 0000000 1 | 0000000 1 | 00000 0 0 0
+            <%=name%>32 <%= mabName %> + 0xFFFF7FFC   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0001111 1 | 1111111 1 | 1111101 1 | 1111111 1 | 11111 0 0 0
+            <%=name%>32 <%= mabName %> + 0xFFFF8000   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0001111 1 | 1111111 1 | 1111110 1 | 0000000 1 | 00000 0 0 0
+            <%=name%>64 <%= mabName %>                ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> |          5d0 1 0 0
+            <%=name%>64 <%= mabName %> + 4 * 6        ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> |          5d6 1 0 0
+            <%=name%>64 <%= mabName %> + 4 * 31       ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> |         5d31 1 0 0
+            <%=name%>64 <%= mabName %> + 4 * 32       ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 7d1 1 |  5d0 1 0 0
+            <%=name%>64 <%= mabName %> + 4 * 33       ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 7d1 1 |  5d1 1 0 0
+            <%=name%>64 <%= mabName %> + 0x7FFFFFFC   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0000111 1 | 1111111 1 | 1111111 1 | 1111111 1 | 11111 1 0 0
+            <%=name%>64 <%= mabName %> + 0x80000000   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0001000 1 | 0000000 1 | 0000000 1 | 0000000 1 | 00000 1 0 0
+            <%=name%>64 <%= mabName %> + 0xFFFF7FFC   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0001111 1 | 1111111 1 | 1111101 1 | 1111111 1 | 11111 1 0 0
+            <%=name%>64 <%= mabName %> + 0xFFFF8000   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0001111 1 | 1111111 1 | 1111110 1 | 0000000 1 | 00000 1 0 0
+        <% } else { %>
+            <%=name%>32 <%= mabName %> + 4 * 6        ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> |          6d6 0 0
+            <%=name%>32 <%= mabName %> + 4 * 63       ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> |         6d63 0 0
+            <%=name%>32 <%= mabName %> + 4 * 64       ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 7d1 1 |  6d0 0 0
+            <%=name%>32 <%= mabName %> + 4 * 65       ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 7d1 1 |  6d1 0 0
+            <%=name%>32 <%= mabName %> + 0x7FFFFFFC   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0000011 1 | 1111111 1 | 1111111 1 | 1111111 1 | 111111 0 0
+            <%=name%>32 <%= mabName %> + 0x80000000   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0000100 1 | 0000000 1 | 0000000 1 | 0000000 1 | 000000 0 0
+            <%=name%>32 <%= mabName %> + 0xFFFF7FFC   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0000111 1 | 1111111 1 | 1111110 1 | 1111111 1 | 111111 0 0
+            <%=name%>32 <%= mabName %> + 0xFFFF8000   ## RESULT 0 0 <%=flag%> 1 1 <%= mabFlags %> | 0000111 1 | 1111111 1 | 1111111 1 | 0000000 1 | 000000 0 0
+        <% } %>
+
+    <% } %>
+
+    <% for (let [size, sizeFlag] of [[8, 0], [16, 1]]) { %>
+
+        WRITE<%=size%> <%= mabName %>                        ## RESULT 0 0 1 1 1 <%= mabFlags %> |          5d0 <%=sizeFlag%> 1 0
+        WRITE<%=size%> <%= mabName %> + <%=size%> / 8 * 1    ## RESULT 0 0 1 1 1 <%= mabFlags %> |          5d1 <%=sizeFlag%> 1 0
+        WRITE<%=size%> <%= mabName %> + <%=size%> / 8 * 31   ## RESULT 0 0 1 1 1 <%= mabFlags %> |         5d31 <%=sizeFlag%> 1 0
+        WRITE<%=size%> <%= mabName %> + <%=size%> / 8 * 32   ## RESULT 0 0 1 1 1 <%= mabFlags %> | 7d1 1 |  5d0 <%=sizeFlag%> 1 0
+        WRITE<%=size%> <%= mabName %> + <%=size%> / 8 * 33   ## RESULT 0 0 1 1 1 <%= mabFlags %> | 7d1 1 |  5d1 <%=sizeFlag%> 1 0
+
+        <% for (let [sign, signFlag] of [['U', 0], ['S', 1]]) { %>
+
+            READ<%=size%><%=sign%> <%= mabName %>                        ## RESULT 0 0 0 1 1 <%= mabFlags %> |          4d0 <%=signFlag%> <%=sizeFlag%> 1 0
+            READ<%=size%><%=sign%> <%= mabName %> + <%=size%> / 8 * 1    ## RESULT 0 0 0 1 1 <%= mabFlags %> |          4d1 <%=signFlag%> <%=sizeFlag%> 1 0
+            READ<%=size%><%=sign%> <%= mabName %> + <%=size%> / 8 * 15   ## RESULT 0 0 0 1 1 <%= mabFlags %> |         4d15 <%=signFlag%> <%=sizeFlag%> 1 0
+            READ<%=size%><%=sign%> <%= mabName %> + <%=size%> / 8 * 16   ## RESULT 0 0 0 1 1 <%= mabFlags %> | 7d1 1 |  4d0 <%=signFlag%> <%=sizeFlag%> 1 0
+            READ<%=size%><%=sign%> <%= mabName %> + <%=size%> / 8 * 17   ## RESULT 0 0 0 1 1 <%= mabFlags %> | 7d1 1 |  4d1 <%=signFlag%> <%=sizeFlag%> 1 0
+
+        <% } %>
+
+    <% } %>
+
+<% } %>
+
+## GROUP_END
+
+## GROUP Read/Write unaligned
+
+<%
+
+function rwMath(pop, offset) {
+    offset = -BigInt(offset) & 0xFFFFFFFFn;
+    if (offset >= 0x80000000n) {
+        offset = -(0x100000000n - offset);
+    }
+    let result = '';
+    if (offset >= -0x80n && offset < 0x80n) {
+        result = `10 | 8d${offset & 0xFFn}`;
+    } else if (offset >= -0x8000n && offset < 0x8000n) {
+        result = `01 | 8d${offset & 0xFFn} | 8d${(offset >> 8n) & 0xFFn}`;
+    } else {
+        result = `00 | 8d${offset & 0xFFn} | 8d${(offset >> 8n) & 0xFFn} | 8d${(offset >> 16n) & 0xFFn} | 8d${(offset >> 24n) & 0xFFn}`;
+    }
+    if (pop) {
+        return `1 5x03 ${result}`;
+    } else {
+        return `1 5x16 ${result}`;
+    }
+}
+
+%>
+
+READ32 1 ## RESULT <%=rwMath(false, 1)%> | 0 0 0 3d0 0 1
+READ32 3 ## RESULT <%=rwMath(false, 3)%> | 0 0 0 3d0 0 1
+READ32 5 ## RESULT <%=rwMath(false, 1)%> | 0 0 0 3d1 0 1
+READ32 19 ## RESULT <%=rwMath(false, 3)%> | 0 0 0 3d4 0 1
+READ32 21 ## RESULT <%=rwMath(false, 1)%> | 0 0 0 3d5 0 1
+READ32 23 ## RESULT <%=rwMath(false, 3)%> | 0 0 0 3d5 0 1
+READ32 25 ## RESULT <%=rwMath(false, 5)%> | 0 0 0 3d5 0 1
+READ32 147 ## RESULT <%=rwMath(false, 127)%> | 0 0 0 3d5 0 1
+READ32 149 ## RESULT <%=rwMath(false, 129)%> | 0 0 0 3d5 0 1
+
+## GROUP_END

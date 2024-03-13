@@ -132,10 +132,17 @@ function toStringBytes(arr: any) {
     return copy.map(x => x < 0 ? `... repeat ${-x} ...` : (x < 16 ? '0' : '') + x.toString(16).toUpperCase()).join(' ');
 }
 
+function escapeRegExp(text: string) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const testRegExp: RegExp | false = !!process.argv[2] &&
+    new RegExp(process.argv[2].split('*').map(x => escapeRegExp(x)).join('.*'), 'i');
+
 function runSingleTest(sourceCode: string, ext: { [k: string]: boolean }, result: string, group: string[]) {
     let expected = bytecodeFromSource(result);
 
-    if (process.argv[2] && group.join(' > ').trim() !== process.argv[2].trim()) {
+    if (testRegExp && !group.join(' > ').match(testRegExp)) {
         return;
     }
 
