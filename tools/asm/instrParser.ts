@@ -61,14 +61,13 @@ const reLine = cre.ignoreCase.sticky`
         "#"
         repeat not term
     }
-    (optional \r, \n) or end-of-text
+    (optional \r, \n) or \r or end-of-text
 `;
 
 interface ReBaseRegGroups {
     all: string;
-    sp?: string;
     mab?: string;
-    ambPop?: string;
+    mabPop?: string;
     pop?: string;
     popMab?: string;
     sign?: string;
@@ -79,10 +78,8 @@ const reBaseReg = cre.ignoreCase`
     all: {
         ${ws}
         {
-            "[", ${ws}, sp: "SP", ${ws}, "]"
-        } or {
             "[", ${ws}, "MAB", mab: [0-3], ${ws}, "]"
-            optional (${ws}, "+", ${ws}, "[", ${ws}, ambPop: "POP", ${ws}, "]")
+            optional (${ws}, "+", ${ws}, "[", ${ws}, mabPop: "POP", ${ws}, "]")
         } or {
             "[", ${ws}, pop: "POP", ${ws}, "]"
             optional (${ws}, "+", ${ws}, "[", ${ws}, "MAB", popMab: [0-3], ${ws}, "]")
@@ -112,30 +109,26 @@ function parseBase(args: string): [BASE, string] {
     } else if (groups.sign === '-') {
         args = `0 - ${args}`;
     }
-    if (groups.sp) {
-        return [BASE.SP, args];
-    } else {
-        let base: BASE;
-        switch (groups.mab || groups.popMab) {
-        default:
-        case '0':
-            base = BASE.MAB0;
-            break;
-        case '1':
-            base = BASE.MAB1;
-            break;
-        case '2':
-            base = BASE.MAB2;
-            break;
-        case '3':
-            base = BASE.MAB3;
-            break;
-        }
-        if (groups.pop || groups.ambPop) {
-            base |= BASE.POP;
-        }
-        return [base, args];
+    let base: BASE;
+    switch (groups.mab || groups.popMab) {
+    default:
+    case '0':
+        base = BASE.MAB0;
+        break;
+    case '1':
+        base = BASE.MAB1;
+        break;
+    case '2':
+        base = BASE.MAB2;
+        break;
+    case '3':
+        base = BASE.MAB3;
+        break;
     }
+    if (groups.pop || groups.mabPop) {
+        base |= BASE.POP;
+    }
+    return [base, args];
 }
 
 

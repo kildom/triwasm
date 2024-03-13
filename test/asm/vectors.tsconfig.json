@@ -1,10 +1,10 @@
 {
-    "extends": "../../build/common.tsconfig.json",
+    "extends": "../../tools/build/common.tsconfig.json",
     "files": [
-        "../../tools/utils/platform-impl.js",
-        "../../tools/utils/build/SystemRegisterBegin.js",
+        "../../tools/common/platform-impl.js",
+        "../../tools/build/ts-include/SystemRegisterBegin.js",
         "vectors.ts",
-        "../../tools/utils/build/SystemRegisterEnd.js"
+        "../../tools/build/ts-include/SystemRegisterEnd.js"
     ],
     "compilerOptions": {
         "outFile": "../output/asm/vectors.js"

@@ -152,7 +152,13 @@ function parseRows(rows: Element[], skipEmpty: boolean): Table {
     }
     for (let row of rows) {
         let resRow: Row = {};
-        let cells = getElementsByTagName(row, 'table:table-cell');
+        let cellsOriginal = getElementsByTagName(row, 'table:table-cell');
+        let cells: Element[] = [];
+        for (let cell of cellsOriginal) {
+            let repeatStr = cell?.attributes?.['table:number-columns-repeated'];
+            let repeat = (repeatStr && parseInt(repeatStr) > 1) ? parseInt(repeatStr) : 1;
+            cells.push(...new Array(repeat).fill(cell));
+        }
         for (let i = 0; i < Math.max(colNames.length, cells.length); i++) {
             let cellText = i < cells.length ? extractCellText(cells[i]).replace(/\u00A0/g, ' ') : '';
             if (i < restStart) {

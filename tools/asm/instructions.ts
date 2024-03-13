@@ -18,26 +18,38 @@ import { ExprMaker } from './exprMaker';
 import { CompilerError } from './errors';
 import { BytecodeGenerator } from './generator';
 import cre from 'con-reg-exp';
+import { Dict, bigIntMin } from '../common/common';
 
 const MAX_FILL_SIZE = 128 * 1024 * 1024;
 
-export interface ExprContextModification {
-    mutable?: boolean;
-    deps?: Set<Block> | null;
-}
-
 export class ExprContext {
+    private mutableOld?: boolean;
+    private depsOld?: Set<Block>;
+    private depsLevels?: number;
     constructor(public mutable?: boolean, public deps?: Set<Block>, private parent?: ExprContext) {
     }
-    shallowClone(mod?: ExprContextModification) {
-        return new ExprContext(
-            !mod || mod.mutable === undefined ? this.mutable : mod.mutable,
-            !mod || mod.deps === undefined ? this.deps : mod.deps === null ? undefined : mod.deps,
-            this);
+    pushMutable() {
+        this.mutableOld = this.mutable;
+        this.mutable = false;
     }
-    shallowMergeToParent() {
-        if (this.parent) {
-            this.parent.mutable = this.parent.mutable || this.mutable;
+    popMutable() {
+        let result = this.mutable;
+        this.mutable = this.mutable || this.mutableOld;
+        return result;
+    }
+    pushDeps() {
+        if (this.deps) {
+            this.depsOld = this.deps;
+            this.depsLevels = 1;
+        } else {
+            this.depsLevels = (this.depsLevels || 0) + 1;
+        }
+        this.deps = undefined;
+    }
+    popDeps() {
+        (this.depsLevels as number)--;
+        if (this.depsLevels === 0) {
+            this.deps = this.depsOld;
         }
     }
 }
@@ -69,6 +81,54 @@ function putImmediate(generator: BytecodeGenerator, value: bigint, minSize: numb
 }
 
 
+function getMemImmediateSize(value: bigint, minSize: number = 0) {
+    if (value < 128n && minSize <= 1) {
+        return 1;
+    } else if (value < 16384n && minSize <= 2) {
+        return 2;
+    } else if (value < 2097152n && minSize <= 3) {
+        return 3;
+    } else if (value < 268435456n && minSize <= 4) {
+        return 4;
+    } else {
+        return 5;
+    }
+}
+
+function putMemImmediate(generator: BytecodeGenerator, value: bigint, minSize: number) {
+    if (value < 0x80000000n) {
+        let v = Number(value);
+        if (v < 128 && minSize <= 1) {
+            generator.put8(v << 1);
+        } else if (v < 16384 && minSize <= 2) {
+            generator.put8((v >> 6) | 1);
+            generator.put8((v << 1) & 0xFF);
+        } else if (v < 2097152 && minSize <= 3) {
+            generator.put8((v >> 13) | 1);
+            generator.put8(((v >> 6) & 0xFF) | 1);
+            generator.put8((v << 1) & 0xFE);
+        } else if (v < 268435456 && minSize <= 4) {
+            generator.put8((v >> 20) | 1);
+            generator.put8(((v >> 13) & 0xFF) | 1);
+            generator.put8(((v >> 6) & 0xFF) | 1);
+            generator.put8((v << 1) & 0xFF);
+        } else {
+            generator.put8((v >> 27) | 1);
+            generator.put8(((v >> 20) & 0xFF) | 1);
+            generator.put8(((v >> 13) & 0xFF) | 1);
+            generator.put8(((v >> 6) & 0xFF) | 1);
+            generator.put8((v << 1) & 0xFF);
+        }
+    } else {
+        generator.put8(Number((value >> 27n) | 1n));
+        generator.put8(Number(((value >> 20n) & 0xFFn) | 1n));
+        generator.put8(Number(((value >> 13n) & 0xFFn) | 1n));
+        generator.put8(Number(((value >> 6n) & 0xFFn) | 1n));
+        generator.put8(Number((value << 1n) & 0xFFn));
+    }
+}
+
+
 export class ExprCycleError extends Error { }
 
 
@@ -91,11 +151,11 @@ export class InstrBase {
     public index: number;
     public info: InstrInfo;
 
-    public addr: {
+    public address: {
         current: number | undefined,
         estimated: number | undefined,
         old: number,
-        end: number
+        end: number;
     } = {
             current: undefined,
             estimated: undefined,
@@ -111,16 +171,16 @@ export class InstrBase {
     }
 
     getSize(ctx: ExprContext) {
-        void(ctx);
+        void (ctx);
         return 0;
     }
 
     collectDeps(ctx: ExprContext) {
-        void(ctx);
+        void (ctx);
     }
 
     generate(generator: BytecodeGenerator, minSize: number) {
-        void(minSize);
+        void (minSize);
     }
 
 }
@@ -130,7 +190,7 @@ export class Block extends InstrBase {
     public discarded: boolean = false;
     public moveTo: string | null = null;
     public end!: BlockEnd;
-    public locals: { [k: string]: string } = {};
+    public locals: { [k: string]: string; } = {};
     public deps: Set<Block> = new Set();
 
     constructor(params: InstrParams, args: string, public parent: Block | null) {
@@ -177,9 +237,9 @@ export class Assign extends InstrBase {
     getValue(ctx: ExprContext): bigint {
         if (ctx.deps)
             ctx.deps.add(this.block);
-        let ctx2 = ctx.shallowClone({ deps: null });
-        let result = this.calculate(ctx2);
-        ctx2.shallowMergeToParent();
+        ctx.pushDeps();
+        let result = this.calculate(ctx);
+        ctx.popDeps();
         return result;
     }
     calculate(ctx: ExprContext): bigint {
@@ -218,10 +278,9 @@ export class SimpleCoreInstruction extends InstrBase {
     }
     getSize(ctx: ExprContext): number {
         if (this.arg !== null) {
-            let ctx2 = ctx.shallowClone({ mutable: false });
-            let argValue = this.arg(ctx2);
-            ctx2.shallowMergeToParent();
-            if (ctx2.mutable) {
+            ctx.pushMutable();
+            let argValue = this.arg(ctx);
+            if (ctx.popMutable()) {
                 return 2;
             } else {
                 return 1 + getImmediateSize(argValue);
@@ -259,10 +318,9 @@ export class SimpleExt32Instruction extends InstrBase {
     }
     getSize(ctx: ExprContext): number {
         if (this.arg !== null) {
-            let ctx2 = ctx.shallowClone({ mutable: false });
-            let argValue = this.arg(ctx2);
-            ctx2.shallowMergeToParent();
-            if (ctx2.mutable) {
+            ctx.pushMutable();
+            let argValue = this.arg(ctx);
+            if (ctx.popMutable()) {
                 return 3;
             } else {
                 return 2 + getImmediateSize(argValue);
@@ -302,13 +360,12 @@ export class SimpleExt64Instruction extends InstrBase {
     }
     getSize(ctx: ExprContext): number {
         if (this.arg !== null) {
-            let ctx2 = ctx.shallowClone({ mutable: false });
-            let argValue = this.arg(ctx2);
-            ctx2.shallowMergeToParent();
-            if (ctx2.mutable) {
+            ctx.pushMutable();
+            let argValue = this.arg(ctx);
+            if (ctx.popMutable()) {
                 return 3;
             } else {
-                void(argValue);
+                void (argValue);
                 throw new Error('Not implemented');
                 // TODOv1: Size may be forced to have more than 4 bytes if both arg0 and result are 32-bit.
                 //return 2 + generator.getImmediate64Size(argValue);
@@ -319,7 +376,7 @@ export class SimpleExt64Instruction extends InstrBase {
     }
     generate(generator: BytecodeGenerator, minSize: number) {
         if (this.arg !== null) {
-            void(minSize);
+            void (minSize);
             throw new Error('Not implemented'); // TODOv1: Implement ext64 instruction class
         } else {
             generator.put8(SimpleExt64Instruction.CODE_FIRST[0]);
@@ -348,11 +405,10 @@ export class UnwindInstruction extends InstrBase {
             this.reduce(ctx);
     }
     getSize(ctx: ExprContext): number {
-        let ctx2 = ctx.shallowClone({ mutable: false });
-        let keepValue = this.keep(ctx2);
-        let reduceValue = this.reduce(ctx2);
-        ctx2.shallowMergeToParent();
-        if (ctx2.mutable) {
+        ctx.pushMutable();
+        let keepValue = this.keep(ctx);
+        let reduceValue = this.reduce(ctx);
+        if (ctx.popMutable()) {
             return 2;
         } else {
             let size = this.getArgSize(keepValue, reduceValue);
@@ -379,7 +435,7 @@ export class UnwindInstruction extends InstrBase {
         let reduceValue = this.reduce(ctx);
         let size = this.getArgSize(keepValue, reduceValue);
         if (size == 0) {
-            this.compiler.error(new CompilerError(this.lineNumber, 'Too many items to unwind!'));
+            this.compiler.error(this.lineNumber, 'Too many items to unwind!');
             generator.fill(0, 5);
             return;
         }
@@ -435,133 +491,551 @@ export class BranchInstruction extends InstrBase {
     }
 }
 
-export class ReadWriteInstruction extends InstrBase {
-
-    private static BASE_SHIFT = 5;
-    private static WRITE_SHIFT = 4;
-    private static POP_SHIFT = 3;
-    private static MORE_SHIFT = 2;
-    private static MEM64_SHIFT = 1;
-    private static SMALL_SHIFT = 0;
-    private static SIGNED_SHIFT = 1;
-    private static BYTE_SHIFT = 2;
+export class StackInstruction extends InstrBase {
 
     private arg: ExprEval;
-    private bytes: number;
-    private unaligned: boolean;
-    private write: boolean;
-    private signed: boolean;
+    private code: number;
 
-    constructor(params: InstrParams, args: string, private base: BASE) {
+    constructor(params: InstrParams, args: string) {
         super(params);
-        let name = this.info.name;
         this.arg = params.exprMaker.makeOptionalExpression(this, args) || (() => 0n);
-        this.bytes = this.info.instrOptions.bytes || 1;
-        this.unaligned = name.startsWith('U') && this.bytes > 1;
-        this.write = name.startsWith('W') || name.startsWith('UW');
-        this.signed = name.endsWith('S');
+        this.code = this.info.instrOptions.write ? 0x60 : 0x40;
     }
+
     collectDeps(ctx: ExprContext) {
         this.arg(ctx);
     }
-    getSize(ctx: ExprContext) {
-        return this.genCommon(undefined, 0, ctx);
+
+    getSize(ctx_or_offset: ExprContext | bigint) {
+        let offset: bigint;
+        if (typeof ctx_or_offset === 'bigint') {
+            offset = ctx_or_offset;
+        } else {
+            offset = this.arg(ctx_or_offset) & 0xFFFFFFFFn;
+        }
+        if ((offset & 3n) !== 0n) {
+            this.compiler.error(this.lineNumber, `Memory access relative to SP must be 32-bit aligned, but offset is ${offset}.`);
+        }
+        offset = offset / 4n;
+        if (offset < 31n) {
+            return 1;
+        } else {
+            return 1 + getMemImmediateSize(offset - 31n);
+        }
     }
+
     generate(generator: BytecodeGenerator, minSize: number) {
-        this.genCommon(generator, minSize);
-    }
-    genCommon(generator: BytecodeGenerator | undefined, minSize: number, ctx?: ExprContext) {
-        let totalSize = 0;
-        let argValue: bigint;
-        let ctx2: ExprContext = ctx ? ctx.shallowClone() : new ExprContext();
-        argValue = this.arg(ctx2) & 0xFFFFFFFFn;
-        if (ctx) {
-            ctx2.shallowMergeToParent();
-            if (ctx2.mutable) {
-                argValue = 0n;
+        let offset = this.arg(new ExprContext()) & 0xFFFFFFFFn;
+        let allowedSize = this.getSize(offset);
+        let size = Math.min(6, Math.max(minSize, allowedSize));
+        offset /= 4n;
+        if (offset < 31n) {
+            generator.put8(this.code | Number(offset));
+            // Use BR to the next instruction as noop to fill required size.
+            if (size === 6) {
+                generator.put8(0x80 | (instrInfoById[INSTR.BR].opcode << 2) | 0x00);
+                generator.put32(0);
+            } else if (size === 5) {
+                generator.put8(0x80 | (instrInfoById[INSTR.BR].opcode << 2) | 0x02);
+                generator.put8(0);
+                generator.put8(0x80 | (instrInfoById[INSTR.BR].opcode << 2) | 0x02);
+                generator.put8(0);
+            } else if (size === 4) {
+                generator.put8(0x80 | (instrInfoById[INSTR.BR].opcode << 2) | 0x01);
+                generator.put16(0);
+            } else if (size > 1) {
+                generator.put8(0x80 | (instrInfoById[INSTR.BR].opcode << 2) | 0x02);
+                generator.put8(0);
             }
-        }
-        /*if ((this.base & BASE_REG_MASK) == BASE.SP) {
-            argValue = (-argValue) & 0xFFFFFFFFn;
-        }*/
-        let align = this.bytes < 4 ? BigInt(this.bytes) : 4n;
-        let doPop = !!(this.base & BASE.POP);
-        if (!this.unaligned) {
-            if (argValue % align != 0n && !ctx) {
-                this.compiler.error(new CompilerError(this.lineNumber, 'Unaligned memory operation offset.'));
-            }
-        } else if (argValue % align != 0n || minSize >= 7) {
-            let maxSub: bigint;
-            if (this.bytes == 8) {
-                maxSub = 127n * align;
-            } else if (this.bytes == 4) {
-                maxSub = 3n * align;
-            } else {
-                maxSub = 63n * align;
-            }
-            let addImm: bigint;
-            if (argValue > maxSub) {
-                addImm = argValue - maxSub;
-            } else {
-                addImm = argValue % align;
-            }
-            argValue -= addImm;
-            let opcode = instrInfoById[doPop ? INSTR.SUB : INSTR.NEG].opcode;
-            addImm = (-addImm) & 0xFFFFFFFFn;
-            let size = getImmediateSize(addImm);
-            totalSize += 1 + size;
-            if (!ctx && generator) {
-                generator.put8(SimpleCoreInstruction.INSTR_CODES[size] | (opcode << 2));
-                putImmediate(generator, addImm, size);
-            }
-            minSize = Math.max(0, minSize - size - 1);
-            doPop = true;
-        }
-        let rwImm = argValue / align;
-        if (this.bytes == 8) {
-            rwImm = (rwImm << 2n) | 0x00n;
-        } else if (this.bytes == 1) {
-            rwImm = (rwImm << 3n) | 0x04n | (this.signed ? 0x02n : 0x00n) | 0x01n;
-        } else if (this.bytes == 2) {
-            rwImm = (rwImm << 3n) | 0x00n | (this.signed ? 0x02n : 0x00n) | 0x01n;
-        } else if (rwImm < 4 && minSize <= 1) {
-            rwImm = rwImm << 0n;
-        } else if (this.compiler.extensions.mem64) {
-            rwImm = (rwImm << 2n) | 0x02n;
         } else {
-            rwImm = rwImm << 1n;
+            generator.put8(this.code | 31);
+            putMemImmediate(generator, offset - 31n, size - 1);
         }
-        let tailSize: number;
-        let rem = rwImm;
-        if (this.bytes == 4) {
-            tailSize = 0;
-            rem = rem >> 2n;
+    }
+}
+
+interface UnalignedInstrSizeDesc {
+    value: bigint;
+    mem: number;
+    math: number;
+    memMax: bigint;
+    negative?: boolean;
+    fallback?: boolean;
+}
+
+// ---- Unaligned memory access optimal instruction sizes - begin - generated with help of script ----
+
+const unalignedSizes: Dict<UnalignedInstrSizeDesc[]> = {
+    longAlign1Postfix1Unaligned: [
+        { value: 191n, mem: 2, math: 2, memMax: 63n, },
+        { value: 32831n, mem: 2, math: 3, memMax: 63n, },
+        { value: 1048703n, mem: 4, math: 2, memMax: 1048575n, },
+        { value: 4294934528n, mem: 2, math: 5, memMax: 63n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign1Postfix1Aligned: [
+        { value: 63n, mem: 2, math: 0, memMax: 63n, },
+        { value: 8191n, mem: 3, math: 0, memMax: 8191n, },
+        { value: 1048575n, mem: 4, math: 0, memMax: 1048575n, },
+        { value: 134217727n, mem: 5, math: 0, memMax: 134217727n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign1Postfix2Unaligned: [
+        { value: 159n, mem: 2, math: 2, memMax: 31n, },
+        { value: 32799n, mem: 2, math: 3, memMax: 31n, },
+        { value: 524415n, mem: 4, math: 2, memMax: 524287n, },
+        { value: 4294934528n, mem: 2, math: 5, memMax: 31n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign1Postfix2Aligned: [
+        { value: 31n, mem: 2, math: 0, memMax: 31n, },
+        { value: 4095n, mem: 3, math: 0, memMax: 4095n, },
+        { value: 524287n, mem: 4, math: 0, memMax: 524287n, },
+        { value: 67108863n, mem: 5, math: 0, memMax: 67108863n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign1Postfix3Unaligned: [
+        { value: 143n, mem: 2, math: 2, memMax: 15n, },
+        { value: 32783n, mem: 2, math: 3, memMax: 15n, },
+        { value: 262271n, mem: 4, math: 2, memMax: 262143n, },
+        { value: 4294934528n, mem: 2, math: 5, memMax: 15n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign1Postfix3Aligned: [
+        { value: 15n, mem: 2, math: 0, memMax: 15n, },
+        { value: 2047n, mem: 3, math: 0, memMax: 2047n, },
+        { value: 262143n, mem: 4, math: 0, memMax: 262143n, },
+        { value: 33554431n, mem: 5, math: 0, memMax: 33554431n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign2Postfix1Unaligned: [
+        { value: 254n, mem: 2, math: 2, memMax: 126n, },
+        { value: 32894n, mem: 2, math: 3, memMax: 126n, },
+        { value: 2097278n, mem: 4, math: 2, memMax: 2097150n, },
+        { value: 4294934528n, mem: 2, math: 5, memMax: 126n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign2Postfix1Aligned: [
+        { value: 126n, mem: 2, math: 0, memMax: 126n, },
+        { value: 16382n, mem: 3, math: 0, memMax: 16382n, },
+        { value: 2097150n, mem: 4, math: 0, memMax: 2097150n, },
+        { value: 268435454n, mem: 5, math: 0, memMax: 268435454n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign2Postfix2Unaligned: [
+        { value: 190n, mem: 2, math: 2, memMax: 62n, },
+        { value: 32830n, mem: 2, math: 3, memMax: 62n, },
+        { value: 1048702n, mem: 4, math: 2, memMax: 1048574n, },
+        { value: 4294934528n, mem: 2, math: 5, memMax: 62n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign2Postfix2Aligned: [
+        { value: 62n, mem: 2, math: 0, memMax: 62n, },
+        { value: 8190n, mem: 3, math: 0, memMax: 8190n, },
+        { value: 1048574n, mem: 4, math: 0, memMax: 1048574n, },
+        { value: 134217726n, mem: 5, math: 0, memMax: 134217726n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign2Postfix3Unaligned: [
+        { value: 158n, mem: 2, math: 2, memMax: 30n, },
+        { value: 32798n, mem: 2, math: 3, memMax: 30n, },
+        { value: 524414n, mem: 4, math: 2, memMax: 524286n, },
+        { value: 4294934528n, mem: 2, math: 5, memMax: 30n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign2Postfix3Aligned: [
+        { value: 30n, mem: 2, math: 0, memMax: 30n, },
+        { value: 4094n, mem: 3, math: 0, memMax: 4094n, },
+        { value: 524286n, mem: 4, math: 0, memMax: 524286n, },
+        { value: 67108862n, mem: 5, math: 0, memMax: 67108862n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign4Postfix1Unaligned: [
+        { value: 380n, mem: 2, math: 2, memMax: 252n, },
+        { value: 33020n, mem: 2, math: 3, memMax: 252n, },
+        { value: 4194428n, mem: 4, math: 2, memMax: 4194300n, },
+        { value: 4294934528n, mem: 2, math: 5, memMax: 252n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign4Postfix1Aligned: [
+        { value: 252n, mem: 2, math: 0, memMax: 252n, },
+        { value: 32764n, mem: 3, math: 0, memMax: 32764n, },
+        { value: 4194300n, mem: 4, math: 0, memMax: 4194300n, },
+        { value: 536870908n, mem: 5, math: 0, memMax: 536870908n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign4Postfix2Unaligned: [
+        { value: 252n, mem: 2, math: 2, memMax: 124n, },
+        { value: 32892n, mem: 2, math: 3, memMax: 124n, },
+        { value: 2097276n, mem: 4, math: 2, memMax: 2097148n, },
+        { value: 4294934528n, mem: 2, math: 5, memMax: 124n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign4Postfix2Aligned: [
+        { value: 124n, mem: 2, math: 0, memMax: 124n, },
+        { value: 16380n, mem: 3, math: 0, memMax: 16380n, },
+        { value: 2097148n, mem: 4, math: 0, memMax: 2097148n, },
+        { value: 268435452n, mem: 5, math: 0, memMax: 268435452n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign4Postfix3Unaligned: [
+        { value: 188n, mem: 2, math: 2, memMax: 60n, },
+        { value: 32828n, mem: 2, math: 3, memMax: 60n, },
+        { value: 1048700n, mem: 4, math: 2, memMax: 1048572n, },
+        { value: 4294934528n, mem: 2, math: 5, memMax: 60n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    longAlign4Postfix3Aligned: [
+        { value: 60n, mem: 2, math: 0, memMax: 60n, },
+        { value: 8188n, mem: 3, math: 0, memMax: 8188n, },
+        { value: 1048572n, mem: 4, math: 0, memMax: 1048572n, },
+        { value: 134217724n, mem: 5, math: 0, memMax: 134217724n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 2, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 2, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign1Postfix1Unaligned: [
+        { value: 133n, mem: 1, math: 2, memMax: 5n, },
+        { value: 32773n, mem: 1, math: 3, memMax: 5n, },
+        { value: 32831n, mem: 2, math: 3, memMax: 63n, },
+        { value: 4294934528n, mem: 1, math: 5, memMax: 5n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign1Postfix1Aligned: [
+        { value: 5n, mem: 1, math: 0, memMax: 5n, },
+        { value: 63n, mem: 2, math: 0, memMax: 63n, },
+        { value: 8191n, mem: 3, math: 0, memMax: 8191n, },
+        { value: 1048575n, mem: 4, math: 0, memMax: 1048575n, },
+        { value: 134217727n, mem: 5, math: 0, memMax: 134217727n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign1Postfix2Unaligned: [
+        { value: 133n, mem: 1, math: 2, memMax: 5n, },
+        { value: 32773n, mem: 1, math: 3, memMax: 5n, },
+        { value: 32799n, mem: 2, math: 3, memMax: 31n, },
+        { value: 4294934528n, mem: 1, math: 5, memMax: 5n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign1Postfix2Aligned: [
+        { value: 5n, mem: 1, math: 0, memMax: 5n, },
+        { value: 31n, mem: 2, math: 0, memMax: 31n, },
+        { value: 4095n, mem: 3, math: 0, memMax: 4095n, },
+        { value: 524287n, mem: 4, math: 0, memMax: 524287n, },
+        { value: 67108863n, mem: 5, math: 0, memMax: 67108863n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign1Postfix3Unaligned: [
+        { value: 133n, mem: 1, math: 2, memMax: 5n, },
+        { value: 32773n, mem: 1, math: 3, memMax: 5n, },
+        { value: 32783n, mem: 2, math: 3, memMax: 15n, },
+        { value: 4294934528n, mem: 1, math: 5, memMax: 5n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign1Postfix3Aligned: [
+        { value: 5n, mem: 1, math: 0, memMax: 5n, },
+        { value: 15n, mem: 2, math: 0, memMax: 15n, },
+        { value: 2047n, mem: 3, math: 0, memMax: 2047n, },
+        { value: 262143n, mem: 4, math: 0, memMax: 262143n, },
+        { value: 33554431n, mem: 5, math: 0, memMax: 33554431n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign2Postfix1Unaligned: [
+        { value: 138n, mem: 1, math: 2, memMax: 10n, },
+        { value: 32778n, mem: 1, math: 3, memMax: 10n, },
+        { value: 32894n, mem: 2, math: 3, memMax: 126n, },
+        { value: 4294934528n, mem: 1, math: 5, memMax: 10n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign2Postfix1Aligned: [
+        { value: 10n, mem: 1, math: 0, memMax: 10n, },
+        { value: 126n, mem: 2, math: 0, memMax: 126n, },
+        { value: 16382n, mem: 3, math: 0, memMax: 16382n, },
+        { value: 2097150n, mem: 4, math: 0, memMax: 2097150n, },
+        { value: 268435454n, mem: 5, math: 0, memMax: 268435454n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign2Postfix2Unaligned: [
+        { value: 138n, mem: 1, math: 2, memMax: 10n, },
+        { value: 32778n, mem: 1, math: 3, memMax: 10n, },
+        { value: 32830n, mem: 2, math: 3, memMax: 62n, },
+        { value: 4294934528n, mem: 1, math: 5, memMax: 10n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign2Postfix2Aligned: [
+        { value: 10n, mem: 1, math: 0, memMax: 10n, },
+        { value: 62n, mem: 2, math: 0, memMax: 62n, },
+        { value: 8190n, mem: 3, math: 0, memMax: 8190n, },
+        { value: 1048574n, mem: 4, math: 0, memMax: 1048574n, },
+        { value: 134217726n, mem: 5, math: 0, memMax: 134217726n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign2Postfix3Unaligned: [
+        { value: 138n, mem: 1, math: 2, memMax: 10n, },
+        { value: 32778n, mem: 1, math: 3, memMax: 10n, },
+        { value: 32798n, mem: 2, math: 3, memMax: 30n, },
+        { value: 4294934528n, mem: 1, math: 5, memMax: 10n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign2Postfix3Aligned: [
+        { value: 10n, mem: 1, math: 0, memMax: 10n, },
+        { value: 30n, mem: 2, math: 0, memMax: 30n, },
+        { value: 4094n, mem: 3, math: 0, memMax: 4094n, },
+        { value: 524286n, mem: 4, math: 0, memMax: 524286n, },
+        { value: 67108862n, mem: 5, math: 0, memMax: 67108862n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign4Postfix1Unaligned: [
+        { value: 148n, mem: 1, math: 2, memMax: 20n, },
+        { value: 32788n, mem: 1, math: 3, memMax: 20n, },
+        { value: 33020n, mem: 2, math: 3, memMax: 252n, },
+        { value: 4294934528n, mem: 1, math: 5, memMax: 20n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign4Postfix1Aligned: [
+        { value: 20n, mem: 1, math: 0, memMax: 20n, },
+        { value: 252n, mem: 2, math: 0, memMax: 252n, },
+        { value: 32764n, mem: 3, math: 0, memMax: 32764n, },
+        { value: 4194300n, mem: 4, math: 0, memMax: 4194300n, },
+        { value: 536870908n, mem: 5, math: 0, memMax: 536870908n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign4Postfix2Unaligned: [
+        { value: 148n, mem: 1, math: 2, memMax: 20n, },
+        { value: 32788n, mem: 1, math: 3, memMax: 20n, },
+        { value: 32892n, mem: 2, math: 3, memMax: 124n, },
+        { value: 4294934528n, mem: 1, math: 5, memMax: 20n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign4Postfix2Aligned: [
+        { value: 20n, mem: 1, math: 0, memMax: 20n, },
+        { value: 124n, mem: 2, math: 0, memMax: 124n, },
+        { value: 16380n, mem: 3, math: 0, memMax: 16380n, },
+        { value: 2097148n, mem: 4, math: 0, memMax: 2097148n, },
+        { value: 268435452n, mem: 5, math: 0, memMax: 268435452n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign4Postfix3Unaligned: [
+        { value: 148n, mem: 1, math: 2, memMax: 20n, },
+        { value: 32788n, mem: 1, math: 3, memMax: 20n, },
+        { value: 32828n, mem: 2, math: 3, memMax: 60n, },
+        { value: 4294934528n, mem: 1, math: 5, memMax: 20n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+    shortAlign4Postfix3Aligned: [
+        { value: 20n, mem: 1, math: 0, memMax: 20n, },
+        { value: 60n, mem: 2, math: 0, memMax: 60n, },
+        { value: 8188n, mem: 3, math: 0, memMax: 8188n, },
+        { value: 1048572n, mem: 4, math: 0, memMax: 1048572n, },
+        { value: 134217724n, mem: 5, math: 0, memMax: 134217724n, },
+        { value: 4294934528n, mem: 6, math: 0, memMax: 4294967295n, fallback: true, },
+        { value: 4294967168n, mem: 1, math: 3, memMax: 0n, negative: true, },
+        { value: 4294967295n, mem: 1, math: 2, memMax: 0n, negative: true, },
+    ],
+};
+
+// ---- Unaligned memory access optimal instruction sizes - end - generated with help of script ----
+
+export class MemInstruction extends InstrBase {
+
+    private static WRITE_FLAG = 1 << 5;
+    private static CODES_SHORT = {
+        [BASE.MAB0]: 0x00,
+        [BASE.MAB1]: 0x02,
+        [BASE.MAB0 | BASE.POP]: 0x01,
+        [BASE.MAB1 | BASE.POP]: 0x03,
+    };
+    private static CODES_LONG = {
+        [BASE.MAB0]: 0x18,
+        [BASE.MAB1]: 0x1A,
+        [BASE.MAB2]: 0x1C,
+        [BASE.MAB3]: 0x1E,
+        [BASE.MAB0 | BASE.POP]: 0x19,
+        [BASE.MAB1 | BASE.POP]: 0x1B,
+        [BASE.MAB2 | BASE.POP]: 0x1D,
+        [BASE.MAB3 | BASE.POP]: 0x1F,
+    };
+
+    private static SHORT_OFFSET_SHIFT = 2;
+
+    private static SMALLER_THAN_WORD_FLAG = 1 << 0;
+    private static HALF_WORD_FLAG = 1 << 1;
+    private static SIGN_EXT_FLAG = 1 << 2;
+    private static BITS_64_FLAG = 1 << 1;
+
+    private arg: ExprEval;
+    private bytes: number;
+    private align: number;
+    private postfixSize: number;
+    private postfix: number;
+    private codeShort: number | undefined;
+    private codeLong: number;
+    private sizesAligned: UnalignedInstrSizeDesc[];
+    private sizesUnaligned: UnalignedInstrSizeDesc[];
+
+    constructor(params: InstrParams, args: string, private base: BASE) {
+        super(params);
+        this.arg = params.exprMaker.makeOptionalExpression(this, args) || (() => 0n);
+        this.bytes = this.info.instrOptions.bytes as number;
+        this.align = Math.min(4, this.bytes);
+        let write = !!this.info.instrOptions.write;
+        let signExtend = !!this.info.instrOptions.signExtend;
+        // Instruction can be short (one-byte code only) or long (instruction code, offset and postfix).
+        // Prepare instruction code for both short and long version. If short is not possible, codeShort is undefined.
+        this.codeShort = MemInstruction.CODES_SHORT[base];
+        this.codeLong = MemInstruction.CODES_LONG[base];
+        if (write) {
+            if (this.codeShort != undefined) {
+                this.codeShort |= MemInstruction.WRITE_FLAG;
+            }
+            this.codeLong |= MemInstruction.WRITE_FLAG;
+        }
+        // Prepare postfix (and its size).
+        this.postfix = 0;
+        if (this.bytes < 4) {
+            // Short version is not possible for access size other than 32-bits.
+            this.codeShort = undefined;
+            // Set bit indicating non-32-bit access.
+            this.postfix |= MemInstruction.SMALLER_THAN_WORD_FLAG;
+            // Add and set bit indicating whether this is 16-bit operation or not.
+            this.postfixSize = 2;
+            if (this.bytes === 2) {
+                this.postfix |= MemInstruction.HALF_WORD_FLAG;
+            }
+            // For read operations, add and set bit indicating whether sign extending should be done.
+            if (!write) {
+                this.postfixSize = 3;
+                if (signExtend) {
+                    this.postfix |= MemInstruction.SIGN_EXT_FLAG;
+                }
+            }
+        } else if (this.bytes === 4) {
+            if (this.compiler.extensions.mem64) {
+                // Add one bit to postfix indicating whether this is 64-bit operation or not.
+                this.postfixSize = 2;
+            } else {
+                this.postfixSize = 1;
+            }
         } else {
-            tailSize = 1;
-            rem = rem >> 9n;
+            // Short version is not possible for access size other than 32-bits.
+            this.codeShort = undefined;
+            // Add one bit to postfix indicating 64-bit operation.
+            this.postfixSize = 2;
+            this.postfix |= MemInstruction.BITS_64_FLAG;
         }
-        while (rem > 0) {
-            tailSize++;
-            rem = rem >> 7n;
-        }
-        tailSize = Math.min(Math.max(minSize - 1, tailSize), 5);
-        totalSize += 1 + tailSize;
-        if (!ctx && generator) {
-            generator.put8(
-                //((this.base & BASE_REG_MASK) << ReadWriteInstruction.BASE_SHIFT) |
-                ((this.write ? 1 : 0) << ReadWriteInstruction.WRITE_SHIFT) |
-                ((doPop ? 1 : 0) << ReadWriteInstruction.POP_SHIFT) |
-                ((tailSize > 0 ? 1 : 0) << ReadWriteInstruction.MORE_SHIFT) |
-                (Number(rwImm >> BigInt(7 * tailSize))));
-            while (tailSize > 0) {
-                tailSize--;
-                generator.put8(
-                    ((tailSize > 0 ? 1 : 0) << 7) |
-                    (Number(rwImm >> BigInt(7 * tailSize)) & 0x7F));
+        // Get optimal instruction sizes for this instruction
+        let id = `${this.codeShort === undefined ? 'long' : 'short'}Align${this.align}Postfix${this.postfixSize}`;
+        this.sizesAligned = unalignedSizes[id + 'Aligned'];
+        this.sizesUnaligned = unalignedSizes[id + 'Unaligned'];
+    }
+
+    collectDeps(ctx: ExprContext) {
+        this.arg(ctx);
+    }
+
+    getSize(ctx: ExprContext) {
+        let offset = this.arg(ctx) & 0xFFFFFFFFn;
+        let sizesArray = ((offset & BigInt(this.align - 1)) === 0n) ? this.sizesAligned : this.sizesUnaligned;
+        for (let sizes of sizesArray) {
+            if (offset <= sizes.value) {
+                return sizes.mem + sizes.math;
             }
         }
-        return totalSize;
+        throw new CompilerError(this.lineNumber, 'Internal error.');
     }
+
+    generate(generator: BytecodeGenerator, minSize: number) {
+        let offset = this.arg(new ExprContext()) & 0xFFFFFFFFn;
+        let aligned = ((offset & BigInt(this.align - 1)) === 0n) && minSize <= 6;
+        let sizesArray = aligned ? this.sizesAligned : this.sizesUnaligned;
+        // Find optimal memory and arithmetic instructions for this offset.
+        let optimalSize!: UnalignedInstrSizeDesc;
+        for (let size of sizesArray) {
+            if (offset <= size.value && minSize <= size.mem + size.math) {
+                optimalSize = size;
+                break;
+            } else if (size.fallback) {
+                optimalSize = size;
+            }
+        }
+        //
+        let isPop = this.codeLong & 1;
+        // Calculate maximum memory operation offset
+        let memOffset = bigIntMin(offset, optimalSize.memMax);
+        memOffset &= BigInt(this.align - 1) ^ 0xFFFFFFFFn;
+        let popFlag: number;
+        if (optimalSize.math === 0) {
+            popFlag = 0;
+        } else {
+            // Calculate remaining offset for arithmetic operation
+            let mathOffset = -(offset - memOffset);
+            // Output the arithmetic operation
+            let immSize = getImmediateSize(mathOffset, optimalSize.math - 1);
+            let mathInstrCodeFlags = immSize === 1 ? 0x82 : immSize === 2 ? 0x81 : 0x80;
+            generator.put8(mathInstrCodeFlags | (instrInfoById[isPop ? INSTR.SUB : INSTR.NEG].opcode << 2));
+            putImmediate(generator, mathOffset, immSize);
+            popFlag = 1;
+        }
+        memOffset /= BigInt(this.align);
+        if (this.codeShort !== undefined && optimalSize.mem === 1) {
+            generator.put8(this.codeShort | popFlag | (Number(memOffset) << MemInstruction.SHORT_OFFSET_SHIFT));
+        } else {
+            generator.put8(this.codeLong | popFlag);
+            memOffset <<= BigInt(this.postfixSize);
+            memOffset |= BigInt(this.postfix);
+            putMemImmediate(generator, memOffset, optimalSize.mem - 1);
+        }
+    }
+
 }
 
 
@@ -621,7 +1095,7 @@ export class FillInstruction extends InstrBase {
         let ctx = new ExprContext();
         let expectedSize = Number(this.bytes(ctx));
         if (expectedSize > MAX_FILL_SIZE) {
-            this.compiler.error(new CompilerError(this.lineNumber, 'Fill bytes too high.'));
+            this.compiler.error(this.lineNumber, 'Fill bytes too high.');
             return;
         }
         // Allocate data buffer on the output big enough to hold the input at least one time.
@@ -706,7 +1180,7 @@ export class AddrInstruction extends InstrBase {
         if (padding > 0) {
             generator.fill(0, padding);
         } else if (padding < 0) {
-            this.compiler.error(new CompilerError(this.lineNumber, 'Address directive cannot decrease address.'));
+            this.compiler.error(this.lineNumber, 'Address directive cannot decrease address.');
         }
     }
 }
@@ -793,7 +1267,7 @@ export class AssertInstruction extends InstrBase {
         let ctx = new ExprContext();
         let condition = this.arg(ctx);
         if (condition === 0n) {
-            this.compiler.error(new CompilerError(this.lineNumber, `Assertion: ${this.message}`));
+            this.compiler.error(this.lineNumber, `Assertion: ${this.message}`);
         }
     }
 }

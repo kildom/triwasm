@@ -13,7 +13,7 @@
  */
 
 import { Block, BlockEnd, PlaceInstruction, InstrBase, ExprEval, ExprContext } from './instructions';
-import { ObjMarker } from '../common/common';
+import { ObjMarker, dict } from '../common/common';
 import { InstrMaker } from './instrMaker';
 import { ExprMaker } from './exprMaker';
 import { CompilerError } from './errors';
@@ -34,6 +34,7 @@ export class Compiler {
     private nullGenerator = new NullBytecodeGenerator();
     private programGenerator = new ProgramBytecodeGenerator();
     public generator: BytecodeGenerator;
+    public activeError?: CompilerError;
 
     compile(input: string) {
         this.generator = this.nullGenerator;
@@ -61,18 +62,17 @@ export class Compiler {
     moveBlocks() {
         // Place movable blocks into buckets
         let stackTop: InstrBase[] = [];
-        // TODO: Map should replace Object-based maps with keys from user input (as it was done here).
-        let buckets: Map<string, InstrBase[] | null> = new Map();
+        let buckets = dict<InstrBase[] | null>();
         let stack: InstrBase[][] = [];
         for (let instr of this.instructions) {
             if ((instr instanceof Block) && instr.moveTo !== null) {
                 let name = instr.moveTo;
                 stack.push(stackTop);
-                if (!buckets.has(name)) {
-                    stackTop = [];
-                    buckets.set(name, stackTop);
+                if (buckets[name]) {
+                    stackTop = buckets[name] as InstrBase[];
                 } else {
-                    stackTop = buckets.get(name) as InstrBase[];
+                    stackTop = [];
+                    buckets[name] = stackTop;
                 }
             }
             stackTop.push(instr);
@@ -94,8 +94,8 @@ export class Compiler {
             } else if (instr instanceof BlockEnd) {
                 currentBlock = instr.block.parent as Block;
             } else if (instr instanceof PlaceInstruction) {
-                let bucket = buckets.get(instr.name);
-                buckets.set(instr.name, null);
+                let bucket = buckets[instr.name];
+                buckets[instr.name] = null;
                 if (bucket === null) {
                     throw new CompilerError(instr.lineNumber, `Movable blocks "${instr.name}" already placed!`);
                 } else if (bucket) {
@@ -105,7 +105,7 @@ export class Compiler {
         }
 
         // Check if all buckets were placed
-        for (let [key, bucket] of buckets) {
+        for (let [key, bucket] of Object.entries(buckets)) {
             if (bucket !== null && bucket.length > 0) {
                 throw new CompilerError(bucket[0].lineNumber, `Movable block "${key}" is not placed anywhere.`);
             }
@@ -155,63 +155,74 @@ export class Compiler {
                 index = instr.end!.index;
                 continue;
             }
-            instr.addr.current = addr;
+            instr.address.current = addr;
             let size = instr.getSize(ctx);
             addr += size;
-            instr.addr.end = addr;
+            instr.address.end = addr;
         }
     }
 
     generateCode() {
-        let rerun = true;
+        if (this.activeError) {
+            throw this.activeError;
+        }
         let rerunCounter = 0;
-        do {
-            this.generator = this.nullGenerator;
-            this.generator.reset(0);
+        while (this.generateCodeIteration()) {
             rerunCounter++;
             if (rerunCounter > MAX_RERUNS) {
                 throw new CompilerError(0, 'Maximum number of generating reruns reached!');
             }
-            for (let instr of this.instructions) {
-                instr.addr.old = instr.addr.current as number;
-                instr.addr.current = undefined;
-                instr.addr.estimated = undefined;
-            }
-            rerun = false;
-            for (let index = 0; index < this.instructions.length; index++) {
-                let instr = this.instructions[index];
-                if ((instr instanceof Block) && instr.discarded) {
-                    index = instr.end.index;
-                    continue;
-                }
-                if (instr.addr.estimated !== undefined && instr.addr.estimated != this.generator.address) {
-                    rerun = true;
-                }
-                instr.addr.current = this.generator.address;
-                this.generator.reserve(MAX_INSTR_SIZE);
-                instr.generate(this.generator, Math.max(0, instr.addr.end - instr.addr.current));
-                instr.addr.end = this.generator.address;
-                if (instr.addr.current < this.pmaBase) {
-                    if (instr.addr.end > this.pmaBase) {
-                        throw new CompilerError(instr.lineNumber, 'Single instruction cannot span over data and program memory.');
-                    } else if (instr.addr.end === this.pmaBase) {
-                        this.generator = this.programGenerator;
-                        this.generator.reset(this.pmaBase);
-                    }
-                }
-            }
-        } while (rerun);
+        }
+        if (this.activeError) {
+            throw this.activeError;
+        }
         return this.programGenerator.result();
+    }
+
+    generateCodeIteration() {
+        let rerun = true;
+        this.activeError = undefined;
+        this.generator = this.pmaBase === 0 ? this.programGenerator : this.nullGenerator;
+        this.generator.reset(0);
+        for (let instr of this.instructions) {
+            instr.address.old = instr.address.current as number;
+            instr.address.current = undefined;
+            instr.address.estimated = undefined;
+        }
+        rerun = false;
+        for (let index = 0; index < this.instructions.length; index++) {
+            let instr = this.instructions[index];
+            if ((instr instanceof Block) && instr.discarded) {
+                index = instr.end.index;
+                continue;
+            }
+            if (instr.address.estimated !== undefined && instr.address.estimated != this.generator.address) {
+                rerun = true;
+            }
+            instr.address.current = this.generator.address;
+            this.generator.reserve(MAX_INSTR_SIZE);
+            instr.generate(this.generator, Math.max(0, instr.address.end - instr.address.current));
+            instr.address.end = this.generator.address;
+            if (instr.address.current < this.pmaBase) {
+                if (instr.address.end > this.pmaBase) {
+                    this.error(instr.lineNumber, 'Single instruction cannot span over data and program memory.');
+                } else if (instr.address.end === this.pmaBase) {
+                    this.generator = this.programGenerator;
+                    this.generator.reset(this.pmaBase);
+                }
+            }
+        }
+        return rerun;
     }
 
     checkDiv0(instr: InstrBase, ctx: ExprContext, expr: ExprEval, message: string = 'Division by zero!') {
         let value: bigint;
         if (this.preparation) {
-            let ctx2 = ctx.shallowClone({ mutable: false });
-            value = expr(ctx2);
-            ctx2.shallowMergeToParent();
+            ctx.pushMutable();
+            value = expr(ctx);
+            let mutable = ctx.popMutable();
             if (value == 0n) {
-                if (ctx2.mutable) {
+                if (mutable) {
                     return 1n;
                 } else {
                     throw new CompilerError(instr.lineNumber, message);
@@ -220,16 +231,17 @@ export class Compiler {
         } else {
             value = expr(ctx);
             if (value == 0n) {
-                this.error(new CompilerError(instr.lineNumber, message));
+                this.error(instr.lineNumber, message);
                 return 1n;
             }
         }
         return value;
     }
 
-    error(error: CompilerError) {
-        void(error);
-        // TODO: handle errors
+    error(line: number, message: string) {
+        if (!this.activeError) {
+            this.activeError = new CompilerError(line, message);
+        }
     }
 
 }

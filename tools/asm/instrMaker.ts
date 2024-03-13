@@ -25,11 +25,12 @@ import {
     Assign, BaseInstruction, Block, BlockEnd, BranchInstruction, DataInstruction, FillInstruction, InstrBase,
     InstrParams,
     MTableInstruction,
-    PlaceInstruction, ReadWriteInstruction, RefInstruction,
+    PlaceInstruction, MemInstruction, RefInstruction,
     SimpleCoreInstruction,
     SimpleExt32Instruction,
     SimpleExt64Instruction,
-    UnwindInstruction
+    UnwindInstruction,
+    StackInstruction
 } from './instructions';
 
 
@@ -41,20 +42,21 @@ interface AssignProxy {
 export class InstrMaker implements InstrParserConsumer {
 
     private static parserInstrClasses: { [k: string]: any; } = {
-        'SimpleCoreInstruction': SimpleCoreInstruction,
-        'BranchInstruction': BranchInstruction,
-        'SimpleExt32Instruction': SimpleExt32Instruction,
-        'SimpleExt64Instruction': SimpleExt64Instruction,
-        'ReadWriteInstruction': ReadWriteInstruction,
-        'DataInstruction': DataInstruction,
-        'FillInstruction': FillInstruction,
-        'AddrInstruction': AddrInstruction,
-        'AlignInstruction': AlignInstruction,
-        'RefInstruction': RefInstruction,
-        'PlaceInstruction': PlaceInstruction,
-        'BaseInstruction': BaseInstruction,
-        'MTableInstruction': MTableInstruction,
-        'AssertInstruction': AssertInstruction,
+        SimpleCoreInstruction: SimpleCoreInstruction,
+        BranchInstruction: BranchInstruction,
+        SimpleExt32Instruction: SimpleExt32Instruction,
+        SimpleExt64Instruction: SimpleExt64Instruction,
+        DataInstruction: DataInstruction,
+        FillInstruction: FillInstruction,
+        AddrInstruction: AddrInstruction,
+        AlignInstruction: AlignInstruction,
+        RefInstruction: RefInstruction,
+        PlaceInstruction: PlaceInstruction,
+        BaseInstruction: BaseInstruction,
+        MTableInstruction: MTableInstruction,
+        AssertInstruction: AssertInstruction,
+        MemInstruction: MemInstruction,
+        StackInstruction: StackInstruction,
     };
 
     private instructions: InstrBase[] = [];

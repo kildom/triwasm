@@ -682,8 +682,8 @@ static void trivm_mem(struct trivm_instance *vm, uint32_t code)
 		addr = addr >> 2;
 		if (addr <= 0x05) {
 			code &= CODE_MEM_WRITE | CODE_MEM_POP | CODE_MEM_MAB_LSB;
-            goto skip_get_args;
-        }
+			goto skip_get_args;
+		}
 	}
 
 	/*> ARGS ... */

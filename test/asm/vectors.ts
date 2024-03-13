@@ -1,8 +1,9 @@
-import { Compiler, EnabledExtensions, KNOWN_EXTENSIONS } from "../../tools/asm/compiler";
-import { CompilerError } from "../../tools/asm/errors";
-import { reMatchAll } from "../../tools/utils/common";
-import { platform } from "../../tools/utils/platform";
-import { Template } from "../utils";
+import { Compiler } from '../../tools/asm/compiler';
+import { CompilerError } from '../../tools/asm/errors';
+import { KNOWN_EXTENSIONS } from '../../tools/asm/instrInfo';
+import { reMatchAll } from '../../tools/common/common';
+import { platform } from '../../tools/common/platform';
+import { Template } from '../utils';
 
 
 let testCases: TestCase[] = [];
@@ -39,7 +40,7 @@ class TestCase {
         return text.replace(/\n/g, prefix || '\n    ');
     }
     show(short: boolean) {
-        console.log(`${this._group.join(' » ')}: ${this.isSuccess() ? 'OK' : 'ERROR'}`);
+        console.log(`${this._group.join(' > ')}: ${this.isSuccess() ? 'OK' : 'ERROR'}`);
         if (short)
             return;
         for (const error of this._errors) {
@@ -133,6 +134,10 @@ function toStringBytes(arr: any) {
 
 function runSingleTest(sourceCode: string, ext: { [k: string]: boolean }, result: string, group: string[]) {
     let expected = bytecodeFromSource(result);
+
+    if (process.argv[2] && group.join(' > ').trim() !== process.argv[2].trim()) {
+        return;
+    }
 
     sourceCode = sourceCode
         .split('\n')
@@ -229,7 +234,7 @@ for (let i = 0; i < variants; i++) {
 let stats: { [key: string]: { ok: number; err: number } } = {};
 
 for (let testCase of testCases) {
-    let name = testCase._group.join(' » ');
+    let name = testCase._group.join(' > ');
     if (!(name in stats)) {
         stats[name] = { ok: 0, err: 0 };
     }

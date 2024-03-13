@@ -116,8 +116,16 @@ export function exhaustiveCheck(...value: never[]) {
     return new Error('Exhaustive Check Assertion');
 }
 
-export type Dict<T> = { [key: string]: T };
+export type Dict<T> = { [key: string]: T; };
 
 export function dict<T>(): Dict<T> {
     return Object.create(null);
+}
+
+export function bigIntMax(...args: bigint[]) {
+    return args.reduce((m, e) => e > m ? e : m);
+}
+
+export function bigIntMin(...args: bigint[]) {
+    return args.reduce((m, e) => e < m ? e : m);
 }

@@ -51,7 +51,16 @@ const System = (function () {
             let module = modules[name];
             for (let i = 0; i < module.__deps__.length; i++) {
                 let dep = module.__deps__[i];
-                module.__setters__[i](modules[dep]);
+                if (!modules[dep]) {
+                    try {
+                        let mod = require(dep); // TODO: Remove it
+                        module.__setters__[i](mod);
+                    } catch (e) {
+                        module.__setters__[i](undefined);
+                    }
+                } else {
+                    module.__setters__[i](modules[dep]);
+                }
             }
             delete module.__setters__;
         }

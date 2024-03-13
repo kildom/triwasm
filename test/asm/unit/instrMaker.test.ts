@@ -28,6 +28,8 @@ vi.mock('../../../tools/asm/instructions', async (importOriginal) => {
         SimpleCoreInstruction: fnShallowCopyFirst((p) => saveMockInstruction({ ...p })),
         DataInstruction: fnShallowCopyFirst((p) => saveMockInstruction({ ...p })),
         FillInstruction: fnShallowCopyFirst((p) => saveMockInstruction({ ...p })),
+        BaseInstruction: fnShallowCopyFirst((p) => saveMockInstruction({ ...p })),
+        AddrInstruction: fnShallowCopyFirst((p) => saveMockInstruction({ ...p })),
     };
 });
 

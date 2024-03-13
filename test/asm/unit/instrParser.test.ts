@@ -40,9 +40,9 @@ describe('instrParser', () => {
             variable2=x # Comment
             $variable3=1
             .local $_one, $_two, $_three
-            READ32 [SP] - 12
+            READST -12
             WRITE8 [MAB1] + [POP] - x
-            UREAD16U [MAB2] +  y
+            READ16U [MAB2] +  y
             READ64 var
         `, consumer);
         expect(instr).toHaveBeenNthCalledWith(1, 2, INSTR.ADD, '', BASE.MAB0);
@@ -56,9 +56,9 @@ describe('instrParser', () => {
         expect(assign).toHaveBeenNthCalledWith(2, 12, 'variable2', 'x');
         expect(assign).toHaveBeenNthCalledWith(3, 13, '$variable3', '1');
         expect(instr).toHaveBeenNthCalledWith(6, 14, INSTR._LOCAL, '$_one, $_two, $_three', BASE.MAB0);
-        expect(instr).toHaveBeenNthCalledWith(7, 15, INSTR.READ32, '0 - 12', BASE.SP);
+        expect(instr).toHaveBeenNthCalledWith(7, 15, INSTR.READST, '-12', BASE.MAB0);
         expect(instr).toHaveBeenNthCalledWith(8, 16, INSTR.WRITE8, '0 - x', BASE.MAB1 | BASE.POP);
-        expect(instr).toHaveBeenNthCalledWith(9, 17, INSTR.UREAD16U, 'y', BASE.MAB2);
+        expect(instr).toHaveBeenNthCalledWith(9, 17, INSTR.READ16U, 'y', BASE.MAB2);
         expect(instr).toHaveBeenNthCalledWith(10, 18, INSTR.READ64, 'var', BASE.MAB0);
         expect(label).toHaveBeenCalledTimes(2);
         expect(assign).toHaveBeenCalledTimes(3);

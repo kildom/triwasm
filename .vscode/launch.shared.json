@@ -24,5 +24,15 @@
             "preLaunchTask": "npm: build-triwasm",
             "outFiles": [ "${workspaceFolder}/dist/bin/js/*.js" ]
         },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "triASM test vectors",
+            "program": "${workspaceFolder}/test/asm/vectors.ts",
+            "args": ["unwind=0, mem64=0, int64=0, float32=0, float64=0 > Read/Write"],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build triASM vectors test",
+            "outFiles": [ "${workspaceFolder}/test/output/asm/*.js" ]
+        },
     ]
 }

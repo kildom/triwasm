@@ -47,13 +47,13 @@ export class AsmFunctions {
             ctx.mutable = true;
             return 0n;
         } else {
-            if (instr.addr.current === undefined) {
-                if (instr.addr.estimated === undefined) {
-                    instr.addr.estimated = Math.max(instr.addr.old, instr.compiler.generator.address);
+            if (instr.address.current === undefined) {
+                if (instr.address.estimated === undefined) {
+                    instr.address.estimated = Math.max(instr.address.old, instr.compiler.generator.address);
                 }
-                return BigInt(Math.max(instr.addr.estimated, instr.compiler.generator.address));
+                return BigInt(Math.max(instr.address.estimated, instr.compiler.generator.address));
             } else {
-                return BigInt(instr.addr.current);
+                return BigInt(instr.address.current);
             }
         }
     }
@@ -127,10 +127,9 @@ export class AsmFunctions {
 
     static func_if(instr: InstrBase, ctx: ExprContext, cond: ExprEval, ifTrue: ExprEval, ifFalse: ExprEval): bigint {
         if (instr.compiler.preparation) {
-            let ctx2 = ctx.shallowClone({mutable: false});
-            let valCond = cond(ctx2);
-            ctx2.shallowMergeToParent();
-            if (ctx2.mutable) {
+            ctx.pushMutable();
+            let valCond = cond(ctx);
+            if (ctx.popMutable()) {
                 let trueVal = ifTrue(ctx);
                 let falseVal = ifFalse(ctx);
                 return (valCond != 0n) ? trueVal : falseVal;
