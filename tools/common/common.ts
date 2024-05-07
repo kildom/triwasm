@@ -116,6 +116,15 @@ export function exhaustiveCheck(...value: never[]) {
     return new Error('Exhaustive Check Assertion');
 }
 
+interface NonEmptyArray<T> extends Array<T> {
+    // would need to implement all relevant functions.
+    pop: () => T;
+}
+
+export function nonEmpty<T>(arr: Array<T>): arr is NonEmptyArray<T> {
+    return arr.length > 0;
+}
+
 export type Dict<T> = { [key: string]: T; };
 
 export function dict<T>(): Dict<T> {

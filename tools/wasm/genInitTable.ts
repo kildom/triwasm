@@ -106,21 +106,18 @@ export class InitTableGenerator {
 
     private finalizeBlock() {
         if (this.block.length > 0) {
-            this.output.output([
-                '.begin movable $_memory_init_table',
-                '.local $_init_table_block_begin, $_init_table_block_end']);
+            this.output.output('.begin movable $_memory_init_table');
             if (this.skipMax > MAX_BLOCK_SKIP_BYTES) {
                 this.output.output(['.data8 255', `.data32 ${this.skipExp}`]);
             } else {
                 this.output.output(`.data8 ${this.skipExp}`);
             }
             this.output.output([
-                '.data8 $_init_table_block_end - $_init_table_block_begin',
-                '$_init_table_block_begin:',
+                '.begin',
+                '.data8 block_size() - 1',
                 ...this.block,
-                '$_init_table_block_end:',
-                '.end'
-            ]);
+                '.end',
+                '.end']);
             this.skipMax = 0;
             this.skipExp = '0';
             this.block.splice(0);
