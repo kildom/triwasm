@@ -320,17 +320,17 @@ window._triwasm_browser_platform_impl :
             let chunk = Array(512);
             let chunkOffset = 0;
             let output = [];
-            let secondSurrogate = 0;
-            while (inputOffset < uint8.length || secondSurrogate > 0) {
+            let len = uint8.length;
+            while (inputOffset < len) {
                 let first = uint8[inputOffset++];
                 if (first < 128) {
                     chunk[chunkOffset++] = first;
-                } else if ((first & 0xE0) == 0xC0 && inputOffset < uint8.length) {
+                } else if ((first & 0xE0) == 0xC0 && inputOffset < len) {
                     chunk[chunkOffset++] = (first & 0x1F) << 6 | uint8[inputOffset++] & 0x3F;
-                } else if ((first & 0xF0) == 0xE0 && inputOffset + 1 < uint8.length) {
+                } else if ((first & 0xF0) == 0xE0 && inputOffset + 1 < len) {
                     let val = (first & 0x0F) << 12 | (uint8[inputOffset++] & 0x3F) << 6;
                     chunk[chunkOffset++] = val | uint8[inputOffset++] & 0x3F;
-                } else if ((first & 0xF8) == 0xF0 && inputOffset + 2 < uint8.length) {
+                } else if ((first & 0xF8) == 0xF0 && inputOffset + 2 < len) {
                     let val = (first & 0x07) << 18 | (uint8[inputOffset++] & 0x3F) << 12;
                     val |= (uint8[inputOffset++] & 0x3F) << 6;
                     val |= (uint8[inputOffset++] & 0x3F);
@@ -338,19 +338,17 @@ window._triwasm_browser_platform_impl :
                     if (val >= 0) {
                         chunk[chunkOffset++] = 0xD800 | (val >> 10);
                         if (chunkOffset == 512) {
-                            secondSurrogate = 0xDC00 | (val & 0x3FF);
+                            output.push(String.fromCharCode(...chunk, 0xDC00 | (val & 0x3FF)));
+                            chunkOffset = 0;
                         } else {
                             chunk[chunkOffset++] = 0xDC00 | (val & 0x3FF);
                         }
                     }
+                } else {
+                    chunk[chunkOffset++] = 65533;
                 }
                 if (chunkOffset == 512) {
-                    if (secondSurrogate > 0) {
-                        output.push(String.fromCharCode(...chunk, secondSurrogate));
-                        secondSurrogate = 0;
-                    } else {
-                        output.push(String.fromCharCode(...chunk));
-                    }
+                    output.push(String.fromCharCode(...chunk));
                     chunkOffset = 0;
                 }
             }
