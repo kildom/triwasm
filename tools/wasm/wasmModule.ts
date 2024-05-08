@@ -12,7 +12,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { allowTemporaryNull } from '../common/common';
 import { OP } from './opcodes';
 
 
@@ -419,7 +418,7 @@ export class WasmData {
     public deleted = false;
     public index: number = 0;
     public kind: DataKind = DataKind.ACTIVE;
-    public content: Uint8Array = allowTemporaryNull as Uint8Array; // will be filled during data section parsing
+    public content: Uint8Array = null as unknown as Uint8Array; // will be filled during data section parsing
     public memory?: WasmMemory;
     public offset?: WasmFunction;
 }

@@ -4,7 +4,7 @@
 	"description": "triVM assembly syntax highlighting",
 	"version": "0.1.0",
 	"preview": false,
-	"icon": "logo.svg",
+	"icon": "logo.png",
 	"engines": {
 		"vscode": "^1.0.0"
 	},
@@ -41,5 +41,11 @@
 		"id": "e75e6d14-2d72-4d68-b6cd-55b71194beb3",
 		"publisherDisplayName": "kildom",
 		"publisherId": "4e4bc677-142b-4484-a651-4b67e50e8016"
+	},
+	"devDependencies": {
+		"@vscode/vsce": "^2.26.1"
+	},
+	"scripts": {
+		"build": "npx vsce package"
 	}
 }

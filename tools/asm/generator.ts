@@ -119,7 +119,7 @@ export class ProgramBytecodeGenerator implements BytecodeGenerator {
 
 
 export class NullBytecodeGenerator implements BytecodeGenerator {
-    public address: number;
+    public address: number = 0;
     public reset(initialAddresses: number): void {
         this.address = initialAddresses;
     }

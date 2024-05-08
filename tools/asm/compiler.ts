@@ -36,6 +36,10 @@ export class Compiler {
     public generator: BytecodeGenerator;
     public activeError?: CompilerError;
 
+    constructor() {
+        this.generator = this.nullGenerator;
+    }
+
     compile(input: string) {
         this.generator = this.nullGenerator;
         // Parse input and make internal data structures from the input

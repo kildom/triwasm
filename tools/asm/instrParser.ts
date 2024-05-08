@@ -99,7 +99,7 @@ export interface InstrParserConsumer {
 
 
 function parseBase(args: string): [BASE, string] {
-    let groups: ReBaseRegGroups | undefined = args.match(reBaseReg)?.groups as ReBaseRegGroups | undefined;
+    let groups = args.match(reBaseReg)?.groups as ReBaseRegGroups | undefined;
     if (!groups) {
         return [BASE.MAB0, args];
     }

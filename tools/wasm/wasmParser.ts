@@ -12,7 +12,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { allowTemporaryNull, enumize, pick } from '../common/common';
+import { enumize, pick } from '../common/common';
 import { Path } from '../common/path';
 import { BinaryInput } from './binaryInput';
 import { OP } from './opcodes';
@@ -785,9 +785,9 @@ export class WasmParser {
 
         let instr: WasmInstrWithBlock | WasmInstrIf;
         if (opcode != OP.IF) {
-            instr = { id, opcode, block: allowTemporaryNull as WasmBlock };
+            instr = { id, opcode, block: null as unknown as WasmBlock };
         } else {
-            instr = { id, opcode, block: allowTemporaryNull as WasmBlock, withElse: false };
+            instr = { id, opcode, block: null as unknown as WasmBlock, withElse: false };
         }
         instr.block = new WasmBlock(type, instr, parentBlock);
         return instr;
