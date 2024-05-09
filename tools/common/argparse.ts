@@ -17,39 +17,58 @@ import { Path } from './path';
 import { versionString } from './version';
 
 
+interface UsageArgReMatch {
+    shortName?: string;
+    longName?: string;
+    fastFilter?: '!';
+    filterName?: string;
+    minCount?: string;
+    hasRange?: '-';
+    maxCount?: string;
+    valueName: string;
+    defaultValue?: string;
+}
+
 /** Regular expression for parsing options from usage text.
  */
-class UsageArgReMatch {
-    shortName?: string = ''; //---)
-    longName?: string = ''; //    |     (-----------)
-    fastFilter?: string = ''; //  |     |           |          (-)
-    filterName?: string = ''; //  |     |           |          | | (---)
-    minCount?: string = ''; //    |     |           |          | | |   |         (---)
-    hasRange?: string = ''; //    |     |           |          | | |   |         |   |   (-)
-    maxCount?: string = ''; //    |     |           |          | | |   |         |   |   | |(---)
-    valueName: string = ''; //    |     |           |          | | |   |         |   |   | ||   |         (---)
-    defaultValue?: string = ''; //|     |           |          | | |   |         |   |   | ||   |         |   |           (--)
-    //                   |        |     |           |          | | |   |         |   |   | ||   |         |   |           |  |
-}
-const usageArgRe = /^(?:-([a-z0-9]) *|--([a-z0-9_-]+) *)?(?:: *(!)?(\w+) *)?(?:\[(\d+)(?:(-)(\d+)?)?\] *)?(.*?)(?:(?<!\\)=(.*))?$/i;
-
-export function matchToObject<T>(type: { new(): T; }, match: RegExpMatchArray | null): T | null;
-export function matchToObject<T>(type: { new(): T; }, match: RegExpMatchArray | null, notNull: true): T;
-export function matchToObject<T>(type: { new(): T; }, match: RegExpMatchArray | null, notNull: false): T | null;
-export function matchToObject<T>(type: { new(): T; }, match: RegExpMatchArray | null, notNull: boolean = false): T | null {
-    if (match === null) {
-        if (notNull) {
-            throw new Error('Internal error!');
+/* cre.ignoreCase.legacy`
+    begin-of-text
+    optional {
+        {
+            "-"
+            shortName: [a-z0-9]
+        } or {
+            "--"
+            longName: at-least-2 [a-z0-9_-]
         }
-        return null;
+        repeat space
     }
-    let res = new type();
-    let i = 1;
-    for (let name in res) {
-        (res as any)[name] = match[i++];
+    optional {
+        ":"
+        repeat space
+        optional fastFilter: "!"
+        filterName: at-least-1 word-char
+        repeat space
     }
-    return res;
-}
+    optional {
+        "["
+        minCount: at-least-1 digit
+        optional {
+            hasRange: "-"
+            optional maxCount: at-least-1 digit
+        }
+        "]"
+        repeat space
+    }
+    valueName: lazy-repeat any
+    optional {
+        lookbehind not "\\"
+        "="
+        defaultValue: repeat any
+    }
+    end-of-text
+`*/
+const usageArgRe = /^(?:(?:-(?<shortName>[a-z0-9])|--(?<longName>[a-z0-9_-]{2,})) *)?(?:: *(?<fastFilter>!)?(?<filterName>\w+) *)?(?:\[(?<minCount>\d+)(?:(?<hasRange>-)(?<maxCount>\d+)?)?\] *)?(?<valueName>.*?)(?:(?<!\\)=(?<defaultValue>.*))?$/is;
 
 
 /** Type of the option.
@@ -245,9 +264,9 @@ export class ArgsParser<T> {
             .filter((x, i, arr) => x != '' || (i != 0 && arr[i - 1] != ''));
         for (let line of lines) {
 
-            let m = matchToObject(UsageArgReMatch, line.match(usageArgRe));
+            let m = line.match(usageArgRe)?.groups as unknown as UsageArgReMatch;
 
-            if (m === null || !line.trim() || line.match(/^\s/)) {
+            if (!m || !line.trim() || line.match(/^\s/)) {
                 currentHelpOutput.push(line);
                 currentOption = null;
                 continue;

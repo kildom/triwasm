@@ -19,7 +19,7 @@
 -o
 --output:Path <file>
     Place the output into <file>. By default, use the same file name as input,
-    but with different extension.
+    but with a different extension.
 
 -O
 --optimize:OptLevel <level> = 2
@@ -30,15 +30,15 @@
       * `1` - basic optimization,
       * `2` and more - maximum optimization
     :
-    The `s`, `z` and `fast` are aliases for `2`, `g` is alias for `1`.
+    The `s`, `z` and `fast` are aliases for `2`, and `g` is an alias for `1`.
     :
     The optimization strategy is always focused on size.
 
 --vm-stack-size:VmStackSize <size>|shared = 1024
-    Set size of the virtual machine stack. Default is 1024. Special value
+    Set the size of the virtual machine stack. The default is 1024. A value
     `shared` puts the virtual machine stack at the guest stack. `Shared` stack
-    is only possible if guest has stack that grows downwards, from higher
-    address to lower.
+    is only possible if the guest has a stack that grows downwards, from
+    a higher address to a lower.
 
 --global-base:size <address> = 0
     Address at which module starts storing data. Everything before that is
@@ -46,27 +46,28 @@
     Required for memory size smaller than 64K. By default, it is 0.
 
 --guest-stack-first
-    Gest have its stack first, before `--global-base` address.
+    Gest has its stack first, before `--global-base` address.
 
 --guest-stack-guard
-    Enable gest stack guard. Virtual machine must have guest stack overflow or
-    underflow fault enabled and guest stack pointer must be known, see
-    `--guest-stack-global` option.
+    Enable gest stack guard. The virtual machine must have a guest stack
+    overflow or underflow fault enabled and the guest stack pointer must be
+    known, see `--guest-stack-global` option.
 
 --guest-stack-global <name>|#<index>|only-one
     Guest stack pointer global. You can pass global imported or exported
     <name>, exported function <name> that only touches the stack pointer
-    global, <index> of global, special value `only-one`, if module has only
-    one global and it is stack pointer. By default, it is `__stack_pointer`,
-    if such global is exported, otherwise guest stack pointer is unavailable.
+    global, <index> of global, special value `only-one`, if a module has only
+    one global and it is the stack pointer. By default, it is
+    `__stack_pointer`, if such global is exported, otherwise, the guest stack
+    pointer is unavailable.
 
 --guest-stack-size:size <size>
     Size of the guest stack. It is used only if `--guest-stack-first` or
     `--guest-stack-guard` options are enabled.
 
 --entry-function[0-] <name>|#<index>
-    Functions that will be called during module startup. If WASM module also
-    specifies entry function, it will be called first.
+    Functions that will be called during module startup. If the WASM module
+    also specifies an entry function, it will be called first.
 
 --disable-fault-all
     Disable all software-only faults.
@@ -95,23 +96,23 @@
 
 -S
 --assembly
-    Compile to assembly text file.
+    Compile to an assembly text file.
 
 --merge:Merge[0-] <name>\=<file>
     Merge additional WebAssembly module into the output. The module can contain
-    only functions. If name is prefixed with `!`, exports from module will be
-    available as global (guest-host) exports. Otherwise, the module exports can
-    be used only internally by other modules.
+    only functions. If a name is prefixed with the `!`, exports from the module
+    will be available as global (guest-host) exports. Otherwise, the module
+    exports can be used only internally by other modules.
 
 --debug-dump
     Dump various internal files alongside the output file. Use it to debug the
     compiler.
 
 --args:!FromFile <file>
-    Place here command line arguments from <file>. The file uses
-    platform-independent style of arguments quoting. Arguments can be enclosed
-    with double quotes. Escape sequence for double quote character are two
-    double quote characters.
+    Place here command line arguments from <file>. The file uses a
+    platform-independent style of argument quoting. Arguments can be enclosed
+    with double quotes. The escape sequence for the double-quote character is
+    two double-quote characters.
     :
     :For example:
     :```

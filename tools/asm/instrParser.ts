@@ -21,11 +21,12 @@
  * Reconsider renaming "output object" to "consumer".
  */
 
-import cre from 'con-reg-exp';
 import { CompilerError } from './errors';
 import { instrInfoByName, BASE } from './instrInfo';
 
-const ws = cre.ignoreCase`repeat [ \t]`;
+/* ws = cre.ignoreCase`
+    repeat [ \t]
+`*/
 
 interface ReLineGroups {
     name?: string;
@@ -34,7 +35,7 @@ interface ReLineGroups {
     args?: string;
 }
 
-const reLine = cre.ignoreCase.sticky`
+/* cre.ignoreCase.sticky`
     begin-of-line
     ${ws}
     optional {
@@ -62,7 +63,8 @@ const reLine = cre.ignoreCase.sticky`
         repeat not term
     }
     (optional \r, \n) or \r or end-of-text
-`;
+`*/
+const reLine = /(?<=[\r\n\u2028\u2029]|^)[ \t]*(?:(?<name>[a-z_$@.][a-z_$@.0-9]*)(?:[ \t]*(?<label>:)|[ \t]*=(?<assign>[^\r\n#]*)|[ \t](?<args>[^\r\n#]*)|))?[ \t]*(?:#[^\r\n\u2028\u2029]*)?(?:\r?\n|\r|$)/isuy;
 
 interface ReBaseRegGroups {
     all: string;
@@ -73,7 +75,7 @@ interface ReBaseRegGroups {
     sign?: string;
 }
 
-const reBaseReg = cre.ignoreCase`
+/* cre.ignoreCase`
     begin-of-text
     all: {
         ${ws}
@@ -88,7 +90,8 @@ const reBaseReg = cre.ignoreCase`
         optional sign: [+-]
         ${ws}
     }
-`;
+`*/
+const reBaseReg = /^(?<all>[ \t]*(?:\[[ \t]*MAB(?<mab>[0-3])[ \t]*\](?:[ \t]*\+[ \t]*\[[ \t]*(?<mabPop>POP)[ \t]*\])?|\[[ \t]*(?<pop>POP)[ \t]*\](?:[ \t]*\+[ \t]*\[[ \t]*MAB(?<popMab>[0-3])[ \t]*\])?)[ \t]*(?<sign>[+-])?[ \t]*)/isu;
 
 
 export interface InstrParserConsumer {

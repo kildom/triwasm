@@ -17,7 +17,6 @@ import { Compiler } from './compiler';
 import { ExprMaker } from './exprMaker';
 import { CompilerError } from './errors';
 import { BytecodeGenerator } from './generator';
-import cre from 'con-reg-exp';
 import { Dict, bigIntMin } from '../common/common';
 
 const MAX_FILL_SIZE = 128 * 1024 * 1024;
@@ -1244,7 +1243,7 @@ export class AssertInstruction extends InstrBase {
     private message: string;
     constructor(params: InstrParams, args: string) {
         super(params);
-        let groups = args.match(cre.cache`
+        /* cre`
             expr: lazy-repeat any
             ","
             repeat whitespace
@@ -1253,7 +1252,8 @@ export class AssertInstruction extends InstrBase {
             ["]
             repeat whitespace
             end-of-text
-        `)?.groups;
+        `*/
+        let groups = args.match(/(?<expr>.*?),\s*"(?<message>.*)"\s*$/su)?.groups;
         if (!groups) {
             throw new CompilerError(this.lineNumber, 'Invalid assertion.');
         }
