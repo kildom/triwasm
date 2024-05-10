@@ -161,6 +161,7 @@ const builtinFilters = {
     },
     ver: () => {
         console.log('triVM tools, version ' + versionString);
+        console.log('JavaScript environment:', platform.info);
         platform.exit(0);
     },
     int: (arg: any) => {

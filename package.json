@@ -24,7 +24,8 @@
     "lint": "npx eslint tools",
     "gen-trivm-instr": "npx tsx devtools/generators/trivm-instr.ts",
     "gen-triasm-instr": "npx tsx devtools/generators/triasm-instr.ts",
-    "gen-wasm-instr": "npx tsx devtools/generators/wasm-instr.ts"
+    "gen-wasm-instr": "npx tsx devtools/generators/wasm-instr.ts",
+    "pack": "./devtools/pack/pack.sh"
   },
   "author": "Dominik Kilian <kontakt@dominik.cc>",
   "license": "GPL-3.0",
@@ -36,6 +37,7 @@
     "cre-tool": "^0.2.5",
     "eslint": "^8.45.0",
     "extract-zip": "^2.0.1",
+    "glob": "^10.3.14",
     "ncp": "^2.0.0",
     "prettier": "3.0.0",
     "tsx": "^4.7.1",

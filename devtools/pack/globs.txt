@@ -1,0 +1,32 @@
+bin/**/*
+ext/**/DIRECTORY-README.txt
+guest/**/*
+samples/**/*
+tools/runtime/*
+vm/**/*
+doc/README.txt: doc/ =>
+doc/html/**/*: doc/html/ => doc/
+COPYING.txt
+!**/.*
+
+> any
+    # no additional files
+
+> win32-x64
+    temp/downloads/electron-*-win32-x64/**/*: !3 => ext/electron/
+    temp/downloads/binaryen-*-win32-x64/*/**/*: !4 => ext/binaryen/
+    temp/downloads/baremetal-wasm-sdk-*-win32-x64/*/**/*: !4 => ext/baremetal-wasm-sdk/
+
+> linux-x64
+    temp/downloads/electron-*-linux-x64/**/*: !3 => ext/electron/
+    temp/downloads/binaryen-*-linux-x64/*/**/*: !4 => ext/binaryen/
+    temp/downloads/baremetal-wasm-sdk-*-linux-x64/*/**/*: !4 => ext/baremetal-wasm-sdk/
+
+> macos-x64
+    temp/downloads/electron-*-macos-x64/**/*: !3 => ext/electron/
+    temp/downloads/binaryen-*-macos-x64/*/**/*: !4 => ext/binaryen/
+    temp/downloads/baremetal-wasm-sdk-*-macos-x64/*/**/*: !4 => ext/baremetal-wasm-sdk/
+
+# > win32-arm64 - unsupported by wasi-sdk
+# > linux-arm64 - unsupported by wasi-sdk
+# > macos-arm64 - unsupported by wasi-sdk
