@@ -98,7 +98,8 @@ GSPH = 56  # Guest stack pointer highest value
 $_initial_sp_value = MAB0
 
 # Initialization
-..skip 28 # PC, GPR0, GPR1, SP, GSP, MAB0, MAB1 - not needed or cannot be touched
+$_memory_init_dest_start = 28 # PC, GPR0, GPR1, SP, GSP, MAB0, MAB1 - not needed or cannot be touched
+..skip 0
 ..part 4
 .data32 $_program_memory_globals # MAB2
 ..end
@@ -197,7 +198,7 @@ BRF skip_startup
 
     # Memory initialization table copy
     .begin
-    READ32 MAB0
+    NEG -$_memory_init_dest_start
     NEG -$_memory_init_table_start
     .local copy_next_block
     copy_next_block:

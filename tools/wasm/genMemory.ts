@@ -112,7 +112,7 @@ export class MemoryGenerator {
                 let offset = Number(data.offset?.constValue);
                 buffer.set(data.content, offset - activeBegin);
             }
-            let activeBeginVma = stackSize - this.wasmBase + activeBegin;
+            let activeBeginVma = stackSize + this.wasmBase + activeBegin;
             let firstBlockSkip = ` + (${activeBeginVma} - $_vm_stack_start) + $_mem_init_final_skip`;
             let skipTotal = 0;
             let index = 0;

@@ -52,7 +52,7 @@ moduleDebug(main, ModuleStage.AfterParser, conf.args.output.withExtension('main.
 // Merge triwasmlib, softfloatlib and any user provided modules to merge.
 
 let mergeModules: WasmArgsMerge[] = [
-    {
+    /*{
         name: '__triwasm__triwasmlib',
         file: Path.runtime.join('triwasmlib.wasm'),
         globalExports: false,
@@ -61,7 +61,7 @@ let mergeModules: WasmArgsMerge[] = [
         name: '__triwasm__softfloatlib',
         file: Path.runtime.join('softfloatlib.wasm'),
         globalExports: false,
-    },
+    },*/
     ...conf.args.merge,
 ];
 

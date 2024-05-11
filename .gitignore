@@ -1,5 +1,6 @@
 package-lock.json
 node_modules
+temp
 /.vscode/launch.json
 /.vscode/settings.json
 /.vscode/tasks.json
@@ -14,4 +15,4 @@ node_modules
 /doc/triwasm/cmd.md
 /doc/triasm/cmd.md
 /test/__old/*.html
-/temp/
+/samples/**/build/*

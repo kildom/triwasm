@@ -4,6 +4,7 @@ import { KNOWN_EXTENSIONS } from '../../tools/asm/instrInfo';
 import { reMatchAll } from '../../tools/common/common';
 import { platform } from '../../tools/common/platform';
 import { Template } from '../utils';
+import { TimePref } from '../../tools/common/timepref';
 
 
 let testCases: TestCase[] = [];
@@ -136,8 +137,8 @@ function escapeRegExp(text: string) {
     return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const testRegExp: RegExp | false = !!process.argv[2] &&
-    new RegExp(process.argv[2].split('*').map(x => escapeRegExp(x)).join('.*'), 'i');
+const testRegExp: RegExp | false = !!platform.getArgv()[0] &&
+    new RegExp(platform.getArgv()[0].split('*').map(x => escapeRegExp(x)).join('.*'), 'i');
 
 function runSingleTest(sourceCode: string, ext: { [k: string]: boolean }, result: string, group: string[]) {
     let expected = bytecodeFromSource(result);
@@ -223,6 +224,8 @@ let template = new Template(input);
 
 let variants = 1 << KNOWN_EXTENSIONS.length;
 
+let timerTotal = new TimePref();
+
 for (let i = 0; i < variants; i++) {
     let ext: { [k: string]: boolean } = {};
     for (let k = 0; k < KNOWN_EXTENSIONS.length; k++) {
@@ -237,6 +240,8 @@ for (let i = 0; i < variants; i++) {
     }
     runTests(tests, ext);
 }
+
+let time  = timerTotal.get();
 
 let stats: { [key: string]: { ok: number; err: number } } = {};
 
@@ -267,7 +272,8 @@ for (let testCase of testCases.filter(x => !x.isSuccess())) {
 console.log(`Total: ${testCases.length}`);
 console.log(`Success: ${testCases.filter(x => x.isSuccess()).length}`);
 console.log(`Errors: ${testCases.filter(x => !x.isSuccess()).length}`);
+console.log(`Total time: ${time / 1000}`);
 
 if (testCases.filter(x => !x.isSuccess()).length) {
-    process.exit(1);
+    platform.exit(1);
 }
