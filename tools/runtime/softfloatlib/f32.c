@@ -36,53 +36,53 @@ EXP_UNOP32(float32_t, f32_sqrt);
 
 TRIVM_EXPORT_ASSEMBLY(
     bool, trivm_f32_ne, ( float32_t a, float32_t b ),
-    "READ32 [SP] - 8\n"
-    "READ32 [SP] - 8\n"
+    "READST 8\n"
+    "READST 8\n"
     "CALL __softfloatlib_f32_eq\n"
     "NOT\n"
-    "WRITE32 [SP] - 12\n"
-    "WRITE32 [SP]\n"
+    "WRITEST 12\n"
+    "WRITEST 0\n"
     "WRITE32 PC\n");
 
 TRIVM_EXPORT_ASSEMBLY(
     bool, trivm_f32_gt, ( float32_t a, float32_t b ),
-    "READ32 [SP] - 8\n"
-    "READ32 [SP] - 8\n"
-    "WRITE32 [SP] - 12\n"
-    "WRITE32 [SP] - 4\n"
+    "READST 8\n"
+    "READST 8\n"
+    "WRITEST 12\n"
+    "WRITEST 4\n"
     "BR __softfloatlib_f32_lt\n");
 
 TRIVM_EXPORT_ASSEMBLY(
     bool, trivm_f32_ge, ( float32_t a, float32_t b ),
-    "READ32 [SP] - 8\n"
-    "READ32 [SP] - 8\n"
-    "WRITE32 [SP] - 12\n"
-    "WRITE32 [SP] - 4\n"
+    "READST 8\n"
+    "READST 8\n"
+    "WRITEST 12\n"
+    "WRITEST 4\n"
     "BR __softfloatlib_f32_le\n");
 
 TRIVM_EXPORT_ASSEMBLY(
     float32_t, trivm_f32_abs, ( float32_t a ),
-    "READ32 [SP] - 4\n"
+    "READST 4\n"
     "AND 0x7FFFFFFF\n"
-    "WRITE32 [SP] - 4\n"
+    "WRITEST 4\n"
     "WRITE32 PC\n");
 
 TRIVM_EXPORT_ASSEMBLY(
     float32_t, trivm_f32_neg, ( float32_t a ),
     "__softfloatlib_trivm_f32_neg:\n"
-    "READ32 [SP] - 4\n"
+    "READST 4\n"
     "XOR 0x80000000\n"
-    "WRITE32 [SP] - 4\n"
+    "WRITEST 4\n"
     "WRITE32 PC\n");
 
 TRIVM_EXPORT_ASSEMBLY(
     float32_t, trivm_f32_copysign, (float32_t a, float32_t b),
-    "READ32 [SP] - 8\n"
-    "READ32 [SP] - 8\n"
+    "READST 8\n"
+    "READST 8\n"
     "XOR\n"
     "USHR 31\n"
     "BRF __softfloatlib_return_first32\n"
-    "WRITE32 [SP]\n"
+    "WRITEST 0\n"
     "BR __softfloatlib_trivm_f32_neg\n");
 
 TRIVM_EXPORT(trivm_f32_ceil)
@@ -199,8 +199,8 @@ float32_t trivm_f32_convert_i64_u(int64_t a)
 
 TRIVM_EXPORT_ASSEMBLY(
     bool, trivm_f32_min, ( float32_t a, float32_t b ),
-    "READ32 [SP] - 8\n"
-    "READ32 [SP] - 8\n"
+    "READST 8\n"
+    "READST 8\n"
     "CALL __softfloatlib_f32_le\n"
     "BRT __softfloatlib_return_first32\n"
     "BR __softfloatlib_return_second32\n"
@@ -208,8 +208,8 @@ TRIVM_EXPORT_ASSEMBLY(
 
 TRIVM_EXPORT_ASSEMBLY(
     bool, trivm_f32_max, ( float32_t a, float32_t b ),
-    "READ32 [SP] - 8\n"
-    "READ32 [SP] - 8\n"
+    "READST 8\n"
+    "READST 8\n"
     "CALL __softfloatlib_f32_le\n"
     "BRF __softfloatlib_return_first32\n"
     "BR __softfloatlib_return_second32\n"

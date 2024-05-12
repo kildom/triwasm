@@ -294,15 +294,15 @@ export class FuncGenerator extends CodeOutput implements WalkFunctionListener<Bl
             skipWords = (this.frameSize / 4) + this.stackSize - keepWords;
             let returnAddrRelOffset = 4 * this.stackSize + this.frameSize - this.returnAddressOffset - 4;
             if (keepWords === 1 && this.frameSize === 8 && this.returnAddressOffset === 4) {
-                this.output(['WRITE32 [SP] - 4', 'WRITE32 PC']);
+                this.output(['WRITEST 4', 'WRITE32 PC']);
             } else if (keepWords === 1 && this.frameSize === 12 && this.returnAddressOffset === 8) {
-                this.output(['WRITE32 [SP] - 8', 'WRITE32 [SP]', 'WRITE32 PC']);
+                this.output(['WRITEST 8', 'WRITEST 0', 'WRITE32 PC']);
             } else if (keepWords === 2 && this.frameSize === 12 && this.returnAddressOffset === 8) {
-                this.output(['WRITE32 [SP] - 8', 'WRITE32 [SP] - 8', 'WRITE32 PC']);
+                this.output(['WRITEST 8', 'WRITEST 8', 'WRITE32 PC']);
             } else if (returnAddrRelOffset === 0 && keepWords === 0 && skipWords > 0) {
                 this.generateUnwind(keepWords, skipWords - 1, true);
             } else {
-                this.output(`READ32 [SP] - ${returnAddrRelOffset}`);
+                this.output(`READST ${returnAddrRelOffset}`);
                 this.generateUnwind(keepWords, skipWords, true);
             }
         } else {
@@ -572,7 +572,7 @@ export class FuncGenerator extends CodeOutput implements WalkFunctionListener<Bl
             break;
         }
         case OP.TRIVM_LOCAL_GET32: {
-            this.output(`READ32 [SP] - ${4 * this.stackSize
+            this.output(`READST ${4 * this.stackSize
                 + this.frameSize - this.localsOffsets[this.instr.index] - this.instr.offset - 4}`);
             break;
         }
@@ -582,7 +582,7 @@ export class FuncGenerator extends CodeOutput implements WalkFunctionListener<Bl
             break;
         }
         case OP.TRIVM_LOCAL_SET32: {
-            this.output(`WRITE32 [SP] - ${4 * (this.stackSize - this.popPush.poppedWords)
+            this.output(`WRITEST ${4 * (this.stackSize - this.popPush.poppedWords)
                 + this.frameSize - this.localsOffsets[this.instr.index] - this.instr.offset - 4}`);
             break;
         }
@@ -718,7 +718,7 @@ const simpleGenerators: { [key: number]: string | ((instr: any) => string); } = 
     [OP.F64_CONVERT_I64_U]: 'CONVF64U64',
     [OP.F64_PROMOTE_F32]: 'PROMOTE',
     [OP.TRIVM_POP]: 'WRITE32 GPR0',
-    [OP.TRIVM_DUP32]: 'READ32 [SP]',
+    [OP.TRIVM_DUP32]: 'READST 0',
     [OP.TRIVM_DUP64]: 'READ64 [SP] - 4',
     [OP.TRIVM_GLOBAL_GET32]: (instr: OpType.TRIVM_GLOBAL_GET32) => `READ32 $_global_${instr.global.index} + ${instr.offset}`,
     [OP.TRIVM_GLOBAL_GET64]: (instr: OpType.TRIVM_GLOBAL_GET64) => `READ64 $_global_${instr.global.index} + ${instr.offset}`,
@@ -737,8 +737,8 @@ const simpleGenerators: { [key: number]: string | ((instr: any) => string); } = 
 const UNWIND_OPTIMIZED_CASES: {[key:string]: string[]} = {
     // 'keep,skip': [ instructions ]
     '0,1': [ 'WRITE32 GPR0' ],
-    '1,1': [ 'WRITE32 [SP]' ],
+    '1,1': [ 'WRITEST 0' ],
     '0,2': [ 'WRITE32 GPR0', 'WRITE32 GPR0' ],
-    '1,2': [ 'WRITE32 [SP] - 4', 'WRITE32 GPR0' ],
-    '2,2': [ 'WRITE32 [SP] - 4', 'WRITE32 [SP] - 4' ],
+    '1,2': [ 'WRITEST 4', 'WRITE32 GPR0' ],
+    '2,2': [ 'WRITEST 4', 'WRITEST 4' ],
 };

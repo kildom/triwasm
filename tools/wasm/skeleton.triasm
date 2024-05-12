@@ -44,6 +44,22 @@ export function skeleton(
 # Globals:
 # $_program_memory_base - base address of program memory in virtual address space (0 for RAM program, 0x80000000 for ROM programs)
 
+<% if (conf.vmConf.extensions.unwind) { %>
+.ext unwind
+<% } %>
+<% if (conf.vmConf.extensions.mem64) { %>
+.ext mem64
+<% } %>
+<% if (conf.vmConf.extensions.int64) { %>
+.ext int64
+<% } %>
+<% if (conf.vmConf.extensions.float32) { %>
+.ext float32
+<% } %>
+<% if (conf.vmConf.extensions.float64) { %>
+.ext float64
+<% } %>
+
 # ===========================================================
 # ======================== CONSTANTS ========================
 # ===========================================================
@@ -73,6 +89,8 @@ TRIVM_LAST_STACK_RELATED_FAULT = 3
 # Two memory model starts program memory at 0x80000000
 $_program_memory_base = 0x80000000
 .base $_program_memory_base
+
+some:
 
 # ======================= VM Registers =======================
 
@@ -176,7 +194,9 @@ BR $_trivm_fault_handler
 # Make default $_trivm_fault_handler as a weak reference
 .begin discardable
 $_trivm_default_fault_handler:
-HOST -0x80000000 # Special exit code to host indicating fault unhandled by guest.
+#HOST -0x80000000 # Special exit code to host indicating fault unhandled by guest.
+NEG -1
+SHL 31
 BR $_trivm_default_fault_handler
 .end
 .begin movable $_weak_symbols
@@ -204,38 +224,38 @@ BRF skip_startup
     copy_next_block:
     # ..., dst, src
     # Read block gap bytes.
-    READ32 [SP]
+    READST 0
     READ8U [POP]
-    READ32 [SP]
+    READST 0
     EQ 255
     .local skip_32_bits
     BRF skip_32_bits
         # ..., dst, src-1, 255
         WRITE32 GPR0
-        READ32 [SP]
+        READST 0
         ADD 1
         READ32 [POP]
         # ..., dst, src-5, gap_bytes
-        READ32 [SP] - 4
+        READST 4
         ADD 4
-        WRITE32 [SP] - 4
+        WRITEST 4
         # ..., dst, src-1, gap_bytes
     skip_32_bits:
-    READ32 [SP]
+    READST 0
     EQ 254
     .local exit_mem_init
     BRT exit_mem_init
     # ..., dst, src-1, gap_bytes
     # Skip "gap_bytes" in dst.
-    READ32 [SP] - 8
+    READST 8
     ADD
-    WRITE32 [SP] - 4
+    WRITEST 4
     # ..., dst, src-1
-    READ32 [SP]
+    READST 0
     READ8U [POP] + 1
-    READ32 [SP] - 4
+    READST 4
     ADD 2
-    WRITE32 [SP] - 4
+    WRITEST 4
     # ..., dst, src, copy_bytes
     CALL $_mem_copy_and_update
     # ..., dst, src
@@ -249,7 +269,7 @@ BRF skip_startup
     <%= globalsGen.dynamicInit.getOutput(true) %>
 
 skip_startup:
-NEG -$_normal_return_to_host
+NEG -vma2pma($_normal_return_to_host)
 <% if (conf.faults.invalidExport) { %>
     READ32 GPR0
     ULT <%= module.exportFunctionTable.length %>
@@ -286,13 +306,13 @@ WRITE32 MAB3
 
 # Disable stack overflow when shared stack is used.
 <% if (conf.faults.stackOverflow || conf.faults.guestStackOverflow) { %>
-    READ32 AMB0
+    READ32 MAB0
     WRITE32 GSPL
 <% } %>
 
 # Disable stack underflow.
 <% if (conf.faults.stackUnderflow) { %>
-    READ32 AMB0
+    READ32 MAB0
     WRITE32 SPL
 <% } %>
 
@@ -312,7 +332,7 @@ WRITE32 SP
         NEG -(0xFFFFFFFF)
         WRITE32 GSPH
     <% } %>
-    READ32 AMB0 # TODOv2: set guest stack initial value
+    READ32 MAB0 # TODOv2: set guest stack initial value
     WRITE32 GSP
 <% } %>
 
@@ -366,30 +386,30 @@ WRITE32 PC
 .begin
 $_mem_copy_and_update:
 # ..., dst, src, copy_bytes, ret
-READ32 [SP] - 4
+READST 4
 .local done
 BRF done
-READ32 [SP] - 4
+READST 4
 SUB 1
-WRITE32 [SP] - 4
-READ32 [SP] - 8
-READ32 [SP]
+WRITEST 4
+READST 8
+READST 0
 ADD 1
-WRITE32 [SP] - 12
+WRITEST 12
 # ..., dst, src+1, copy_bytes-1, ret, src
 READ8U [POP]
 # ..., dst, src+1, copy_bytes-1, ret, value
-READ32 [SP] - 16
-READ32 [SP]
+READST 16
+READST 0
 ADD 1
-WRITE32 [SP] - 20
+WRITEST 20
 # ..., dst+1, src+1, copy_bytes-1, ret, value, dst
 WRITE8 [POP]
 # ..., dst+1, src+1, copy_bytes-1, ret
 BR $_mem_copy_and_update
 done:
 # ..., dst+copy_bytes, src+copy_bytes, 0, ret
-WRITE32 [SP]
+WRITEST 0
 # ..., dst+copy_bytes, src+copy_bytes, ret
 WRITE32 PC
 .end

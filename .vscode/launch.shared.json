@@ -8,11 +8,11 @@
             "type": "node",
             "request": "launch",
             "name": "triasm",
-            "program": "${workspaceFolder}/tools/triasm.ts",
-            "args": ["-o", "out.trivm", "in.triasm"],
+            "program": "${workspaceFolder}/tools/asm/triasm.ts",
+            "args": ["temp/a.triasm"],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "npm: build-triasm",
-            "outFiles": [ "${workspaceFolder}/dist/bin/js/*.js" ]
+            "outFiles": [ "${workspaceFolder}/bin/js/*.js" ]
         },
         {
             "type": "node",

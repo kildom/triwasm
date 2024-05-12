@@ -122,6 +122,9 @@ export class Compiler {
         let ctx = new ExprContext();
         for (let instr of this.instructions) {
             if (instr instanceof Block) {
+                if (!instr.discarded) {
+                    currentBlock.deps.add(instr);
+                }
                 currentBlock = instr;
             }
             ctx.deps = currentBlock.deps;

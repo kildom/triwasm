@@ -73,31 +73,31 @@ TRIVM_ASSEMBLY(
     // al, ah, bl, bh, ret, ret_latest
     "WRITE32 GPR1\n"
     // al, ah, bl, bh, ret
-    "READ32 [SP] - 8\n"
-    "READ32 [SP] - 8\n"
+    "READST 8\n"
+    "READST 8\n"
     "CALL __triwasmlib__clz64\n"
     // al, ah, bl, bh, ret, zeros
-    "READ32 [SP] - 12\n"
-    "READ32 [SP] - 12\n"
-    "READ32 [SP] - 8\n"
+    "READST 12\n"
+    "READST 12\n"
+    "READST 8\n"
     "CALL __triwasmlib__shl64\n"
     // al, ah, bl, bh, ret, zeros, bl, bh
-    "WRITE32 [SP] - 12\n"
-    "WRITE32 [SP] - 12\n"
+    "WRITEST 12\n"
+    "WRITEST 12\n"
     // al, ah, bl, bh, ret, zeros
     "WRITE32 GPR0\n"
     "NEG -1\n"
     "READ32 MAB0\n"
-    "READ32 [SP]\n"
-    "READ32 [SP]\n"
+    "READST 0\n"
+    "READST 0\n"
     "READ32 GPR0\n"
     "CALL __triwasmlib__shl64\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi
     "loop_start:\n"
-    "READ32 [SP] - 32\n"
-    "READ32 [SP] - 32\n"
-    "READ32 [SP] - 32\n"
-    "READ32 [SP] - 32\n"
+    "READST 32\n"
+    "READST 32\n"
+    "READST 32\n"
+    "READST 32\n"
     ".REF __triwasmlib__sub64_save_carry"  //TODO: Referencing this label will enable discardable block in sub64 that saves carry to GPR0
     "CALL __triwasmlib__sub64\n"
     "READ32 GRP0\n"
@@ -107,33 +107,33 @@ TRIVM_ASSEMBLY(
     "BR skip_res\n"
     "add_res:"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, al, ah
-    "WRITE32 [SP] - 32\n"
-    "WRITE32 [SP] - 32\n"
+    "WRITEST 32\n"
+    "WRITEST 32\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi
-    "READ32 [SP] - 12\n"
-    "READ32 [SP] - 12\n"
+    "READST 12\n"
+    "READST 12\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, shift:lo, shift:hi
     "CALL __triwasmlib__or64\n"
     "skip_res:\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi
-    "READ32 [SP] - 24\n"
-    "READ32 [SP] - 24\n"
+    "READST 24\n"
+    "READST 24\n"
     "CALL __triwasmlib__ushr64_1\n"
-    "WRITE32 [SP] - 24\n"
-    "WRITE32 [SP] - 24\n"
-    "READ32 [SP] - 12\n"
-    "READ32 [SP] - 12\n"
+    "WRITEST 24\n"
+    "WRITEST 24\n"
+    "READST 12\n"
+    "READST 12\n"
     "CALL __triwasmlib__ushr64_1\n"
-    "READ32 [SP] - 4\n"
-    "READ32 [SP] - 4\n"
+    "READST 4\n"
+    "READST 4\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, shift:lo, shift:hi, shift:lo, shift:hi
-    "WRITE32 [SP] - 20\n"
-    "WRITE32 [SP] - 20\n"
+    "WRITEST 20\n"
+    "WRITEST 20\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, shift:lo, shift:hi
     "OR\n"
     "BRT loop_start\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi
-    "READ32 [SP] - 16\n"
+    "READST 16\n"
     // al, ah, bl, bh, ret, shift:lo, shift:hi, res:lo, res:hi, ret
     "READ32 GPR1\n"
     "WRITE32 PC\n"
@@ -237,23 +237,23 @@ uint32_t i64_le_s(uint32_t ah, uint32_t al, uint32_t bh, uint32_t bl)
 }
 
 TRIVM_ASSEMBLY(
-    "READ32 [SP]\n"
+    "READST 0\n"
     "READ32 MAB0\n"
-    "WRITE32 [SP] + 1\n"
+    "WRITEST 1\n"
     "JUMP udivmod64"
     )
 uint64_t udiv64(uint64_t b, uint64_t a);
 
 TRIVM_ASSEMBLY(
-    "READ32 [SP]\n"
+    "READST 0\n"
     "NEG -1\n"
-    "WRITE32 [SP] + 1\n"
+    "WRITEST 1\n"
     "JUMP udivmod64"
     )
 uint64_t umod64(uint64_t b, uint64_t a);
 
 TRIVM_EXPORT_INLINE_ASSEMBLY(
     uint64_t, i64_extend_i32_s, (uint32_t a),
-    "READ32 [SP]\n"
+    "READST 0\n"
     "SSHR 31\n"
 );

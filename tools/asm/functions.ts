@@ -121,7 +121,7 @@ export class AsmFunctions {
             }
             return BigInt(size);
         } else {
-            return this.func_vma(block.end, ctx) - this.func_vma(block, ctx);
+            return AsmFunctions.func_vma(block.end, ctx) - AsmFunctions.func_vma(block, ctx);
         }
     }
 

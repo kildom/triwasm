@@ -29,6 +29,7 @@ import { reduce } from './reducer';
 import { skeleton } from './skeleton';
 //import { reduce } from './reducer';
 import { WasmParser } from './wasmParser';
+import * as asm from '../asm/compiler';
 
 function moduleDebug(...args: any[]): void { }
 
@@ -122,6 +123,10 @@ t.print('Post-process');
 new Path('temp/out-pre.triasm').write(output.getOutput(false));
 new Path('temp/out.triasm').write(initTableGenerator.output.getOutput(false));
 
+let asmCompiler = new asm.Compiler();
+let outputBinary = asmCompiler.compile(initTableGenerator.output.getOutput(false));
+
+conf.args.output.write(outputBinary);
 
 /*
 try {

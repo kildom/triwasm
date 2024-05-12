@@ -220,6 +220,14 @@ non_const_value = label2
 .REF non_const_value ? label1 : label0
 label2:           ## RESULT 0 | 1
 
+.BEGIN
+.DATA8 label0
+.END
+.BEGIN discardable
+label0:
+.DATA8 0
+.END                ## RESULT 1 | 0
+
 ## GROUP_END
 
 ## GROUP Address directives
