@@ -5,7 +5,7 @@ import * as path from 'node:path';
 function templateToCode(text: string): string {
     let code = ('%>' + text.trim() + '<%').replace(/%>([\s\S]*?)<%(?!=)/g, (_, m) => {
         let code2 = m
-            .split(/<%=(.*?)%>/)
+            .split(/<%=(.*?)%>/s)
             .map((v: string, i: number) => (i % 2) === 0 ? `print(${JSON.stringify(v)});` : `print(${v});`)
             .join('\n');
         if (code2 !== 'print("");') {

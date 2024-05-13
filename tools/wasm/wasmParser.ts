@@ -207,7 +207,7 @@ export class WasmParser {
     // modules.html#binary-startsec
     private parseStartSection(input: BinaryInput) {
         let functionIndex = input.u32();
-        this.module.startFunction = pick(this.module.functions, functionIndex, 'Function does not exist.');
+        this.module.startFunctions.push(pick(this.module.functions, functionIndex, 'Function does not exist.'));
     }
 
     // modules.html#binary-codesec

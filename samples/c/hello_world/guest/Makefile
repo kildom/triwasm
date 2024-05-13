@@ -16,7 +16,7 @@ TRIWASM_FLAGS:=
 
 # WASM memory block is 64K, so tell clang to reserve first 65472 bytes for stack, remaining 64 bytes for data.
 # C stack grows backwards and only 64 bytes of C stack is actually used, so the first 65408 bytes are untouched.
-CFLAGS+= -Wl,--stack-first -z stack-size=65472 -Wl,--import-memory
+CFLAGS+= -Wl,--stack-first -z stack-size=65472
 # It is better to enable WASM extensions supported by triWASM.
 CFLAGS+= -mbulk-memory -mmultivalue -mmutable-globals -mnontrapping-fptoint -mreference-types -msign-ext
 # Disable WASM extensions that are not supported.
@@ -39,6 +39,8 @@ TRIWASM_FLAGS+= -c ../host/trivm-config.h
 TRIWASM_FLAGS+= --vm-stack-size=64 --guest-stack-first --guest-stack-size=64 # TODO: VM stack "shared"
 # WASM data memory starts at address 65472, where guest stack ends.
 TRIWASM_FLAGS+= --global-base=65472
+# The clang exports startup code as "_start" function.
+TRIWASM_FLAGS+= --entry-function=_start
 
 all: ../build/hello_world.trivm
 

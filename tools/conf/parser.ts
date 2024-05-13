@@ -171,6 +171,10 @@ function addFunction(functions: ConfFunction[], functionsUsage: Map<number, stri
 
     // TODOv1: Allow imported functions with negative indexes to allow exit from VM with code.
 
+    if (entry.index < 1) {
+        configError(`Function index must be greater than zero at: ${entry.configText}`);
+    }
+
     attrs = attrs.trim().toUpperCase();
     let result: ConfFunction = {
         ...entry,

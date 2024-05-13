@@ -12,9 +12,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { pick } from '../common/common';
 import { ConfFunction, ConfInterfaceDirection } from '../conf/conf';
 import { WasmConf } from './args';
-import { WasmFunctionKind, WasmModule } from './wasmModule';
+import { WasmFunction, WasmFunctionKind, WasmModule } from './wasmModule';
 
 
 export class LinkResolver {
@@ -25,6 +26,35 @@ export class LinkResolver {
     public resolve(module: WasmModule) {
         this.resolveInternalLinks(module);
         this.resolveHostLinks(module);
+        this.resolveStartFunctions(module);
+    }
+
+    private resolveStartFunctions(module: WasmModule) {
+        for (let nameOrIndex of this.conf.args.entryFunction) {
+            let func: WasmFunction | undefined = undefined;
+            if (nameOrIndex.startsWith('#')) {
+                let index = parseInt(nameOrIndex.substring(1).trim());
+                if (`${index}` === nameOrIndex.substring(1).trim()) {
+                    func = pick(module.functions, index, 'Invalid index in "--entry-function" parameter.');
+                }
+            }
+            if (!func) {
+                modFuncLoop:
+                for (let modFunc of module.functions) {
+                    for (let exp of modFunc.exports) {
+                        if (exp.name === nameOrIndex && exp.module === '__main__') {
+                            func = modFunc;
+                            break modFuncLoop;
+                        }
+                    }
+                }
+            }
+            if (func) {
+                module.startFunctions.push(func);
+            } else {
+                throw new Error(`Cannot find function "${nameOrIndex}" required by "--entry-function" parameter.`);
+            }
+        }
     }
 
     private resolveHostLinks(module: WasmModule) {
@@ -68,6 +98,8 @@ export class LinkResolver {
                             doneExports.add(hostFunction);
                             // TODOv2: for regcall functions, create a assembly wrapper function that pushes regs
                             // to stack and calls actual function. Place in this table a wrapper function.
+                            // If function returns void, place wrapper function before actual and fall from wrapper to
+                            // actual function.
                             module.exportFunctionTable[hostFunction.index] = func;
                         }
                     }

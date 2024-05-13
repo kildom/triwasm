@@ -24,7 +24,8 @@
 
 /* triVM interface:
  *
- * import function[0] void env.println(i32 text);
+ * import function[1] void env.println(i32 text);
+ * export function[1] i32 test(i32);
  *
  */
 

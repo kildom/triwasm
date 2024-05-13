@@ -496,7 +496,7 @@ export class WasmModule {
     public elements: WasmElement[] = [];
     public data: WasmData[] = [];
     public stackPointerDetector?: WasmFunction;
-    public startFunction?: WasmFunction;
+    public startFunctions: WasmFunction[] = [];
     public exported: Map<string, Map<string, WasmFunction>> = new Map();
     public exportFunctionTable: (WasmFunction | undefined)[] = [];
     public logicalOffsets: { start: number, end: number } = { start: 0, end: 0 };

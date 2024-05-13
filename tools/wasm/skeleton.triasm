@@ -288,11 +288,12 @@ NEG -vma2pma($_normal_return_to_host)
 READ32 GPR0
 <% if (conf.smallProgramModel) { %>
     MUL 2
-    READ16U [POP] + $_export_table + $_program_memory_base
+    READ16U [POP] + $_export_table
 <% } else { %>
     MUL 4
-    READ32 [POP] + $_export_table + $_program_memory_base
+    READ32 [POP] + $_export_table
 <% } %>
+$_empty_function:
 WRITE32 PC
 .end
 
@@ -374,11 +375,29 @@ WRITE32 PC
 <% if (conf.smallProgramModel) { %>
     .align 2
     $_export_table:
-    .data16 <%= module.exportFunctionTable.map(func => func ? func.name : '$_trigger_invalid_export_fault').join(', ') %>
+    .data16 vma2pma($_start_functions)
+    .data16 <%= module.exportFunctionTable
+        .slice(1)
+        .map(func => func ? `vma2pma(${func.name})` : '$_trigger_invalid_export_fault').join(', ') %>
 <% } else { %>
     .align 4
     $_export_table:
-    .data32 <%= module.exportFunctionTable.map(func => func ? func.name : '$_trigger_invalid_export_fault').join(', ') %>
+    .data32 vma2pma($_start_functions)
+    .data32 <%= module.exportFunctionTable
+        .slice(1)
+        .map(func => func ? `vma2pma(${func.name})` : '$_trigger_invalid_export_fault').join(', ') %>
+<% } %>
+
+<% if (module.startFunctions.length > 1) { %>
+    $_start_functions:
+    <% for (let func of module.startFunctions.slice(0, module.startFunctions.length - 1)) { %>
+    CALL <%= func.name %>
+    <% } %>
+    BR <%= module.startFunctions.at(-1)!.name %>
+<% } else if (module.startFunctions.length > 0) { %>
+    $_start_functions = <%= module.startFunctions[0].name %>
+<% } else { %>
+    $_start_functions = $_empty_function
 <% } %>
 
 # ===================== UTILITY FUNCTIONS ======================

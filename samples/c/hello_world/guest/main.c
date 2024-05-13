@@ -9,6 +9,12 @@ int main() {
     return 0;
 }
 
+TRIVM_EXPORT(test)
+int test(int x) {
+    return x + 1;
+}
+
+
 #if 0
 TRIVM_EXPORT(a)
 void f() {
