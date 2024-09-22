@@ -57,6 +57,21 @@ find_engine() {
             return 0
         fi
     }
+    check_gjs() {
+        $LOG "Checking GNOME JavaScript at: $1"
+        set +e
+        "$1" <<< "imports.system.exit(86);" 2> /dev/null > /dev/null
+        result=$?
+        set -e
+        if [ $result == 86 ]; then
+            $LOG "    RESULT: OK"
+            ENGINE_BIN="$1"
+            return 1
+        else
+            $LOG "    RESULT: Error"
+            return 0
+        fi
+    }
     trap 'return 0' ERR
     check_node $SCRIPT_DIR/../ext/electron/electron
     for f in $SCRIPT_DIR/../ext/electron/*; do check_node $f/electron; done
@@ -76,6 +91,7 @@ find_engine() {
     check_node node
     check_deno deno
     check_qjs qjs
+    check_gjs gjs
     check_deno $HOME/.deno/bin/deno
     >&2 echo
     >&2 echo "Cannot find any JavaScript runtime."
