@@ -138,6 +138,78 @@ window._triwasm_browser_platform_impl :
     return platform;
 })():
 
+/* ------------------------------------ GJS ------------------------------------ */
+(typeof(ARGV) == 'object' && Array.isArray(ARGV) && typeof(imports) == 'object' && typeof(imports.gi) == 'object') ?
+(function() {
+    const platform = {};
+    const System = imports.system;
+    const Gio = imports.gi.Gio;
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    platform.getArgv = function() {
+        return ARGV;
+    };
+
+    platform.exit = function(code) {
+        System.exit(code || 0);
+    };
+
+    platform.readFile = function(path, binary) {
+        const file = Gio.File.new_for_path(path);
+        const c = file.load_contents(null)
+        if (binary) {
+            return c[1];
+        } else {
+            return decoder.decode(c[1]);
+        }
+    }
+
+    platform.writeFile = function(path, content) {
+        const file = Gio.File.new_for_path(path);
+        let bytes;
+        if (typeof(content) === 'string') {
+            bytes = encoder.encode(content);
+        } else {
+            bytes = content;
+        }
+        file.replace_contents(bytes, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+    }
+
+    platform.getHRTimer = function() {
+        return Date.now();
+    }
+
+    platform.scriptFile = (function() {
+        return System.programPath;
+    })();
+
+    platform.isWindows = false;
+
+    let versionString = '';
+    let versionNumber = System.version;
+    while (versionNumber > 0) {
+        versionString = `.${versionNumber % 100}${versionString}`;
+        versionNumber = Math.floor(versionNumber / 100);
+    }
+    platform.info = `gjs ${versionString.substring(1)}`;
+
+    platform.main = function(callback) {
+        callback();
+    }
+
+    platform.console = {
+        log: function(...args) {
+            print(...args);
+        },
+        error: function(...args) {
+            printerr(...args);
+        }
+    }
+
+    return platform;
+})():
+
 /* ------------------------------------ QuickJS ------------------------------------ */
 (typeof(scriptArgs) == 'object' && typeof(os) == 'object' && typeof(std) == 'object' && typeof(os.S_IFIFO) == 'number') ?
 (function() {
@@ -371,6 +443,12 @@ window._triwasm_browser_platform_impl :
     return platform;
 })():
 
+/* ------------------------ Predefined platform implementation (e.g. browser) ------------------------ */
+(typeof(_trivm_platform_impl_) == 'object') ?
+(function() {
+    return _trivm_platform_impl_;
+})():
+
 /* ------------------------------------ Unknown platform ------------------------------------ */
 (function() {
     if (typeof(scriptArgs) == 'object') {
@@ -392,6 +470,12 @@ if (!Array.prototype.at) {
 if (typeof(TextDecoder) === 'undefined') {
     std.exit._triwasm_platform_impl = _triwasm_platform_impl;
     std.evalScript('var TextDecoder = std.exit._triwasm_platform_impl.TextDecoder;');
+}
+
+var console = globalThis.console;
+
+if (typeof(_triwasm_platform_impl.console) !== 'undefined') {
+    console = _triwasm_platform_impl.console;
 }
 
 const trace = true;
