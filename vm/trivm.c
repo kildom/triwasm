@@ -464,6 +464,20 @@ invalid_instruction:
 #endif
 }
 
+/* ================================================ BUILTIN extension ================================================ */
+
+static int trivm_builtin(struct trivm_instance *vm, uint32_t arg1)
+{
+	// TODOv1: configurable built-in functions
+	/*
+	binary // BB is memory base register
+	0000 BB 0 - memmove ( destination, source, count ) => ( destination_updated ); return source_updated;
+	0001 BB 0 - memset ( destination, value, count ) => ( void ); return destination_updated;
+	0010 BB 0 - memcmp ( destination, source, count ) => ( void ); return result; 
+	*/
+	return 0;
+}
+
 
 /* ================================================ UNWIND extension ================================================ */
 
@@ -898,7 +912,8 @@ int trivm_run(struct trivm_instance *vm, uint32_t limit)
 {
 	int result = 0;
 	/*> RUN limit={{limit}} */
-	while (limit > 0 && result >= 0)
+	while (limit > 0 && result >= 0) // TODOv2: Place limit in the vm instance and decrement it in long-running tasks based on data processed, e.g. unwind, memmove
+									 // Try to support it in the nested calls, so the outer task will cover also all nested calls.
 	{
 		/*> STEP limit={{limit}} ... */
 		result = trivm_step(vm);

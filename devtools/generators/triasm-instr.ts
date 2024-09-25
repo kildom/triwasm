@@ -8,6 +8,7 @@ const odsFile = 'devtools/generators/trivm-instr.ods';
 
 const supportedExt = new Set<string>([
     'UNWIND',
+    'BUILTIN',
     'MEM64',
     'INT64',
     'FLOAT32',

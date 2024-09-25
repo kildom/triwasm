@@ -332,6 +332,7 @@ function generateDumper(table: Row[]) {
 
 const extNames: {[key:string]: string} = {
     unwind: 'unwind',
+    builtin: 'builtin',
     m64: 'mem64',
     i64: 'int64',
     f32: 'float32',

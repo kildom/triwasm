@@ -12,6 +12,7 @@ const defileNewLine = '        \\\n';
 
 const supportedExt = new Set<string>([
     'UNWIND',
+    'BUILTIN',
     'INT64',
     'FLOAT32',
     'FLOAT64',
