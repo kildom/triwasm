@@ -944,6 +944,11 @@ export class WasmParser {
             }
             break;
         }
+        case 'used':
+            if (func.kind !== WasmFunctionKind.WASM) {
+                throw new Error('Only normal WASM function can be marked as used');
+            }
+            break;
         default:
             throw new Error(`Unknown triVM magic function: ${id}`);
         }

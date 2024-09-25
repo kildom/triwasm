@@ -6,8 +6,8 @@ Always generate and commit it when you change anything in the source file.
 Name: instr
 Columns: instruction | immediate | binaryOpcode | parser | type | reduction | afterReduction | generate
 Headers: Instruction | Immediate | Binary Opcode | Parser | Type | Reduction | After reduction | Generate
-Description:  |  |  |  |  |  |  | 
-unreachable |  | 0x00 |  | [t1∗]→[t2∗] | ! | false | 
+Description: 
+unreachable |  | 0x00 |  | [t1∗]→[t2∗] | ! | false
 nop |  | 0x01 |  | []→[] | ## | true | # NOP
 block | bt | 0x02 | block | [t1∗]→[t2∗] | ## | true | !
 loop | bt | 0x03 | block | [t1∗]→[t2∗] | ## | true | !
@@ -17,85 +17,85 @@ end |  | 0x0B | end |  | ! | true | !
 br | l | 0x0C | labelidx | [t1∗ t∗]→[t2∗] | ! | true | !
 br_if | l | 0x0D | labelidx | [t∗ i32]→[t∗] | ! | true | !
 br_table | l∗ l | 0x0E | labelidx[] | [t1∗ t∗ i32]→[t2∗] | ! | true | !
-return |  | 0x0F |  | [t1∗ t∗]→[t2∗] | ! | false | 
+return |  | 0x0F |  | [t1∗ t∗]→[t2∗] | ! | false
 call | x | 0x10 | funcidx | [t1∗]→[t2∗] | ! | true | !
-call_indirect | x y | 0x11 | typeidx, tableidx | [t1∗ i32]→[t2∗] | ! | false | 
-drop |  | 0x1A |  | [t]→[] | ! | false | 
-select |  | 0x1B |  | [t t i32]→[t] | !select | false | 
-select_t | t | 0x1C | valtype[] | [t t i32]→[t] | !select | false | 
-local.get | x | 0x20 | localidx | []→[t] | ! | false | 
-local.set | x | 0x21 | localidx | [t]→[] | ! | false | 
-local.tee | x | 0x22 | localidx | [t]→[t] | ! | false | 
-global.get | x | 0x23 | globalidx | []→[t] | ! | false | 
-global.set | x | 0x24 | globalidx | [t]→[] | ! | false | 
+call_indirect | x y | 0x11 | typeidx, tableidx | [t1∗ i32]→[t2∗] | ! | false
+drop |  | 0x1A |  | [t]→[] | ! | false
+select |  | 0x1B |  | [t t i32]→[t] | !select | false
+select_t | t | 0x1C | valtype[] | [t t i32]→[t] | !select | false
+local.get | x | 0x20 | localidx | []→[t] | ! | false
+local.set | x | 0x21 | localidx | [t]→[] | ! | false
+local.tee | x | 0x22 | localidx | [t]→[t] | ! | false
+global.get | x | 0x23 | globalidx | []→[t] | ! | false
+global.set | x | 0x24 | globalidx | [t]→[] | ! | false
 table.get | x | 0x25 | tableidx | [i32]→[t] | ! | true | !
 table.set | x | 0x26 | tableidx | [i32 t]→[] | ! | true | !
-i32.load | memarg | 0x28 | memarg | [i32]→[i32] | ## | true | UREAD32 [MAB1] + [POP] + {offset}
-i64.load | memarg | 0x29 | memarg | [i32]→[i64] | {#mem64} ## {elif ..offset == 0} @i64_load_0 {else} i32.const value:..offset ; @i64_load | #mem64 | UREAD64 [MAB1] + [POP] + {offset}
-f32.load | memarg | 0x2A | memarg | [i32]→[f32] | i32.load offset, memory | false | 
-f64.load | memarg | 0x2B | memarg | [i32]→[f64] | {#mem64} i64.load memory, offset {elif ..offset == 0} @i64_load_0 {else} i32.const value:..offset ; @i64_load | false | 
-i32.load8_s | memarg | 0x2C | memarg | [i32]→[i32] | ## | true | UREAD8S [MAB1] + [POP] + {offset}
-i32.load8_u | memarg | 0x2D | memarg | [i32]→[i32] | ## | true | UREAD8U [MAB1] + [POP] + {offset}
-i32.load16_s | memarg | 0x2E | memarg | [i32]→[i32] | ## | true | UREAD16S [MAB1] + [POP] + {offset}
-i32.load16_u | memarg | 0x2F | memarg | [i32]→[i32] | ## | true | UREAD16U [MAB1] + [POP] + {offset}
-i64.load8_s | memarg | 0x30 | memarg | [i32]→[i64] | i32.load8_s offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s | false | 
-i64.load8_u | memarg | 0x31 | memarg | [i32]→[i64] | i32.load8_u memory, offset ; i32.const value:0 | false | 
-i64.load16_s | memarg | 0x32 | memarg | [i32]→[i64] | i32.load16_s offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s | false | 
-i64.load16_u | memarg | 0x33 | memarg | [i32]→[i64] | i32.load16_u memory, offset ; i32.const value:0 | false | 
-i64.load32_s | memarg | 0x34 | memarg | [i32]→[i64] | i32.load offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s | false | 
-i64.load32_u | memarg | 0x35 | memarg | [i32]→[i64] | i32.load offset, memory ; i32.const value:0 | false | 
-i32.store | memarg | 0x36 | memarg | [i32 i32]→[] | ## | true | UWRITE32 [MAB1] + [POP] + {offset}
-i64.store | memarg | 0x37 | memarg | [i32 i64]→[] | {#mem64} ## {elif ..offset == 0} @i64_store_0 {else} i32.const value:..offset ; @i64_store {end} | #mem64 | UWRITE64 [MAB1] + [POP] + {offset}
-f32.store | memarg | 0x38 | memarg | [i32 f32]→[] | i32.store offset, memory | false | 
-f64.store | memarg | 0x39 | memarg | [i32 f64]→[] | {#mem64} i64.store offset, memory {elif ..offset == 0} @i64_store_0 {else} i32.const value:..offset ; @i64_store {end} | false | 
-i32.store8 | memarg | 0x3A | memarg | [i32 i32]→[] | ## | true | UWRITE8 [MAB1] + [POP] + {offset}
-i32.store16 | memarg | 0x3B | memarg | [i32 i32]→[] | ## | true | UWRITE16 [MAB1] + [POP] + {offset}
-i64.store8 | memarg | 0x3C | memarg | [i32 i64]→[] | trivm.pop value: 1 ; i32.store8 offset, memory | false | 
-i64.store16 | memarg | 0x3D | memarg | [i32 i64]→[] | trivm.pop value: 1 ; i32.store16 offset, memory | false | 
-i64.store32 | memarg | 0x3E | memarg | [i32 i64]→[] | trivm.pop value: 1 ; i32.store offset, memory | false | 
-memory.size |  | 0x3F | memidx | []→[i32] | @memory_size | false | 
-memory.grow |  | 0x40 | memidx | [i32]→[i32] | @memory_grow | false | 
+i32.load | memarg | 0x28 | memarg | [i32]→[i32] | ## | true | READ32 [MAB1] + [POP] + {offset}
+i64.load | memarg | 0x29 | memarg | [i32]→[i64] | {#mem64} ## {elif ..offset == 0} @i64_load_0 {else} i32.const value:..offset ; @i64_load | #mem64 | READ64 [MAB1] + [POP] + {offset}
+f32.load | memarg | 0x2A | memarg | [i32]→[f32] | i32.load offset, memory | false
+f64.load | memarg | 0x2B | memarg | [i32]→[f64] | {#mem64} i64.load memory, offset {elif ..offset == 0} @i64_load_0 {else} i32.const value:..offset ; @i64_load | false
+i32.load8_s | memarg | 0x2C | memarg | [i32]→[i32] | ## | true | READ8S [MAB1] + [POP] + {offset}
+i32.load8_u | memarg | 0x2D | memarg | [i32]→[i32] | ## | true | READ8U [MAB1] + [POP] + {offset}
+i32.load16_s | memarg | 0x2E | memarg | [i32]→[i32] | ## | true | READ16S [MAB1] + [POP] + {offset}
+i32.load16_u | memarg | 0x2F | memarg | [i32]→[i32] | ## | true | READ16U [MAB1] + [POP] + {offset}
+i64.load8_s | memarg | 0x30 | memarg | [i32]→[i64] | i32.load8_s offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s | false
+i64.load8_u | memarg | 0x31 | memarg | [i32]→[i64] | i32.load8_u memory, offset ; i32.const value:0 | false
+i64.load16_s | memarg | 0x32 | memarg | [i32]→[i64] | i32.load16_s offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s | false
+i64.load16_u | memarg | 0x33 | memarg | [i32]→[i64] | i32.load16_u memory, offset ; i32.const value:0 | false
+i64.load32_s | memarg | 0x34 | memarg | [i32]→[i64] | i32.load offset, memory {#i64} i64.extend_i32_s {else} @i64_extend_i32_s | false
+i64.load32_u | memarg | 0x35 | memarg | [i32]→[i64] | i32.load offset, memory ; i32.const value:0 | false
+i32.store | memarg | 0x36 | memarg | [i32 i32]→[] | ## | true | WRITE32 [MAB1] + [POP] + {offset}
+i64.store | memarg | 0x37 | memarg | [i32 i64]→[] | {#mem64} ## {elif ..offset == 0} @i64_store_0 {else} i32.const value:..offset ; @i64_store {end} | #mem64 | WRITE64 [MAB1] + [POP] + {offset}
+f32.store | memarg | 0x38 | memarg | [i32 f32]→[] | i32.store offset, memory | false
+f64.store | memarg | 0x39 | memarg | [i32 f64]→[] | {#mem64} i64.store offset, memory {elif ..offset == 0} @i64_store_0 {else} i32.const value:..offset ; @i64_store {end} | false
+i32.store8 | memarg | 0x3A | memarg | [i32 i32]→[] | ## | true | WRITE8 [MAB1] + [POP] + {offset}
+i32.store16 | memarg | 0x3B | memarg | [i32 i32]→[] | ## | true | WRITE16 [MAB1] + [POP] + {offset}
+i64.store8 | memarg | 0x3C | memarg | [i32 i64]→[] | trivm.pop value: 1 ; i32.store8 offset, memory | false
+i64.store16 | memarg | 0x3D | memarg | [i32 i64]→[] | trivm.pop value: 1 ; i32.store16 offset, memory | false
+i64.store32 | memarg | 0x3E | memarg | [i32 i64]→[] | trivm.pop value: 1 ; i32.store offset, memory | false
+memory.size |  | 0x3F | memidx | []→[i32] | @memory_size | false
+memory.grow |  | 0x40 | memidx | [i32]→[i32] | @memory_grow | false
 i32.const | i32 | 0x41 | s32 | []→[i32] | ## | true | !
 i64.const | i64 | 0x42 | s64 | []→[i64] | {#i64} ## {else} i32.const value: Number(..value & 0xFFFFFFFFn) & 0xFFFFFFFF ; i32.const value: Number(..value >> 32n) & 0xFFFFFFFF | #i64 | !
-f32.const | f32 | 0x43 | f32 | []→[f32] | i32.const value | false | 
-f64.const | f64 | 0x44 | f64 | []→[f64] | {#i64} i64.const value {else} i32.const value: Number(..value & 0xFFFFFFFFn) & 0xFFFFFFFF ; i32.const value: Number(..value >> 32n) & 0xFFFFFFFF | false | 
+f32.const | f32 | 0x43 | f32 | []→[f32] | i32.const value | false
+f64.const | f64 | 0x44 | f64 | []→[f64] | {#i64} i64.const value {else} i32.const value: Number(..value & 0xFFFFFFFFn) & 0xFFFFFFFF ; i32.const value: Number(..value >> 32n) & 0xFFFFFFFF | false
 i32.eqz |  | 0x45 |  | [i32]→[i32] | ## | true | NOT
 i32.eq |  | 0x46 |  | [i32 i32]→[i32] | ## | true | EQ
-i32.ne |  | 0x47 |  | [i32 i32]→[i32] | i32.eq ; i32.eqz | false | 
+i32.ne |  | 0x47 |  | [i32 i32]→[i32] | i32.eq ; i32.eqz | false
 i32.lt_s |  | 0x48 |  | [i32 i32]→[i32] | ## | true | SLT
 i32.lt_u |  | 0x49 |  | [i32 i32]→[i32] | ## | true | ULT
 i32.gt_s |  | 0x4A |  | [i32 i32]→[i32] | ## | true | SGT
 i32.gt_u |  | 0x4B |  | [i32 i32]→[i32] | ## | true | UGT
-i32.le_s |  | 0x4C |  | [i32 i32]→[i32] | i32.gt_s ; i32.eqz | false | 
-i32.le_u |  | 0x4D |  | [i32 i32]→[i32] | i32.gt_u ; i32.eqz | false | 
-i32.ge_s |  | 0x4E |  | [i32 i32]→[i32] | i32.lt_s ; i32.eqz | false | 
-i32.ge_u |  | 0x4F |  | [i32 i32]→[i32] | i32.lt_u ; i32.eqz | false | 
-i64.eqz |  | 0x50 |  | [i64]→[i32] | i32.or ; i32.eqz | false | 
+i32.le_s |  | 0x4C |  | [i32 i32]→[i32] | i32.gt_s ; i32.eqz | false
+i32.le_u |  | 0x4D |  | [i32 i32]→[i32] | i32.gt_u ; i32.eqz | false
+i32.ge_s |  | 0x4E |  | [i32 i32]→[i32] | i32.lt_s ; i32.eqz | false
+i32.ge_u |  | 0x4F |  | [i32 i32]→[i32] | i32.lt_u ; i32.eqz | false
+i64.eqz |  | 0x50 |  | [i64]→[i32] | i32.or ; i32.eqz | false
 i64.eq |  | 0x51 |  | [i64 i64]→[i32] | {#i64} ## {else} @i64_eq | #i64 | EQ64
-i64.ne |  | 0x52 |  | [i64 i64]→[i32] | {#i64} i64.eq ; i32.eqz {else} @i64_ne | false | 
+i64.ne |  | 0x52 |  | [i64 i64]→[i32] | {#i64} i64.eq ; i32.eqz {else} @i64_ne | false
 i64.lt_s |  | 0x53 |  | [i64 i64]→[i32] | {#i64} ## {else} @i64_lt_s | #i64 | SLT64
 i64.lt_u |  | 0x54 |  | [i64 i64]→[i32] | {#i64} ## {else} @i64_lt_u | #i64 | ULT64
 i64.gt_s |  | 0x55 |  | [i64 i64]→[i32] | {#i64} ## {else} @i64_gt_s | #i64 | SGT64
 i64.gt_u |  | 0x56 |  | [i64 i64]→[i32] | {#i64} ## {else} @i64_gt_u | #i64 | UGT64
-i64.le_s |  | 0x57 |  | [i64 i64]→[i32] | {#i64} ## ; i32.eqz {else} @i64_le_s | false | 
-i64.le_u |  | 0x58 |  | [i64 i64]→[i32] | {#i64} ## ; i32.eqz {else} @i64_le_u | false | 
-i64.ge_s |  | 0x59 |  | [i64 i64]→[i32] | {#i64} ## ; i32.eqz {else} @i64_ge_s | false | 
-i64.ge_u |  | 0x5A |  | [i64 i64]→[i32] | {#i64} ## ; i32.eqz {else} @i64_ge_u | false | 
+i64.le_s |  | 0x57 |  | [i64 i64]→[i32] | {#i64} ## ; i32.eqz {else} @i64_le_s | false
+i64.le_u |  | 0x58 |  | [i64 i64]→[i32] | {#i64} ## ; i32.eqz {else} @i64_le_u | false
+i64.ge_s |  | 0x59 |  | [i64 i64]→[i32] | {#i64} ## ; i32.eqz {else} @i64_ge_s | false
+i64.ge_u |  | 0x5A |  | [i64 i64]→[i32] | {#i64} ## ; i32.eqz {else} @i64_ge_u | false
 f32.eq |  | 0x5B |  | [f32 f32]→[i32] | {#f32} ## {else} @f32_eq | #f32 | EQF32
-f32.ne |  | 0x5C |  | [f32 f32]→[i32] | {#f32} f32.eq ; i32.eqz {else} @f32_ne | false | 
+f32.ne |  | 0x5C |  | [f32 f32]→[i32] | {#f32} f32.eq ; i32.eqz {else} @f32_ne | false
 f32.lt |  | 0x5D |  | [f32 f32]→[i32] | {#f32} ## {else} @f32_lt | #f32 | LTF32
 f32.gt |  | 0x5E |  | [f32 f32]→[i32] | {#f32} ## {else} @f32_gt | #f32 | GTF32
 f32.le |  | 0x5F |  | [f32 f32]→[i32] | {#f32} ## {else} @f32_le | #f32 | LEF32
 f32.ge |  | 0x60 |  | [f32 f32]→[i32] | {#f32} ## {else} @f32_ge | #f32 | GEF32
 f64.eq |  | 0x61 |  | [f64 f64]→[i32] | {#f64} ## {else} @f64_eq | #f64 | EQF64
-f64.ne |  | 0x62 |  | [f64 f64]→[i32] | {#f64} f64.eq ; i32.eqz {else} @f64_ne | false | 
+f64.ne |  | 0x62 |  | [f64 f64]→[i32] | {#f64} f64.eq ; i32.eqz {else} @f64_ne | false
 f64.lt |  | 0x63 |  | [f64 f64]→[i32] | {#f64} ## {else} @f64_lt | #f64 | LTF64
 f64.gt |  | 0x64 |  | [f64 f64]→[i32] | {#f64} ## {else} @f64_gt | #f64 | GTF64
 f64.le |  | 0x65 |  | [f64 f64]→[i32] | {#f64} ## {else} @f64_le | #f64 | LEF64
 f64.ge |  | 0x66 |  | [f64 f64]→[i32] | {#f64} ## {else} @f64_ge | #f64 | GEF64
-i32.clz |  | 0x67 |  | [i32]→[i32] | @i32_clz | false | 
-i32.ctz |  | 0x68 |  | [i32]→[i32] | @i32_ctz | false | 
-i32.popcnt |  | 0x69 |  | [i32]→[i32] | @i32_popcnt | false | 
+i32.clz |  | 0x67 |  | [i32]→[i32] | @i32_clz | false
+i32.ctz |  | 0x68 |  | [i32]→[i32] | @i32_ctz | false
+i32.popcnt |  | 0x69 |  | [i32]→[i32] | @i32_popcnt | false
 i32.add |  | 0x6A |  | [i32 i32]→[i32] | ## | true | ADD
 i32.sub |  | 0x6B |  | [i32 i32]→[i32] | ## | true | SUB
 i32.mul |  | 0x6C |  | [i32 i32]→[i32] | ## | true | MUL
@@ -109,11 +109,11 @@ i32.xor |  | 0x73 |  | [i32 i32]→[i32] | ## | true | XOR
 i32.shl |  | 0x74 |  | [i32 i32]→[i32] | ## | true | SHL
 i32.shr_s |  | 0x75 |  | [i32 i32]→[i32] | ## | true | SSHR
 i32.shr_u |  | 0x76 |  | [i32 i32]→[i32] | ## | true | USHR
-i32.rotl |  | 0x77 |  | [i32 i32]→[i32] | @i32_rotl | false | 
-i32.rotr |  | 0x78 |  | [i32 i32]→[i32] | @i32_rotr | false | 
-i64.clz |  | 0x79 |  | [i64]→[i64] | @i64_clz32; i32.const value:0 | false | 
-i64.ctz |  | 0x7A |  | [i64]→[i64] | @i64_ctz32; i32.const value:0 | false | 
-i64.popcnt |  | 0x7B |  | [i64]→[i64] | @i64_popcnt32; i32.const value:0 | false | 
+i32.rotl |  | 0x77 |  | [i32 i32]→[i32] | @i32_rotl | false
+i32.rotr |  | 0x78 |  | [i32 i32]→[i32] | @i32_rotr | false
+i64.clz |  | 0x79 |  | [i64]→[i64] | @i64_clz32; i32.const value:0 | false
+i64.ctz |  | 0x7A |  | [i64]→[i64] | @i64_ctz32; i32.const value:0 | false
+i64.popcnt |  | 0x7B |  | [i64]→[i64] | @i64_popcnt32; i32.const value:0 | false
 i64.add |  | 0x7C |  | [i64 i64]→[i64] | {#i64} ## {else} @i64_add | #i64 | ADD64
 i64.sub |  | 0x7D |  | [i64 i64]→[i64] | {#i64} ## {else} @i64_sub | #i64 | SUB64
 i64.mul |  | 0x7E |  | [i64 i64]→[i64] | {#i64} ## {else} @i64_mul | #i64 | MUL64
@@ -127,10 +127,10 @@ i64.xor |  | 0x85 |  | [i64 i64]→[i64] | {#i64} ## {else} @i64_xor | #i64 | XO
 i64.shl |  | 0x86 |  | [i64 i64]→[i64] | {#i64} ## {else} @i64_shl | #i64 | SHL64
 i64.shr_s |  | 0x87 |  | [i64 i64]→[i64] | {#i64} ## {else} @i64_shr_s | #i64 | SSHR64
 i64.shr_u |  | 0x88 |  | [i64 i64]→[i64] | {#i64} ## {else} @i64_shr_u | #i64 | USHR64
-i64.rotl |  | 0x89 |  | [i64 i64]→[i64] | @i64_rotl | false | 
-i64.rotr |  | 0x8A |  | [i64 i64]→[i64] | @i64_rotr | false | 
-f32.abs |  | 0x8B |  | [f32]→[f32] | i32.const value: -1 ; trivm.ushr_const value: 1 ; i32.and | false | 
-f32.neg |  | 0x8C |  | [f32]→[f32] | i32.const value: 1 ; trivm.shl_const value: 31 ; i32.xor | false | 
+i64.rotl |  | 0x89 |  | [i64 i64]→[i64] | @i64_rotl | false
+i64.rotr |  | 0x8A |  | [i64 i64]→[i64] | @i64_rotr | false
+f32.abs |  | 0x8B |  | [f32]→[f32] | i32.const value: -1 ; trivm.ushr_const value: 1 ; i32.and | false
+f32.neg |  | 0x8C |  | [f32]→[f32] | i32.const value: 1 ; trivm.shl_const value: 31 ; i32.xor | false
 f32.ceil |  | 0x8D |  | [f32]→[f32] | {#f32} ## {else} @f32_ceil | #f32 | CEILF32
 f32.floor |  | 0x8E |  | [f32]→[f32] | {#f32} ## {else} @f32_floor | #f32 | FLOORF32
 f32.trunc |  | 0x8F |  | [f32]→[f32] | {#f32} ## {else} @f32_trunc | #f32 | TRUNCF32
@@ -140,11 +140,11 @@ f32.add |  | 0x92 |  | [f32 f32]→[f32] | {#f32} ## {else} @f32_add | #f32 | AD
 f32.sub |  | 0x93 |  | [f32 f32]→[f32] | {#f32} ## {else} @f32_sub | #f32 | SUBF32
 f32.mul |  | 0x94 |  | [f32 f32]→[f32] | {#f32} ## {else} @f32_mul | #f32 | MULF32
 f32.div |  | 0x95 |  | [f32 f32]→[f32] | {#f32} ## {else} @f32_div | #f32 | DIVF32
-f32.min |  | 0x96 |  | [f32 f32]→[f32] | @f32_min | false | 
-f32.max |  | 0x97 |  | [f32 f32]→[f32] | @f32_max | false | 
-f32.copysign |  | 0x98 |  | [f32 f32]→[f32] | @f32_copysign | false | 
-f64.abs |  | 0x99 |  | [f64]→[f64] | @f64_abs | false | 
-f64.neg |  | 0x9A |  | [f64]→[f64] | @f64_neg | false | 
+f32.min |  | 0x96 |  | [f32 f32]→[f32] | @f32_min | false
+f32.max |  | 0x97 |  | [f32 f32]→[f32] | @f32_max | false
+f32.copysign |  | 0x98 |  | [f32 f32]→[f32] | @f32_copysign | false
+f64.abs |  | 0x99 |  | [f64]→[f64] | @f64_abs | false
+f64.neg |  | 0x9A |  | [f64]→[f64] | @f64_neg | false
 f64.ceil |  | 0x9B |  | [f64]→[f64] | {#f64} ## {else} @f64_ceil | #f64 | CEILF64
 f64.floor |  | 0x9C |  | [f64]→[f64] | {#f64} ## {else} @f64_floor | #f64 | FLOORF64
 f64.trunc |  | 0x9D |  | [f64]→[f64] | {#f64} ## {else} @f64_trunc | #f64 | TRUNCF64
@@ -154,16 +154,16 @@ f64.add |  | 0xA0 |  | [f64 f64]→[f64] | {#f64} ## {else} @f64_add | #f64 | AD
 f64.sub |  | 0xA1 |  | [f64 f64]→[f64] | {#f64} ## {else} @f64_sub | #f64 | SUBF64
 f64.mul |  | 0xA2 |  | [f64 f64]→[f64] | {#f64} ## {else} @f64_mul | #f64 | MULF64
 f64.div |  | 0xA3 |  | [f64 f64]→[f64] | {#f64} ## {else} @f64_div | #f64 | DIVF64
-f64.min |  | 0xA4 |  | [f64 f64]→[f64] | @f64_min | false | 
-f64.max |  | 0xA5 |  | [f64 f64]→[f64] | @f64_max | false | 
-f64.copysign |  | 0xA6 |  | [f64 f64]→[f64] | @f64_copysign | false | 
-i32.wrap_i64 |  | 0xA7 |  | [i64]→[i32] | trivm.pop | false | 
+f64.min |  | 0xA4 |  | [f64 f64]→[f64] | @f64_min | false
+f64.max |  | 0xA5 |  | [f64 f64]→[f64] | @f64_max | false
+f64.copysign |  | 0xA6 |  | [f64 f64]→[f64] | @f64_copysign | false
+i32.wrap_i64 |  | 0xA7 |  | [i64]→[i32] | trivm.pop | false
 i32.trunc_f32_s |  | 0xA8 |  | [f32]→[i32] | {#f32} ## {else} @i32_trunc_f32_s | #f32 | TRUNCF32S32
 i32.trunc_f32_u |  | 0xA9 |  | [f32]→[i32] | {#f32} ## {else} @i32_trunc_f32_u | #f32 | TRUNCF32U32
 i32.trunc_f64_s |  | 0xAA |  | [f64]→[i32] | {#f64} ## {else} @i32_trunc_f64_s | #f64 | TRUNCF64S32
 i32.trunc_f64_u |  | 0xAB |  | [f64]→[i32] | {#f64} ## {else} @i32_trunc_f64_u | #f64 | TRUNCF64U32
 i64.extend_i32_s |  | 0xAC |  | [i32]→[i64] | {#i64} ## {else} TRIVM.DUP32 offset:0 ; trivm.sshr_const value:31 | #i64 | EXTS64HL 32
-i64.extend_i32_u |  | 0xAD |  | [i32]→[i64] | i32.const value:0 | false | 
+i64.extend_i32_u |  | 0xAD |  | [i32]→[i64] | i32.const value:0 | false
 i64.trunc_f32_s |  | 0xAE |  | [f32]→[i64] | {#f32 && #i64} ## {else} @i64_trunc_f32_s | #f32 && #i64 | TRUNCF32S64
 i64.trunc_f32_u |  | 0xAF |  | [f32]→[i64] | {#f32 && #i64} ## {else} @i64_trunc_f32_u | #f32 && #i64 | TRUNCF32U64
 i64.trunc_f64_s |  | 0xB0 |  | [f64]→[i64] | {#f64} ## {else} @i64_trunc_f64_s | #f64 | TRUNCF64S64
@@ -178,41 +178,40 @@ f64.convert_i32_u |  | 0xB8 |  | [i32]→[f64] | {#f64} ## {else} @f64_convert_i
 f64.convert_i64_s |  | 0xB9 |  | [i64]→[f64] | {#f64} ## {else} @f64_convert_i64_s | #f64 | CONVF64S64
 f64.convert_i64_u |  | 0xBA |  | [i64]→[f64] | {#f64} ## {else} @f64_convert_i64_u | #f64 | CONVF64U64
 f64.promote_f32 |  | 0xBB |  | [f32]→[f64] | {#f32 && #f64} ## {else} @f64_promote_f32 | #f32 && #f64 | PROMOTE
-i32.reinterpret_f32 |  | 0xBC |  | [f32]→[i32] | nop | false | 
-i64.reinterpret_f64 |  | 0xBD |  | [f64]→[i64] | nop | false | 
-f32.reinterpret_i32 |  | 0xBE |  | [i32]→[f32] | nop | false | 
-f64.reinterpret_i64 |  | 0xBF |  | [i64]→[f64] | nop | false | 
-i32.extend8_s |  | 0xC0 |  | [i32]→[i32] | trivm.exts_const value: 24 | false | 
-i32.extend16_s |  | 0xC1 |  | [i32]→[i32] | trivm.exts_const value: 16 | false | 
-i64.extend8_s |  | 0xC2 |  | [i64]→[i64] | {#i64} trivm.exts64_const value: 56 {else} @i64_extend8_s | false | 
-i64.extend16_s |  | 0xC3 |  | [i64]→[i64] | {#i64} trivm.exts64_const value: 48 {else} @i64_extend16_s | false | 
-i64.extend32_s |  | 0xC4 |  | [i64]→[i64] | {#i64} trivm.exts64_const value: 32 {else} @i64_extend32_s | false | 
-ref.null | t | 0xD0 | reftype | []→[t] | i32.const value: 0 | false | 
-ref.is_null |  | 0xD1 |  | [t]→[i32] | i32.eqz | false | 
+i32.reinterpret_f32 |  | 0xBC |  | [f32]→[i32] | nop | false
+i64.reinterpret_f64 |  | 0xBD |  | [f64]→[i64] | nop | false
+f32.reinterpret_i32 |  | 0xBE |  | [i32]→[f32] | nop | false
+f64.reinterpret_i64 |  | 0xBF |  | [i64]→[f64] | nop | false
+i32.extend8_s |  | 0xC0 |  | [i32]→[i32] | trivm.exts_const value: 24 | false
+i32.extend16_s |  | 0xC1 |  | [i32]→[i32] | trivm.exts_const value: 16 | false
+i64.extend8_s |  | 0xC2 |  | [i64]→[i64] | {#i64} trivm.exts64_const value: 56 {else} @i64_extend8_s | false
+i64.extend16_s |  | 0xC3 |  | [i64]→[i64] | {#i64} trivm.exts64_const value: 48 {else} @i64_extend16_s | false
+i64.extend32_s |  | 0xC4 |  | [i64]→[i64] | {#i64} trivm.exts64_const value: 32 {else} @i64_extend32_s | false
+ref.null | t | 0xD0 | reftype | []→[t] | i32.const value: 0 | false
+ref.is_null |  | 0xD1 |  | [t]→[i32] | i32.eqz | false
 ref.func | x | 0xD2 | funcidx | []→[funcref] | ## | true | !
-i32.trunc_sat_f32_s |  | 0xFC 0x00 |  | [f32]→[i32] | {#f32} {faults.truncInvalid} @i32_trunc_sat_f32_s_f {else} @i32_trunc_sat_f32_s_c {end} {else} @i32_trunc_sat_f32_s | false | 
-i32.trunc_sat_f32_u |  | 0xFC 0x01 |  | [f32]→[i32] | {#f32} {faults.truncInvalid} @i32_trunc_sat_f32_u_f {else} @i32_trunc_sat_f32_u_c {end} {else} @i32_trunc_sat_f32_u | false | 
-i32.trunc_sat_f64_s |  | 0xFC 0x02 |  | [f64]→[i32] | {#f64} {faults.truncInvalid} @i32_trunc_sat_f64_s_f {else} @i32_trunc_sat_f64_s_c {end} {else} @i32_trunc_sat_f64_s | false | 
-i32.trunc_sat_f64_u |  | 0xFC 0x03 |  | [f64]→[i32] | {#f64} {faults.truncInvalid} @i32_trunc_sat_f64_u_f {else} @i32_trunc_sat_f64_u_c {end} {else} @i32_trunc_sat_f64_u | false | 
-i64.trunc_sat_f32_s |  | 0xFC 0x04 |  | [f32]→[i64] | {#f32} {faults.truncInvalid} @i64_trunc_sat_f32_s_f {else} @i64_trunc_sat_f32_s_c {end} {else} @i64_trunc_sat_f32_s | false | 
-i64.trunc_sat_f32_u |  | 0xFC 0x05 |  | [f32]→[i64] | {#f32} {faults.truncInvalid} @i64_trunc_sat_f32_u_f {else} @i64_trunc_sat_f32_u_c {end} {else} @i64_trunc_sat_f32_u | false | 
-i64.trunc_sat_f64_s |  | 0xFC 0x06 |  | [f64]→[i64] | {#f64} {faults.truncInvalid} @i64_trunc_sat_f64_s_f {else} @i64_trunc_sat_f64_s_c {end} {else} @i64_trunc_sat_f64_s | false | 
-i64.trunc_sat_f64_u |  | 0xFC 0x07 |  | [f64]→[i64] | {#f64} {faults.truncInvalid} @i64_trunc_sat_f64_u_f {else} @i64_trunc_sat_f64_u_c {end} {else} @i64_trunc_sat_f64_u | false | 
-memory.init | x | 0xFC 0x08 | dataidx, memidx | [i32 i32 i32]→[] | ! | false | 
-data.drop | x | 0xFC 0x09 | dataidx | []→[] | nop | false | 
-memory.copy |  | 0xFC 0x0A | memidx, memidx | [i32 i32 i32]→[] | {if ..memories[0].index === 0 && ..memories[1].index === 0} @memory_copy_0 {else} nop | false | 
-memory.fill |  | 0xFC 0x0B | memidx | [i32 i32 i32]→[] | {if ..memory.index === 0} @memory_fill_0 {else} nop | false | 
-table.init | x y | 0xFC 0x0C | elemidx, tableidx | [i32 i32 i32]→[] | ! | false | 
-elem.drop | x | 0xFC 0x0D | elemidx | []→[] | nop | false | 
-table.copy | x y | 0xFC 0x0E | tableidx, tableidx | [i32 i32 i32]→[] | i32.const value:..tables[0].index ; i32.const value:..tables[1].index ; @table_copy | false | 
-table.grow | x | 0xFC 0x0F | tableidx | [t i32]→[i32] | i32.const value:..table.index ; @table_grow | false | 
-table.size | x | 0xFC 0x10 | tableidx | []→[i32] | i32.const value:..table.index ; @table_size | false | 
-table.fill | x | 0xFC 0x11 | tableidx | [i32 t i32]→[] | i32.const value:..table.index ; @table_fill | false | 
-TRIVM.MULTIBYTE_FIRST |  | 0xFB |  | false |  |  | 
-TRIVM.FUNCTION |  | -1 |  | true | ! |  | 
+i32.trunc_sat_f32_s |  | 0xFC 0x00 |  | [f32]→[i32] | {#f32} {faults.truncInvalid} @i32_trunc_sat_f32_s_f {else} @i32_trunc_sat_f32_s_c {end} {else} @i32_trunc_sat_f32_s | false
+i32.trunc_sat_f32_u |  | 0xFC 0x01 |  | [f32]→[i32] | {#f32} {faults.truncInvalid} @i32_trunc_sat_f32_u_f {else} @i32_trunc_sat_f32_u_c {end} {else} @i32_trunc_sat_f32_u | false
+i32.trunc_sat_f64_s |  | 0xFC 0x02 |  | [f64]→[i32] | {#f64} {faults.truncInvalid} @i32_trunc_sat_f64_s_f {else} @i32_trunc_sat_f64_s_c {end} {else} @i32_trunc_sat_f64_s | false
+i32.trunc_sat_f64_u |  | 0xFC 0x03 |  | [f64]→[i32] | {#f64} {faults.truncInvalid} @i32_trunc_sat_f64_u_f {else} @i32_trunc_sat_f64_u_c {end} {else} @i32_trunc_sat_f64_u | false
+i64.trunc_sat_f32_s |  | 0xFC 0x04 |  | [f32]→[i64] | {#f32} {faults.truncInvalid} @i64_trunc_sat_f32_s_f {else} @i64_trunc_sat_f32_s_c {end} {else} @i64_trunc_sat_f32_s | false
+i64.trunc_sat_f32_u |  | 0xFC 0x05 |  | [f32]→[i64] | {#f32} {faults.truncInvalid} @i64_trunc_sat_f32_u_f {else} @i64_trunc_sat_f32_u_c {end} {else} @i64_trunc_sat_f32_u | false
+i64.trunc_sat_f64_s |  | 0xFC 0x06 |  | [f64]→[i64] | {#f64} {faults.truncInvalid} @i64_trunc_sat_f64_s_f {else} @i64_trunc_sat_f64_s_c {end} {else} @i64_trunc_sat_f64_s | false
+i64.trunc_sat_f64_u |  | 0xFC 0x07 |  | [f64]→[i64] | {#f64} {faults.truncInvalid} @i64_trunc_sat_f64_u_f {else} @i64_trunc_sat_f64_u_c {end} {else} @i64_trunc_sat_f64_u | false
+memory.init | x | 0xFC 0x08 | dataidx, memidx | [i32 i32 i32]→[] | ! | false
+data.drop | x | 0xFC 0x09 | dataidx | []→[] | nop | false
+memory.copy |  | 0xFC 0x0A | memidx, memidx | [i32 i32 i32]→[] | {if ..memories[0].index === 0 && ..memories[1].index === 0} @memory_copy_0 {else} nop | false
+memory.fill |  | 0xFC 0x0B | memidx | [i32 i32 i32]→[] | {if ..memory.index === 0} @memory_fill_0 {else} nop | false
+table.init | x y | 0xFC 0x0C | elemidx, tableidx | [i32 i32 i32]→[] | ! | false
+elem.drop | x | 0xFC 0x0D | elemidx | []→[] | nop | false
+table.copy | x y | 0xFC 0x0E | tableidx, tableidx | [i32 i32 i32]→[] | i32.const value:..tables[0].index ; i32.const value:..tables[1].index ; @table_copy | false
+table.grow | x | 0xFC 0x0F | tableidx | [t i32]→[i32] | i32.const value:..table.index ; @table_grow | false
+table.size | x | 0xFC 0x10 | tableidx | []→[i32] | i32.const value:..table.index ; @table_size | false
+table.fill | x | 0xFC 0x11 | tableidx | [i32 t i32]→[] | i32.const value:..table.index ; @table_fill | false
+TRIVM.MULTIBYTE_FIRST |  | 0xFB |  |  |  | false
+TRIVM.FUNCTION |  | -1 |  |  |  | true | !
 TRIVM.POP |  | -2 |  | [i32]→[] |  | true | WRITE32 GPR0
-TRIVM.DUP32 |  | -3 |  | [i32]→[i32 i32] |  | true | READ32 [SP]
-TRIVM.DUP64 |  | -4 |  | [i32 i32]→[i32 i32 i32 i32] |  | #mem64 | READ64 [SP] - 4
+TRIVM.DUP32 |  | -3 |  | [i32]→[i32 i32] |  | true | READST 0
 TRIVM.LOCAL_GET32 |  | -5 |  | []→[i32] |  | true | !
 TRIVM.LOCAL_GET64 |  | -6 |  | []→[i32 i32] |  | #mem64 | !
 TRIVM.LOCAL_SET32 |  | -7 |  | [i32]→[] |  | true | !

@@ -82,4 +82,24 @@ void __triwasmlib_dummy_consumer(int);
 #define _ANNOTATION1(line, counter, unique_id, text) _ANNOTATION2(line, counter, unique_id, text)
 #define ANNOTATION(unique_id, text) _ANNOTATION1(__LINE__, __COUNTER__, unique_id, text)
 
+#define TRIVM_FAULT_HANDLER(handler_body) \
+    TRIVM_INLINE_ASSEMBLY("$_triwasm_fault_handler_defined = 1") \
+    void _trivm_force_fault_handler_defined(); \
+    __attribute__((used)) \
+    __attribute__((export_name("__trivm_magic_function__:used:_trivm_fault_handler"))) \
+    void _trivm_fault_handler(unsigned type, unsigned code, unsigned code2, unsigned addr) { \
+        _trivm_force_fault_handler_defined(); \
+        ANNOTATION(trivm_fault_handler_impl, "triasm_name:$_triwasm_fault_handler"); \
+        { handler_body; } \
+    } // TODOv1: Better to create new magic function type "fault". The compiler will handle it specially.
+
+TRIVM_INLINE_ASSEMBLY(
+    "WRITE32 GPR2\n"
+    "WRITE32 GPR3\n"
+    "WRITE32 GPR1\n"
+    "WRITE32 GPR0\n"
+    "HOST -2\n"
+    )
+void trivm_host_fault_handler(unsigned type, unsigned code, unsigned code2, unsigned addr);
+
 #endif

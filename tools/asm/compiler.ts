@@ -35,6 +35,7 @@ export class Compiler {
     private programGenerator = new ProgramBytecodeGenerator();
     public generator: BytecodeGenerator;
     public activeError?: CompilerError;
+    public sourceMap: number[] = [];
 
     constructor() {
         this.generator = this.nullGenerator;
@@ -190,6 +191,7 @@ export class Compiler {
         this.activeError = undefined;
         this.generator = this.pmaBase === 0 ? this.programGenerator : this.nullGenerator;
         this.generator.reset(0);
+        this.sourceMap.splice(0);
         for (let instr of this.instructions) {
             instr.address.old = instr.address.current as number;
             instr.address.current = undefined;
@@ -209,6 +211,9 @@ export class Compiler {
             this.generator.reserve(MAX_INSTR_SIZE);
             instr.generate(this.generator, Math.max(0, instr.address.end - instr.address.current));
             instr.address.end = this.generator.address;
+            if (instr.address.end > instr.address.current) {
+                this.sourceMap[instr.lineNumber] = instr.address.current;
+            }
             if (instr.address.current < this.pmaBase) {
                 if (instr.address.end > this.pmaBase) {
                     this.error(instr.lineNumber, 'Single instruction cannot span over data and program memory.');

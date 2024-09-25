@@ -93,9 +93,14 @@ function postProcess(results: WasmArgs) {
     }
 }
 
-export function getWasmConf(cmdLineArgs?: string[]) {
-    let args = {} as WasmArgs;
-    parse<WasmArgs>(ARGS_TXT, args, filters, postProcess, cmdLineArgs || platform.getArgv());
+export function getWasmConf(cmdLineArgs?: string[] | WasmArgs) {
+    let args: WasmArgs;
+    if (!cmdLineArgs || Array.isArray(cmdLineArgs)) {
+        args = {} as WasmArgs;
+        parse<WasmArgs>(ARGS_TXT, args, filters, postProcess, cmdLineArgs || platform.getArgv());
+    } else {
+        args = cmdLineArgs;
+    }
     let vmConf = parseConf(args.config);
     let faults: WasmFaults = {
         ...vmConf.faults,

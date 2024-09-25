@@ -16,6 +16,11 @@ int test(int x) {
 
 
 #if 0
+TRIVM_FAULT_HANDLER({
+    println("Fault!");
+    trivm_host_fault_handler(type, code, code2, addr);
+});
+
 TRIVM_EXPORT(a)
 void f() {
     char test[] = "sadkjsghlkjshgdfgdfgsadkjsghlkjshgdfgdfgsadkjsghlk";

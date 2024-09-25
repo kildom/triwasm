@@ -229,9 +229,13 @@ export async function parseOds(input: string, skipEmpty: boolean = true): Promis
 }
 
 function joinRow(row: Row): string {
-    return Object.values(row)
-        .map(x => x instanceof Array ? x.join(' | ') : x)
-        .join(' | ');
+    let list = Object.values(row)
+        .map(x => x instanceof Array ? x.map(y => y.trim()).join(' | ') : x.trim())
+        ;
+    while (list.at(-1) === '') {
+        list.pop();
+    }
+    return list.join(' | ');
 }
 
 function writeToText(odsFile: string, data: Spreadsheet) {

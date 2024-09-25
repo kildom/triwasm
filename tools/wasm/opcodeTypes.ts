@@ -414,8 +414,6 @@ function ft_TRIVM_POP(i: WasmInstr) { if (i.opcode === OP.TRIVM_POP) return i; t
 export type TRIVM_POP = ReturnType<typeof ft_TRIVM_POP>;
 function ft_TRIVM_DUP32(i: WasmInstr) { if (i.opcode === OP.TRIVM_DUP32) return i; throw null; }
 export type TRIVM_DUP32 = ReturnType<typeof ft_TRIVM_DUP32>;
-function ft_TRIVM_DUP64(i: WasmInstr) { if (i.opcode === OP.TRIVM_DUP64) return i; throw null; }
-export type TRIVM_DUP64 = ReturnType<typeof ft_TRIVM_DUP64>;
 function ft_TRIVM_LOCAL_GET32(i: WasmInstr) { if (i.opcode === OP.TRIVM_LOCAL_GET32) return i; throw null; }
 export type TRIVM_LOCAL_GET32 = ReturnType<typeof ft_TRIVM_LOCAL_GET32>;
 function ft_TRIVM_LOCAL_GET64(i: WasmInstr) { if (i.opcode === OP.TRIVM_LOCAL_GET64) return i; throw null; }

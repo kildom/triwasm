@@ -145,4 +145,17 @@ export class AsmFunctions {
         }
     }
 
+    static func_force_const(instr: InstrBase, ctx: ExprContext, input: ExprEval): bigint {
+        if (instr.compiler.preparation) {
+            ctx.pushMutable();
+            let valInput = input(ctx);
+            if (ctx.popMutable()) {
+                throw new CompilerError(instr.lineNumber, 'Expression must be constant');
+            }
+            return valInput;
+        } else {
+            return input(ctx);
+        }
+    }
+
 }
