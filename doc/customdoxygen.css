@@ -1,0 +1,32 @@
+
+.memtitle {
+	font-weight: bold;
+}
+
+h2.groupheader[content~=pleaseHideMe] {
+	display: none;
+}
+
+div.summary {
+	display: none;
+}
+
+div.contents {
+	max-width: 900px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+div.header {
+	margin-bottom: 3em;
+}
+
+xxxa#details {
+	display: block;
+	height: 2em;
+	visibility: hidden;
+}
+
+div.memitem {
+	margin-bottom: 24px;
+}

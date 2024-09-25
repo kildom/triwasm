@@ -1,6 +1,8 @@
 #ifndef _TRIVM_CONFIG_H_
 #define _TRIVM_CONFIG_H_
 
+#ifndef __doxygen__
+
 #define TRIVM_EXT_UNWIND 1
 #define TRIVM_EXT_MEM64 1
 #define TRIVM_EXT_INT64 0
@@ -48,5 +50,7 @@
  *      import/export function[2] regcall (i32, i32) table_size(i32 op=2=size);
  *      import/export function[2] regcall i32 table_grow(i32 op=3=grow, i32 new_length, i32 fill_value);
  */
+
+#endif
 
 #endif /* _TRIVM_CONFIG_H_ */

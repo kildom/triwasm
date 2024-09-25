@@ -16,3 +16,4 @@ temp
 /doc/triasm/cmd.md
 /test/__old/*.html
 /samples/**/build/*
+/doc/host-api
