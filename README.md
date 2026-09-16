@@ -2,6 +2,8 @@
 > [!NOTE]
 > ## Project status: discontinued and unfinished
 >
+> triVM was a hobby project exploring the idea of running sandboxed code inside a very small virtual machine for embedded devices.
+> 
 > This project has been discontinued and will not be continued. It is **far from finished** and should be considered an incomplete work-in-progress rather than a usable or production-ready project.
 >
 > The repository is being left as-is because it contains some interesting ideas, experiments, and potentially useful code related to tiny virtual machines, sandboxed code execution, and embedded systems.
