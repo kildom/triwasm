@@ -1,3 +1,14 @@
+
+> [!NOTE]
+> ## Project status: discontinued and unfinished
+>
+> This project has been discontinued and will not be continued. It is **far from finished** and should be considered an incomplete work-in-progress rather than a usable or production-ready project.
+>
+> The repository is being left as-is because it contains some interesting ideas, experiments, and potentially useful code related to tiny virtual machines, sandboxed code execution, and embedded systems.
+>
+> If you find something useful here, feel free to explore it, reuse it, or take the project in your own direction.
+
+
 <a href="https://kildom.github.io/trivm/docs"><img src="doc/trivm/logo.svg" alt="triVM logo - box drawing with letter 't'" width="120" align="right"/></a><br /><br />
 
 # triVM
